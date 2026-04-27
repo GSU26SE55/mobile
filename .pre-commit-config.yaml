@@ -1,0 +1,31 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: no-commit-to-branch
+        args: [--branch, main]
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [feat, fix, refactor, test, chore, docs]
+
+  - repo: local
+    hooks:
+      - id: eslint
+        name: ESLint
+        entry: npx eslint --max-warnings=0
+        language: system
+        files: \.(ts|tsx|js|jsx)$
+        pass_filenames: true
+
+      - id: tsc
+        name: TypeScript check
+        entry: npx tsc --noEmit
+        language: system
+        files: \.(ts|tsx)$
+        pass_filenames: false
