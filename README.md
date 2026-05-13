@@ -1,94 +1,50 @@
-# GSU26SE55 — Mobile App (React Native / Expo)
+# Welcome to your Expo app 👋
 
-**Dự án:** Solar Lithium-ion Battery Maintenance Management System
-**Nhóm:** GSU26SE55 — GVHD: Trương Long
-**Timeline:** 11/5/2026 → 6/9/2026
+This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
----
+## Get started
 
-## Thành viên repo này
+1. Install dependencies
 
-| Tên | MSSV | GitHub |
-|-----|------|--------|
-| Nguyễn Nhật Minh | SE170310 | @CodeForFee |
-| Trần Minh Trí | SE183109 | @Shu1237 (Leader) |
+   ```bash
+   npm install
+   ```
 
----
+2. Start the app
 
-## Setup lần đầu (làm 1 lần duy nhất)
+   ```bash
+   npx expo start
+   ```
 
-### Bước 1 — Yêu cầu
+In the output, you'll find options to open the app in a
 
-- [Claude Code](https://claude.ai/code) — bắt buộc
-- Node.js 18+
-- Git 2.30+
-- [GitHub CLI](https://cli.github.com/) — bắt buộc
+- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
+- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
+- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
+- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
-### Bước 2 — Clone repo
+You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
-```bash
-git clone https://github.com/GSU26SE55/mobile.git
-cd mobile
-```
+## Get a fresh project
 
-### Bước 3 — Tạo file CLAUDE.local.md
-
-Tạo file `.claude/CLAUDE.local.md` (file này **không được commit**):
-
-```
----
-Role: FE
-Tên: [Tên của bạn]
-MSSV: [MSSV của bạn]
----
-```
-
-### Bước 4 — Xác thực GitHub CLI
+When you're ready, run:
 
 ```bash
-gh auth login
+npm run reset-project
 ```
 
-Chọn **GitHub.com** → **HTTPS** → xác thực qua browser.
+This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
-### Bước 5 — Mở Claude Code
+## Learn more
 
-```bash
-claude
-```
+To learn more about developing your project with Expo, look at the following resources:
 
-Gõ `/kltn` để xem toàn bộ lệnh → sẵn sàng làm việc.
+- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
+- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
----
+## Join the community
 
-## Luồng làm việc mỗi issue
+Join our community of developers creating universal apps.
 
-```
-1. git pull origin main                              ← lấy code mới nhất
-2. git checkout -b feature/GH-[number]-ten-ngan      ← tạo branch
-3. /kltn-implement [number]                          ← đọc issue, lập plan
-4. [review plan] → gõ "ok" để xác nhận
-5. code...
-6. /kltn-reviewcode                                  ← review trước khi test
-7. /kltn-test [number]                               ← chạy test
-8. /kltn-ship [number]                               ← tạo PR + cập nhật issue
-9. Đồng đội /kltn-reviewpr → approve
-10. /kltn-complete [number]                          ← merge PR + close issue
-```
-
----
-
-## Quy tắc bắt buộc
-
-- Không push thẳng lên `main` — luôn qua PR
-- Không merge PR của chính mình — cần ≥ 1 người approve
-- 1 issue = 1 branch: `feature/GH-[number]-ten-ngan`
-- Commit format: `feat(#[number]): mô tả` / `fix` / `refactor` / `test`
-- Không commit `.env` và `.claude/CLAUDE.local.md`
-- Không eject khỏi Expo managed workflow
-
----
-
-## Cần hỗ trợ
-
-Liên hệ Leader: **Trần Minh Trí (SE183109)** — @Shu1237
+- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
+- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
