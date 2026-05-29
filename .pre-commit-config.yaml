@@ -3,9 +3,14 @@ repos:
     rev: v4.6.0
     hooks:
       - id: no-commit-to-branch
-        args: [--branch, main]
+        args: [--branch, main, --branch, dev, --branch, staging]
       - id: trailing-whitespace
       - id: end-of-file-fixer
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-merge-conflict
+      - id: check-json
 
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v3.4.0
@@ -16,9 +21,37 @@ repos:
 
   - repo: local
     hooks:
+      - id: block-env-commit
+        name: Block .env file commit
+        language: system
+        entry: >-
+          bash -c 'for f in "$@"; do if [[ "$f" == .env || "$f" == .env.* ]] && [[ "$f" != ".env.example" ]]; then echo "BLOCKED: Attempting to commit $f — contains secrets. Add to .gitignore."; exit 1; fi; done'
+        args: ["--"]
+        pass_filenames: true
+        stages: [pre-commit]
+
+      - id: no-push-to-protected
+        name: Block direct push to main/dev/staging
+        language: system
+        entry: >-
+          bash -c 'branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "HEAD"); if [[ "$branch" == "main" || "$branch" == "dev" || "$branch" == "staging" ]]; then echo "BLOCKED: Khong duoc push truc tiep len $branch." >&2; echo "  -> Tao branch: git checkout -b feature/GH-XX-mo-ta" >&2; echo "  -> Push branch: git push origin feature/GH-XX-mo-ta" >&2; echo "  -> Mo PR tren GitHub de merge vao $branch." >&2; exit 1; fi'
+        stages: [pre-push]
+        always_run: true
+        pass_filenames: false
+
+      - id: no-AsyncStorage-token
+        name: Block AsyncStorage token usage
+        language: system
+        entry: >-
+          bash -c 'if grep -rn "AsyncStorage.*[Tt]oken\|AsyncStorage.*[Aa]ccess\|AsyncStorage.*[Rr]efresh" "$@" 2>/dev/null; then echo "BLOCKED: Token phai luu trong expo-secure-store, KHONG dung AsyncStorage. Xem rules/tech/mobile.md"; exit 1; fi'
+        args: ["--"]
+        pass_filenames: true
+        files: \.(ts|tsx)$
+        stages: [pre-commit]
+
       - id: eslint
         name: ESLint
-        entry: npx eslint --max-warnings=0
+        entry: npx eslint --max-warnings=0 --no-warn-ignored
         language: system
         files: \.(ts|tsx|js|jsx)$
         pass_filenames: true
