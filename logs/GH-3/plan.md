@@ -78,7 +78,7 @@ npm install @tanstack/react-query zustand axios jwt-decode
 | `src/features/auth/components/RegisterForm.tsx` | create | fullName + email + password + phone |
 | `src/features/auth/components/OtpVerifyForm.tsx` | create | 6-digit input + resend countdown |
 | `src/features/auth/components/ForgotPasswordStep1.tsx` | create | Nhập email |
-| `src/features/auth/components/ForgotPasswordStep2.tsx` | create | OTP + resend |
+| `src/features/auth/components/ForgotPasswordStep2.tsx` | create | OTP + resend — Props: `{ email, onSuccess }` (không có onExpired) |
 | `src/features/auth/components/ForgotPasswordStep3.tsx` | create | Mật khẩu mới |
 
 ## Types
@@ -127,7 +127,7 @@ export const decodeToken = (token: string): SessionUser => {
 
 // Redirect sau login — block Admin/Manager khỏi mobile
 export const redirectByRole = (role: UserRole): string | null => ({
-  CUSTOMER: '/(customer)/dashboard',
+  CUSTOMER: '/(customer)/(tabs)/dashboard',
   STAFF:    '/(staff)/',
   ADMIN:    null,
   MANAGER:  null,
@@ -157,19 +157,23 @@ interface VerifyResetOtpData    { resetToken: string; expiresInSeconds: number; 
 ```
 
 ## Form Validation
-Mobile không dùng Zod (không có trong stack — `tech/mobile.md`). Validate native bằng controlled state + check trước khi submit:
+Dùng **Zod** (`schema.safeParse()`) — nhất quán với Web, đã có trong `tech/mobile.md`. Không dùng React Hook Form (thiết kế cho web DOM). Schemas đặt trong `src/features/auth/schemas/`:
 ```ts
-// Pattern cho mọi form — validate trong handler, không dùng schema library
-const handleLogin = () => {
-  const errors: Record<string, string> = {};
-  if (!email.trim()) errors.email = 'Email không được để trống';
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Email không hợp lệ';
-  if (!password || password.length < 8) errors.password = 'Mật khẩu tối thiểu 8 ký tự';
-  if (Object.keys(errors).length > 0) { setErrors(errors); return; }
-  loginMutation.mutate({ email, password });
-};
+// Ví dụ — login.schema.ts
+const loginSchema = z.object({
+  email:    z.string().email('Email không hợp lệ'),
+  password: z.string().min(8, 'Mật khẩu tối thiểu 8 ký tự'),
+});
+
+// Dùng trong form handler
+const result = loginSchema.safeParse({ email: email.trim(), password });
+if (!result.success) {
+  // map result.error.flatten().fieldErrors → setFieldErrors
+  return;
+}
+await mutateAsync(result.data);
 ```
-Validation rules tuân theo API contract (`api-auth.md`): email max 256, password 8–100 ký tự có chữ hoa/thường/số/ký tự đặc biệt, OTP đúng 6 chữ số.
+Validation rules tuân theo API contract: email max 256, password 8–100 ký tự có chữ hoa/thường/số/ký tự đặc biệt, OTP đúng 6 chữ số.
 
 ## Endpoints
 
@@ -262,9 +266,21 @@ export function useAuthGuard() {
 
 **Axios interceptor (async — khác web vì SecureStore là async):**
 ```ts
+// PUBLIC_ENDPOINTS — skip token attachment cho auth endpoints
+// (tránh tryRefresh() bị gọi khi chưa có token → navigate về login trong khi đang login)
+const PUBLIC_ENDPOINTS = new Set([
+  ENDPOINTS.AUTH.LOGIN, ENDPOINTS.AUTH.REGISTER, ENDPOINTS.AUTH.VERIFY_OTP,
+  ENDPOINTS.AUTH.RESEND_OTP, ENDPOINTS.AUTH.FORGOT_PASSWORD,
+  ENDPOINTS.AUTH.VERIFY_RESET_OTP, ENDPOINTS.AUTH.RESEND_RESET_OTP,
+  ENDPOINTS.AUTH.RESET_PASSWORD, ENDPOINTS.AUTH.REFRESH_TOKEN,
+]);
+
 // request interceptor: attach Bearer
 instance.interceptors.request.use(async config => {
-  const token = await SecureStore.getItemAsync('accessToken');
+  const url = config.url ?? '';
+  if ([...PUBLIC_ENDPOINTS].some(ep => url.endsWith(ep))) return config;
+
+  const token = await getAccessToken();
   if (token && !isTokenExpired(token)) {
     config.headers.Authorization = `Bearer ${token}`;
   } else {
@@ -320,7 +336,7 @@ router.replace(dest);
 ```
 
 ## Edge Cases
-- **isHydrating = true:** `app/index.tsx` hiển thị `<ActivityIndicator />`, không redirect — tránh flash
+- **isHydrating = true:** `app/index.tsx`, `(customer)/_layout.tsx`, `(staff)/_layout.tsx` đều hiển thị `<ActivityIndicator />`, không redirect — tránh flash khi Expo Router mount layout trước khi SecureStore đọc xong (deep link / route restore)
 - **Admin/Manager login:** block ngay trong `useLogin onSuccess` + clear tokens + Alert
 - **SecureStore lỗi (thiết bị không support):** catch + fallback clearTokens + redirect login
 - **Double refresh:** `isRefreshing` flag + pending queue (giống web), timeout 10s

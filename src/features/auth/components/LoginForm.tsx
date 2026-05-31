@@ -1,70 +1,114 @@
 import React, { useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
+  View,
 } from 'react-native';
 import { useLogin } from '../hooks/useLogin';
+import { loginSchema } from '../schemas/login.schema';
+import { HttpError, EntityError } from '../../../lib/errors';
 
 export function LoginForm() {
+  const { mutateAsync, isPending } = useLogin();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const loginMutation = useLogin();
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [generalError, setGeneralError] = useState('');
 
-  const handleSubmit = () => {
-    const errs: Record<string, string> = {};
-    if (!email.trim()) errs.email = 'Email không được để trống';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Email không hợp lệ';
-    if (!password || password.length < 8) errs.password = 'Mật khẩu tối thiểu 8 ký tự';
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+  const handleSubmit = async () => {
+    setFieldErrors({});
+    setGeneralError('');
 
-    setErrors({});
-    loginMutation.mutate({ email: email.trim(), password });
+    // Zod client-side validation
+    const result = loginSchema.safeParse({ email: email.trim(), password });
+    if (!result.success) {
+      const errs: Record<string, string> = {};
+      Object.entries(result.error.flatten().fieldErrors).forEach(([k, v]) => {
+        if (v?.[0]) errs[k] = v[0];
+      });
+      setFieldErrors(errs);
+      return;
+    }
+
+    try {
+      await mutateAsync(result.data);
+    } catch (error) {
+      if (error instanceof EntityError) {
+        // BE trả field-level errors (listErrors)
+        const errs: Record<string, string> = {};
+        error.payload.listErrors?.forEach(({ field, detail }) => {
+          const key = field.charAt(0).toLowerCase() + field.slice(1);
+          errs[key] = detail;
+        });
+        setFieldErrors(errs);
+      } else if (error instanceof HttpError) {
+        // BE trả lỗi chung (sai mật khẩu, tài khoản bị khoá...) — hiện inline
+        setGeneralError(error.message);
+      } else if (error instanceof Error) {
+        setGeneralError('Không thể kết nối. Kiểm tra lại mạng.');
+      }
+    }
   };
+
+  const getFieldError = (field: string) => fieldErrors[field];
 
   return (
     <View style={styles.container}>
       <TextInput
-        style={[styles.input, errors.email ? styles.inputError : null]}
+        style={[styles.input, getFieldError('email') && styles.inputError]}
         placeholder="Email"
         autoCapitalize="none"
         keyboardType="email-address"
         value={email}
         onChangeText={setEmail}
       />
-      {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
+      {getFieldError('email') ? (
+        <Text style={styles.errorText}>{getFieldError('email')}</Text>
+      ) : null}
 
       <TextInput
-        style={[styles.input, errors.password ? styles.inputError : null]}
+        style={[styles.input, getFieldError('password') && styles.inputError]}
         placeholder="Mật khẩu"
         secureTextEntry
         value={password}
         onChangeText={setPassword}
       />
-      {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
+      {getFieldError('password') ? (
+        <Text style={styles.errorText}>{getFieldError('password')}</Text>
+      ) : null}
+
+      {/* Lỗi chung từ BE (sai thông tin, bị khoá...) — hiện dưới form, không phải Alert */}
+      {generalError ? <Text style={styles.generalError}>{generalError}</Text> : null}
 
       <TouchableOpacity
-        style={[styles.button, loginMutation.isPending && styles.buttonDisabled]}
+        style={[styles.button, isPending && styles.buttonDisabled]}
         onPress={handleSubmit}
-        disabled={loginMutation.isPending}
+        disabled={isPending}
       >
-        {loginMutation.isPending
-          ? <ActivityIndicator color="#fff" />
-          : <Text style={styles.buttonText}>Đăng nhập</Text>}
+        {isPending ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Đăng nhập</Text>
+        )}
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container:      { gap: 12 },
-  input:          { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 16 },
-  inputError:     { borderColor: '#e53e3e' },
-  errorText:      { color: '#e53e3e', fontSize: 13 },
+  container:    { gap: 12 },
+  input:        { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 16 },
+  inputError:   { borderColor: '#e53e3e' },
+  errorText:    { color: '#e53e3e', fontSize: 13 },
+  generalError: {
+    color: '#e53e3e', fontSize: 14,
+    backgroundColor: '#fff5f5', borderRadius: 8,
+    padding: 10, textAlign: 'center',
+    borderWidth: 1, borderColor: '#fed7d7',
+  },
   button:         { backgroundColor: '#2563eb', borderRadius: 8, padding: 14, alignItems: 'center' },
   buttonDisabled: { opacity: 0.6 },
   buttonText:     { color: '#fff', fontWeight: '600', fontSize: 16 },
