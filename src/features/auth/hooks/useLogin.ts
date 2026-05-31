@@ -14,18 +14,14 @@ export function useLogin() {
   return useMutation({
     mutationFn: (data: LoginPayload) => authService.login(data),
     onSuccess: async (res) => {
-      const body = res.data;
-      if (!body.isSuccess || !body.data) {
-        Alert.alert('Đăng nhập thất bại', body.message ?? 'Vui lòng thử lại.');
-        return;
-      }
-
-      const { accessToken, refreshToken } = body.data;
+      // isSuccess: false đã được interceptor bắt trước — onSuccess chỉ chạy khi thực sự thành công
+      const { accessToken, refreshToken } = res.data.data!;
       await saveTokens(accessToken, refreshToken);
       const user = decodeToken(accessToken);
       const dest = redirectByRole(user.role);
 
       if (!dest) {
+        // Admin/Manager không dùng mobile app
         Alert.alert('Không hỗ trợ', 'Tài khoản Admin/Manager vui lòng dùng Web App.');
         await clearTokens();
         clearSession();
@@ -35,8 +31,6 @@ export function useLogin() {
       setSession(user);
       router.replace(dest as never);
     },
-    onError: () => {
-      Alert.alert('Lỗi', 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
-    },
+    // Không xử lý onError — error propagate lên caller (LoginForm try-catch)
   });
 }

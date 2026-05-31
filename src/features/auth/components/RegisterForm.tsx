@@ -1,100 +1,86 @@
 import React, { useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
+  View,
 } from 'react-native';
 import { useRegister } from '../hooks/useRegister';
+import { registerSchema } from '../schemas/register.schema';
+import { HttpError, EntityError } from '../../../lib/errors';
 
 export function RegisterForm() {
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { mutateAsync, isPending } = useRegister();
+  const [fullName, setFullName]       = useState('');
+  const [email, setEmail]             = useState('');
+  const [password, setPassword]       = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const registerMutation = useRegister();
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [generalError, setGeneralError] = useState('');
 
-  const handleSubmit = () => {
-    const errs: Record<string, string> = {};
-    if (!fullName.trim()) errs.fullName = 'Họ tên không được để trống';
-    if (!email.trim()) errs.email = 'Email không được để trống';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Email không hợp lệ';
-    if (!password || password.length < 8) errs.password = 'Mật khẩu tối thiểu 8 ký tự';
-    else if (!/(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*])/.test(password))
-      errs.password = 'Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt';
-    if (phoneNumber && !/^(0[35789])[0-9]{8}$/.test(phoneNumber))
-      errs.phoneNumber = 'Số điện thoại không hợp lệ';
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+  const getError = (field: string) => fieldErrors[field];
 
-    setErrors({});
-    registerMutation.mutate({
-      fullName: fullName.trim(),
-      email: email.trim(),
-      password,
-      phoneNumber: phoneNumber || undefined,
-    });
+  const handleSubmit = async () => {
+    setFieldErrors({});
+    setGeneralError('');
+    const result = registerSchema.safeParse({ fullName, email, password, phoneNumber });
+    if (!result.success) {
+      const errs: Record<string, string> = {};
+      Object.entries(result.error.flatten().fieldErrors).forEach(([k, v]) => {
+        if (v?.[0]) errs[k] = v[0];
+      });
+      setFieldErrors(errs);
+      return;
+    }
+    try {
+      await mutateAsync({
+        fullName:    result.data.fullName,
+        email:       result.data.email,
+        password:    result.data.password,
+        phoneNumber: result.data.phoneNumber || undefined,
+      });
+    } catch (error) {
+      if (error instanceof EntityError) {
+        const errs: Record<string, string> = {};
+        error.payload.listErrors?.forEach(({ field, detail }) => {
+          errs[field.charAt(0).toLowerCase() + field.slice(1)] = detail;
+        });
+        setFieldErrors(errs);
+      } else if (error instanceof HttpError) {
+        setGeneralError(error.message);
+      } else if (error instanceof Error) {
+        setGeneralError('Không thể kết nối. Kiểm tra lại mạng.');
+      }
+    }
   };
 
   return (
     <View style={styles.container}>
-      <TextInput
-        style={[styles.input, errors.fullName ? styles.inputError : null]}
-        placeholder="Họ và tên"
-        value={fullName}
-        onChangeText={setFullName}
-      />
-      {errors.fullName ? <Text style={styles.errorText}>{errors.fullName}</Text> : null}
-
-      <TextInput
-        style={[styles.input, errors.email ? styles.inputError : null]}
-        placeholder="Email"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-      {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
-
-      <TextInput
-        style={[styles.input, errors.password ? styles.inputError : null]}
-        placeholder="Mật khẩu"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-      {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
-
-      <TextInput
-        style={[styles.input, errors.phoneNumber ? styles.inputError : null]}
-        placeholder="Số điện thoại (tuỳ chọn)"
-        keyboardType="phone-pad"
-        value={phoneNumber}
-        onChangeText={setPhoneNumber}
-      />
-      {errors.phoneNumber ? <Text style={styles.errorText}>{errors.phoneNumber}</Text> : null}
-
-      <TouchableOpacity
-        style={[styles.button, registerMutation.isPending && styles.buttonDisabled]}
-        onPress={handleSubmit}
-        disabled={registerMutation.isPending}
-      >
-        {registerMutation.isPending
-          ? <ActivityIndicator color="#fff" />
-          : <Text style={styles.buttonText}>Đăng ký</Text>}
+      <TextInput style={[styles.input, getError('fullName') && styles.inputError]} placeholder="Họ và tên" value={fullName} onChangeText={setFullName} />
+      {getError('fullName') ? <Text style={styles.errorText}>{getError('fullName')}</Text> : null}
+      <TextInput style={[styles.input, getError('email') && styles.inputError]} placeholder="Email" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
+      {getError('email') ? <Text style={styles.errorText}>{getError('email')}</Text> : null}
+      <TextInput style={[styles.input, getError('password') && styles.inputError]} placeholder="Mật khẩu" secureTextEntry value={password} onChangeText={setPassword} />
+      {getError('password') ? <Text style={styles.errorText}>{getError('password')}</Text> : null}
+      <TextInput style={[styles.input, getError('phoneNumber') && styles.inputError]} placeholder="Số điện thoại (tuỳ chọn)" keyboardType="phone-pad" value={phoneNumber} onChangeText={setPhoneNumber} />
+      {getError('phoneNumber') ? <Text style={styles.errorText}>{getError('phoneNumber')}</Text> : null}
+      {generalError ? <Text style={styles.generalError}>{generalError}</Text> : null}
+      <TouchableOpacity style={[styles.button, isPending && styles.buttonDisabled]} onPress={handleSubmit} disabled={isPending}>
+        {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Đăng ký</Text>}
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container:      { gap: 12 },
-  input:          { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 16 },
-  inputError:     { borderColor: '#e53e3e' },
-  errorText:      { color: '#e53e3e', fontSize: 13 },
-  button:         { backgroundColor: '#2563eb', borderRadius: 8, padding: 14, alignItems: 'center' },
+  container: { gap: 12 },
+  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 16 },
+  inputError: { borderColor: '#e53e3e' },
+  errorText: { color: '#e53e3e', fontSize: 13 },
+  generalError: { color: '#e53e3e', fontSize: 14, backgroundColor: '#fff5f5', borderRadius: 8, padding: 10, textAlign: 'center', borderWidth: 1, borderColor: '#fed7d7' },
+  button: { backgroundColor: '#2563eb', borderRadius: 8, padding: 14, alignItems: 'center' },
   buttonDisabled: { opacity: 0.6 },
-  buttonText:     { color: '#fff', fontWeight: '600', fontSize: 16 },
+  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
 });

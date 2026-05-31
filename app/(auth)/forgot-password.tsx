@@ -57,7 +57,6 @@ export default function ForgotPasswordScreen() {
           <ForgotPasswordStep2
             email={email}
             onSuccess={handleStep2Success}
-            onExpired={handleExpired}
           />
         )}
         {step === 3 && (

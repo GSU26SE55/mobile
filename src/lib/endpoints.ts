@@ -11,6 +11,30 @@ export const ENDPOINTS = {
     REFRESH_TOKEN:     '/api/auth/refresh-token',
     LOGOUT:            '/api/auth/logout',
   },
+  PROFILE: {
+    ME:     '/api/auth/me',
+    UPDATE: '/api/auth/me/profile',
+    AVATAR: '/api/auth/me/avatar',
+  },
+  ACCOUNT: {
+    CHANGE_PASSWORD:      '/api/accounts/me/password',
+    CHANGE_EMAIL:         '/api/accounts/me/change-email',
+    CONFIRM_EMAIL_CHANGE: '/api/accounts/me/confirm-email-change',
+    SEND_PHONE_OTP:       '/api/accounts/me/send-phone-otp',
+    VERIFY_PHONE_OTP:     '/api/accounts/me/verify-phone-otp',
+    ENABLE_2FA:           '/api/accounts/me/2fa/enable',
+    DISABLE_2FA:          '/api/accounts/me/2fa/disable',
+    DEACTIVATE:           '/api/accounts/me/deactivate',
+    DELETE:               '/api/accounts/me',
+  },
+  SESSIONS: {
+    ME:         '/api/sessions/me',
+    REVOKE:     (id: string) => `/api/sessions/${id}`,
+    REVOKE_ALL: '/api/sessions/revoke-all',
+  },
+  FILES: {
+    UPLOAD: '/api/files/upload',
+  },
   BATTERIES: {
     LIST:   '/api/batteries',
     DETAIL: (id: string) => `/api/batteries/${id}`,

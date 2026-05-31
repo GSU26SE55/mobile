@@ -1,30 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useVerifyResetOtp } from '../hooks/useVerifyResetOtp';
 import { useResendResetOtp } from '../hooks/useResendResetOtp';
+import { otpSchema } from '../schemas/otp.schema';
+import { HttpError, EntityError } from '../../../lib/errors';
 
 interface Props {
   email: string;
   onSuccess: (resetToken: string, expiresInSeconds: number) => void;
-  onExpired: () => void;
 }
 
 const RESEND_COOLDOWN = 60;
 
-export function ForgotPasswordStep2({ email, onSuccess, onExpired }: Props) {
+export function ForgotPasswordStep2({ email, onSuccess }: Props) {
+  const { mutateAsync: verifyAsync, isPending: verifying } = useVerifyResetOtp();
+  const resendMutation = useResendResetOtp();
   const [otp, setOtp] = useState('');
   const [otpError, setOtpError] = useState('');
+  const [generalError, setGeneralError] = useState('');
   const [countdown, setCountdown] = useState(RESEND_COOLDOWN);
-  const verifyMutation = useVerifyResetOtp();
-  const resendMutation = useResendResetOtp();
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -32,23 +26,33 @@ export function ForgotPasswordStep2({ email, onSuccess, onExpired }: Props) {
     return () => clearTimeout(timer);
   }, [countdown]);
 
-  const handleVerify = () => {
-    if (!otp || otp.length !== 6) { setOtpError('OTP phải đúng 6 chữ số'); return; }
-    if (!/^\d{6}$/.test(otp)) { setOtpError('OTP chỉ gồm chữ số'); return; }
+  const handleVerify = async () => {
     setOtpError('');
-    verifyMutation.mutate(
-      { email, otp },
-      {
-        onSuccess: (res) => {
-          if (res.data.isSuccess && res.data.data) {
-            const { resetToken, expiresInSeconds } = res.data.data;
-            onSuccess(resetToken, expiresInSeconds);
-          } else {
-            Alert.alert('OTP không hợp lệ', res.data.message ?? 'Vui lòng kiểm tra lại.');
-          }
-        },
-      },
-    );
+    setGeneralError('');
+    const result = otpSchema.safeParse({ otp });
+    if (!result.success) {
+      setOtpError(result.error.flatten().fieldErrors.otp?.[0] ?? 'OTP không hợp lệ');
+      return;
+    }
+    try {
+      const res = await verifyAsync({ email, otp: result.data.otp });
+      const data = res.data.data;
+      if (!data) {
+        setGeneralError('Phản hồi không hợp lệ từ server.');
+        return;
+      }
+      onSuccess(data.resetToken, data.expiresInSeconds);
+    } catch (error) {
+      if (error instanceof EntityError) {
+        const otpMsg = error.payload.listErrors?.find(e => e.field.toLowerCase() === 'otp')?.detail;
+        if (otpMsg) setOtpError(otpMsg);
+        else setGeneralError(error.message);
+      } else if (error instanceof HttpError) {
+        setGeneralError(error.message);
+      } else if (error instanceof Error) {
+        setGeneralError('Không thể kết nối. Kiểm tra lại mạng.');
+      }
+    }
   };
 
   const handleResend = () => {
@@ -59,32 +63,13 @@ export function ForgotPasswordStep2({ email, onSuccess, onExpired }: Props) {
   return (
     <View style={styles.container}>
       <Text style={styles.hint}>Nhập mã OTP đã gửi đến {email}</Text>
-
-      <TextInput
-        style={[styles.input, otpError ? styles.inputError : null]}
-        placeholder="Mã OTP (6 chữ số)"
-        keyboardType="number-pad"
-        maxLength={6}
-        value={otp}
-        onChangeText={setOtp}
-      />
+      <TextInput style={[styles.input, otpError && styles.inputError]} placeholder="Mã OTP (6 chữ số)" keyboardType="number-pad" maxLength={6} value={otp} onChangeText={setOtp} />
       {otpError ? <Text style={styles.errorText}>{otpError}</Text> : null}
-
-      <TouchableOpacity
-        style={[styles.button, verifyMutation.isPending && styles.buttonDisabled]}
-        onPress={handleVerify}
-        disabled={verifyMutation.isPending}
-      >
-        {verifyMutation.isPending
-          ? <ActivityIndicator color="#fff" />
-          : <Text style={styles.buttonText}>Xác thực</Text>}
+      {generalError ? <Text style={styles.generalError}>{generalError}</Text> : null}
+      <TouchableOpacity style={[styles.button, verifying && styles.buttonDisabled]} onPress={handleVerify} disabled={verifying}>
+        {verifying ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Xác thực</Text>}
       </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={handleResend}
-        disabled={countdown > 0 || resendMutation.isPending}
-        style={styles.resendBtn}
-      >
+      <TouchableOpacity onPress={handleResend} disabled={countdown > 0 || resendMutation.isPending} style={styles.resendBtn}>
         <Text style={[styles.resendText, countdown > 0 && styles.resendDisabled]}>
           {countdown > 0 ? `Gửi lại sau ${countdown}s` : 'Gửi lại OTP'}
         </Text>
@@ -94,15 +79,16 @@ export function ForgotPasswordStep2({ email, onSuccess, onExpired }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container:      { gap: 12 },
-  hint:           { color: '#555', fontSize: 14, textAlign: 'center' },
-  input:          { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 20, textAlign: 'center', letterSpacing: 4 },
-  inputError:     { borderColor: '#e53e3e' },
-  errorText:      { color: '#e53e3e', fontSize: 13 },
-  button:         { backgroundColor: '#2563eb', borderRadius: 8, padding: 14, alignItems: 'center' },
+  container: { gap: 12 },
+  hint: { color: '#555', fontSize: 14, textAlign: 'center' },
+  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 20, textAlign: 'center', letterSpacing: 4 },
+  inputError: { borderColor: '#e53e3e' },
+  errorText: { color: '#e53e3e', fontSize: 13 },
+  generalError: { color: '#e53e3e', fontSize: 14, backgroundColor: '#fff5f5', borderRadius: 8, padding: 10, textAlign: 'center', borderWidth: 1, borderColor: '#fed7d7' },
+  button: { backgroundColor: '#2563eb', borderRadius: 8, padding: 14, alignItems: 'center' },
   buttonDisabled: { opacity: 0.6 },
-  buttonText:     { color: '#fff', fontWeight: '600', fontSize: 16 },
-  resendBtn:      { alignItems: 'center', paddingVertical: 8 },
-  resendText:     { color: '#2563eb', fontSize: 14 },
+  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  resendBtn: { alignItems: 'center', paddingVertical: 8 },
+  resendText: { color: '#2563eb', fontSize: 14 },
   resendDisabled: { color: '#999' },
 });

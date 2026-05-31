@@ -9,6 +9,7 @@ import {
 } from './secureStore';
 import { useSessionStore } from '../stores/sessionStore';
 import { router } from 'expo-router';
+import { EntityError, HttpError } from './errors';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5000';
 
@@ -64,7 +65,22 @@ const tryRefresh = async (): Promise<string | null> => {
   }
 };
 
+const PUBLIC_ENDPOINTS = new Set([
+  ENDPOINTS.AUTH.LOGIN,
+  ENDPOINTS.AUTH.REGISTER,
+  ENDPOINTS.AUTH.VERIFY_OTP,
+  ENDPOINTS.AUTH.RESEND_OTP,
+  ENDPOINTS.AUTH.FORGOT_PASSWORD,
+  ENDPOINTS.AUTH.VERIFY_RESET_OTP,
+  ENDPOINTS.AUTH.RESEND_RESET_OTP,
+  ENDPOINTS.AUTH.RESET_PASSWORD,
+  ENDPOINTS.AUTH.REFRESH_TOKEN,
+]);
+
 axiosInstance.interceptors.request.use(async (config) => {
+  const url = config.url ?? '';
+  if ([...PUBLIC_ENDPOINTS].some((ep) => url.endsWith(ep))) return config;
+
   const token = await getAccessToken();
   if (token && !isTokenExpired(token)) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -76,9 +92,25 @@ axiosInstance.interceptors.request.use(async (config) => {
 });
 
 axiosInstance.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    // BE có thể trả 200 OK nhưng isSuccess: false cho business logic errors.
+    // Axios không tự throw trong trường hợp này → phải check thủ công.
+    const data = res.data;
+    if (data && typeof data === 'object' && data.isSuccess === false) {
+      const hasFieldErrors = Array.isArray(data.listErrors) && data.listErrors.length > 0;
+      if (hasFieldErrors) {
+        return Promise.reject(new EntityError(data));
+      }
+      return Promise.reject(new HttpError(res.status, data));
+    }
+    return res;
+  },
   async (err) => {
-    if (err.response?.status === 401 && !err.config._retried) {
+    const status: number = err.response?.status;
+    const payload = err.response?.data;
+
+    // 401 → try refresh once
+    if (status === 401 && !err.config._retried) {
       err.config._retried = true;
       const newToken = await tryRefresh();
       if (newToken) {
@@ -86,6 +118,16 @@ axiosInstance.interceptors.response.use(
         return axiosInstance(err.config);
       }
     }
+
+    // Wrap BE error into HttpError / EntityError so screens can catch them
+    if (payload && typeof payload === 'object') {
+      const hasFieldErrors = Array.isArray(payload.listErrors) && payload.listErrors.length > 0;
+      if (hasFieldErrors) {
+        return Promise.reject(new EntityError(payload));
+      }
+      return Promise.reject(new HttpError(status, payload));
+    }
+
     return Promise.reject(err);
   },
 );
