@@ -10,3 +10,13 @@ export interface CommonResponse<T> {
   data: T | null;
   listErrors: ErrorEntity[];
 }
+
+export interface PaginationResponse<T> {
+  items: T[];
+  totalItems: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
