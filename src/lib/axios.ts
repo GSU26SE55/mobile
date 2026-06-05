@@ -91,6 +91,29 @@ axiosInstance.interceptors.request.use(async (config) => {
   return config;
 });
 
+const HTTP_ERROR_MESSAGES: Record<number, string> = {
+  400: 'Yêu cầu không hợp lệ',
+  401: 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại',
+  403: 'Bạn không có quyền thực hiện thao tác này',
+  404: 'Không tìm thấy dữ liệu yêu cầu',
+  405: 'Phương thức không được hỗ trợ',
+  409: 'Dữ liệu bị xung đột, vui lòng kiểm tra lại',
+  422: 'Dữ liệu không hợp lệ theo quy tắc nghiệp vụ',
+  429: 'Bạn đã gửi quá nhiều yêu cầu, vui lòng thử lại sau',
+  500: 'Lỗi máy chủ nội bộ, vui lòng thử lại sau',
+  502: 'Cổng kết nối lỗi, vui lòng thử lại sau',
+  503: 'Dịch vụ tạm thời không khả dụng, vui lòng thử lại sau',
+  504: 'Kết nối máy chủ hết thời gian chờ, vui lòng thử lại sau',
+};
+
+const makeFallbackPayload = (status: number, serverMessage?: string) => ({
+  isSuccess: false,
+  statusCode: status,
+  message: serverMessage || HTTP_ERROR_MESSAGES[status] || `Đã xảy ra lỗi (${status})`,
+  data: null,
+  listErrors: [],
+});
+
 axiosInstance.interceptors.response.use(
   (res) => {
     // BE có thể trả 200 OK nhưng isSuccess: false cho business logic errors.
@@ -99,7 +122,7 @@ axiosInstance.interceptors.response.use(
     if (data && typeof data === 'object' && data.isSuccess === false) {
       const hasFieldErrors = Array.isArray(data.listErrors) && data.listErrors.length > 0;
       if (hasFieldErrors) {
-        return Promise.reject(new EntityError(data));
+        return Promise.reject(new EntityError(data, res.status));
       }
       return Promise.reject(new HttpError(res.status, data));
     }
@@ -123,11 +146,13 @@ axiosInstance.interceptors.response.use(
     if (payload && typeof payload === 'object') {
       const hasFieldErrors = Array.isArray(payload.listErrors) && payload.listErrors.length > 0;
       if (hasFieldErrors) {
-        return Promise.reject(new EntityError(payload));
+        return Promise.reject(new EntityError(payload, status));
       }
       return Promise.reject(new HttpError(status, payload));
     }
 
-    return Promise.reject(err);
+    // No structured payload (502/503/504, network timeout, HTML error pages)
+    const fallback = makeFallbackPayload(status, err.message);
+    return Promise.reject(new HttpError(status ?? 0, fallback));
   },
 );

@@ -13,8 +13,8 @@ export class HttpError extends Error {
 }
 
 export class EntityError extends HttpError {
-  constructor(payload: CommonResponse<unknown>) {
-    super(422, payload);
+  constructor(payload: CommonResponse<unknown>, statusCode: number = 422) {
+    super(statusCode, payload);
   }
 }
 

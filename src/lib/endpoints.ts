@@ -40,8 +40,11 @@ export const ENDPOINTS = {
     DETAIL: (id: string) => `/api/batteries/${id}`,
   },
   TICKETS: {
-    LIST:   '/api/tickets',
-    DETAIL: (id: string) => `/api/tickets/${id}`,
-    CREATE: '/api/tickets',
+    CUSTOMER_LIST:   '/api/customer/tickets/me',
+    CUSTOMER_CREATE: '/api/customer/tickets',
+    DETAIL:          (id: string) => `/api/tickets/${id}`,
+    COMMENT:         (id: string) => `/api/tickets/${id}/comments`,
+    REOPEN:          (id: string) => `/api/customer/tickets/${id}/reopen`,
+    RATE:            (id: string) => `/api/customer/tickets/${id}/rate`,
   },
 } as const;
