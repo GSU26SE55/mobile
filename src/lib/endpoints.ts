@@ -1,0 +1,52 @@
+export const ENDPOINTS = {
+  AUTH: {
+    LOGIN:             '/api/auth/login',
+    REGISTER:          '/api/auth/register',
+    VERIFY_OTP:        '/api/auth/verify-otp',
+    RESEND_OTP:        '/api/auth/resend-otp',
+    FORGOT_PASSWORD:   '/api/auth/forgot-password',
+    VERIFY_RESET_OTP:  '/api/auth/verify-reset-otp',
+    RESEND_RESET_OTP:  '/api/auth/resend-reset-otp',
+    RESET_PASSWORD:    '/api/auth/reset-password',
+    REFRESH_TOKEN:     '/api/auth/refresh-token',
+    LOGOUT:            '/api/auth/logout',
+  },
+  PROFILE: {
+    ME:     '/api/auth/me',
+    UPDATE: '/api/auth/me/profile',
+    AVATAR: '/api/auth/me/avatar',
+  },
+  ACCOUNT: {
+    CHANGE_PASSWORD:      '/api/accounts/me/password',
+    CHANGE_EMAIL:         '/api/accounts/me/change-email',
+    CONFIRM_EMAIL_CHANGE: '/api/accounts/me/confirm-email-change',
+    SEND_PHONE_OTP:       '/api/accounts/me/send-phone-otp',
+    VERIFY_PHONE_OTP:     '/api/accounts/me/verify-phone-otp',
+    ENABLE_2FA:           '/api/accounts/me/2fa/enable',
+    DISABLE_2FA:          '/api/accounts/me/2fa/disable',
+    LINK_GOOGLE:          '/api/accounts/me/link-google',
+    UNLINK_GOOGLE:        '/api/accounts/me/unlink-google',
+    DEACTIVATE:           '/api/accounts/me/deactivate',
+    DELETE:               '/api/accounts/me',
+  },
+  SESSIONS: {
+    ME:         '/api/sessions/me',
+    REVOKE:     (id: string) => `/api/sessions/${id}`,
+    REVOKE_ALL: '/api/sessions/revoke-all',
+  },
+  FILES: {
+    UPLOAD: '/api/files/upload',
+  },
+  BATTERIES: {
+    LIST:   '/api/batteries',
+    DETAIL: (id: string) => `/api/batteries/${id}`,
+  },
+  TICKETS: {
+    CUSTOMER_LIST:   '/api/customer/tickets/me',
+    CUSTOMER_CREATE: '/api/customer/tickets',
+    DETAIL:          (id: string) => `/api/tickets/${id}`,
+    COMMENT:         (id: string) => `/api/tickets/${id}/comments`,
+    REOPEN:          (id: string) => `/api/customer/tickets/${id}/reopen`,
+    RATE:            (id: string) => `/api/customer/tickets/${id}/rate`,
+  },
+} as const;

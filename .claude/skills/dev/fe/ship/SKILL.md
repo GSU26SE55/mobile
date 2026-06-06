@@ -34,12 +34,13 @@
 
 4. **Push branch**
    ```bash
-   git push origin feature/GH-$ISSUE_NUMBER-ten-tinh-nang || { echo "❌ Push thất bại — chạy: gh auth status"; exit 1; }
+   git push origin feat/GH-$ISSUE_NUMBER-ten-tinh-nang || { echo "❌ Push thất bại — chạy: gh auth status"; exit 1; }
    ```
 
 5. **Tạo PR**
    ```bash
    gh pr create \
+     --base dev \
      --title "feat(#$ISSUE_NUMBER): [tóm tắt ngắn gọn]" \
      --body "$(cat <<'PREOF'
    ## Closes #ISSUE_NUMBER

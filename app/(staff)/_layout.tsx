@@ -1,0 +1,27 @@
+import { Stack, Redirect } from 'expo-router';
+import { ActivityIndicator, View } from 'react-native';
+import { useAuthContext } from '../../src/context/authContext';
+import { useSessionStore } from '../../src/stores/sessionStore';
+
+export default function StaffLayout() {
+  const { isHydrating } = useAuthContext();
+  const user = useSessionStore((s) => s.user);
+
+  if (isHydrating) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color="#2563eb" />
+      </View>
+    );
+  }
+
+  if (!user || user.role !== 'STAFF') {
+    return <Redirect href="/(auth)/login" />;
+  }
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+    </Stack>
+  );
+}
