@@ -268,6 +268,42 @@ interface FileUploadResponse {
 |------|--------|---------|
 | `app/(customer)/(tabs)/_layout.tsx` | create | Tabs navigator với `dashboard` + `profile` — `(customer)/_layout.tsx` là Stack, Tabs được quản lý ở sub-group `(tabs)/` |
 
+## Endpoints
+
+| Method | Path | Request Body / Params | Response |
+|--------|------|-----------------------|----------|
+| GET | `/api/auth/me` | — | `CommonResponse<AccountDto>` |
+| PUT | `/api/auth/me/profile` | `UpdateProfilePayload` | `CommonResponse<AccountDto>` |
+| POST | `/api/auth/me/avatar` | `{ avatarFileId: string }` | `CommonResponse<AccountDto>` |
+| PATCH | `/api/accounts/me/password` | `ChangePasswordPayload` | `CommonResponse<null>` |
+| POST | `/api/accounts/me/change-email` | `ChangeEmailPayload` | `CommonResponse<null>` |
+| POST | `/api/accounts/me/confirm-email-change` | `{ otp: string }` | `CommonResponse<null>` |
+| POST | `/api/accounts/me/send-phone-otp` | *(không có body)* | `CommonResponse<null>` |
+| POST | `/api/accounts/me/verify-phone-otp` | `{ otp: string }` | `CommonResponse<null>` |
+| POST | `/api/accounts/me/2fa/enable` | *(không có body)* | `CommonResponse<TwoFAEnableResponse>` |
+| POST | `/api/accounts/me/2fa/disable` | *(không có body)* | `CommonResponse<null>` |
+| POST | `/api/accounts/me/deactivate` | *(không có body)* | `CommonResponse<null>` |
+| DELETE | `/api/accounts/me` | *(không có body)* | `CommonResponse<null>` |
+| GET | `/api/sessions/me` | `?activeOnly=bool` (query) | `CommonResponse<SessionDto[]>` |
+| DELETE | `/api/sessions/{id}` | — | `CommonResponse<number>` |
+| POST | `/api/sessions/revoke-all` | `{ exceptCurrent?: bool, currentRefreshToken?: string }` | `CommonResponse<number>` |
+| POST | `/api/files/upload` | `FormData { file, purpose: '1' }` (multipart) | `CommonResponse<FileUploadResponse>` |
+
+## Query Keys
+
+```ts
+// Thêm vào src/lib/queryKeys.ts:
+KEY.profile  = ['profile']  as const
+KEY.sessions = ['sessions'] as const
+
+QUERY_KEY.profile = {
+  me: () => [...KEY.profile, 'me'] as const,
+}
+QUERY_KEY.sessions = {
+  list: (activeOnly?: boolean) => [...KEY.sessions, 'list', activeOnly] as const,
+}
+```
+
 ## Approach
 
 **Avatar display:**
