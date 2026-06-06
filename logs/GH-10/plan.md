@@ -169,8 +169,8 @@ export interface TicketDetailDTO extends TicketDTO {
   originAlertId: string | null;
   activities: TicketActivityDTO[] | null;
   comments: TicketCommentDTO[] | null;
-  maintenanceLogs: unknown[] | null;  // ngoài scope — unknown[] để tránh lỗi khi BE trả []
-  attachments: unknown[] | null;      // ngoài scope — unknown[] để tránh lỗi khi BE trả []
+  maintenanceLogs: MaintenanceLogDTO[] | null;  // ngoài scope — type từ Swagger, không dùng trong GH-10 UI
+  attachments: TicketAttachmentDTO[] | null;    // ngoài scope — type từ Swagger, không dùng trong GH-10 UI
 }
 
 // --- TicketActionResponse (dùng trong mọi mutation hook) ---
@@ -188,6 +188,11 @@ export interface TicketActionResponse {
   listErrors: Array<{ field: string | null; detail: string | null }> | null;
 }
 
+// --- Stub types cho ngoài scope (tránh TS error khi BE trả data) ---
+// Không dùng trong GH-10 UI — khai báo để TicketDetailDTO compile đúng
+export interface MaintenanceLogDTO { id: string; [key: string]: unknown; }
+export interface TicketAttachmentDTO { id: string; fileId: string; fileName: string; [key: string]: unknown; }
+
 // --- Payloads ---
 export interface CreateTicketPayload {
   title: string;
@@ -198,7 +203,8 @@ export interface CreateTicketPayload {
 
 export interface AddCommentPayload {
   body: string;
-  isInternal: false;   // hardcoded false cho Customer
+  isInternal: false;   // hardcoded false cho Customer — filter isInternal=true khi render
+  // attachments?: string[];  // ngoài scope GH-10 — bỏ qua, không gửi
 }
 
 export interface RatePayload {
@@ -254,7 +260,7 @@ export const commentSchema = z.object({
 | GET | `/api/customer/tickets/me` | `?Status&PageNumber&PageSize` | `CommonResponse<PaginationResponse<TicketDTO>>` |
 | POST | `/api/customer/tickets` | `CreateTicketPayload` | `TicketActionResponse` |
 | GET | `/api/tickets/{id}` | — | `CommonResponse<TicketDetailDTO>` |
-| POST | `/api/tickets/{id}/comments` | `AddCommentPayload` | `TicketActionResponse` |
+| POST | `/api/tickets/{ticketId}/comments` | `AddCommentPayload` | `TicketActionResponse` | ← Swagger dùng `{ticketId}` (không phải `{id}`) |
 | POST | `/api/customer/tickets/{id}/reopen` | `ReopenPayload` | `TicketActionResponse` |
 | POST | `/api/customer/tickets/{id}/rate` | `RatePayload` | `TicketActionResponse` |
 
@@ -325,6 +331,10 @@ Tap "Yêu cầu xử lý lại" (chỉ hiện khi status === 'ClosedPendingRate'
 - **Activities:** Embedded trong `TicketDetailDTO.activities[]` — không cần gọi separate endpoint
 - **403 reopen:** Hiển thị toast "Đã quá 7 ngày để mở lại ticket" thay vì generic error
 - **Empty list:** Hiển thị EmptyState component
+- **POST /api/tickets/{ticketId}/comments path:** Swagger dùng `{ticketId}` (không phải `{id}`) — `ENDPOINTS.TICKETS.COMMENT` đã dùng `(id: string) => \`/api/tickets/${id}/comments\`` (đúng về runtime vì chỉ là naming, nhưng cần nhất quán với docs)
+- **`CreateTicketPayload` validation:** Swagger không đánh `required` nhưng Zod schema cần enforce `title`, `description`, `category` là required — đây là FE validation chắc chắn (confirmed từ context dự án)
+- **`maintenanceLogs` và `attachments`:** Đã có type `MaintenanceLogDTO[]` và `TicketAttachmentDTO[]` — không render trong GH-10 UI, chỉ có trong type để tránh TS error
+- **`ActorCustomerId` query param:** Param internal/admin trên GET /api/customer/tickets/me — Mobile không cần gửi, bỏ qua
 
 ## Success Criteria
 

@@ -24,6 +24,8 @@ export const ENDPOINTS = {
     VERIFY_PHONE_OTP:     '/api/accounts/me/verify-phone-otp',
     ENABLE_2FA:           '/api/accounts/me/2fa/enable',
     DISABLE_2FA:          '/api/accounts/me/2fa/disable',
+    LINK_GOOGLE:          '/api/accounts/me/link-google',
+    UNLINK_GOOGLE:        '/api/accounts/me/unlink-google',
     DEACTIVATE:           '/api/accounts/me/deactivate',
     DELETE:               '/api/accounts/me',
   },

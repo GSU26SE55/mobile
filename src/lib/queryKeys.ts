@@ -11,7 +11,7 @@ export const QUERY_KEY = {
     me: () => [...KEY.profile, 'me'] as const,
   },
   sessions: {
-    list: () => [...KEY.sessions, 'list'] as const,
+    list: (activeOnly?: boolean) => [...KEY.sessions, 'list', activeOnly] as const,
   },
   batteries: {
     list:   (params?: Record<string, unknown>) => [...KEY.batteries, 'list', params] as const,

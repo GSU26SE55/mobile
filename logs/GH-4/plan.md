@@ -74,6 +74,15 @@ QUERY_KEY.sessions.list   = [...KEY.sessions, 'list']
 | `src/features/profile/types/profile.types.ts` | create | AccountDto, AccountProfileDto, StaffProfileDto, UpdateProfilePayload, AvatarSourceEnum, AccountStatusEnum |
 | `src/features/account/types/account.types.ts` | create | ChangePasswordPayload, ChangeEmailPayload, ConfirmEmailChangePayload, PhoneOtpPayload, TwoFAEnableResponse, SessionDto, RefreshTokenStatus, RevokeAllPayload |
 
+**ChangePasswordPayload** — Swagger có đủ 3 fields:
+```ts
+interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;  // ← Swagger: bắt buộc gửi lên BE (khác với reset-password chỉ validate FE-side)
+}
+```
+
 **AccountDto** — shape từ `docs/api-auth.md §AccountDto`:
 ```ts
 interface AccountDto {
@@ -114,6 +123,21 @@ interface AccountProfileDto {
 }
 ```
 
+**UpdateProfilePayload** — request body PUT /api/auth/me/profile:
+```ts
+interface UpdateProfilePayload {
+  fullName: string;
+  phoneNumber?: string;
+  address?: string;
+  birthDate?: string;   // ← tên field trong REQUEST là `birthDate` (không phải `dateOfBirth`)
+  timeZone?: string;    // ← có trong Swagger UpdateMyProfileCommand
+}
+// ⚠️ Hai path khác nhau — KHÔNG nhầm lẫn:
+// PUT /api/auth/me/profile  → UpdateMyProfileCommand { fullName, phoneNumber, address, birthDate, timeZone }  ← dùng cái này
+// PUT /api/accounts/me/profile → UpdateAccountCommand { fullName, phoneNumber, avatarUrl, dateOfBirth, address } ← đây là admin endpoint
+// AccountDto response (GET /api/auth/me) dùng `dateOfBirth` — khi pre-fill form: map account.profile?.birthDate → form.birthDate
+```
+
 **StaffProfileDto** — shape từ `docs/api-auth.md §StaffProfileDto`:
 ```ts
 interface StaffProfileDto {
@@ -123,7 +147,7 @@ interface StaffProfileDto {
   maxConcurrentTickets: number;
   isAvailable: boolean;
   notes: string | null;
-  skills: StaffSkillDto[];
+  skills: StaffSkillDto[] | null;  // ← Swagger: nullable: true — luôn guard bằng `skills ?? []` khi render
 }
 interface StaffSkillDto {
   skillCode: string;
@@ -167,6 +191,9 @@ interface SessionDto {
 **`src/lib/fileStorage.ts`** — multipart upload:
 ```ts
 // Không đặt trong features/file-storage/ — tránh cross-feature import
+// ⚠️ File Storage Service chạy trên port khác (port 4005) — KHÔNG dùng axiosInstance (auth-service)
+// Cần tạo riêng axios instance cho file storage hoặc hardcode base URL:
+// const FILE_STORAGE_BASE_URL = process.env.EXPO_PUBLIC_FILE_STORAGE_URL ?? 'http://localhost:4005';
 export const fileStorageLib = {
   upload: (uri: string, name: string, type: string) => {
     const form = new FormData();
@@ -176,6 +203,7 @@ export const fileStorageLib = {
       ENDPOINTS.FILES.UPLOAD, form,
       { headers: { 'Content-Type': 'multipart/form-data' } }
     );
+    // TODO: đổi axiosInstance → fileStorageAxiosInstance nếu base URL khác
   },
 };
 
@@ -273,11 +301,11 @@ interface FileUploadResponse {
 | Method | Path | Request Body / Params | Response |
 |--------|------|-----------------------|----------|
 | GET | `/api/auth/me` | — | `CommonResponse<AccountDto>` |
-| PUT | `/api/auth/me/profile` | `UpdateProfilePayload` | `CommonResponse<AccountDto>` |
+| PUT | `/api/auth/me/profile` | `UpdateProfilePayload { fullName, phoneNumber?, address?, birthDate?, timeZone? }` | `CommonResponse<AccountDto>` | ← field tên `birthDate` trong request (response `AccountDto` dùng `dateOfBirth`) |
 | POST | `/api/auth/me/avatar` | `{ avatarFileId: string }` | `CommonResponse<AccountDto>` |
-| PATCH | `/api/accounts/me/password` | `ChangePasswordPayload` | `CommonResponse<null>` |
-| POST | `/api/accounts/me/change-email` | `ChangeEmailPayload` | `CommonResponse<null>` |
-| POST | `/api/accounts/me/confirm-email-change` | `{ otp: string }` | `CommonResponse<null>` |
+| PATCH | `/api/accounts/me/password` | `{ currentPassword, newPassword, confirmPassword }` | `CommonResponse<null>` | ← `confirmPassword` bắt buộc gửi lên BE |
+| POST | `/api/accounts/me/change-email` | `ChangeEmailPayload` | `CommonResponse<null>` | ⚠️ **CHƯA CÓ TRONG SWAGGER** — endpoint chưa được BE deploy, giữ code nhưng pending confirm |
+| POST | `/api/accounts/me/confirm-email-change` | `{ otp: string }` | `CommonResponse<null>` | ⚠️ **CHƯA CÓ TRONG SWAGGER** — endpoint chưa được BE deploy, giữ code nhưng pending confirm |
 | POST | `/api/accounts/me/send-phone-otp` | *(không có body)* | `CommonResponse<null>` |
 | POST | `/api/accounts/me/verify-phone-otp` | `{ otp: string }` | `CommonResponse<null>` |
 | POST | `/api/accounts/me/2fa/enable` | *(không có body)* | `CommonResponse<TwoFAEnableResponse>` |
@@ -287,7 +315,7 @@ interface FileUploadResponse {
 | GET | `/api/sessions/me` | `?activeOnly=bool` (query) | `CommonResponse<SessionDto[]>` |
 | DELETE | `/api/sessions/{id}` | — | `CommonResponse<number>` |
 | POST | `/api/sessions/revoke-all` | `{ exceptCurrent?: bool, currentRefreshToken?: string }` | `CommonResponse<number>` |
-| POST | `/api/files/upload` | `FormData { file, purpose: '1' }` (multipart) | `CommonResponse<FileUploadResponse>` |
+| POST | `/api/files/upload` | `FormData { file, purpose: '1' }` (multipart) | `CommonResponse<FileUploadResponse>` | ⚠️ Endpoint thuộc **File Storage Service (port 4005)** — KHÔNG phải auth-service. `ENDPOINTS.FILES.UPLOAD` phải trỏ đúng base URL của file storage |
 
 ## Query Keys
 
@@ -371,6 +399,10 @@ onSuccess: async () => {
 - Phone OTP cooldown 60s → dùng `useCountdown(60)` trong PhoneVerifyForm
 - Confirm email OTP cooldown → `useCountdown` từ `otpExpiresInSeconds` (nếu BE trả) hoặc 300s default
 - `expo-image-picker` cần permission camera roll → gọi `requestMediaLibraryPermissionsAsync()` trước khi launch
+- **`birthDate` vs `dateOfBirth`:** PUT profile gửi `birthDate`, nhưng `AccountDto` response trả `dateOfBirth` — khi pre-fill form từ profile, map `account.profile?.birthDate` → form field `birthDate`
+- **Đổi email (2 endpoints chưa có Swagger):** `ChangeEmailForm` và hooks implement xong nhưng cần pending confirm từ BE. Nếu không kịp Sprint → comment out screen `change-email.tsx` trong settings menu (không xóa code)
+- **`GET /api/sessions/me` response `data` nullable:** guard `data ?? []` trước khi render FlatList
+- **File Storage base URL:** `ENDPOINTS.FILES.UPLOAD` cần trỏ đến port 4005, KHÔNG phải auth-service port — verify env var `EXPO_PUBLIC_FILE_STORAGE_URL` khi setup
 
 ## Success Criteria
 | Tiêu chí | Cách verify |

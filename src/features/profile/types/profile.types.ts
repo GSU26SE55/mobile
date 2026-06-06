@@ -26,7 +26,7 @@ export interface StaffProfileDto {
   maxConcurrentTickets: number;
   isAvailable: boolean;
   notes: string | null;
-  skills: StaffSkillDto[];
+  skills: StaffSkillDto[] | null;
 }
 
 export interface AccountProfileDto {

@@ -3,9 +3,7 @@ import { getAccessToken, getRefreshToken, isTokenExpired, saveTokens, clearToken
 import { decodeToken } from '../types/session.types';
 import { useSessionStore } from '../stores/sessionStore';
 import { ENDPOINTS } from '../lib/endpoints';
-import axios from 'axios';
-
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5000';
+import { axiosInstance } from '../lib/axios';
 
 interface AuthContextValue {
   isHydrating: boolean;
@@ -40,8 +38,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Case 3: có refreshToken → thử refresh
         try {
-          const res = await axios.post<{ data: { accessToken: string; refreshToken: string } }>(
-            `${BASE_URL}${ENDPOINTS.AUTH.REFRESH_TOKEN}`,
+          const res = await axiosInstance.post<{ data: { accessToken: string; refreshToken: string } }>(
+            ENDPOINTS.AUTH.REFRESH_TOKEN,
             { refreshToken },
           );
           const { accessToken: newAccess, refreshToken: newRefresh } = res.data.data;
