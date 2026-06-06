@@ -146,7 +146,8 @@ interface CommonResponse<T> {
 ```ts
 // src/features/auth/types/auth.types.ts
 interface LoginPayload          { email: string; password: string; }
-interface RegisterPayload       { fullName: string; email: string; password: string; phoneNumber?: string; }
+interface RegisterPayload       { fullName: string; email: string; password: string; phoneNumber?: string; dateOfBirth?: string; address?: string; }
+interface RegisterResponseData { email: string; otpExpiresInSeconds: number; }  // ← countdown cho OTP verify sau register
 interface OtpVerifyPayload      { email: string; otp: string; }
 interface ResendOtpPayload      { email: string; }
 interface ForgotPasswordPayload { email: string; }
@@ -180,7 +181,7 @@ Validation rules tuân theo API contract: email max 256, password 8–100 ký t�
 | Method | Path | Dùng bởi |
 |--------|------|----------|
 | POST | `/api/auth/login` | Customer + Staff |
-| POST | `/api/auth/register` | Customer |
+| POST | `/api/auth/register` | Customer | Response: `CommonResponse<RegisterResponseData>` — `{ email, otpExpiresInSeconds }` |
 | POST | `/api/auth/verify-otp` | Customer |
 | POST | `/api/auth/resend-otp` | Customer |
 | POST | `/api/auth/forgot-password` | Customer + Staff |
@@ -315,10 +316,17 @@ Step 3: mật khẩu mới → POST /reset-password (resetToken) → navigate /(
 // expiresInSeconds từ response step 2 — hiển thị countdown, hết giờ → Alert + reset về step 1
 ```
 
-**OTP verify — nhận email qua Expo Router params:**
+**Register → OTP verify — truyền `otpExpiresInSeconds` qua Expo Router params:**
+```ts
+// useRegister onSuccess: router.push({ pathname: '/(auth)/verify-otp', params: { email, otpExpiresInSeconds: String(data.otpExpiresInSeconds) } })
+// OtpVerifyForm dùng otpExpiresInSeconds để hiển thị countdown
+// Nếu param thiếu → fallback: không show countdown (resend button luôn hiện)
+```
+
+**OTP verify — nhận email + otpExpiresInSeconds qua Expo Router params:**
 ```ts
 // app/(auth)/verify-otp.tsx
-const { email } = useLocalSearchParams<{ email: string }>();
+const { email, otpExpiresInSeconds } = useLocalSearchParams<{ email: string; otpExpiresInSeconds?: string }>();
 if (!email) router.replace('/(auth)/register');
 ```
 
