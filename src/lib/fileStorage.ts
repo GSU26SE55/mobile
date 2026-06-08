@@ -22,4 +22,15 @@ export const fileStorageLib = {
       { headers: { 'Content-Type': 'multipart/form-data' } },
     );
   },
+
+  uploadAttachment: (uri: string, name: string, type: string) => {
+    const form = new FormData();
+    form.append('file', { uri, name, type } as unknown as Blob);
+    form.append('purpose', '2'); // FilePurposeEnum.CommentAttachment
+    return axiosInstance.post<CommonResponse<FileUploadResponse>>(
+      ENDPOINTS.FILES.UPLOAD,
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+  },
 };

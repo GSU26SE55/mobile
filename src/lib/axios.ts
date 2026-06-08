@@ -123,13 +123,15 @@ axiosInstance.interceptors.response.use(
     // BE có thể trả 200 OK nhưng isSuccess: false cho business logic errors.
     // Axios không tự throw trong trường hợp này → phải check thủ công.
     const data = res.data;
+    console.debug(`[API] response data for ${res.config.url}:`, data);
     if (data && typeof data === 'object' && data.isSuccess === false) {
+      
       const hasFieldErrors = Array.isArray(data.listErrors) && data.listErrors.length > 0;
       if (hasFieldErrors) {
-        console.warn(`[API] entity error ${res.config.url}:`, data.listErrors);
+        console.warn(`[API] entity error ${res.config.url}:`, data);
         return Promise.reject(new EntityError(data, res.status));
       }
-      console.warn(`[API] business error ${res.config.url}:`, data.message);
+      console.warn(`[API] business error ${res.config.url}:`, data);
       return Promise.reject(new HttpError(res.status, data));
     }
     return res;
@@ -139,7 +141,7 @@ axiosInstance.interceptors.response.use(
     const payload = err.response?.data;
     console.error(
       `[API] ✗ ${status ?? 'NETWORK'} ${err.config?.method?.toUpperCase()} ${err.config?.url}:`,
-      payload?.message ?? err.message,
+      payload ?? err,
     );
 
     // 401 → try refresh once

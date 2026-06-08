@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { HttpError } from '../../../src/lib/errors';
@@ -8,7 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-    ScrollView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -22,8 +23,9 @@ import { TicketStatusBadge } from '../../../src/features/tickets/components/Tick
 import { useAddComment } from '../../../src/features/tickets/hooks/useAddComment';
 import { useRateTicket } from '../../../src/features/tickets/hooks/useRateTicket';
 import { useReopenTicket } from '../../../src/features/tickets/hooks/useReopenTicket';
+import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/useUploadCommentAttachment';
 import { useTicketDetail } from '../../../src/features/tickets/hooks/useTicketDetail';
-import { commentSchema } from '../../../src/features/tickets/schemas/comment.schema';
+import { AttachmentForm, commentSchema } from '../../../src/features/tickets/schemas/comment.schema';
 import {
   RatePayload,
   ReopenPayload,
@@ -82,12 +84,14 @@ export default function TicketDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: ticket, isLoading, isError, refetch } = useTicketDetail(id ?? '');
 
-  const { mutateAsync: addComment, isPending: isCommenting } = useAddComment(id ?? '');
-  const { mutateAsync: rateTicket,   isPending: isRating   } = useRateTicket(id ?? '');
-  const { mutateAsync: reopenTicket, isPending: isReopening } = useReopenTicket(id ?? '');
+  const { mutateAsync: addComment,      isPending: isCommenting  } = useAddComment(id ?? '');
+  const { mutateAsync: rateTicket,      isPending: isRating      } = useRateTicket(id ?? '');
+  const { mutateAsync: reopenTicket,    isPending: isReopening   } = useReopenTicket(id ?? '');
+  const { mutateAsync: uploadAttachment, isPending: isUploading  } = useUploadCommentAttachment();
 
   const [commentText,     setCommentText]     = useState('');
   const [commentError,    setCommentError]    = useState('');
+  const [attachments,     setAttachments]     = useState<AttachmentForm[]>([]);
   const [showRateModal,   setShowRateModal]   = useState(false);
   const [showReopenModal, setShowReopenModal] = useState(false);
 
@@ -113,16 +117,51 @@ export default function TicketDetailScreen() {
   const canRate   = ticket.status === 'ClosedPendingRate';
   const canReopen = ticket.status === 'ClosedPendingRate';
 
+  // TicketAttachment whitelist: .jpg .jpeg .png .pdf .doc .docx
+  const ALLOWED_MIME = ['image/jpeg', 'image/png', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+
+  const handlePickAttachment = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Quyền truy cập', 'Cần quyền truy cập thư viện ảnh để đính kèm file.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images, // chỉ ảnh jpg/png
+      allowsMultipleSelection: false,
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    const mimeType = asset.mimeType ?? 'image/jpeg';
+    if (!ALLOWED_MIME.includes(mimeType)) {
+      Alert.alert('Định dạng không hỗ trợ', 'Chỉ chấp nhận ảnh JPG, PNG, PDF, DOC, DOCX.');
+      return;
+    }
+    const name = asset.fileName ?? `attachment_${Date.now()}.jpg`;
+    try {
+      const uploaded = await uploadAttachment({ uri: asset.uri, name, type: mimeType });
+      setAttachments((prev) => [...prev, uploaded]);
+    } catch {
+      Alert.alert('Lỗi', 'Không thể tải file lên. Vui lòng thử lại.');
+    }
+  };
+
+  const handleRemoveAttachment = (fileId: string) => {
+    setAttachments((prev) => prev.filter((a) => a.fileId !== fileId));
+  };
+
   const handleSendComment = async () => {
     setCommentError('');
-    const result = commentSchema.safeParse({ body: commentText });
+    const result = commentSchema.safeParse({ body: commentText, attachments });
     if (!result.success) {
       setCommentError(result.error.flatten().fieldErrors.body?.[0] ?? 'Nội dung không hợp lệ');
       return;
     }
     try {
-      await addComment(result.data.body);
+      await addComment({ body: result.data.body, attachments: result.data.attachments });
       setCommentText('');
+      setAttachments([]);
     } catch {
       Alert.alert('Lỗi', 'Không thể gửi bình luận. Vui lòng thử lại.');
     }
@@ -224,25 +263,55 @@ export default function TicketDetailScreen() {
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Bình luận</Text>
           <CommentList ticket={ticket} />
-          <View style={styles.commentInputRow}>
+
+          {/* Attachment chips */}
+          {attachments.length > 0 && (
+            <View style={styles.attachmentList}>
+              {attachments.map((a) => (
+                <View key={a.fileId} style={styles.attachmentChip}>
+                  <Text style={styles.attachmentChipIcon}>📄</Text>
+                  <Text style={styles.attachmentName} numberOfLines={1}>{a.fileName}</Text>
+                  <Pressable onPress={() => handleRemoveAttachment(a.fileId)} hitSlop={10}>
+                    <Text style={styles.attachmentRemove}>✕</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Input box */}
+          <View style={[styles.commentBox, commentError ? styles.commentBoxError : null]}>
             <TextInput
-              style={[styles.commentInput, commentError ? styles.inputError : null]}
+              style={styles.commentInput}
               value={commentText}
               onChangeText={(t) => { setCommentText(t); setCommentError(''); }}
               placeholder="Thêm bình luận..."
+              placeholderTextColor="#B0B8C4"
               multiline
               maxLength={1000}
             />
-            <Pressable
-              style={[styles.sendBtn, (!commentText.trim() || isCommenting) && styles.btnDisabled]}
-              onPress={handleSendComment}
-              disabled={!commentText.trim() || isCommenting}
-            >
-              {isCommenting
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={styles.sendBtnText}>Gửi</Text>
-              }
-            </Pressable>
+            <View style={styles.commentToolbar}>
+              <Pressable
+                style={styles.attachBtn}
+                onPress={handlePickAttachment}
+                disabled={isUploading}
+              >
+                {isUploading
+                  ? <ActivityIndicator color="#1976D2" size="small" />
+                  : <Text style={styles.attachBtnText}>📎</Text>
+                }
+              </Pressable>
+              <Pressable
+                style={[styles.sendBtn, (!commentText.trim() || isCommenting || isUploading) && styles.btnDisabled]}
+                onPress={handleSendComment}
+                disabled={!commentText.trim() || isCommenting || isUploading}
+              >
+                {isCommenting
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={styles.sendBtnText}>Gửi</Text>
+                }
+              </Pressable>
+            </View>
           </View>
           {commentError ? <Text style={styles.fieldError}>{commentError}</Text> : null}
         </View>
@@ -304,11 +373,19 @@ const styles = StyleSheet.create({
   commentAuthor:  { fontSize: 12, fontWeight: '600', color: '#333' },
   commentTime:    { fontSize: 11, color: '#AAA' },
   commentBody:    { fontSize: 13, color: '#444', lineHeight: 20 },
-  commentInputRow:{ flexDirection: 'row', gap: 8, marginTop: 4 },
-  commentInput:   { flex: 1, borderWidth: 1, borderColor: '#DDD', borderRadius: 8, padding: 10, fontSize: 14, textAlignVertical: 'top', minHeight: 60, maxHeight: 120 },
-  inputError:     { borderColor: '#E53935' },
-  sendBtn:        { backgroundColor: '#1976D2', paddingHorizontal: 16, borderRadius: 8, justifyContent: 'center', alignItems: 'center', minWidth: 60 },
-  btnDisabled:    { opacity: 0.5 },
-  sendBtnText:    { color: '#fff', fontWeight: '700', fontSize: 13 },
-  fieldError:     { color: '#E53935', fontSize: 12 },
+  attachmentList:     { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
+  attachmentChip:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EDF2FF', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, gap: 5, maxWidth: 200 },
+  attachmentChipIcon: { fontSize: 12 },
+  attachmentName:     { flex: 1, fontSize: 12, color: '#1976D2', fontWeight: '500' },
+  attachmentRemove:   { fontSize: 12, color: '#90A4AE', fontWeight: '700', marginLeft: 2 },
+  commentBox:         { borderWidth: 1, borderColor: '#E0E6EF', borderRadius: 12, backgroundColor: '#FAFBFD', overflow: 'hidden' },
+  commentBoxError:    { borderColor: '#E53935' },
+  commentInput:       { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 6, fontSize: 14, color: '#222', minHeight: 64, maxHeight: 120, textAlignVertical: 'top' },
+  commentToolbar:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#EEF1F6', backgroundColor: '#F5F7FA' },
+  attachBtn:          { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  attachBtnText:      { fontSize: 18 },
+  sendBtn:            { backgroundColor: '#1976D2', paddingHorizontal: 18, paddingVertical: 7, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  btnDisabled:        { opacity: 0.45 },
+  sendBtnText:        { color: '#fff', fontWeight: '700', fontSize: 13 },
+  fieldError:         { color: '#E53935', fontSize: 12, marginTop: 4 },
 });
