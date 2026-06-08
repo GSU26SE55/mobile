@@ -37,7 +37,7 @@ export function TicketCard({ ticket, onPress }: Props) {
           {new Date(ticket.createdAt).toLocaleDateString('vi-VN')}
         </Text>
       </View>
-      <SlaCountdown sla={ticket.slaTimer} />
+      {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} />}
     </Pressable>
   );
 }

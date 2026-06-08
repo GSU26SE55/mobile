@@ -38,8 +38,9 @@ export const ENDPOINTS = {
     UPLOAD: '/api/files/upload',
   },
   BATTERIES: {
-    LIST:   '/api/batteries',
-    DETAIL: (id: string) => `/api/batteries/${id}`,
+    LIST:      '/api/batteries',
+    DETAIL:    (id: string) => `/api/batteries/${id}`,
+    MY_ASSETS: '/api/battery-assets/me',
   },
   TICKETS: {
     CUSTOMER_LIST:   '/api/customer/tickets/me',

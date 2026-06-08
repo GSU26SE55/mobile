@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { TicketCard } from '../../../src/features/tickets/components/TicketCard';
 import { useTickets } from '../../../src/features/tickets/hooks/useTickets';
 import { TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
@@ -38,6 +39,7 @@ export default function TicketListScreen() {
   };
 
   return (
+    <SafeAreaView style={styles.safe}>
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Ticket hỗ trợ</Text>
@@ -85,10 +87,12 @@ export default function TicketListScreen() {
         />
       )}
     </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe:             { flex: 1, backgroundColor: '#F5F7FA' },
   container:        { flex: 1, backgroundColor: '#F5F7FA' },
   header:           { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   title:            { fontSize: 20, fontWeight: '700', color: '#111' },

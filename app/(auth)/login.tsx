@@ -1,9 +1,11 @@
 import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
 import { LoginForm } from '../../src/features/auth/components/LoginForm';
 
 export default function LoginScreen() {
   return (
+    <SafeAreaView style={styles.flex}>
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -24,6 +26,7 @@ export default function LoginScreen() {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 

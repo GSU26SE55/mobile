@@ -79,6 +79,8 @@ const PUBLIC_ENDPOINTS = new Set([
 
 axiosInstance.interceptors.request.use(async (config) => {
   const url = config.url ?? '';
+  console.log(`[API] → ${config.method?.toUpperCase()} ${url}`);
+
   if ([...PUBLIC_ENDPOINTS].some((ep) => url.endsWith(ep))) return config;
 
   const token = await getAccessToken();
@@ -116,14 +118,18 @@ const makeFallbackPayload = (status: number, serverMessage?: string) => ({
 
 axiosInstance.interceptors.response.use(
   (res) => {
+    console.log(`[API] ← ${res.status} ${res.config.method?.toUpperCase()} ${res.config.url}`);
+
     // BE có thể trả 200 OK nhưng isSuccess: false cho business logic errors.
     // Axios không tự throw trong trường hợp này → phải check thủ công.
     const data = res.data;
     if (data && typeof data === 'object' && data.isSuccess === false) {
       const hasFieldErrors = Array.isArray(data.listErrors) && data.listErrors.length > 0;
       if (hasFieldErrors) {
+        console.warn(`[API] entity error ${res.config.url}:`, data.listErrors);
         return Promise.reject(new EntityError(data, res.status));
       }
+      console.warn(`[API] business error ${res.config.url}:`, data.message);
       return Promise.reject(new HttpError(res.status, data));
     }
     return res;
@@ -131,6 +137,10 @@ axiosInstance.interceptors.response.use(
   async (err) => {
     const status: number = err.response?.status;
     const payload = err.response?.data;
+    console.error(
+      `[API] ✗ ${status ?? 'NETWORK'} ${err.config?.method?.toUpperCase()} ${err.config?.url}:`,
+      payload?.message ?? err.message,
+    );
 
     // 401 → try refresh once
     if (status === 401 && !err.config._retried) {
