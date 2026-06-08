@@ -85,7 +85,7 @@ export interface TicketDTO {
   isIncident: boolean;
   createdAt: string;
   updatedAt: string | null;
-  slaTimer: SlaTimerDTO;
+  slaTimer: SlaTimerDTO | null;
 }
 
 export interface TicketDetailDTO extends TicketDTO {

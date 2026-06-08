@@ -1,5 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useProfile } from '../../../src/features/profile/hooks/useProfile';
 import { AvatarPicker } from '../../../src/features/profile/components/AvatarPicker';
@@ -23,6 +24,7 @@ export default function ProfileScreen() {
   if (!account) return null;
 
   return (
+    <SafeAreaView style={styles.safe}>
     <ScrollView contentContainerStyle={styles.container}>
       <AvatarPicker
         displayAvatarUrl={account.displayAvatarUrl}
@@ -62,10 +64,12 @@ export default function ProfileScreen() {
         )}
       </Pressable>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe:         { flex: 1, backgroundColor: '#fff' },
   center:       { flex: 1, alignItems: 'center', justifyContent: 'center' },
   container:    { padding: 24, alignItems: 'center', gap: 8 },
   name:         { fontSize: 22, fontWeight: '700', color: '#111827', marginTop: 12 },

@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { HttpError } from '../../../src/lib/errors';
 import {
   ActivityIndicator,
@@ -7,7 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
+    ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -149,8 +150,9 @@ export default function TicketDetailScreen() {
   };
 
   return (
+    <SafeAreaView style={styles.root}>
     <KeyboardAvoidingView
-      style={styles.root}
+      style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.topBar}>
@@ -168,7 +170,7 @@ export default function TicketDetailScreen() {
           <View style={styles.badgeRow}>
             <TicketStatusBadge status={ticket.status} />
           </View>
-          <SlaCountdown sla={ticket.slaTimer} />
+          {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} />}
         </View>
 
         {/* Info */}
@@ -267,11 +269,13 @@ export default function TicketDetailScreen() {
         onSubmit={handleReopen}
       />
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root:           { flex: 1, backgroundColor: '#F5F7FA' },
+  flex:           { flex: 1 },
   center:         { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   errorText:      { color: '#666', fontSize: 15 },
   retryBtn:       { paddingHorizontal: 20, paddingVertical: 9, borderRadius: 8, backgroundColor: '#1976D2' },

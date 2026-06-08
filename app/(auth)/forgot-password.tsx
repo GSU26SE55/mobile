@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ForgotPasswordStep1 } from '../../src/features/auth/components/ForgotPasswordStep1';
 import { ForgotPasswordStep2 } from '../../src/features/auth/components/ForgotPasswordStep2';
 import { ForgotPasswordStep3 } from '../../src/features/auth/components/ForgotPasswordStep3';
@@ -43,6 +44,7 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
+    <SafeAreaView style={styles.flex}>
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -68,6 +70,7 @@ export default function ForgotPasswordScreen() {
         )}
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 

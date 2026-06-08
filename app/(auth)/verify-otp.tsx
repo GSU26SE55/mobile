@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { OtpVerifyForm } from '../../src/features/auth/components/OtpVerifyForm';
@@ -14,6 +15,7 @@ export default function VerifyOtpScreen() {
   if (!email) return null;
 
   return (
+    <SafeAreaView style={styles.flex}>
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -24,6 +26,7 @@ export default function VerifyOtpScreen() {
         <OtpVerifyForm email={email} />
       </View>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
