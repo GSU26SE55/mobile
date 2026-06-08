@@ -130,9 +130,17 @@ export interface CreateTicketPayload {
   batteryAssetId?: string;
 }
 
+export interface CommentAttachmentPayload {
+  fileId: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+}
+
 export interface AddCommentPayload {
   body: string;
   isInternal: false;
+  attachments?: CommentAttachmentPayload[];
 }
 
 export interface RatePayload {
