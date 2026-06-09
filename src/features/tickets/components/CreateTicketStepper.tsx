@@ -94,12 +94,12 @@ export function CreateTicketStepper({
   // Priority calculation
   const getSuggestedPriority = (): { key: TicketPriorityEnum; label: string; time: string; color: string; bg: string } => {
     if (category === 'Overheat' || category === 'NoPower') {
-      return { key: 'P1Critical', label: 'P1', time: '< 2h', color: '#DC4F3D', bg: '#FFEBEA' };
+      return { key: 'P1Critical', label: 'P1', time: '< 4h', color: '#DC4F3D', bg: '#FFEBEA' };
     }
     if (category === 'Charging') {
-      return { key: 'P2High', label: 'P2', time: '< 8h', color: '#EF5128', bg: '#FFE5DA' };
+      return { key: 'P2High', label: 'P2', time: '< 24h', color: '#EF5128', bg: '#FFE5DA' };
     }
-    return { key: 'P3Normal', label: 'P3', time: '< 24h', color: '#5081C7', bg: '#EBF3FF' };
+    return { key: 'P3Normal', label: 'P3', time: '< 72h', color: '#5081C7', bg: '#EBF3FF' };
   };
 
   const priorityInfo = getSuggestedPriority();

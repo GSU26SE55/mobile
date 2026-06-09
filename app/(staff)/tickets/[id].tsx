@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -32,6 +32,7 @@ import { useStaffAddComment } from '../../../src/features/staff/hooks/useStaffAd
 import { useAddMaintenanceLog } from '../../../src/features/staff/hooks/useAddMaintenanceLog';
 import { HoldReasonEnum, MaintenanceLogPayload } from '../../../src/features/staff/types/staff.types';
 import { EscalationReasonEnum, TicketDetailDTO, TicketStatusEnum, TicketCommentDTO } from '../../../src/features/tickets/types/ticket.types';
+import { useSessionStore } from '../../../src/stores/sessionStore';
 
 type TabKey = 'comments' | 'activities' | 'logs';
 
@@ -87,26 +88,31 @@ const MOCK_DETAIL: TicketDetailDTO = {
   attachments: [],
 };
 
+const ROLE_AVATAR: Record<string, { icon: keyof typeof Ionicons.glyphMap; iconColor: string; bg: string }> = {
+  System:   { icon: 'server-outline',  iconColor: Colors.info,        bg: Colors.infoLight },
+  Customer: { icon: 'person-outline',  iconColor: Colors.warningDark, bg: Colors.warningLight },
+  Manager:  { icon: 'briefcase-outline', iconColor: Colors.primaryDark, bg: Colors.primaryLight },
+  Staff:    { icon: 'shield-outline',  iconColor: Colors.primaryDark, bg: Colors.primaryLight },
+};
+
 function ChatBubble({ comment, isMe }: { comment: TicketCommentDTO; isMe: boolean }) {
-  const roleLabel =
-    comment.authorRole === 'System' ? 'Hệ thống' :
-    comment.authorRole === 'Customer' ? 'Khách hàng' :
-    comment.authorRole === 'Manager' ? 'Manager' :
-    'Bạn';
+  const avatar = ROLE_AVATAR[comment.authorRole] ?? ROLE_AVATAR.Staff;
+  const displayName =
+    isMe ? 'Bạn' :
+    comment.authorDisplayName ??
+    (comment.authorRole === 'System' ? 'Hệ thống' :
+     comment.authorRole === 'Customer' ? 'Khách hàng' :
+     comment.authorRole === 'Manager' ? 'Manager' : 'Nhân viên');
 
   return (
     <View style={[styles.bubbleRow, isMe && styles.bubbleRowMe]}>
       {!isMe && (
-        <View style={[styles.avatar, { backgroundColor: comment.authorRole === 'System' ? Colors.infoLight : comment.authorRole === 'Customer' ? Colors.warningLight : Colors.primaryLight }]}>
-          <Ionicons
-            name={comment.authorRole === 'System' ? 'server-outline' : comment.authorRole === 'Customer' ? 'person-outline' : 'shield-outline'}
-            size={14}
-            color={comment.authorRole === 'System' ? Colors.info : comment.authorRole === 'Customer' ? Colors.warningDark : Colors.primaryDark}
-          />
+        <View style={[styles.avatar, { backgroundColor: avatar.bg }]}>
+          <Ionicons name={avatar.icon} size={14} color={avatar.iconColor} />
         </View>
       )}
       <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleOther]}>
-        {!isMe && <Text style={styles.bubbleName}>{comment.authorDisplayName ?? roleLabel}</Text>}
+        {!isMe && <Text style={styles.bubbleName}>{displayName}</Text>}
         <Text style={[styles.bubbleText, isMe && styles.bubbleTextMe]}>{comment.body}</Text>
         <Text style={[styles.bubbleTime, isMe && styles.bubbleTimeMe]}>
           {new Date(comment.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
@@ -120,6 +126,7 @@ export default function StaffTicketDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const ticketId = id ?? '';
+  const accountId = useSessionStore((s) => s.user?.accountId);
   const { data: apiDetail, isLoading } = useStaffTicketDetail(ticketId);
   const { mutate: startTicket, isPending: isStarting } = useStartTicket(ticketId);
   const { mutate: holdTicket, isPending: isHolding } = useHoldTicket(ticketId);
@@ -135,8 +142,15 @@ export default function StaffTicketDetailScreen() {
   const [showResolve, setShowResolve] = useState(false);
   const [showEscalate, setShowEscalate] = useState(false);
   const [showLogForm, setShowLogForm] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
 
   const ticket = apiDetail ?? MOCK_DETAIL;
+
+  useEffect(() => {
+    if (activeTab === 'comments') {
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 50);
+    }
+  }, [activeTab, ticket.comments?.length]);
   const pColor = PRIORITY_COLORS[ticket.priority] ?? PRIORITY_COLORS.P3Normal;
   const isActioning = isStarting || isHolding || isResuming || isResolving || isEscalating;
 
@@ -162,7 +176,7 @@ export default function StaffTicketDetailScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
@@ -175,7 +189,15 @@ export default function StaffTicketDetailScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView style={styles.scrollBody} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scrollBody}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        onContentSizeChange={() => {
+          if (activeTab === 'comments') scrollRef.current?.scrollToEnd({ animated: true });
+        }}
+      >
         {/* Title + Priority + SLA */}
         <View style={[styles.card, Shadow]}>
           <Text style={styles.ticketTitle}>{ticket.title}</Text>
@@ -237,7 +259,7 @@ export default function StaffTicketDetailScreen() {
         {activeTab === 'comments' && (
           <View style={styles.chatSection}>
             {(ticket.comments ?? []).map((c) => (
-              <ChatBubble key={c.id} comment={c} isMe={c.authorRole === 'Staff'} />
+              <ChatBubble key={c.id} comment={c} isMe={!!accountId && c.authorUserId === accountId} />
             ))}
             {(ticket.comments ?? []).length === 0 && (
               <Text style={styles.emptyTab}>Chưa có trao đổi nào</Text>
@@ -362,7 +384,7 @@ const styles = StyleSheet.create({
   avatar: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   bubble: { maxWidth: '75%', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 },
   bubbleOther: { backgroundColor: '#FFFFFF', borderBottomLeftRadius: 4 },
-  bubbleMe: { backgroundColor: Colors.text, borderBottomRightRadius: 4 },
+  bubbleMe: { backgroundColor: Colors.primary, borderBottomRightRadius: 4 },
   bubbleName: { fontSize: 11, fontWeight: '700', color: Colors.primary, marginBottom: 3 },
   bubbleText: { fontSize: 13, fontWeight: '500', color: Colors.text, lineHeight: 19 },
   bubbleTextMe: { color: '#FFFFFF' },
