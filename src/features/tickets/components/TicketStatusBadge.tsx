@@ -1,22 +1,23 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { BadgeColors } from '../../../lib/theme';
 import { TicketStatusEnum } from '../types/ticket.types';
 
-const STATUS_CONFIG: Record<TicketStatusEnum, { label: string; bg: string; color: string }> = {
-  New:                    { label: 'Mới',              bg: '#E3F2FD', color: '#1565C0' },
-  Open:                   { label: 'Đang chờ',         bg: '#FFF9C4', color: '#F57F17' },
-  Approved:               { label: 'Đã duyệt',         bg: '#E8F5E9', color: '#2E7D32' },
-  Assigned:               { label: 'Đã gán',           bg: '#F3E5F5', color: '#6A1B9A' },
-  InProgress:             { label: 'Đang xử lý',       bg: '#E1F5FE', color: '#0277BD' },
-  WaitingCustomer:        { label: 'Chờ phản hồi',     bg: '#FFF3E0', color: '#E65100' },
-  WaitingParts:           { label: 'Chờ linh kiện',    bg: '#FFF3E0', color: '#E65100' },
-  WaitingOnsiteSchedule:  { label: 'Chờ lịch hẹn',    bg: '#FFF3E0', color: '#E65100' },
-  Resolved:               { label: 'Đã giải quyết',   bg: '#E8F5E9', color: '#1B5E20' },
-  Escalated:              { label: 'Đã leo thang',     bg: '#FCE4EC', color: '#880E4F' },
-  ClosedPendingRate:      { label: 'Chờ đánh giá',     bg: '#E8EAF6', color: '#283593' },
-  Closed:                 { label: 'Đã đóng',          bg: '#ECEFF1', color: '#546E7A' },
-  ClosedRejected:         { label: 'Bị từ chối',       bg: '#FFEBEE', color: '#B71C1C' },
-  Incident:               { label: 'Sự cố',            bg: '#FFEBEE', color: '#C62828' },
+const STATUS_CONFIG: Record<TicketStatusEnum, { label: string; badge: keyof typeof BadgeColors }> = {
+  New:                    { label: 'NEW',            badge: 'new' },
+  Open:                   { label: 'OPEN',           badge: 'open' },
+  Approved:               { label: 'APPROVED',       badge: 'ok' },
+  Assigned:               { label: 'ASSIGNED',       badge: 'assigned' },
+  InProgress:             { label: 'IN PROGRESS',    badge: 'progress' },
+  WaitingCustomer:        { label: 'WAITING',        badge: 'waiting' },
+  WaitingParts:           { label: 'WAITING',        badge: 'waiting' },
+  WaitingOnsiteSchedule:  { label: 'WAITING',        badge: 'waiting' },
+  Resolved:               { label: 'RESOLVED',       badge: 'resolved' },
+  Escalated:              { label: 'ESCALATED',      badge: 'escalated' },
+  ClosedPendingRate:      { label: 'PENDING RATE',   badge: 'closed' },
+  Closed:                 { label: 'CLOSED',         badge: 'closed' },
+  ClosedRejected:         { label: 'REJECTED',       badge: 'crit' },
+  Incident:               { label: 'INCIDENT',       badge: 'crit' },
 };
 
 interface Props {
@@ -24,23 +25,34 @@ interface Props {
 }
 
 export function TicketStatusBadge({ status }: Props) {
-  const config = STATUS_CONFIG[status] ?? { label: status, bg: '#F5F5F5', color: '#333' };
+  const config = STATUS_CONFIG[status] ?? { label: status, badge: 'new' as const };
+  const colors = BadgeColors[config.badge];
   return (
-    <View style={[styles.badge, { backgroundColor: config.bg }]}>
-      <Text style={[styles.label, { color: config.color }]}>{config.label}</Text>
+    <View style={[styles.badge, { backgroundColor: colors.bg }]}>
+      <View style={[styles.dot, { backgroundColor: colors.text }]} />
+      <Text style={[styles.label, { color: colors.text }]}>{config.label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
     alignSelf: 'flex-start',
   },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
   label: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
+    lineHeight: 14,
   },
 });

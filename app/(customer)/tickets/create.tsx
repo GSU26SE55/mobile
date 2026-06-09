@@ -1,44 +1,124 @@
+import React, { useState } from 'react';
+import { StyleSheet, View, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import React from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { CreateTicketForm } from '../../../src/features/tickets/components/CreateTicketForm';
+import { CreateTicketStepper } from '../../../src/features/tickets/components/CreateTicketStepper';
+import { CreateTicketSuccess } from '../../../src/features/tickets/components/CreateTicketSuccess';
 import { useCreateTicket } from '../../../src/features/tickets/hooks/useCreateTicket';
-import { CreateTicketForm as FormData } from '../../../src/features/tickets/schemas/createTicket.schema';
+import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
+import { TicketCategoryEnum } from '../../../src/features/tickets/types/ticket.types';
+import { Colors } from '../../../src/lib/theme';
 
 export default function CreateTicketScreen() {
+  const insets = useSafeAreaInsets();
   const { mutateAsync, isPending } = useCreateTicket();
+  const { data: batteries = [] } = useMyBatteryAssets();
 
-  const handleSubmit = async (data: FormData) => {
+  const [step, setStep] = useState(1);
+  const [selectedBatteryId, setSelectedBatteryId] = useState<string | null>(null);
+  const [category, setCategory] = useState<TicketCategoryEnum | ''>('');
+  const [description, setDescription] = useState('');
+  const [attachedFiles, setAttachedFiles] = useState<string[]>([]);
+
+  const [createdTicketCode, setCreatedTicketCode] = useState<string>('');
+  const [createdTicketId, setCreatedTicketId] = useState<string>('');
+
+  const handleCancel = () => {
+    Alert.alert(
+      'Cancel ticket',
+      'Are you sure? All entered information will be lost.',
+      [
+        { text: 'No', style: 'cancel' },
+        { text: 'Cancel', style: 'destructive', onPress: () => router.back() },
+      ]
+    );
+  };
+
+  const handleSubmit = async () => {
+    if (!category || description.length < 10) return;
+
+    const categoryLabels: Record<TicketCategoryEnum, string> = {
+      Charging: 'Charging Issue',
+      Overheat: 'Overheat',
+      NoPower: 'No Power',
+      Performance: 'Poor Performance',
+      Repair: 'Repair Request',
+      Other: 'Other Request',
+    };
+
+    const catLabel = categoryLabels[category as TicketCategoryEnum] ?? 'Support Request';
+    const battery = batteries.find((b) => b.id === selectedBatteryId);
+    const title = battery ? `${catLabel} - ${battery.serialNumber}` : catLabel;
+
     try {
-      await mutateAsync(data);
-      router.back();
-    } catch {
-      Alert.alert('Lỗi', 'Không thể tạo ticket. Vui lòng thử lại.');
+      const res = await mutateAsync({
+        title,
+        description,
+        category: category as TicketCategoryEnum,
+        batteryAssetId: selectedBatteryId ?? undefined,
+      });
+
+      const dataDto = res.data?.data;
+      if (res.data?.isSuccess && dataDto) {
+        setCreatedTicketCode(dataDto.code ?? 'T-SUCCESS');
+        setCreatedTicketId(dataDto.id ?? '');
+        setStep(6);
+      } else {
+        throw new Error(res.data?.message ?? 'System error occurred');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message ?? 'Could not create ticket. Please try again.');
     }
   };
 
+  const handleViewDetails = () => {
+    if (createdTicketId) {
+      router.replace({
+        pathname: '/(customer)/tickets/[id]',
+        params: { id: createdTicketId },
+      });
+    } else {
+      router.back();
+    }
+  };
+
+  const handleBackToList = () => {
+    router.dismissAll();
+    router.replace('/(customer)/(tabs)/tickets');
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.inner}>
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={styles.backText}>‹ Quay lại</Text>
-          </Pressable>
-          <Text style={styles.title}>Tạo yêu cầu hỗ trợ</Text>
-          <View style={{ width: 80 }} />
-        </View>
-        <CreateTicketForm onSubmit={handleSubmit} isLoading={isPending} />
-      </View>
-    </SafeAreaView>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {step === 6 ? (
+        <CreateTicketSuccess
+          ticketCode={createdTicketCode}
+          onViewDetails={handleViewDetails}
+          onBackToList={handleBackToList}
+        />
+      ) : (
+        <CreateTicketStepper
+          step={step}
+          setStep={setStep}
+          selectedBatteryId={selectedBatteryId}
+          setSelectedBatteryId={setSelectedBatteryId}
+          category={category}
+          setCategory={setCategory}
+          description={description}
+          setDescription={setDescription}
+          attachedFiles={attachedFiles}
+          setAttachedFiles={setAttachedFiles}
+          onSubmit={handleSubmit}
+          isLoading={isPending}
+          onCancel={handleCancel}
+        />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  inner:     { flex: 1, padding: 16 },
-  header:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-  backBtn:   { width: 80 },
-  backText:  { color: '#1976D2', fontSize: 15, fontWeight: '600' },
-  title:     { fontSize: 18, fontWeight: '700', color: '#111' },
+  container: {
+    flex: 1,
+    backgroundColor: Colors.bg,
+  },
 });

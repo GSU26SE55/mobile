@@ -50,4 +50,21 @@ export const ENDPOINTS = {
     REOPEN:          (id: string) => `/api/customer/tickets/${id}/reopen`,
     RATE:            (id: string) => `/api/customer/tickets/${id}/rate`,
   },
+  STAFF: {
+    ME: '/api/auth/me',
+  },
+  STAFF_TICKETS: {
+    MY_LIST:          '/api/staff/tickets/me',
+    START:            (id: string) => `/api/staff/tickets/${id}/start`,
+    HOLD:             (id: string) => `/api/staff/tickets/${id}/hold`,
+    RESUME:           (id: string) => `/api/staff/tickets/${id}/resume`,
+    RESOLVE:          (id: string) => `/api/staff/tickets/${id}/resolve`,
+    ESCALATE_REQUEST: (id: string) => `/api/staff/tickets/${id}/escalate-request`,
+    MAINTENANCE_LOG:  (id: string) => `/api/tickets/${id}/maintenance-logs`,
+  },
+  NOTIFICATIONS: {
+    LIST:     '/api/notifications',
+    READ:     (id: string) => `/api/notifications/${id}/read`,
+    READ_ALL: '/api/notifications/read-all',
+  },
 } as const;

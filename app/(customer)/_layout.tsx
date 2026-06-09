@@ -2,6 +2,7 @@ import { Redirect, Stack } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuthContext } from '../../src/context/authContext';
 import { useSessionStore } from '../../src/stores/sessionStore';
+import { Colors } from '../../src/lib/theme';
 
 export default function CustomerLayout() {
   const { isHydrating } = useAuthContext();
@@ -9,8 +10,8 @@ export default function CustomerLayout() {
 
   if (isHydrating) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color="#2563eb" />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bg }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
@@ -20,11 +21,25 @@ export default function CustomerLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      {/* Tab group — headerShown: false để Tabs tự quản lý */}
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      {/* Stack screens — có header + back button */}
-      <Stack.Screen name="edit-profile" options={{ headerShown: true, title: 'Chỉnh sửa thông tin', headerBackTitle: 'Quay lại' }} />
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: Colors.bg },
+        animation: 'slide_from_right',
+      }}
+    >
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen
+        name="edit-profile"
+        options={{
+          headerShown: true,
+          title: 'Chỉnh sửa thông tin',
+          headerBackTitle: 'Quay lại',
+          headerStyle: { backgroundColor: Colors.white },
+          headerTintColor: Colors.primary,
+          headerTitleStyle: { fontWeight: '600', color: Colors.text },
+        }}
+      />
       <Stack.Screen name="settings" options={{ headerShown: false }} />
     </Stack>
   );

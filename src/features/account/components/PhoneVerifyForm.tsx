@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Colors, ShadowPrimary } from '../../../lib/theme';
 import { useCountdown } from '../../../hooks/useCountdown';
 import { phoneOtpSchema, PhoneOtpInput } from '../schemas/phoneVerify.schema';
 
@@ -11,13 +12,7 @@ interface Props {
   fieldErrors?: Record<string, string>;
 }
 
-export function PhoneVerifyForm({
-  onSendOtp,
-  onVerify,
-  isSending,
-  isVerifying,
-  fieldErrors,
-}: Props) {
+export function PhoneVerifyForm({ onSendOtp, onVerify, isSending, isVerifying, fieldErrors }: Props) {
   const [otp, setOtp] = useState('');
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
   const { remaining, isActive, start } = useCountdown(60);
@@ -51,30 +46,27 @@ export function PhoneVerifyForm({
         disabled={isSending || isActive}
       >
         {isSending ? (
-          <ActivityIndicator color="#6366f1" />
+          <ActivityIndicator color={Colors.primary} />
         ) : (
-          <Text style={styles.sendButtonText}>
-            {isActive ? `Gửi lại sau ${remaining}s` : 'Gửi OTP qua SMS'}
+          <Text style={[styles.sendButtonText, isActive && { color: Colors.textMute }]}>
+            {isActive ? `Gui lai sau ${remaining}s` : 'Gui OTP qua SMS'}
           </Text>
         )}
       </Pressable>
 
-      <Text style={styles.label}>Mã OTP (6 chữ số)</Text>
+      <Text style={styles.label}>Ma OTP (6 chu so)</Text>
       <TextInput
         style={[styles.input, getError('otp') && styles.inputError]}
         value={otp}
         onChangeText={setOtp}
         keyboardType="number-pad"
         maxLength={6}
+        placeholderTextColor={Colors.textFaint}
       />
       {getError('otp') ? <Text style={styles.error}>{getError('otp')}</Text> : null}
 
-      <Pressable style={styles.button} onPress={handleVerify} disabled={isVerifying}>
-        {isVerifying ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Xác thực SĐT</Text>
-        )}
+      <Pressable style={[styles.button, isVerifying && styles.btnDisabled]} onPress={handleVerify} disabled={isVerifying}>
+        {isVerifying ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Xac thuc SDT</Text>}
       </Pressable>
     </View>
   );
@@ -83,22 +75,24 @@ export function PhoneVerifyForm({
 const styles = StyleSheet.create({
   container:          { gap: 4 },
   sendButton:         {
-    borderWidth: 1, borderColor: '#6366f1', borderRadius: 8,
+    borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 14,
     paddingVertical: 12, alignItems: 'center',
   },
-  sendButtonDisabled: { borderColor: '#d1d5db' },
-  sendButtonText:     { color: '#6366f1', fontSize: 15, fontWeight: '500' },
-  label:              { fontSize: 13, color: '#6b7280', marginBottom: 4, marginTop: 16 },
+  sendButtonDisabled: { borderColor: Colors.card3 },
+  sendButtonText:     { color: Colors.primary, fontSize: 14, fontWeight: '600' },
+  label:              { fontSize: 12, fontWeight: '500', color: Colors.textMute, marginBottom: 6, marginTop: 16 },
   input:              {
-    borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 10, fontSize: 18,
-    letterSpacing: 6, textAlign: 'center',
+    backgroundColor: Colors.card2, borderWidth: 1, borderColor: 'transparent',
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 18, letterSpacing: 6, textAlign: 'center', color: Colors.text,
   },
-  inputError:         { borderColor: '#ef4444' },
-  error:              { color: '#ef4444', fontSize: 12, marginTop: 4, textAlign: 'center' },
+  inputError:         { borderColor: Colors.danger },
+  error:              { color: Colors.danger, fontSize: 12, marginTop: 4, textAlign: 'center' },
   button:             {
-    marginTop: 24, backgroundColor: '#6366f1',
-    borderRadius: 8, paddingVertical: 13, alignItems: 'center',
+    marginTop: 24, backgroundColor: Colors.primary,
+    borderRadius: 14, paddingVertical: 13, alignItems: 'center',
+    ...ShadowPrimary,
   },
-  buttonText:         { color: '#fff', fontSize: 15, fontWeight: '600' },
+  btnDisabled:        { opacity: 0.45 },
+  buttonText:         { color: '#fff', fontSize: 14, fontWeight: '600' },
 });

@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from '
 import { useSessions } from '../../../src/features/account/hooks/useSessions';
 import { SessionCard } from '../../../src/features/account/components/SessionCard';
 import { handleErrorApi } from '../../../src/lib/errors';
+import { Colors } from '../../../src/lib/theme';
 
 export default function SessionsScreen() {
   const { sessions, revokeSession, revokeAll } = useSessions();
@@ -10,7 +11,7 @@ export default function SessionsScreen() {
   if (sessions.isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#6366f1" />
+        <ActivityIndicator color={Colors.primary} />
       </View>
     );
   }
@@ -41,7 +42,7 @@ export default function SessionsScreen() {
       />
 
       <Pressable
-        style={styles.revokeAllBtn}
+        style={[styles.revokeAllBtn, (revokeAll.isPending || data.filter((s) => !s.isCurrent).length === 0) && styles.disabledBtn]}
         onPress={() => {
           // non-form → onError trực tiếp
           revokeAll.mutate(undefined, {
@@ -52,7 +53,7 @@ export default function SessionsScreen() {
         disabled={revokeAll.isPending || data.filter((s) => !s.isCurrent).length === 0}
       >
         {revokeAll.isPending ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={Colors.primary} />
         ) : (
           <Text style={styles.revokeAllText}>Đăng xuất tất cả thiết bị khác</Text>
         )}
@@ -62,13 +63,18 @@ export default function SessionsScreen() {
 }
 
 const styles = StyleSheet.create({
-  center:        { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  container:     { flex: 1 },
+  center:        { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bg },
+  container:     { flex: 1, backgroundColor: Colors.bg },
   list:          { padding: 16 },
-  empty:         { textAlign: 'center', color: '#9ca3af', marginTop: 32 },
+  empty:         { textAlign: 'center', color: Colors.textMute, marginTop: 32, fontSize: 14 },
   revokeAllBtn:  {
-    margin: 16, backgroundColor: '#6366f1',
-    borderRadius: 10, paddingVertical: 14, alignItems: 'center',
+    margin: 16, backgroundColor: 'transparent',
+    borderWidth: 1.5, borderColor: Colors.primary,
+    borderRadius: 14, paddingVertical: 14, alignItems: 'center',
   },
-  revokeAllText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  disabledBtn:   {
+    borderColor: Colors.graySoft,
+    opacity: 0.5,
+  },
+  revokeAllText: { color: Colors.primary, fontSize: 15, fontWeight: '700' },
 });

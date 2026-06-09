@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Colors, ShadowPrimary } from '../../../lib/theme';
 import { AccountDto, UpdateProfilePayload } from '../types/profile.types';
 import { updateProfileSchema } from '../schemas/profile.schema';
 
@@ -38,38 +39,37 @@ export function ProfileForm({ account, onSubmit, isLoading, fieldErrors }: Props
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Họ và tên *</Text>
+      <Text style={styles.label}>Ho va ten *</Text>
       <TextInput
         style={[styles.input, getError('fullName') && styles.inputError]}
         value={fullName}
         onChangeText={setFullName}
+        placeholderTextColor={Colors.textFaint}
       />
       {getError('fullName') ? <Text style={styles.error}>{getError('fullName')}</Text> : null}
 
-      <Text style={styles.label}>Số điện thoại</Text>
+      <Text style={styles.label}>So dien thoai</Text>
       <TextInput
         style={[styles.input, getError('phoneNumber') && styles.inputError]}
         value={phoneNumber}
         onChangeText={setPhoneNumber}
         keyboardType="phone-pad"
+        placeholderTextColor={Colors.textFaint}
       />
       {getError('phoneNumber') ? <Text style={styles.error}>{getError('phoneNumber')}</Text> : null}
 
-      <Text style={styles.label}>Địa chỉ</Text>
+      <Text style={styles.label}>Dia chi</Text>
       <TextInput
         style={[styles.input, styles.multiline, getError('address') && styles.inputError]}
         value={address}
         onChangeText={setAddress}
         multiline
+        placeholderTextColor={Colors.textFaint}
       />
       {getError('address') ? <Text style={styles.error}>{getError('address')}</Text> : null}
 
-      <Pressable style={styles.button} onPress={handleSubmit} disabled={isLoading}>
-        {isLoading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Lưu thay đổi</Text>
-        )}
+      <Pressable style={[styles.button, isLoading && styles.btnDisabled]} onPress={handleSubmit} disabled={isLoading}>
+        {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Luu thay doi</Text>}
       </Pressable>
     </View>
   );
@@ -77,17 +77,19 @@ export function ProfileForm({ account, onSubmit, isLoading, fieldErrors }: Props
 
 const styles = StyleSheet.create({
   container:   { gap: 4 },
-  label:       { fontSize: 13, color: '#6b7280', marginBottom: 4, marginTop: 12 },
+  label:       { fontSize: 12, fontWeight: '500', color: Colors.textMute, marginBottom: 6, marginTop: 14 },
   input:       {
-    borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 10, fontSize: 15,
+    backgroundColor: Colors.card2, borderWidth: 1, borderColor: 'transparent',
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: Colors.text,
   },
-  inputError:  { borderColor: '#ef4444' },
+  inputError:  { borderColor: Colors.danger },
   multiline:   { minHeight: 80, textAlignVertical: 'top' },
-  error:       { color: '#ef4444', fontSize: 12, marginTop: 4 },
+  error:       { color: Colors.danger, fontSize: 12, marginTop: 4 },
   button:      {
-    marginTop: 24, backgroundColor: '#6366f1',
-    borderRadius: 8, paddingVertical: 13, alignItems: 'center',
+    marginTop: 24, backgroundColor: Colors.primary,
+    borderRadius: 14, paddingVertical: 13, alignItems: 'center',
+    ...ShadowPrimary,
   },
-  buttonText:  { color: '#fff', fontSize: 15, fontWeight: '600' },
+  btnDisabled: { opacity: 0.45 },
+  buttonText:  { color: '#fff', fontSize: 14, fontWeight: '600' },
 });
