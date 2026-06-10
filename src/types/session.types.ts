@@ -1,13 +1,7 @@
 import { jwtDecode } from 'jwt-decode';
+import { UserRole } from '../shared/enums/session.enum';
 
-export const UserRole = {
-  ADMIN:    'ADMIN',
-  MANAGER:  'MANAGER',
-  STAFF:    'STAFF',
-  CUSTOMER: 'CUSTOMER',
-} as const;
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export type UserRole = (typeof UserRole)[keyof typeof UserRole];
+export { UserRole } from '../shared/enums/session.enum';
 
 export interface SessionUser {
   accountId: string;

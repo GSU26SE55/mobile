@@ -1,13 +1,6 @@
-export type NotificationTypeEnum =
-  | 'TicketAssigned'
-  | 'TicketStatusChanged'
-  | 'TicketCommented'
-  | 'SlaWarning'
-  | 'SlaBreach'
-  | 'TicketEscalated'
-  | 'TicketResolved'
-  | 'TicketReopened'
-  | 'SystemAlert';
+export { NotificationTypeEnum } from '../enums/notification.enum';
+
+import type { NotificationTypeEnum } from '../enums/notification.enum';
 
 export interface NotificationDTO {
   id: string;

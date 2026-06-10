@@ -1,11 +1,8 @@
-import { EscalationReasonEnum, TicketStatusEnum } from '../../tickets/types/ticket.types';
+import type { EscalationReasonEnum, TicketStatusEnum } from '../../tickets/types/ticket.types';
 
-export type HoldReasonEnum =
-  | 'WAITING_CUSTOMER'
-  | 'WAITING_PARTS'
-  | 'WAITING_ONSITE_SCHEDULE';
+export { HoldReasonEnum, StaffSkillTierEnum } from '../enums/staff.enum';
 
-export type StaffSkillTierEnum = 'Tier1' | 'Tier2' | 'Tier3';
+import type { HoldReasonEnum, StaffSkillTierEnum } from '../enums/staff.enum';
 
 export interface StaffProfileDTO {
   accountId: string;

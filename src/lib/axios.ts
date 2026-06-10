@@ -44,11 +44,12 @@ const tryRefresh = async (): Promise<string | null> => {
     const refreshToken = await getRefreshToken();
     if (!refreshToken) throw new Error('No refresh token');
 
-    const res = await axios.post<{ data: { accessToken: string; refreshToken: string } }>(
+    const res = await axios.post<{ isSuccess: boolean; data: { accessToken: string; refreshToken: string } }>(
       `${BASE_URL}${ENDPOINTS.AUTH.REFRESH_TOKEN}`,
       { refreshToken },
     );
 
+    if (!res.data?.isSuccess) throw new Error('Refresh failed');
     const { accessToken, refreshToken: newRefresh } = res.data.data;
     await saveTokens(accessToken, newRefresh);
     flushQueue(accessToken);
@@ -144,8 +145,15 @@ axiosInstance.interceptors.response.use(
       payload ?? err,
     );
 
-    // 401 → try refresh once
+    // 401 → try refresh once (skip if MISSING_TOKEN — no point refreshing without a token)
     if (status === 401 && !err.config._retried) {
+      const errorCode = payload?.data?.errorCode;
+      if (errorCode === 'MISSING_TOKEN') {
+        await clearTokens();
+        useSessionStore.getState().clearSession();
+        router.replace('/(auth)/login');
+        return Promise.reject(new HttpError(status, makeFallbackPayload(status, payload?.message)));
+      }
       err.config._retried = true;
       const newToken = await tryRefresh();
       if (newToken) {
