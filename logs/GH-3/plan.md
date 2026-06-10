@@ -81,6 +81,16 @@ npm install @tanstack/react-query zustand axios jwt-decode
 | `src/features/auth/components/ForgotPasswordStep2.tsx` | create | OTP + resend — Props: `{ email, onSuccess }` (không có onExpired) |
 | `src/features/auth/components/ForgotPasswordStep3.tsx` | create | Mật khẩu mới |
 
+## Enums
+
+> **Note (thêm sau khi SHIPPED):** Plan gốc define `UserRole` inline trong `src/types/session.types.ts` — codebase thực tế đã tách ra `src/shared/enums/session.enum.ts` với `as const` pattern.
+
+| Enum | File |
+|------|------|
+| `UserRole` | `src/shared/enums/session.enum.ts` |
+
+`src/types/session.types.ts` re-export `UserRole` từ `shared/enums/session.enum`.
+
 ## Types
 
 ```ts
