@@ -37,15 +37,7 @@ export function TicketCard({ ticket, onPress }: Props) {
   const pColors = BadgeColors[pKey];
   const pLabel = PRIORITY_LABEL[ticket.priority] ?? ticket.priority;
 
-  // Mock staff name mapping if available
-  const getMockTechnician = (staffId: string | null) => {
-    if (!staffId) return 'Chưa phân công';
-    if (staffId.includes('1') || staffId.includes('minh') || staffId.length > 5) return 'Trần Minh';
-    if (staffId.includes('2') || staffId.includes('hoa')) return 'Lê Hoa';
-    return 'Nguyễn Hải';
-  };
-
-  const technicianName = getMockTechnician(ticket.assignedStaffId);
+  const technicianName = ticket.assignedStaffName ?? (ticket.assignedStaffId ? 'Đã phân công' : 'Chưa phân công');
 
   return (
     <Pressable style={[styles.card, Shadow]} onPress={onPress}>

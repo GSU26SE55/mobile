@@ -7,6 +7,7 @@ import { CreateTicketSuccess } from '../../../src/features/tickets/components/Cr
 import { useCreateTicket } from '../../../src/features/tickets/hooks/useCreateTicket';
 import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
 import { TicketCategoryEnum } from '../../../src/features/tickets/types/ticket.types';
+import { fileStorageLib } from '../../../src/lib/fileStorage';
 import { Colors } from '../../../src/lib/theme';
 
 export default function CreateTicketScreen() {
@@ -51,18 +52,35 @@ export default function CreateTicketScreen() {
     const title = battery ? `${catLabel} - ${battery.serialNumber}` : catLabel;
 
     try {
+      // Upload attachments first, collect fileIds
+      const attachmentFileIds: string[] = [];
+      for (const uri of attachedFiles) {
+        const fileName = uri.split('/').pop() ?? 'image.jpg';
+        const ext = fileName.split('.').pop()?.toLowerCase() ?? 'jpg';
+        const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+        try {
+          const uploadRes = await fileStorageLib.uploadTicketAttachment(uri, fileName, mimeType);
+          if (uploadRes.data?.data?.fileId) {
+            attachmentFileIds.push(uploadRes.data.data.fileId);
+          }
+        } catch {
+          // skip failed uploads silently — ticket still creates
+        }
+      }
+
       const res = await mutateAsync({
         title,
         description,
         category: category as TicketCategoryEnum,
         batteryAssetId: selectedBatteryId ?? undefined,
+        attachmentFileIds: attachmentFileIds.length > 0 ? attachmentFileIds : undefined,
       });
 
       const dataDto = res.data?.data;
       if (res.data?.isSuccess && dataDto) {
         setCreatedTicketCode(dataDto.code ?? 'T-SUCCESS');
         setCreatedTicketId(dataDto.id ?? '');
-        setStep(6);
+        setStep(5);
       } else {
         throw new Error(res.data?.message ?? 'System error occurred');
       }
@@ -89,7 +107,7 @@ export default function CreateTicketScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {step === 6 ? (
+      {step === 5 ? (
         <CreateTicketSuccess
           ticketCode={createdTicketCode}
           onViewDetails={handleViewDetails}

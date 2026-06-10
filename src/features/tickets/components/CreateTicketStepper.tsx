@@ -7,7 +7,9 @@ import {
   View,
   ScrollView,
   Image,
+  ActionSheetIOS,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -16,6 +18,8 @@ import { TicketCategoryEnum, TicketPriorityEnum } from '../types/ticket.types';
 import { useMyBatteryAssets } from '../../batteries/hooks/useMyBatteryAssets';
 import { BatteryAssetDto } from '../../batteries/types/battery.types';
 import { Colors, Shadow, ShadowPrimary } from '../../../lib/theme';
+
+const TOTAL_STEPS = 4;
 
 const BATTERY_STATUS_MAP: Record<number, { label: string; color: string; bg: string }> = {
   1: { label: 'Active', color: '#2E7D32', bg: '#E8F5E9' },
@@ -91,7 +95,6 @@ export function CreateTicketStepper({
 }: Props) {
   const insets = useSafeAreaInsets();
 
-  // Priority calculation
   const getSuggestedPriority = (): { key: TicketPriorityEnum; label: string; time: string; color: string; bg: string } => {
     if (category === 'Overheat' || category === 'NoPower') {
       return { key: 'P1Critical', label: 'P1', time: '< 4h', color: '#DC4F3D', bg: '#FFEBEA' };
@@ -107,16 +110,12 @@ export function CreateTicketStepper({
   const { data: batteries = [] } = useMyBatteryAssets();
   const selectedBattery = batteries.find((b: BatteryAssetDto) => b.id === selectedBatteryId);
 
-  // File picker handlers
-  const handleLaunchCamera = async () => {
-    if (attachedFiles.length >= 5) {
-      Alert.alert('Giới hạn', 'Bạn chỉ được đính kèm tối đa 5 ảnh.');
-      return;
-    }
+  // Image picker
+  const pickFromCamera = async () => {
     try {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert('Quyền truy cập', 'Vui lòng cấp quyền truy cập máy ảnh trong cài đặt.');
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Quyền truy cập', 'Vui lòng cấp quyền máy ảnh trong cài đặt.');
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
@@ -131,29 +130,42 @@ export function CreateTicketStepper({
     }
   };
 
-  const handleLaunchGallery = async () => {
-    if (attachedFiles.length >= 5) {
-      Alert.alert('Giới hạn', 'Bạn chỉ được đính kèm tối đa 5 ảnh.');
-      return;
-    }
+  const pickFromGallery = async () => {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert('Quyền truy cập', 'Vui lòng cấp quyền truy cập thư viện ảnh trong cài đặt.');
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Quyền truy cập', 'Vui lòng cấp quyền thư viện ảnh trong cài đặt.');
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
-        selectionLimit: 5 - attachedFiles.length,
         quality: 0.7,
       });
       if (!result.canceled && result.assets) {
         const uris = result.assets.map((a) => a.uri);
-        setAttachedFiles((prev) => [...prev, ...uris].slice(0, 5));
+        setAttachedFiles((prev) => [...prev, ...uris]);
       }
     } catch {
       Alert.alert('Lỗi', 'Không thể truy cập thư viện ảnh.');
+    }
+  };
+
+  const handleAddImage = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Hủy', 'Chụp ảnh', 'Chọn từ thư viện'], cancelButtonIndex: 0 },
+        (idx) => {
+          if (idx === 1) pickFromCamera();
+          if (idx === 2) pickFromGallery();
+        }
+      );
+    } else {
+      Alert.alert('Thêm ảnh', '', [
+        { text: 'Hủy', style: 'cancel' },
+        { text: 'Chụp ảnh', onPress: pickFromCamera },
+        { text: 'Chọn từ thư viện', onPress: pickFromGallery },
+      ]);
     }
   };
 
@@ -161,51 +173,41 @@ export function CreateTicketStepper({
     setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Stepper Header
-  const renderHeader = () => {
-    return (
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => {
-            if (step > 1) {
-              setStep((s) => s - 1);
-            } else {
-              onCancel();
-            }
-          }}
-          style={styles.headerBack}
-        >
-          <Ionicons name="chevron-back" size={18} color={Colors.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Tạo Ticket · {step}/6</Text>
-        <Pressable onPress={onCancel} style={styles.headerCancel}>
-          <Text style={styles.headerCancelText}>Hủy</Text>
-        </Pressable>
-      </View>
-    );
-  };
+  // Header
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <Pressable
+        onPress={() => {
+          if (step > 1) setStep((s) => s - 1);
+          else onCancel();
+        }}
+        style={styles.headerBack}
+      >
+        <Ionicons name="chevron-back" size={18} color={Colors.text} />
+      </Pressable>
+      <Text style={styles.headerTitle}>Tạo Ticket · {step}/{TOTAL_STEPS}</Text>
+      <Pressable onPress={onCancel} style={styles.headerCancel}>
+        <Text style={styles.headerCancelText}>Hủy</Text>
+      </Pressable>
+    </View>
+  );
 
-  // Stepper Progress Bar
-  const renderProgress = () => {
-    return (
-      <View style={styles.progressContainer}>
-        {[1, 2, 3, 4, 5].map((s) => (
-          <View
-            key={s}
-            style={[
-              styles.progressBarSegment,
-              s <= step && styles.progressBarSegmentActive,
-            ]}
-          />
-        ))}
-      </View>
-    );
-  };
+  // Progress bar
+  const renderProgress = () => (
+    <View style={styles.progressContainer}>
+      {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map((s) => (
+        <View
+          key={s}
+          style={[styles.progressBarSegment, s <= step && styles.progressBarSegmentActive]}
+        />
+      ))}
+    </View>
+  );
 
-  // Render Steps
   const renderStepContent = () => {
     switch (step) {
-      case 1: // Device selection
+      // ─── Step 1: Device ───────────────────────────────────────────────
+      case 1:
         return (
           <ScrollView style={styles.stepScroll} showsVerticalScrollIndicator={false}>
             <Text style={styles.stepNum}>BƯỚC 01</Text>
@@ -222,7 +224,6 @@ export function CreateTicketStepper({
               {batteries.map((battery: BatteryAssetDto) => {
                 const isSelected = selectedBatteryId === battery.id;
                 const statusInfo = BATTERY_STATUS_MAP[battery.status] ?? { label: 'Unknown', color: Colors.gray, bg: '#F3F4F6' };
-
                 return (
                   <Pressable
                     key={battery.id}
@@ -251,24 +252,22 @@ export function CreateTicketStepper({
           </ScrollView>
         );
 
-      case 2: // Issue category selection
+      // ─── Step 2: Category + Description (merged) ──────────────────────
+      case 2:
         return (
-          <View style={styles.stepContainer}>
+          <ScrollView style={styles.stepScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text style={styles.stepNum}>BƯỚC 02</Text>
-            <Text style={styles.stepTitle}>Loại sự cố</Text>
-            <Text style={styles.stepSub}>Hệ thống dùng để tính priority</Text>
+            <Text style={styles.stepTitle}>Lý do & Mô tả</Text>
+            <Text style={styles.stepSub}>Chọn loại sự cố và mô tả chi tiết</Text>
 
+            {/* Category grid */}
             <View style={styles.categoryGrid}>
               {CATEGORIES.map((cat) => {
                 const isSelected = category === cat.value;
                 return (
                   <Pressable
                     key={cat.value}
-                    style={[
-                      styles.categoryCard,
-                      isSelected && styles.categoryCardSelected,
-                      Shadow,
-                    ]}
+                    style={[styles.categoryCard, isSelected && styles.categoryCardSelected, Shadow]}
                     onPress={() => setCategory(cat.value)}
                   >
                     <View style={[styles.categoryIconWrap, { backgroundColor: cat.iconBg }]}>
@@ -280,23 +279,14 @@ export function CreateTicketStepper({
                 );
               })}
             </View>
-          </View>
-        );
 
-      case 3: // Description
-        return (
-          <View style={styles.stepContainer}>
-            <Text style={styles.stepNum}>BƯỚC 03</Text>
-            <Text style={styles.stepTitle}>Mô tả chi tiết</Text>
-            <Text style={styles.stepSub}>Mô tả càng cụ thể, xử lý càng nhanh</Text>
-
-            <Text style={styles.inputLabel}>Sự cố xảy ra như thế nào?</Text>
-            
+            {/* Description */}
+            <Text style={styles.descLabel}>Mô tả sự cố</Text>
             <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.multilineInput}
                 multiline
-                numberOfLines={6}
+                numberOfLines={5}
                 maxLength={500}
                 placeholder="VD: Pin báo nhiệt độ cao từ 9h sáng. Quạt thông gió vẫn chạy nhưng nhiệt vẫn tăng..."
                 placeholderTextColor={Colors.textFaint}
@@ -305,84 +295,67 @@ export function CreateTicketStepper({
                 textAlignVertical="top"
               />
             </View>
-
             <View style={styles.charCountRow}>
               <Text style={styles.minCharLabel}>Tối thiểu 10 ký tự</Text>
               <Text style={styles.countText}>{description.length}/500</Text>
             </View>
 
-            <View style={styles.infoBanner}>
+            <View style={[styles.infoBanner, { marginBottom: 40 }]}>
               <Ionicons name="information-circle-outline" size={16} color="#2A538A" style={{ marginRight: 8, marginTop: 1 }} />
               <Text style={styles.infoBannerText}>
-                Bao gồm: <Text style={{ fontWeight: '700' }}>thời gian xảy ra</Text>, hiện tượng, có ngắt mạch chưa, đã thử gì.
+                Bao gồm: <Text style={{ fontWeight: '700' }}>thời gian xảy ra</Text>, hiện tượng, đã thử gì.
               </Text>
             </View>
-          </View>
+          </ScrollView>
         );
 
-      case 4: // Attachment
-        return (
-          <View style={styles.stepContainer}>
-            <Text style={styles.stepNum}>BƯỚC 04</Text>
-            <Text style={styles.stepTitle}>Ảnh / video</Text>
-            <Text style={styles.stepSub}>Tối đa 5 file – giúp KTV chẩn đoán</Text>
-
-            <View style={styles.attachmentGrid}>
-              {[0, 1, 2, 3, 4].map((idx) => {
-                const fileUri = attachedFiles[idx];
-                return (
-                  <View key={idx} style={[styles.attachmentSlot, Shadow]}>
-                    {fileUri ? (
-                      <>
-                        <Image source={{ uri: fileUri }} style={styles.attachmentImg} />
-                        <Pressable style={styles.removeFileBtn} onPress={() => handleRemoveFile(idx)}>
-                          <Ionicons name="close-circle" size={18} color="#D32F2F" />
-                        </Pressable>
-                      </>
-                    ) : (
-                      <Pressable
-                        style={styles.emptySlot}
-                        onPress={handleLaunchGallery}
-                      >
-                        <Ionicons name="add" size={20} color={Colors.textMute} />
-                      </Pressable>
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-
-            <View style={styles.pickerActions}>
-              <Pressable style={styles.pickerBtn} onPress={handleLaunchCamera}>
-                <Ionicons name="camera-outline" size={18} color={Colors.text} style={{ marginRight: 6 }} />
-                <Text style={styles.pickerBtnText}>Camera</Text>
-              </Pressable>
-              
-              <Pressable style={styles.pickerBtn} onPress={handleLaunchGallery}>
-                <Ionicons name="images-outline" size={18} color={Colors.text} style={{ marginRight: 6 }} />
-                <Text style={styles.pickerBtnText}>Thư viện</Text>
-              </Pressable>
-            </View>
-            
-            <Text style={styles.attachmentCountText}>{attachedFiles.length} / 5 file - không bắt buộc</Text>
-          </View>
-        );
-
-      case 5: // Review & send
+      // ─── Step 3: Attachment (unlimited) ───────────────────────────────
+      case 3:
         return (
           <ScrollView style={styles.stepScroll} showsVerticalScrollIndicator={false}>
-            <Text style={styles.stepNum}>BƯỚC 05</Text>
+            <Text style={styles.stepNum}>BƯỚC 03</Text>
+            <Text style={styles.stepTitle}>Ảnh đính kèm</Text>
+            <Text style={styles.stepSub}>Không giới hạn – giúp KTV chẩn đoán nhanh hơn</Text>
+
+            {/* Added images grid */}
+            {attachedFiles.length > 0 && (
+              <View style={styles.imageGrid}>
+                {attachedFiles.map((uri, idx) => (
+                  <View key={idx} style={[styles.imageSlot, Shadow]}>
+                    <Image source={{ uri }} style={styles.imageThumb} />
+                    <Pressable style={styles.removeImageBtn} onPress={() => handleRemoveFile(idx)}>
+                      <Ionicons name="close-circle" size={20} color="#D32F2F" />
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Add button — full width, dashed */}
+            <Pressable style={styles.addSlot} onPress={handleAddImage}>
+              <Ionicons name="image-outline" size={36} color={Colors.textMute} />
+              <Text style={styles.addSlotText}>Thêm ảnh</Text>
+            </Pressable>
+
+            {attachedFiles.length > 0 && (
+              <Text style={styles.imageCountText}>{attachedFiles.length} ảnh đã chọn · không bắt buộc</Text>
+            )}
+          </ScrollView>
+        );
+
+      // ─── Step 4: Review ────────────────────────────────────────────────
+      case 4:
+        return (
+          <ScrollView style={styles.stepScroll} showsVerticalScrollIndicator={false}>
+            <Text style={styles.stepNum}>BƯỚC 04</Text>
             <Text style={styles.stepTitle}>Xem lại & gửi</Text>
             <Text style={styles.stepSub}>Priority hệ thống tính tự động</Text>
 
-            {/* Suggested Priority Card */}
             <View style={styles.prioritySuggestedCard}>
               <Text style={styles.prioritySuggestedLabel}>PRIORITY GỢI Ý</Text>
               <View style={styles.prioritySuggestedBody}>
                 <View style={[styles.priorityBadge, { backgroundColor: priorityInfo.bg }]}>
-                  <Text style={[styles.priorityBadgeText, { color: priorityInfo.color }]}>
-                    {priorityInfo.label}
-                  </Text>
+                  <Text style={[styles.priorityBadgeText, { color: priorityInfo.color }]}>{priorityInfo.label}</Text>
                 </View>
                 <View style={styles.priorityTextCol}>
                   <Text style={styles.priorityTitle}>Phản hồi dự kiến</Text>
@@ -391,7 +364,6 @@ export function CreateTicketStepper({
               </View>
             </View>
 
-            {/* Info Review Table */}
             <View style={[styles.reviewTable, Shadow]}>
               <View style={styles.reviewRow}>
                 <Text style={styles.reviewRowLabel}>Thiết bị</Text>
@@ -409,11 +381,10 @@ export function CreateTicketStepper({
               <View style={styles.reviewDivider} />
               <View style={styles.reviewRow}>
                 <Text style={styles.reviewRowLabel}>File đính kèm</Text>
-                <Text style={styles.reviewRowValue}>{attachedFiles.length} file</Text>
+                <Text style={styles.reviewRowValue}>{attachedFiles.length} ảnh</Text>
               </View>
             </View>
 
-            {/* Description card */}
             <Text style={styles.descSectionTitle}>Mô tả</Text>
             <View style={[styles.reviewDescCard, Shadow]}>
               <Text style={styles.reviewDescText}>{description}</Text>
@@ -426,11 +397,9 @@ export function CreateTicketStepper({
     }
   };
 
-  // Next / Continue button disabled checks
   const isNextDisabled = () => {
     if (step === 1) return !selectedBatteryId;
-    if (step === 2) return !category;
-    if (step === 3) return description.length < 10;
+    if (step === 2) return !category || description.length < 10;
     return false;
   };
 
@@ -438,25 +407,19 @@ export function CreateTicketStepper({
     <View style={styles.root}>
       {renderHeader()}
       {renderProgress()}
-      
+
       <View style={styles.main}>
         {renderStepContent()}
       </View>
 
-      {/* Bottom control actions */}
-      <View
-        style={[
-          styles.footer,
-          { paddingBottom: Math.max(insets.bottom, 16) + 16 },
-        ]}
-      >
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
         {step > 1 ? (
           <Pressable style={styles.backBtn} onPress={() => setStep((s) => s - 1)}>
             <Text style={styles.backBtnText}>Quay lại</Text>
           </Pressable>
         ) : null}
 
-        {step < 5 ? (
+        {step < TOTAL_STEPS ? (
           <Pressable
             style={[
               styles.continueBtn,
@@ -485,10 +448,7 @@ export function CreateTicketStepper({
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: Colors.bg,
-  },
+  root: { flex: 1, backgroundColor: Colors.bg },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -505,23 +465,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  headerCancel: {
-    paddingHorizontal: 8,
-  },
-  headerCancelText: {
-    color: Colors.textMute,
-    fontSize: 14,
-    fontWeight: '500',
-  },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
+  headerCancel: { paddingHorizontal: 8 },
+  headerCancelText: { color: Colors.textMute, fontSize: 14, fontWeight: '500' },
   progressContainer: {
     flexDirection: 'row',
     height: 3,
-    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+    backgroundColor: 'rgba(0,0,0,0.04)',
     marginHorizontal: 16,
     gap: 4,
     borderRadius: 2,
@@ -534,386 +484,122 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.06)',
     borderRadius: 1.5,
   },
-  progressBarSegmentActive: {
-    backgroundColor: '#EF5128',
-  },
-  main: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  stepScroll: {
-    flex: 1,
-  },
-  stepContainer: {
-    flex: 1,
-  },
-  stepNum: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#EF5128',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  stepTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: Colors.text,
-    letterSpacing: -0.5,
-  },
-  stepSub: {
-    fontSize: 13,
-    color: Colors.textMute,
-    marginTop: 2,
-    marginBottom: 20,
-  },
-  batteryList: {
-    gap: 12,
-    paddingBottom: 40,
-  },
+  progressBarSegmentActive: { backgroundColor: '#EF5128' },
+  main: { flex: 1, paddingHorizontal: 20 },
+  stepScroll: { flex: 1 },
+  stepNum: { fontSize: 11, fontWeight: '700', color: '#EF5128', letterSpacing: 1, marginBottom: 4 },
+  stepTitle: { fontSize: 22, fontWeight: '800', color: Colors.text, letterSpacing: -0.5 },
+  stepSub: { fontSize: 13, color: Colors.textMute, marginTop: 2, marginBottom: 20 },
+
+  // Battery list
+  batteryList: { gap: 12, paddingBottom: 40 },
   batteryCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF',
+    borderRadius: 18, padding: 14, borderWidth: 1.5, borderColor: 'transparent',
   },
-  batteryCardSelected: {
-    borderColor: '#EF5128',
-  },
-  batteryIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  batteryInfo: {
-    flex: 1,
-    marginRight: 8,
-  },
-  batteryName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  batterySub: {
-    fontSize: 10,
-    color: Colors.textMute,
-    marginTop: 2,
-  },
-  batteryStatusCol: {
-    alignItems: 'flex-end',
-    marginRight: 12,
-  },
-  batterySoc: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  batteryStatusLabel: {
-    fontSize: 9,
-    fontWeight: '600',
-    marginTop: 1,
-  },
-  radioOutline: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioSelected: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#EF5128',
-  },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
+  batteryCardSelected: { borderColor: '#EF5128' },
+  batteryIconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  batteryInfo: { flex: 1, marginRight: 8 },
+  batteryName: { fontSize: 13, fontWeight: '700', color: Colors.text },
+  batterySub: { fontSize: 10, color: Colors.textMute, marginTop: 2 },
+  batteryStatusCol: { alignItems: 'flex-end', marginRight: 12 },
+  batteryStatusLabel: { fontSize: 9, fontWeight: '600', marginTop: 1 },
+  radioOutline: { width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
+  radioSelected: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#EF5128' },
+
+  // Category
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
   categoryCard: {
-    width: '48%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-    alignItems: 'flex-start',
+    width: '48%', backgroundColor: '#FFFFFF', borderRadius: 18,
+    padding: 16, borderWidth: 1.5, borderColor: 'transparent', alignItems: 'flex-start',
   },
-  categoryCardSelected: {
-    borderColor: '#EF5128',
-  },
-  categoryIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  categoryLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  categorySub: {
-    fontSize: 10,
-    color: Colors.textMute,
-    lineHeight: 14,
-  },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 10,
-  },
+  categoryCardSelected: { borderColor: '#EF5128' },
+  categoryIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  categoryLabel: { fontSize: 14, fontWeight: '700', color: Colors.text, marginBottom: 4 },
+  categorySub: { fontSize: 10, color: Colors.textMute, lineHeight: 14 },
+
+  // Description
+  descLabel: { fontSize: 13, fontWeight: '600', color: Colors.text, marginBottom: 10 },
   inputWrapper: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 8,
+    backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)', paddingHorizontal: 14, paddingVertical: 12, marginBottom: 8,
   },
-  multilineInput: {
-    fontSize: 14,
-    color: Colors.text,
-    minHeight: 110,
-  },
-  charCountRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-    paddingHorizontal: 2,
-  },
-  minCharLabel: {
-    fontSize: 11,
-    color: Colors.textMute,
-  },
-  countText: {
-    fontSize: 11,
-    color: Colors.textMute,
-  },
+  multilineInput: { fontSize: 14, color: Colors.text, minHeight: 100 },
+  charCountRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, paddingHorizontal: 2 },
+  minCharLabel: { fontSize: 11, color: Colors.textMute },
+  countText: { fontSize: 11, color: Colors.textMute },
   infoBanner: {
-    flexDirection: 'row',
-    backgroundColor: '#EBF3FF',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    alignItems: 'flex-start',
+    flexDirection: 'row', backgroundColor: '#EBF3FF', borderRadius: 14,
+    paddingHorizontal: 14, paddingVertical: 12, alignItems: 'flex-start',
   },
-  infoBannerText: {
-    flex: 1,
-    fontSize: 11,
-    color: '#2A538A',
-    lineHeight: 16,
-  },
-  attachmentGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
-  },
-  attachmentSlot: {
+  infoBannerText: { flex: 1, fontSize: 11, color: '#2A538A', lineHeight: 16 },
+
+  // Image grid (unlimited)
+  imageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingBottom: 12 },
+  imageSlot: {
     width: '30%',
     aspectRatio: 1,
     borderRadius: 14,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(0,0,0,0.1)',
     overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,0,0,0.08)',
   },
-  emptySlot: {
-    flex: 1,
+  imageThumb: { width: '100%', height: '100%' },
+  removeImageBtn: { position: 'absolute', top: 4, right: 4, backgroundColor: '#FFFFFF', borderRadius: 10 },
+  addSlot: {
+    width: '100%',
+    height: 100,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: 'rgba(0,0,0,0.02)',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  attachmentImg: {
-    width: '100%',
-    height: '100%',
-  },
-  removeFileBtn: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 9,
-  },
-  pickerActions: {
-    flexDirection: 'row',
-    gap: 12,
+    gap: 8,
     marginBottom: 12,
   },
-  pickerBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
-    borderRadius: 14,
-    paddingVertical: 11,
-  },
-  pickerBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  attachmentCountText: {
-    fontSize: 11,
-    color: Colors.textMute,
-    textAlign: 'center',
-    marginTop: 6,
-  },
+  addSlotText: { fontSize: 13, color: Colors.textMute, fontWeight: '600' },
+  imageCountText: { fontSize: 11, color: Colors.textMute, marginTop: 4, paddingBottom: 40 },
+
+  // Review
   prioritySuggestedCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.04)',
-    flexDirection: 'column',
+    backgroundColor: '#FFFFFF', borderRadius: 18, padding: 16, marginBottom: 16,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.04)',
   },
-  prioritySuggestedLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: Colors.textMute,
-    letterSpacing: 0.5,
-    marginBottom: 10,
-  },
-  prioritySuggestedBody: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  priorityBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  priorityBadgeText: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  priorityTextCol: {
-    flex: 1,
-  },
-  priorityTitle: {
-    fontSize: 11,
-    color: Colors.textMute,
-    fontWeight: '500',
-  },
-  priorityTimeText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: Colors.text,
-    marginTop: 1,
-  },
-  reviewTable: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginBottom: 20,
-  },
-  reviewRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  reviewRowLabel: {
-    fontSize: 12,
-    color: Colors.textMute,
-    fontWeight: '500',
-  },
-  reviewRowValue: {
-    fontSize: 12,
-    color: Colors.text,
-    fontWeight: '600',
-    maxWidth: '70%',
-  },
-  reviewDivider: {
-    height: 1,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-  },
-  descSectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.textMute,
-    marginBottom: 8,
-    paddingLeft: 2,
-  },
-  reviewDescCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 40,
-  },
-  reviewDescText: {
-    fontSize: 13,
-    color: Colors.text,
-    lineHeight: 18,
-  },
+  prioritySuggestedLabel: { fontSize: 9, fontWeight: '700', color: Colors.textMute, letterSpacing: 0.5, marginBottom: 10 },
+  prioritySuggestedBody: { flexDirection: 'row', alignItems: 'center' },
+  priorityBadge: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  priorityBadgeText: { fontSize: 16, fontWeight: '800' },
+  priorityTextCol: { flex: 1 },
+  priorityTitle: { fontSize: 11, color: Colors.textMute, fontWeight: '500' },
+  priorityTimeText: { fontSize: 18, fontWeight: '800', color: Colors.text, marginTop: 1 },
+  reviewTable: { backgroundColor: '#FFFFFF', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 8, marginBottom: 20 },
+  reviewRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, alignItems: 'center' },
+  reviewRowLabel: { fontSize: 12, color: Colors.textMute, fontWeight: '500' },
+  reviewRowValue: { fontSize: 12, color: Colors.text, fontWeight: '600', maxWidth: '70%' },
+  reviewDivider: { height: 1, backgroundColor: 'rgba(0,0,0,0.05)' },
+  descSectionTitle: { fontSize: 13, fontWeight: '700', color: Colors.textMute, marginBottom: 8, paddingLeft: 2 },
+  reviewDescCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 40 },
+  reviewDescText: { fontSize: 13, color: Colors.text, lineHeight: 18 },
+
+  // Footer
   footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 12,
-    paddingBottom: 12,
-    paddingHorizontal: 20,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingTop: 12, paddingBottom: 12, paddingHorizontal: 20,
+    backgroundColor: '#FFFFFF', borderTopWidth: 1, borderColor: 'rgba(0,0,0,0.03)',
   },
-  backBtn: {
-    paddingVertical: 13,
-    paddingHorizontal: 20,
-    justifyContent: 'center',
-  },
-  backBtnText: {
-    fontSize: 14,
-    color: Colors.text,
-    fontWeight: '600',
-  },
+  backBtn: { paddingVertical: 13, paddingHorizontal: 20, justifyContent: 'center' },
+  backBtnText: { fontSize: 14, color: Colors.text, fontWeight: '600' },
   continueBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: '#EF5128',
-    borderRadius: 14,
-    paddingVertical: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 120,
+    flex: 1, flexDirection: 'row', backgroundColor: '#EF5128',
+    borderRadius: 14, paddingVertical: 13, alignItems: 'center', justifyContent: 'center', minWidth: 120,
   },
   submitBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: '#EF5128',
-    borderRadius: 14,
-    paddingVertical: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
+    flex: 1, flexDirection: 'row', backgroundColor: '#EF5128',
+    borderRadius: 14, paddingVertical: 13, alignItems: 'center', justifyContent: 'center',
   },
-  continueBtnDisabled: {
-    backgroundColor: Colors.border,
-    opacity: 0.65,
-  },
-  continueBtnText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
+  continueBtnDisabled: { backgroundColor: Colors.border, opacity: 0.65 },
+  continueBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });

@@ -68,6 +68,7 @@ export interface TicketDTO {
   batteryAssetId: string | null;
   customerId: string;
   assignedStaffId: string | null;
+  assignedStaffName?: string | null;
   title: string;
   category: TicketCategoryEnum;
   priority: TicketPriorityEnum;
@@ -100,7 +101,15 @@ export interface TicketDetailDTO extends TicketDTO {
   activities: TicketActivityDTO[] | null;
   comments: TicketCommentDTO[] | null;
   maintenanceLogs: unknown[] | null;
-  attachments: unknown[] | null;
+  attachments: TicketAttachmentDTO[] | null;
+}
+
+export interface TicketAttachmentDTO {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  mimeType: string | null;
+  uploadedAt: string | null;
 }
 
 export interface TicketActionDto {
@@ -122,6 +131,7 @@ export interface CreateTicketPayload {
   description: string;
   category: TicketCategoryEnum;
   batteryAssetId?: string;
+  attachmentFileIds?: string[];
 }
 
 export interface CommentAttachmentPayload {
