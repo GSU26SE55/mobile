@@ -1,34 +1,28 @@
-export type TicketStatusEnum =
-  | 'New' | 'Open' | 'Approved' | 'Assigned' | 'InProgress'
-  | 'WaitingCustomer' | 'WaitingParts' | 'WaitingOnsiteSchedule'
-  | 'Resolved' | 'Escalated' | 'ClosedPendingRate' | 'Closed'
-  | 'ClosedRejected' | 'Incident';
+export {
+  TicketStatusEnum,
+  TicketPriorityEnum,
+  TicketCategoryEnum,
+  TicketOriginEnum,
+  ImpactScopeEnum,
+  UrgencyLevelEnum,
+  EscalationReasonEnum,
+  SlaTimerStatusEnum,
+  ActorRoleEnum,
+  ActivityActionEnum,
+} from '../../../shared/enums/ticket.enum';
 
-export type TicketPriorityEnum = 'P1Critical' | 'P2High' | 'P3Normal';
-
-export type TicketCategoryEnum =
-  | 'Charging' | 'Overheat' | 'NoPower' | 'Performance' | 'Repair' | 'Other';
-
-export type TicketOriginEnum = 'ManualByCustomer' | 'AutoFromAlert' | 'CreatedByStaff';
-
-export type ImpactScopeEnum = 'SingleAsset' | 'Site' | 'MultiSite';
-
-export type UrgencyLevelEnum = 'Low' | 'Medium' | 'High';
-
-export type EscalationReasonEnum =
-  | 'SkillGap' | 'PartsRequired' | 'SafetyConcern' | 'SlaBreach' | 'CustomerComplaint';
-
-export type SlaTimerStatusEnum = 'Running' | 'Paused' | 'Met' | 'Breached';
-
-export type ActorRoleEnum = 'Admin' | 'Manager' | 'Staff' | 'Customer' | 'System';
-
-export type ActivityActionEnum =
-  | 'Created' | 'StatusChanged' | 'PriorityAssigned' | 'StaffAssigned'
-  | 'StaffReassigned' | 'Commented' | 'MaintenanceLogged' | 'AttachmentAdded'
-  | 'SlaPaused' | 'SlaResumed' | 'SlaWarning' | 'SlaBreached'
-  | 'EscalationRequested' | 'Escalated' | 'IncidentDeclared' | 'Resolved'
-  | 'Approved' | 'Rejected' | 'Rated' | 'Reopened' | 'AutoClosed'
-  | 'ResolvedByEscalatedStaff' | 'TriageApproved';
+import type {
+  TicketStatusEnum,
+  TicketPriorityEnum,
+  TicketCategoryEnum,
+  TicketOriginEnum,
+  ImpactScopeEnum,
+  UrgencyLevelEnum,
+  EscalationReasonEnum,
+  SlaTimerStatusEnum,
+  ActorRoleEnum,
+  ActivityActionEnum,
+} from '../../../shared/enums/ticket.enum';
 
 export interface SlaTimerDTO {
   id: string;

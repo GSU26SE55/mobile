@@ -1,17 +1,6 @@
-export enum AccountStatusEnum {
-  PendingVerification = 0,
-  Active = 1,
-  Locked = 2,
-  Inactive = 3,
-  Suspended = 4,
-  Banned = 5,
-}
+export { AccountStatusEnum, AvatarSourceEnum } from '../enums/profile.enum';
 
-export enum AvatarSourceEnum {
-  None = 0,
-  Uploaded = 1,
-  Google = 2,
-}
+import type { AccountStatusEnum, AvatarSourceEnum } from '../enums/profile.enum';
 
 export interface StaffSkillDto {
   skillCode: string;

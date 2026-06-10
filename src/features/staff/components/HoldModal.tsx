@@ -2,12 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Colors, Shadow } from '../../../lib/theme';
-import { HoldReasonEnum } from '../types/staff.types';
+import { HoldReasonEnum } from '../enums/staff.enum';
 
 const HOLD_OPTIONS: { value: HoldReasonEnum; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { value: 'WAITING_CUSTOMER',        label: 'Chờ khách phản hồi',     icon: 'person-outline' },
-  { value: 'WAITING_PARTS',           label: 'Chờ linh kiện/phụ tùng', icon: 'construct-outline' },
-  { value: 'WAITING_ONSITE_SCHEDULE', label: 'Chờ lịch on-site',       icon: 'calendar-outline' },
+  { value: HoldReasonEnum.WaitingCustomer,       label: 'Chờ khách phản hồi',     icon: 'person-outline' },
+  { value: HoldReasonEnum.WaitingParts,          label: 'Chờ linh kiện/phụ tùng', icon: 'construct-outline' },
+  { value: HoldReasonEnum.WaitingOnsiteSchedule, label: 'Chờ lịch on-site',       icon: 'calendar-outline' },
 ];
 
 interface Props {

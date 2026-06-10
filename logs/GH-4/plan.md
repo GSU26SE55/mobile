@@ -68,11 +68,22 @@ QUERY_KEY.profile.me      = [...KEY.profile, 'me']
 QUERY_KEY.sessions.list   = [...KEY.sessions, 'list']
 ```
 
+### Bước 4 — Enums
+
+> **Note (thêm sau khi SHIPPED):** Plan gốc ghi `AvatarSourceEnum`, `AccountStatusEnum`, `RefreshTokenStatus` vào cột Shape key của types file — codebase thực tế tách ra file enum riêng.
+
+| Enum | File |
+|------|------|
+| `AccountStatusEnum`, `AvatarSourceEnum` | `src/features/profile/enums/profile.enum.ts` |
+| `RefreshTokenStatus` | `src/features/account/enums/account.enum.ts` |
+
+`types/*.ts` chỉ re-export từ `enums/` — không define inline.
+
 ### Bước 4 — Types
 | File | Action | Shape key |
 |------|--------|-----------|
-| `src/features/profile/types/profile.types.ts` | create | AccountDto, AccountProfileDto, StaffProfileDto, UpdateProfilePayload, AvatarSourceEnum, AccountStatusEnum |
-| `src/features/account/types/account.types.ts` | create | ChangePasswordPayload, ChangeEmailPayload, ConfirmEmailChangePayload, PhoneOtpPayload, TwoFAEnableResponse, SessionDto, RefreshTokenStatus, RevokeAllPayload |
+| `src/features/profile/types/profile.types.ts` | create | AccountDto, AccountProfileDto, StaffProfileDto, UpdateProfilePayload — enums re-export từ `profile.enum.ts` |
+| `src/features/account/types/account.types.ts` | create | ChangePasswordPayload, ChangeEmailPayload, ConfirmEmailChangePayload, PhoneOtpPayload, TwoFAEnableResponse, SessionDto, RevokeAllPayload — enums re-export từ `account.enum.ts` |
 
 **ChangePasswordPayload** — Swagger có đủ 3 fields:
 ```ts
@@ -295,6 +306,17 @@ interface FileUploadResponse {
 | File | Action | Ghi chú |
 |------|--------|---------|
 | `app/(customer)/(tabs)/_layout.tsx` | create | Tabs navigator với `dashboard` + `profile` — `(customer)/_layout.tsx` là Stack, Tabs được quản lý ở sub-group `(tabs)/` |
+
+## Enums
+
+> **Note (thêm sau khi SHIPPED):** Plan gốc ghi enums inline trong types file — codebase thực tế tách ra file enum riêng với `as const` pattern.
+
+| Enum | File |
+|------|------|
+| `AccountStatusEnum`, `AvatarSourceEnum` | `src/features/profile/enums/profile.enum.ts` |
+| `RefreshTokenStatus` | `src/features/account/enums/account.enum.ts` |
+
+`types/*.ts` chỉ re-export từ `enums/` — không define inline.
 
 ## Endpoints
 

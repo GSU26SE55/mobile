@@ -57,41 +57,19 @@ danh sách ticket, tạo mới, xem chi tiết + activity timeline, và các act
 
 ---
 
+## Enums
+
+> **Note (thêm sau khi SHIPPED):** Plan gốc dùng plain type union (`export type TicketStatusEnum = 'New' | ...`) — codebase thực tế đã đổi sang `as const` object pattern và tách ra file riêng.
+
+| Enum | File |
+|------|------|
+| `TicketStatusEnum`, `TicketPriorityEnum`, `TicketCategoryEnum`, `TicketOriginEnum` | `shared/enums/ticket.enum.ts` |
+| `ImpactScopeEnum`, `UrgencyLevelEnum`, `EscalationReasonEnum`, `SlaTimerStatusEnum` | `shared/enums/ticket.enum.ts` |
+| `ActorRoleEnum`, `ActivityActionEnum` | `shared/enums/ticket.enum.ts` |
+
+`ticket.types.ts` chỉ re-export từ `shared/enums/ticket.enum` — không define inline.
+
 ## Types
-
-```ts
-// --- Enums ---
-export type TicketStatusEnum =
-  | 'New' | 'Open' | 'Approved' | 'Assigned' | 'InProgress'
-  | 'WaitingCustomer' | 'WaitingParts' | 'WaitingOnsiteSchedule'
-  | 'Resolved' | 'Escalated' | 'ClosedPendingRate' | 'Closed'
-  | 'ClosedRejected' | 'Incident';
-
-export type TicketPriorityEnum = 'P1Critical' | 'P2High' | 'P3Normal';
-
-export type TicketCategoryEnum =
-  | 'Charging' | 'Overheat' | 'NoPower' | 'Performance' | 'Repair' | 'Other';
-
-export type TicketOriginEnum = 'ManualByCustomer' | 'AutoFromAlert' | 'CreatedByStaff';
-
-export type ImpactScopeEnum = 'SingleAsset' | 'Site' | 'MultiSite';
-
-export type UrgencyLevelEnum = 'Low' | 'Medium' | 'High';
-
-export type EscalationReasonEnum =
-  | 'SkillGap' | 'PartsRequired' | 'SafetyConcern' | 'SlaBreach' | 'CustomerComplaint';
-
-export type SlaTimerStatusEnum = 'Running' | 'Paused' | 'Met' | 'Breached';
-
-export type ActorRoleEnum = 'Admin' | 'Manager' | 'Staff' | 'Customer' | 'System';
-
-export type ActivityActionEnum =
-  | 'Created' | 'StatusChanged' | 'PriorityAssigned' | 'StaffAssigned'
-  | 'StaffReassigned' | 'Commented' | 'MaintenanceLogged' | 'AttachmentAdded'
-  | 'SlaPaused' | 'SlaResumed' | 'SlaWarning' | 'SlaBreached'
-  | 'EscalationRequested' | 'Escalated' | 'IncidentDeclared' | 'Resolved'
-  | 'Approved' | 'Rejected' | 'Rated' | 'Reopened' | 'AutoClosed'
-  | 'ResolvedByEscalatedStaff' | 'TriageApproved';
 
 // --- DTOs ---
 export interface SlaTimerDTO {

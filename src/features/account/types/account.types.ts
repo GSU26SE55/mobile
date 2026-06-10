@@ -1,10 +1,6 @@
-export enum RefreshTokenStatus {
-  Active = 1,
-  Used = 2,
-  Revoked = 3,
-  Expired = 4,
-  Compromised = 5,
-}
+export { RefreshTokenStatus } from '../enums/account.enum';
+
+import type { RefreshTokenStatus } from '../enums/account.enum';
 
 export interface ChangePasswordPayload {
   currentPassword: string;
@@ -43,7 +39,6 @@ export interface SessionDto {
   isCurrent: boolean;
 }
 
-// currentRefreshToken là optional — gửi kèm khi exceptCurrent = true
 export interface RevokeAllPayload {
   exceptCurrent: boolean;
   currentRefreshToken?: string;
