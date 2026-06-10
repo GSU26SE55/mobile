@@ -28,7 +28,7 @@ import { useReopenTicket } from '../../../src/features/tickets/hooks/useReopenTi
 import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/useUploadCommentAttachment';
 import { useTicketDetail } from '../../../src/features/tickets/hooks/useTicketDetail';
 import { AttachmentForm, commentSchema } from '../../../src/features/tickets/schemas/comment.schema';
-import { RatePayload, ReopenPayload, TicketDetailDTO, TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
+import { RatePayload, ReopenPayload, TicketDetailDTO, TicketStatusEnum, TicketAttachmentDTO } from '../../../src/features/tickets/types/ticket.types';
 import { BadgeColors, Colors, Shadow, ShadowPrimary } from '../../../src/lib/theme';
 import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
 import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
@@ -488,27 +488,63 @@ export default function TicketDetailScreen() {
             <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
           </Pressable>
 
+          {/* Assignment info row */}
+          {(() => {
+            const assignActivity = ticket.activities?.find((a) => a.action === 'StaffAssigned' || a.action === 'StaffReassigned');
+            const staffName = ticket.assignedStaffName ?? ticket.assignedStaffId;
+            if (!staffName && !assignActivity) return null;
+            return (
+              <View style={[styles.assignCard, Shadow]}>
+                <View style={styles.assignRow}>
+                  <View style={styles.assignIconWrap}>
+                    <Ionicons name="person-outline" size={16} color={Colors.primary} />
+                  </View>
+                  <View style={styles.assignInfo}>
+                    <Text style={styles.assignLabel}>Kỹ thuật viên</Text>
+                    <Text style={styles.assignValue}>
+                      {ticket.assignedStaffName ?? (ticket.assignedStaffId ? 'Đã phân công' : 'Chưa phân công')}
+                    </Text>
+                  </View>
+                </View>
+                {assignActivity && (
+                  <View style={[styles.assignRow, { marginTop: 10 }]}>
+                    <View style={styles.assignIconWrap}>
+                      <Ionicons name="person-add-outline" size={16} color={Colors.textMute} />
+                    </View>
+                    <View style={styles.assignInfo}>
+                      <Text style={styles.assignLabel}>Phân công bởi</Text>
+                      <Text style={styles.assignValue}>
+                        {assignActivity.actorDisplayName ?? assignActivity.actorRole}
+                        <Text style={styles.assignTime}>
+                          {' · '}{new Date(assignActivity.createdAt).toLocaleString('vi-VN')}
+                        </Text>
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            );
+          })()}
+
           {/* Descriptions & resolution info */}
           {ticket.description ? (
             <View style={[styles.descCard, Shadow]}>
               <Text style={styles.sectionH}>Mô tả ban đầu</Text>
               <Text style={styles.descText}>{ticket.description}</Text>
 
-              <Text style={[styles.sectionH, { marginTop: 14, marginBottom: 8 }]}>Ảnh đính kèm</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.attachRow}>
-                <View style={styles.attachCard}>
-                  <Image
-                    source={{ uri: 'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=200' }}
-                    style={styles.attachImage}
-                  />
-                </View>
-                <View style={styles.attachCard}>
-                  <Image
-                    source={{ uri: 'https://images.unsplash.com/photo-1620038650424-9f3b4b9f6b0f?w=200' }}
-                    style={styles.attachImage}
-                  />
-                </View>
-              </ScrollView>
+              {/* Attachments — only shown when there are real files from API */}
+              {(ticket.attachments?.length ?? 0) > 0 && (
+                <>
+                  <Text style={[styles.sectionH, { marginTop: 14, marginBottom: 8 }]}>Ảnh đính kèm</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.attachRow}>
+                    {(ticket.attachments as TicketAttachmentDTO[]).map((att) => (
+                      <View key={att.id} style={styles.attachCard}>
+                        <Image source={{ uri: att.fileUrl }} style={styles.attachImage} />
+                      </View>
+                    ))}
+                  </ScrollView>
+                </>
+              )}
             </View>
           ) : null}
 
@@ -854,6 +890,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
+  assignCard:     { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 16, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
+  assignRow:      { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  assignIconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: '#FFF0EB', alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  assignInfo:     { flex: 1 },
+  assignLabel:    { fontSize: 11, color: Colors.textMute, fontWeight: '500', marginBottom: 2 },
+  assignValue:    { fontSize: 13, color: Colors.text, fontWeight: '700' },
+  assignTime:     { fontSize: 11, color: Colors.textMute, fontWeight: '400' },
   descCard:       { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, gap: 10, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
   sectionH:       { fontSize: 14, fontWeight: '800', color: Colors.text },
   descText:       { fontSize: 13, color: Colors.text2, lineHeight: 22, fontWeight: '500' },

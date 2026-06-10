@@ -278,13 +278,13 @@ export default function StaffTicketDetailScreen() {
             {(ticket.maintenanceLogs ?? []).length === 0 ? (
               <Text style={styles.emptyTab}>Chưa có nhật ký bảo trì</Text>
             ) : (
-              (ticket.maintenanceLogs ?? []).map((log: any) => (
-                <View key={log.id} style={[styles.logCard, Shadow]}>
-                  <Text style={styles.logDesc}>{log.description}</Text>
-                  {log.actionTaken && <Text style={styles.logMeta}>Hành động: {log.actionTaken}</Text>}
-                  {log.partsUsed && <Text style={styles.logMeta}>Phụ tùng: {log.partsUsed}</Text>}
-                  {log.durationMinutes && <Text style={styles.logMeta}>Thời gian: {log.durationMinutes} phút</Text>}
-                  <Text style={styles.logTime}>{new Date(log.createdAt).toLocaleString('vi-VN')}</Text>
+              (ticket.maintenanceLogs ?? []).map((log: any, idx: number) => (
+                <View key={log.id ?? idx} style={[styles.logCard, Shadow]}>
+                  {!!log.description && <Text style={styles.logDesc}>{log.description}</Text>}
+                  {!!log.actionTaken && <Text style={styles.logMeta}>Hành động: {log.actionTaken}</Text>}
+                  {!!log.partsUsed && <Text style={styles.logMeta}>Phụ tùng: {log.partsUsed}</Text>}
+                  {log.durationMinutes != null && <Text style={styles.logMeta}>Thời gian: {log.durationMinutes} phút</Text>}
+                  {!!log.createdAt && <Text style={styles.logTime}>{new Date(log.createdAt).toLocaleString('vi-VN')}</Text>}
                 </View>
               ))
             )}

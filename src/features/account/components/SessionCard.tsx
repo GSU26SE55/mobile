@@ -13,7 +13,7 @@ export function SessionCard({ session, onRevoke, isRevoking }: Props) {
   const issuedAt = new Date(session.issuedAt).toLocaleString('vi-VN');
   const device = session.userAgent
     ? session.userAgent.slice(0, 50) + (session.userAgent.length > 50 ? '...' : '')
-    : 'Thiet bi khong xac dinh';
+    : 'Thiết bị không xác định';
 
   return (
     <View style={[styles.card, session.isCurrent && styles.currentCard, Shadow]}>
@@ -22,12 +22,12 @@ export function SessionCard({ session, onRevoke, isRevoking }: Props) {
           <Text style={styles.device} numberOfLines={1}>{device}</Text>
           {session.isCurrent && (
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>Thiet bi nay</Text>
+              <Text style={styles.badgeText}>Thiết bị này</Text>
             </View>
           )}
         </View>
         {session.ipAddress ? <Text style={styles.meta}>IP: {session.ipAddress}</Text> : null}
-        <Text style={styles.meta}>Dang nhap: {issuedAt}</Text>
+        <Text style={styles.meta}>Đăng nhập: {issuedAt}</Text>
       </View>
 
       {!session.isCurrent && (

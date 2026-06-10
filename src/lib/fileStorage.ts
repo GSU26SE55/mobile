@@ -33,4 +33,15 @@ export const fileStorageLib = {
       { headers: { 'Content-Type': 'multipart/form-data' } },
     );
   },
+
+  uploadTicketAttachment: (uri: string, name: string, type: string) => {
+    const form = new FormData();
+    form.append('file', { uri, name, type } as unknown as Blob);
+    form.append('purpose', '3'); // FilePurposeEnum.TicketAttachment
+    return axiosInstance.post<CommonResponse<FileUploadResponse>>(
+      ENDPOINTS.FILES.UPLOAD,
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+  },
 };
