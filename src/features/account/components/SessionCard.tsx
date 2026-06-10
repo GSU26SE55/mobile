@@ -1,5 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Colors, Shadow } from '../../../lib/theme';
 import { SessionDto } from '../types/account.types';
 
 interface Props {
@@ -11,36 +12,30 @@ interface Props {
 export function SessionCard({ session, onRevoke, isRevoking }: Props) {
   const issuedAt = new Date(session.issuedAt).toLocaleString('vi-VN');
   const device = session.userAgent
-    ? session.userAgent.slice(0, 50) + (session.userAgent.length > 50 ? '…' : '')
-    : 'Thiết bị không xác định';
+    ? session.userAgent.slice(0, 50) + (session.userAgent.length > 50 ? '...' : '')
+    : 'Thiet bi khong xac dinh';
 
   return (
-    <View style={[styles.card, session.isCurrent && styles.currentCard]}>
+    <View style={[styles.card, session.isCurrent && styles.currentCard, Shadow]}>
       <View style={styles.info}>
         <View style={styles.row}>
           <Text style={styles.device} numberOfLines={1}>{device}</Text>
           {session.isCurrent && (
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>Thiết bị này</Text>
+              <Text style={styles.badgeText}>Thiet bi nay</Text>
             </View>
           )}
         </View>
-        {session.ipAddress ? (
-          <Text style={styles.meta}>IP: {session.ipAddress}</Text>
-        ) : null}
-        <Text style={styles.meta}>Đăng nhập: {issuedAt}</Text>
+        {session.ipAddress ? <Text style={styles.meta}>IP: {session.ipAddress}</Text> : null}
+        <Text style={styles.meta}>Dang nhap: {issuedAt}</Text>
       </View>
 
       {!session.isCurrent && (
-        <Pressable
-          style={styles.revokeBtn}
-          onPress={() => onRevoke(session.id)}
-          disabled={isRevoking}
-        >
+        <Pressable style={styles.revokeBtn} onPress={() => onRevoke(session.id)} disabled={isRevoking}>
           {isRevoking ? (
-            <ActivityIndicator size="small" color="#ef4444" />
+            <ActivityIndicator size="small" color={Colors.danger} />
           ) : (
-            <Text style={styles.revokeText}>Thu hồi</Text>
+            <Text style={styles.revokeText}>Thu Hồi</Text>
           )}
         </Pressable>
       )}
@@ -49,25 +44,24 @@ export function SessionCard({ session, onRevoke, isRevoking }: Props) {
 }
 
 const styles = StyleSheet.create({
-  card:        {
+  card: {
     flexDirection: 'row', alignItems: 'center',
-    padding: 14, backgroundColor: '#fff',
-    borderRadius: 10, marginBottom: 8,
-    borderWidth: 1, borderColor: '#e5e7eb',
+    padding: 14, backgroundColor: Colors.card,
+    borderRadius: 16, marginBottom: 8,
   },
-  currentCard: { borderColor: '#6366f1', backgroundColor: '#eef2ff' },
-  info:        { flex: 1, gap: 4 },
-  row:         { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  device:      { flex: 1, fontSize: 14, color: '#111827', fontWeight: '500' },
-  badge:       {
-    backgroundColor: '#6366f1', borderRadius: 4,
-    paddingHorizontal: 6, paddingVertical: 2,
+  currentCard: { borderWidth: 1.5, borderColor: Colors.primary },
+  info: { flex: 1, gap: 4 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  device: { flex: 1, fontSize: 13, color: Colors.text, fontWeight: '600' },
+  badge: {
+    backgroundColor: Colors.primary, borderRadius: 6,
+    paddingHorizontal: 7, paddingVertical: 2,
   },
-  badgeText:   { color: '#fff', fontSize: 11, fontWeight: '600' },
-  meta:        { fontSize: 12, color: '#6b7280' },
-  revokeBtn:   {
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  meta: { fontSize: 11, color: Colors.textMute },
+  revokeBtn: {
     paddingHorizontal: 12, paddingVertical: 6,
-    borderWidth: 1, borderColor: '#ef4444', borderRadius: 6,
+    borderWidth: 1.5, borderColor: Colors.danger, borderRadius: 10,
   },
-  revokeText:  { color: '#ef4444', fontSize: 13, fontWeight: '500' },
+  revokeText: { color: Colors.danger, fontSize: 12, fontWeight: '600' },
 });

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Colors, ShadowPrimary } from '../../../lib/theme';
 import { changePasswordSchema, ChangePasswordInput } from '../schemas/changePassword.schema';
 
 interface Props {
@@ -32,45 +33,38 @@ export function ChangePasswordForm({ onSubmit, isLoading, fieldErrors }: Props) 
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Mật khẩu hiện tại</Text>
+      <Text style={styles.label}>Mat khau hien tai</Text>
       <TextInput
         style={[styles.input, getError('currentPassword') && styles.inputError]}
         value={currentPassword}
         onChangeText={setCurrentPassword}
         secureTextEntry
+        placeholderTextColor={Colors.textFaint}
       />
-      {getError('currentPassword') ? (
-        <Text style={styles.error}>{getError('currentPassword')}</Text>
-      ) : null}
+      {getError('currentPassword') ? <Text style={styles.error}>{getError('currentPassword')}</Text> : null}
 
-      <Text style={styles.label}>Mật khẩu mới</Text>
+      <Text style={styles.label}>Mat khau moi</Text>
       <TextInput
         style={[styles.input, getError('newPassword') && styles.inputError]}
         value={newPassword}
         onChangeText={setNewPassword}
         secureTextEntry
+        placeholderTextColor={Colors.textFaint}
       />
-      {getError('newPassword') ? (
-        <Text style={styles.error}>{getError('newPassword')}</Text>
-      ) : null}
+      {getError('newPassword') ? <Text style={styles.error}>{getError('newPassword')}</Text> : null}
 
-      <Text style={styles.label}>Xác nhận mật khẩu mới</Text>
+      <Text style={styles.label}>Xac nhan mat khau moi</Text>
       <TextInput
         style={[styles.input, getError('confirmPassword') && styles.inputError]}
         value={confirmPassword}
         onChangeText={setConfirmPassword}
         secureTextEntry
+        placeholderTextColor={Colors.textFaint}
       />
-      {getError('confirmPassword') ? (
-        <Text style={styles.error}>{getError('confirmPassword')}</Text>
-      ) : null}
+      {getError('confirmPassword') ? <Text style={styles.error}>{getError('confirmPassword')}</Text> : null}
 
-      <Pressable style={styles.button} onPress={handleSubmit} disabled={isLoading}>
-        {isLoading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Đổi mật khẩu</Text>
-        )}
+      <Pressable style={[styles.button, isLoading && styles.btnDisabled]} onPress={handleSubmit} disabled={isLoading}>
+        {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Doi mat khau</Text>}
       </Pressable>
     </View>
   );
@@ -78,16 +72,18 @@ export function ChangePasswordForm({ onSubmit, isLoading, fieldErrors }: Props) 
 
 const styles = StyleSheet.create({
   container:  { gap: 4 },
-  label:      { fontSize: 13, color: '#6b7280', marginBottom: 4, marginTop: 12 },
+  label:      { fontSize: 12, fontWeight: '500', color: Colors.textMute, marginBottom: 6, marginTop: 14 },
   input:      {
-    borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 10, fontSize: 15,
+    backgroundColor: Colors.card2, borderWidth: 1, borderColor: 'transparent',
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: Colors.text,
   },
-  inputError: { borderColor: '#ef4444' },
-  error:      { color: '#ef4444', fontSize: 12, marginTop: 4 },
+  inputError: { borderColor: Colors.danger },
+  error:      { color: Colors.danger, fontSize: 12, marginTop: 4 },
   button:     {
-    marginTop: 24, backgroundColor: '#6366f1',
-    borderRadius: 8, paddingVertical: 13, alignItems: 'center',
+    marginTop: 24, backgroundColor: Colors.primary,
+    borderRadius: 14, paddingVertical: 13, alignItems: 'center',
+    ...ShadowPrimary,
   },
-  buttonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  btnDisabled:{ opacity: 0.45 },
+  buttonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });

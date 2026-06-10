@@ -1,5 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Colors, Shadow, ShadowPrimary } from '../../../lib/theme';
 import { rateTicketSchema } from '../schemas/rateTicket.schema';
 import { RatePayload } from '../types/ticket.types';
 
@@ -30,38 +32,49 @@ export function RateModal({ visible, isLoading, onClose, onSubmit }: Props) {
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
-          <Text style={styles.title}>Đánh giá dịch vụ</Text>
+          <View style={styles.handle} />
+          <View style={styles.headerRow}>
+            <Text style={styles.title}>Danh gia xu ly</Text>
+            <Pressable style={styles.closeBtn} onPress={onClose}>
+              <Ionicons name="close" size={16} color={Colors.text2} />
+            </Pressable>
+          </View>
 
           <View style={styles.stars}>
             {[1, 2, 3, 4, 5].map((s) => (
               <Pressable key={s} onPress={() => setRating(s)}>
-                <Text style={[styles.star, s <= rating && styles.starActive]}>★</Text>
+                <Ionicons
+                  name={s <= rating ? 'star' : 'star-outline'}
+                  size={40}
+                  color={s <= rating ? Colors.primary : Colors.card3}
+                />
               </Pressable>
             ))}
           </View>
           {ratingError ? <Text style={styles.error}>{ratingError}</Text> : null}
 
+          <Text style={styles.inputLabel}>Nhan xet (khong bat buoc)</Text>
           <TextInput
             style={styles.input}
             value={comment}
             onChangeText={setComment}
-            placeholder="Nhận xét (tuỳ chọn)"
+            placeholder="KTV xu ly nhanh chong..."
+            placeholderTextColor={Colors.textFaint}
             multiline
-            numberOfLines={3}
+            numberOfLines={4}
             maxLength={500}
           />
 
-          <View style={styles.actions}>
-            <Pressable style={styles.cancel} onPress={onClose}>
-              <Text style={styles.cancelText}>Huỷ</Text>
-            </Pressable>
-            <Pressable style={[styles.submit, isLoading && styles.btnDisabled]} onPress={handleSubmit} disabled={isLoading}>
-              {isLoading
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={styles.submitText}>Gửi đánh giá</Text>
-              }
-            </Pressable>
-          </View>
+          <Pressable
+            style={[styles.submitBtn, (!rating || isLoading) && styles.btnDisabled]}
+            onPress={handleSubmit}
+            disabled={!rating || isLoading}
+          >
+            {isLoading
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <Text style={styles.submitText}>Gui danh gia & dong</Text>
+            }
+          </Pressable>
         </View>
       </View>
     </Modal>
@@ -69,18 +82,39 @@ export function RateModal({ visible, isLoading, onClose, onSubmit }: Props) {
 }
 
 const styles = StyleSheet.create({
-  overlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet:      { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, gap: 16 },
-  title:      { fontSize: 18, fontWeight: '700', textAlign: 'center', color: '#111' },
-  stars:      { flexDirection: 'row', justifyContent: 'center', gap: 8 },
-  star:       { fontSize: 36, color: '#E0E0E0' },
-  starActive: { color: '#FBC02D' },
-  error:      { color: '#E53935', fontSize: 12, textAlign: 'center' },
-  input:      { borderWidth: 1, borderColor: '#DDD', borderRadius: 8, padding: 12, fontSize: 14, textAlignVertical: 'top', minHeight: 80 },
-  actions:    { flexDirection: 'row', gap: 12 },
-  cancel:     { flex: 1, padding: 13, borderRadius: 10, borderWidth: 1, borderColor: '#DDD', alignItems: 'center' },
-  cancelText: { fontSize: 14, color: '#555' },
-  submit:     { flex: 1, padding: 13, borderRadius: 10, backgroundColor: '#1976D2', alignItems: 'center' },
-  btnDisabled:{ opacity: 0.6 },
-  submitText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  overlay:    { flex: 1, backgroundColor: Colors.overlay, justifyContent: 'flex-end' },
+  sheet:      {
+    backgroundColor: Colors.card,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingHorizontal: 18, paddingBottom: 22,
+    gap: 14,
+  },
+  handle:     {
+    width: 36, height: 4, borderRadius: 2,
+    backgroundColor: Colors.card3, alignSelf: 'center',
+    marginTop: 8, marginBottom: 4,
+  },
+  headerRow:  { flexDirection: 'row', alignItems: 'center' },
+  title:      { flex: 1, fontSize: 17, fontWeight: '700', color: Colors.text },
+  closeBtn:   {
+    width: 36, height: 36, borderRadius: 11,
+    backgroundColor: Colors.card, ...Shadow,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  stars:      { flexDirection: 'row', justifyContent: 'center', gap: 10 },
+  error:      { color: Colors.danger, fontSize: 12, textAlign: 'center' },
+  inputLabel: { fontSize: 12, fontWeight: '500', color: Colors.textMute },
+  input:      {
+    backgroundColor: Colors.card2,
+    borderRadius: 12, padding: 13,
+    fontSize: 14, color: Colors.text,
+    textAlignVertical: 'top', minHeight: 80,
+  },
+  submitBtn:  {
+    backgroundColor: Colors.primary, borderRadius: 14,
+    padding: 13, alignItems: 'center',
+    ...ShadowPrimary,
+  },
+  btnDisabled:{ opacity: 0.45 },
+  submitText: { fontSize: 14, fontWeight: '600', color: '#fff' },
 });

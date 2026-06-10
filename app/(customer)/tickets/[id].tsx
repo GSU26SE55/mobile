@@ -1,11 +1,9 @@
-import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { HttpError } from '../../../src/lib/errors';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,6 +13,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useLocalSearchParams, router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { HttpError } from '../../../src/lib/errors';
 import { ActivityTimeline } from '../../../src/features/tickets/components/ActivityTimeline';
 import { RateModal } from '../../../src/features/tickets/components/RateModal';
 import { ReopenModal } from '../../../src/features/tickets/components/ReopenModal';
@@ -26,64 +28,247 @@ import { useReopenTicket } from '../../../src/features/tickets/hooks/useReopenTi
 import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/useUploadCommentAttachment';
 import { useTicketDetail } from '../../../src/features/tickets/hooks/useTicketDetail';
 import { AttachmentForm, commentSchema } from '../../../src/features/tickets/schemas/comment.schema';
-import {
-  RatePayload,
-  ReopenPayload,
-  TicketDetailDTO,
-} from '../../../src/features/tickets/types/ticket.types';
+import { RatePayload, ReopenPayload, TicketDetailDTO, TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
+import { BadgeColors, Colors, Shadow, ShadowPrimary } from '../../../src/lib/theme';
+import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
+import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
 
-const PRIORITY_LABEL: Record<string, string> = {
-  P1Critical: 'P1 · Khẩn cấp',
-  P2High:     'P2 · Cao',
-  P3Normal:   'P3 · Thường',
+const NOW = Date.now();
+
+const MOCK_TICKET_DETAILS: Record<string, TicketDetailDTO> = {
+  'mock-1': {
+    id: 'mock-1', code: 'TK-0042', batteryAssetId: 'ba-001', customerId: 'cust-1',
+    assignedStaffId: 'staff-1', title: 'Overheat - Battery BR-001 nhiệt độ vượt ngưỡng',
+    category: 'Overheat', priority: 'P1Critical', impactScope: 'SingleAsset', urgencyLevel: 'High',
+    status: 'InProgress', origin: 'AutoFromAlert', reopenCount: 0, isIncident: false,
+    createdAt: new Date(NOW - 2 * 3600_000).toISOString(),
+    updatedAt: new Date(NOW - 30 * 60_000).toISOString(),
+    slaTimer: {
+      id: 'sla-1', priority: 'P1Critical',
+      startedAt: new Date(NOW - 2 * 3600_000).toISOString(),
+      dueAt: new Date(NOW + 2 * 3600_000).toISOString(),
+      originalDueAt: new Date(NOW + 2 * 3600_000).toISOString(),
+      totalPausedMinutes: 0, warningSentAt: null, breachAt: null,
+      status: 'Running', remainingPercent: 50,
+    },
+    description: 'Hệ thống phát hiện nhiệt độ pin vượt ngưỡng 55°C lúc 09:15. Cần xử lý gấp để tránh nguy cơ an toàn.',
+    resolutionSummary: null, resolvedAt: null, resolvedByStaffId: null,
+    approvedAt: null, approvedByManagerId: null, rejectionReason: null,
+    closedAt: null, rating: null, ratingComment: null, ratedAt: null,
+    escalatedAt: null, escalationReason: null, originAlertId: 'alert-001',
+    activities: [
+      { id: 'a1', ticketId: 'mock-1', actorUserId: null, actorRole: 'System', actorDisplayName: 'Hệ thống', action: 'Created', oldValue: null, newValue: 'New', reason: 'Tự động từ cảnh báo bất thường', createdAt: new Date(NOW - 2 * 3600_000).toISOString() },
+      { id: 'a2', ticketId: 'mock-1', actorUserId: 'mgr-1', actorRole: 'Manager', actorDisplayName: 'Nguyễn Minh Quản', action: 'StaffAssigned', oldValue: null, newValue: 'Trần Văn Kỹ thuật (Tier 2)', reason: null, createdAt: new Date(NOW - 90 * 60_000).toISOString() },
+      { id: 'a3', ticketId: 'mock-1', actorUserId: 'staff-1', actorRole: 'Staff', actorDisplayName: 'Trần Văn Kỹ thuật', action: 'StatusChanged', oldValue: 'Assigned', newValue: 'InProgress', reason: null, createdAt: new Date(NOW - 60 * 60_000).toISOString() },
+    ],
+    comments: [
+      { id: 'c1', ticketId: 'mock-1', authorUserId: null, authorRole: 'System', authorDisplayName: 'Hệ thống', body: 'Ticket được tạo tự động từ cảnh báo nhiệt độ bất thường (55.3°C).', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 2 * 3600_000).toISOString() },
+      { id: 'c2', ticketId: 'mock-1', authorUserId: 'staff-1', authorRole: 'Staff', authorDisplayName: 'Trần Văn Kỹ thuật', body: 'Đã tiếp nhận ticket. Đang kiểm tra hệ thống làm mát pin BR-001. Sẽ cập nhật trong 30 phút.', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 55 * 60_000).toISOString() },
+      { id: 'c3', ticketId: 'mock-1', authorUserId: 'cust-1', authorRole: 'Customer', authorDisplayName: 'Bạn', body: 'Cảm ơn. Nhiệt độ đã giảm chưa? Thiết bị có an toàn không?', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 40 * 60_000).toISOString() },
+      { id: 'c4', ticketId: 'mock-1', authorUserId: 'staff-1', authorRole: 'Staff', authorDisplayName: 'Trần Văn Kỹ thuật', body: 'Nhiệt độ đã giảm xuống 48°C sau khi tắt tải. Đang theo dõi tiếp. Thiết bị an toàn.', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 30 * 60_000).toISOString() },
+    ],
+    maintenanceLogs: [], attachments: [],
+  },
+  'mock-2': {
+    id: 'mock-2', code: 'TK-0038', batteryAssetId: 'ba-002', customerId: 'cust-1',
+    assignedStaffId: null, title: 'Sự cố sạc - Pin BR-002 không nhận sạc',
+    category: 'Charging', priority: 'P2High', impactScope: 'SingleAsset', urgencyLevel: 'Medium',
+    status: 'New', origin: 'ManualByCustomer', reopenCount: 0, isIncident: false,
+    createdAt: new Date(NOW - 5 * 3600_000).toISOString(), updatedAt: null, slaTimer: null,
+    description: 'Pin BR-002 không nhận sạc từ hệ thống tấm pin mặt trời. Đèn báo sạc không sáng dù trời nắng. Đã kiểm tra kết nối vật lý nhưng không có vấn đề rõ ràng.',
+    resolutionSummary: null, resolvedAt: null, resolvedByStaffId: null,
+    approvedAt: null, approvedByManagerId: null, rejectionReason: null,
+    closedAt: null, rating: null, ratingComment: null, ratedAt: null,
+    escalatedAt: null, escalationReason: null, originAlertId: null,
+    activities: [
+      { id: 'a10', ticketId: 'mock-2', actorUserId: 'cust-1', actorRole: 'Customer', actorDisplayName: 'Bạn', action: 'Created', oldValue: null, newValue: 'New', reason: null, createdAt: new Date(NOW - 5 * 3600_000).toISOString() },
+    ],
+    comments: [
+      { id: 'c10', ticketId: 'mock-2', authorUserId: 'cust-1', authorRole: 'Customer', authorDisplayName: 'Bạn', body: 'Pin BR-002 không nhận sạc từ sáng nay. Đèn báo không sáng. Nhờ kiểm tra giúp.', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 5 * 3600_000).toISOString() },
+    ],
+    maintenanceLogs: [], attachments: [],
+  },
+  'mock-3': {
+    id: 'mock-3', code: 'TK-0031', batteryAssetId: null, customerId: 'cust-1',
+    assignedStaffId: 'staff-2', title: 'Bảo trì định kỳ hệ thống pin mặt trời',
+    category: 'Repair', priority: 'P3Normal', impactScope: 'Site', urgencyLevel: 'Low',
+    status: 'Resolved', origin: 'ManualByCustomer', reopenCount: 0, isIncident: false,
+    createdAt: new Date(NOW - 3 * 86400_000).toISOString(),
+    updatedAt: new Date(NOW - 86400_000).toISOString(), slaTimer: null,
+    description: 'Yêu cầu bảo trì định kỳ 6 tháng. Kiểm tra điện trở nội tại, vệ sinh kết nối, cập nhật firmware BMS.',
+    resolutionSummary: 'Hoàn thành bảo trì định kỳ. Điện trở nội tại các cell bình thường. Đã vệ sinh kết nối và cập nhật BMS firmware v2.3.1.',
+    resolvedAt: new Date(NOW - 86400_000).toISOString(), resolvedByStaffId: 'staff-2',
+    approvedAt: new Date(NOW - 2.5 * 86400_000).toISOString(), approvedByManagerId: 'mgr-1',
+    rejectionReason: null, closedAt: null, rating: null, ratingComment: null, ratedAt: null,
+    escalatedAt: null, escalationReason: null, originAlertId: null,
+    activities: [
+      { id: 'a20', ticketId: 'mock-3', actorUserId: 'cust-1', actorRole: 'Customer', actorDisplayName: 'Bạn', action: 'Created', oldValue: null, newValue: 'New', reason: null, createdAt: new Date(NOW - 3 * 86400_000).toISOString() },
+      { id: 'a21', ticketId: 'mock-3', actorUserId: 'mgr-1', actorRole: 'Manager', actorDisplayName: 'Nguyễn Minh Quản', action: 'StaffAssigned', oldValue: null, newValue: 'Lê Thị Kỹ thuật (Tier 1)', reason: null, createdAt: new Date(NOW - 2.5 * 86400_000).toISOString() },
+      { id: 'a22', ticketId: 'mock-3', actorUserId: 'staff-2', actorRole: 'Staff', actorDisplayName: 'Lê Thị Kỹ thuật', action: 'StatusChanged', oldValue: 'Assigned', newValue: 'InProgress', reason: null, createdAt: new Date(NOW - 2 * 86400_000).toISOString() },
+      { id: 'a23', ticketId: 'mock-3', actorUserId: 'staff-2', actorRole: 'Staff', actorDisplayName: 'Lê Thị Kỹ thuật', action: 'Resolved', oldValue: 'InProgress', newValue: 'Resolved', reason: null, createdAt: new Date(NOW - 86400_000).toISOString() },
+    ],
+    comments: [
+      { id: 'c20', ticketId: 'mock-3', authorUserId: 'cust-1', authorRole: 'Customer', authorDisplayName: 'Bạn', body: 'Nhờ lên kế hoạch bảo trì định kỳ. Lần cuối bảo trì là 6 tháng trước.', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 3 * 86400_000).toISOString() },
+      { id: 'c21', ticketId: 'mock-3', authorUserId: 'staff-2', authorRole: 'Staff', authorDisplayName: 'Lê Thị Kỹ thuật', body: 'Đã tiếp nhận. Sẽ đến kiểm tra vào ngày mai từ 8h-12h. Vui lòng đảm bảo có người ở nhà.', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 2.8 * 86400_000).toISOString() },
+      { id: 'c22', ticketId: 'mock-3', authorUserId: 'staff-2', authorRole: 'Staff', authorDisplayName: 'Lê Thị Kỹ thuật', body: 'Đã hoàn thành bảo trì. Điện trở nội tại tốt, đã vệ sinh kết nối, cập nhật BMS v2.3.1. Hệ thống bình thường.', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 86400_000).toISOString() },
+    ],
+    maintenanceLogs: [], attachments: [],
+  },
+  'mock-4': {
+    id: 'mock-4', code: 'TK-0027', batteryAssetId: 'ba-001', customerId: 'cust-1',
+    assignedStaffId: 'staff-1', title: 'Mất nguồn - Hệ thống không xuất điện',
+    category: 'NoPower', priority: 'P1Critical', impactScope: 'Site', urgencyLevel: 'High',
+    status: 'Closed', origin: 'AutoFromAlert', reopenCount: 1, isIncident: true,
+    createdAt: new Date(NOW - 7 * 86400_000).toISOString(),
+    updatedAt: new Date(NOW - 5 * 86400_000).toISOString(), slaTimer: null,
+    description: 'Toàn bộ hệ thống ngừng xuất điện lúc 02:30 sáng. Inverter hiển thị lỗi E-006. Nguồn backup không hoạt động.',
+    resolutionSummary: 'Đã thay thế module inverter lỗi E-006. Kiểm tra toàn hệ thống, công suất xuất điện ổn định 4.2 kW.',
+    resolvedAt: new Date(NOW - 6 * 86400_000).toISOString(), resolvedByStaffId: 'staff-1',
+    approvedAt: new Date(NOW - 6.5 * 86400_000).toISOString(), approvedByManagerId: 'mgr-1',
+    rejectionReason: null, closedAt: new Date(NOW - 5 * 86400_000).toISOString(),
+    rating: 5, ratingComment: 'Xử lý rất nhanh và chuyên nghiệp. Cảm ơn team!',
+    ratedAt: new Date(NOW - 5 * 86400_000).toISOString(),
+    escalatedAt: new Date(NOW - 6.8 * 86400_000).toISOString(), escalationReason: 'SlaBreach',
+    originAlertId: 'alert-007',
+    activities: [
+      { id: 'a30', ticketId: 'mock-4', actorUserId: null, actorRole: 'System', actorDisplayName: 'Hệ thống', action: 'Created', oldValue: null, newValue: 'New', reason: 'Tự động từ cảnh báo mất điện', createdAt: new Date(NOW - 7 * 86400_000).toISOString() },
+      { id: 'a31', ticketId: 'mock-4', actorUserId: null, actorRole: 'System', actorDisplayName: 'Hệ thống', action: 'Escalated', oldValue: 'Assigned', newValue: 'Escalated', reason: 'SLA P1 sắp vi phạm', createdAt: new Date(NOW - 6.8 * 86400_000).toISOString() },
+      { id: 'a32', ticketId: 'mock-4', actorUserId: 'staff-1', actorRole: 'Staff', actorDisplayName: 'Trần Văn Kỹ thuật', action: 'Resolved', oldValue: 'InProgress', newValue: 'Resolved', reason: null, createdAt: new Date(NOW - 6 * 86400_000).toISOString() },
+      { id: 'a33', ticketId: 'mock-4', actorUserId: 'cust-1', actorRole: 'Customer', actorDisplayName: 'Bạn', action: 'Rated', oldValue: null, newValue: '5 sao', reason: null, createdAt: new Date(NOW - 5 * 86400_000).toISOString() },
+    ],
+    comments: [
+      { id: 'c30', ticketId: 'mock-4', authorUserId: null, authorRole: 'System', authorDisplayName: 'Hệ thống', body: 'Ticket P1 Critical tạo tự động. SLA: 4 giờ từ 02:30.', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 7 * 86400_000).toISOString() },
+      { id: 'c31', ticketId: 'mock-4', authorUserId: 'staff-1', authorRole: 'Staff', authorDisplayName: 'Trần Văn Kỹ thuật', body: 'Đã có mặt tại hiện trường. Xác nhận inverter lỗi E-006. Đang tiến hành thay thế module.', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 6.5 * 86400_000).toISOString() },
+      { id: 'c32', ticketId: 'mock-4', authorUserId: 'staff-1', authorRole: 'Staff', authorDisplayName: 'Trần Văn Kỹ thuật', body: 'Đã thay thế module và kiểm tra toàn hệ thống. Công suất xuất điện: 4.2 kW. Hoạt động bình thường.', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 6 * 86400_000).toISOString() },
+    ],
+    maintenanceLogs: [], attachments: [],
+  },
+};
+
+const PRIORITY_MAP: Record<string, { label: string; badge: keyof typeof BadgeColors }> = {
+  P1Critical: { label: 'P1 Critical', badge: 'p1' },
+  P2High:     { label: 'P2 High',     badge: 'p2' },
+  P3Normal:   { label: 'P3 Standard', badge: 'p3' },
 };
 
 const CATEGORY_LABEL: Record<string, string> = {
-  Charging:    'Sạc pin',
-  Overheat:    'Quá nhiệt',
-  NoPower:     'Mất điện',
+  Charging: 'Sạc pin',
+  Overheat: 'Quá nhiệt',
+  NoPower: 'Mất điện',
   Performance: 'Hiệu suất',
-  Repair:      'Sửa chữa',
-  Other:       'Khác',
+  Repair: 'Sửa chữa',
+  Other: 'Khác',
 };
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function PriorityBadge({ priority }: { priority: string }) {
+  const cfg = PRIORITY_MAP[priority] ?? { label: priority, badge: 'p3' as const };
+  const bc = BadgeColors[cfg.badge];
   return (
-    <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
+    <View style={[styles.badge, { backgroundColor: bc.bg }]}>
+      <View style={[styles.badgeDot, { backgroundColor: bc.text }]} />
+      <Text style={[styles.badgeLabel, { color: bc.text }]}>{cfg.label}</Text>
     </View>
   );
 }
 
-function CommentList({ ticket }: { ticket: TicketDetailDTO }) {
-  const comments = (ticket.comments ?? []).filter((c) => !c.isInternal);
-  if (comments.length === 0) {
-    return <Text style={styles.emptyText}>Chưa có bình luận nào.</Text>;
+function ChatBubble({ comment }: { comment: NonNullable<TicketDetailDTO['comments']>[number] }) {
+  const isCustomer = comment.authorRole === 'Customer';
+  const isSystem = comment.authorRole === 'System';
+
+  if (isSystem) {
+    return (
+      <View style={styles.systemMsg}>
+        <Text style={styles.systemMsgText}>{comment.body}</Text>
+      </View>
+    );
   }
+
   return (
-    <View style={styles.commentList}>
-      {comments.map((c) => (
-        <View key={c.id} style={styles.commentItem}>
-          <View style={styles.commentHeader}>
-            <Text style={styles.commentAuthor}>
-              {c.authorDisplayName ?? c.authorRole}
-            </Text>
-            <Text style={styles.commentTime}>
-              {new Date(c.createdAt).toLocaleString('vi-VN')}
-            </Text>
-          </View>
-          <Text style={styles.commentBody}>{c.body}</Text>
-        </View>
-      ))}
+    <View style={[styles.bubble, isCustomer ? styles.bubbleUser : styles.bubbleStaff, Shadow]}>
+      <View style={styles.bubbleHeader}>
+        <Text style={[styles.bubbleAuthor, isCustomer && { color: '#fff' }]}>
+          {comment.authorDisplayName ?? comment.authorRole}
+        </Text>
+        <Text style={[styles.bubbleTime, isCustomer && { color: 'rgba(255,255,255,0.7)' }]}>
+          {new Date(comment.createdAt).toLocaleString('vi-VN')}
+        </Text>
+      </View>
+      <Text style={[styles.bubbleBody, isCustomer && { color: '#fff' }]}>{comment.body}</Text>
+    </View>
+  );
+}
+
+const STEP_CONFIGS = [
+  { key: 'create', label: 'Tạo mới' },
+  { key: 'accept', label: 'Tiếp nhận' },
+  { key: 'assign', label: 'Phân công' },
+  { key: 'progress', label: 'Đang xử lý' },
+  { key: 'resolve', label: 'Đã xử lý' },
+  { key: 'close', label: 'Đã đóng' },
+];
+
+function HorizontalStepper({ status }: { status: TicketStatusEnum }) {
+  const getActiveStepIndex = (st: TicketStatusEnum) => {
+    if (['Closed', 'ClosedPendingRate', 'ClosedRejected', 'Incident'].includes(st)) return 5;
+    if (st === 'Resolved') return 4;
+    if (['InProgress', 'WaitingCustomer', 'WaitingParts', 'WaitingOnsiteSchedule'].includes(st)) return 3;
+    if (st === 'Assigned') return 2;
+    if (st === 'Approved') return 1;
+    return 0; // New or Open
+  };
+
+  const activeIndex = getActiveStepIndex(status);
+
+  return (
+    <View style={[styles.stepperContainer, Shadow]}>
+      <Text style={styles.stepperTitle}>Tiến độ xử lý</Text>
+      <View style={styles.stepperRow}>
+        {STEP_CONFIGS.map((step, idx) => {
+          const isActive = idx <= activeIndex;
+          const isCurrent = idx === activeIndex;
+          const isLast = idx === STEP_CONFIGS.length - 1;
+
+          return (
+            <View key={step.key} style={styles.stepItemCol}>
+              <View style={styles.circleRow}>
+                <View style={[styles.stepLine, idx === 0 && styles.invisibleLine, isActive && styles.stepLineActive]} />
+                <View
+                  style={[
+                    styles.stepCircle,
+                    isActive && styles.stepCircleActive,
+                    isCurrent && styles.stepCircleCurrent,
+                  ]}
+                >
+                  {isCurrent ? (
+                    <Ionicons name="play" size={10} color="#fff" />
+                  ) : isActive ? (
+                    <Ionicons name="checkmark" size={10} color="#fff" />
+                  ) : (
+                    <View style={styles.inactiveInnerDot} />
+                  )}
+                </View>
+                <View style={[styles.stepLine, isLast && styles.invisibleLine, idx < activeIndex && styles.stepLineActive]} />
+              </View>
+              <Text style={[styles.stepLabel, isActive && styles.stepLabelActive]} numberOfLines={1}>
+                {step.label}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
 export default function TicketDetailScreen() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: ticket, isLoading, isError, refetch } = useTicketDetail(id ?? '');
+  const { data: rawTicket, isLoading: apiLoading, isError, refetch } = useTicketDetail(id ?? '');
+  const isMockId = (id ?? '').startsWith('mock-');
+  const ticket = rawTicket ?? (isMockId ? MOCK_TICKET_DETAILS[id!] : undefined);
+  const isLoading = apiLoading && !ticket;
 
+  const { data: batteries = [] } = useMyBatteryAssets();
   const { mutateAsync: addComment,      isPending: isCommenting  } = useAddComment(id ?? '');
   const { mutateAsync: rateTicket,      isPending: isRating      } = useRateTicket(id ?? '');
   const { mutateAsync: reopenTicket,    isPending: isReopening   } = useReopenTicket(id ?? '');
@@ -94,28 +279,45 @@ export default function TicketDetailScreen() {
   const [attachments,     setAttachments]     = useState<AttachmentForm[]>([]);
   const [showRateModal,   setShowRateModal]   = useState(false);
   const [showReopenModal, setShowReopenModal] = useState(false);
+  const [activeTab,       setActiveTab]       = useState<'info' | 'chat'>('info');
+  const chatScrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 80);
+    }
+  }, [activeTab]);
 
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#1976D2" />
+        <ActivityIndicator color="#FF5E13" size="large" />
       </View>
     );
   }
 
-  if (isError || !ticket) {
+  if (isError && !ticket) {
     return (
       <View style={styles.center}>
-        <Text style={styles.errorText}>Không thể tải ticket.</Text>
-        <Pressable onPress={() => refetch()} style={styles.retryBtn}>
+        <Ionicons name="alert-circle-outline" size={32} color={Colors.textFaint} />
+        <Text style={styles.errorMsg}>Không thể tải ticket.</Text>
+        <Pressable onPress={() => refetch()} style={[styles.retryBtn, ShadowPrimary]}>
           <Text style={styles.retryText}>Thử lại</Text>
         </Pressable>
       </View>
     );
   }
 
+  if (!ticket) return null;
+
   const canRate   = ticket.status === 'ClosedPendingRate';
-  const canReopen = ticket.status === 'ClosedPendingRate';
+  const isResolved = ticket.status === 'Resolved';
+  const isClosed  = ['Closed', 'ClosedRejected'].includes(ticket.status);
+  const isWaiting = ticket.status === 'WaitingCustomer';
+
+  const comments = (ticket.comments ?? []).filter((c) => !c.isInternal);
+
+  const battery = batteries.find((b: BatteryAssetDto) => b.id === ticket.batteryAssetId);
 
   // TicketAttachment whitelist: .jpg .jpeg .png .pdf .doc .docx
   const ALLOWED_MIME = ['image/jpeg', 'image/png', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
@@ -152,6 +354,7 @@ export default function TicketDetailScreen() {
   };
 
   const handleSendComment = async () => {
+    if (isMockId) { Alert.alert('Demo', 'Chức năng này chỉ khả dụng với ticket thực.'); return; }
     setCommentError('');
     const result = commentSchema.safeParse({ body: commentText, attachments });
     if (!result.success) {
@@ -188,81 +391,195 @@ export default function TicketDetailScreen() {
     }
   };
 
+  const handleNavigateToBattery = () => {
+    if (battery) {
+      router.push({
+        pathname: '/(customer)/batteries/[id]',
+        params: { id: battery.id },
+      });
+    } else if (ticket.batteryAssetId) {
+      router.push({
+        pathname: '/(customer)/batteries/[id]',
+        params: { id: ticket.batteryAssetId },
+      });
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.root}>
     <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>‹ Quay lại</Text>
+      {/* Top bar */}
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <Pressable onPress={() => router.back()} style={[styles.backBtn, Shadow]}>
+          <Ionicons name="chevron-back" size={18} color={Colors.text} />
         </Pressable>
         <Text style={styles.topCode} numberOfLines={1}>{ticket.code}</Text>
-        <View style={{ width: 80 }} />
+        <Pressable style={[styles.moreBtn, Shadow]}>
+          <Ionicons name="ellipsis-horizontal" size={16} color={Colors.text} />
+        </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.card}>
-          <Text style={styles.title}>{ticket.title}</Text>
-          <View style={styles.badgeRow}>
-            <TicketStatusBadge status={ticket.status} />
-          </View>
-          {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} />}
-        </View>
-
-        {/* Info */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Thông tin</Text>
-          <InfoRow label="Danh mục"  value={CATEGORY_LABEL[ticket.category] ?? ticket.category} />
-          <InfoRow label="Ưu tiên"   value={PRIORITY_LABEL[ticket.priority] ?? ticket.priority} />
-          <InfoRow label="Nguồn gốc" value={ticket.origin === 'AutoFromAlert' ? 'Tự động từ cảnh báo' : ticket.origin === 'ManualByCustomer' ? 'Khách hàng tạo' : 'Staff tạo'} />
-          <InfoRow label="Ngày tạo"  value={new Date(ticket.createdAt).toLocaleString('vi-VN')} />
-          {ticket.reopenCount > 0 && (
-            <InfoRow label="Mở lại" value={`${ticket.reopenCount} lần`} />
+      {/* Tab bar */}
+      <View style={styles.tabBar}>
+        <Pressable
+          style={[styles.tab, activeTab === 'info' && styles.tabActive]}
+          onPress={() => setActiveTab('info')}
+        >
+          <Text style={[styles.tabText, activeTab === 'info' && styles.tabTextActive]}>Thông tin</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.tab, activeTab === 'chat' && styles.tabActive]}
+          onPress={() => setActiveTab('chat')}
+        >
+          <Text style={[styles.tabText, activeTab === 'chat' && styles.tabTextActive]}>Trao đổi</Text>
+          {comments.length > 0 && (
+            <View style={styles.tabBadge}>
+              <Text style={styles.tabBadgeText}>{comments.length}</Text>
+            </View>
           )}
-          {ticket.rating != null && (
-            <InfoRow label="Đánh giá" value={`${'★'.repeat(ticket.rating)}${'☆'.repeat(5 - ticket.rating)}`} />
+        </Pressable>
+      </View>
+
+      {/* Info tab */}
+      {activeTab === 'info' && (
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          {/* Title card */}
+          <View style={[styles.titleCard, Shadow]}>
+            <View style={styles.badgeRow}>
+              <PriorityBadge priority={ticket.priority} />
+              <TicketStatusBadge status={ticket.status} />
+            </View>
+            <Text style={styles.title}>{ticket.title}</Text>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaText}>
+                {new Date(ticket.createdAt).toLocaleString('vi-VN')} · {CATEGORY_LABEL[ticket.category] ?? ticket.category}
+              </Text>
+              <View style={{ flex: 1 }} />
+              {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} />}
+            </View>
+          </View>
+
+          {/* Stepper progress */}
+          <HorizontalStepper status={ticket.status} />
+
+          {/* Waiting customer response banner */}
+          {isWaiting && (
+            <View style={styles.waitBanner}>
+              <Ionicons name="time-outline" size={14} color="#fff" />
+              <Text style={styles.waitText}>Đang chờ phản hồi của bạn</Text>
+            </View>
           )}
-        </View>
 
-        {/* Description */}
-        {ticket.description ? (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Mô tả</Text>
-            <Text style={styles.description}>{ticket.description}</Text>
-          </View>
-        ) : null}
+          {/* Battery / Device Link card */}
+          <Pressable style={[styles.batteryLinkCard, Shadow]} onPress={handleNavigateToBattery}>
+            <View style={[styles.batteryIconBg, { backgroundColor: '#FFE5DA' }]}>
+              <Ionicons name="battery-charging" size={18} color="#FF5E13" />
+            </View>
+            <View style={styles.batteryLinkInfo}>
+              <Text style={styles.batteryLinkTitle}>
+                {battery ? battery.batteryTypeName : `Thiết bị ${ticket.batteryAssetId ? '...' : 'Chưa liên kết'}`}
+              </Text>
+              <Text style={styles.batteryLinkSub}>
+                {battery ? battery.serialNumber : ''}{battery?.siteName ? ` · ${battery.siteName}` : ''}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
+          </Pressable>
 
-        {/* Resolution */}
-        {ticket.resolutionSummary ? (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Kết quả xử lý</Text>
-            <Text style={styles.description}>{ticket.resolutionSummary}</Text>
-          </View>
-        ) : null}
+          {/* Descriptions & resolution info */}
+          {ticket.description ? (
+            <View style={[styles.descCard, Shadow]}>
+              <Text style={styles.sectionH}>Mô tả ban đầu</Text>
+              <Text style={styles.descText}>{ticket.description}</Text>
 
-        {/* Actions */}
-        {(canRate || canReopen) && (
-          <View style={[styles.card, styles.actionRow]}>
-            {canRate && (
-              <Pressable style={styles.actionBtn} onPress={() => setShowRateModal(true)}>
-                <Text style={styles.actionBtnText}>★ Đánh giá</Text>
+              <Text style={[styles.sectionH, { marginTop: 14, marginBottom: 8 }]}>Ảnh đính kèm</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.attachRow}>
+                <View style={styles.attachCard}>
+                  <Image
+                    source={{ uri: 'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=200' }}
+                    style={styles.attachImage}
+                  />
+                </View>
+                <View style={styles.attachCard}>
+                  <Image
+                    source={{ uri: 'https://images.unsplash.com/photo-1620038650424-9f3b4b9f6b0f?w=200' }}
+                    style={styles.attachImage}
+                  />
+                </View>
+              </ScrollView>
+            </View>
+          ) : null}
+
+          {ticket.resolutionSummary ? (
+            <View style={[styles.descCard, Shadow]}>
+              <Text style={styles.sectionH}>Kết quả xử lý</Text>
+              <Text style={styles.descText}>{ticket.resolutionSummary}</Text>
+            </View>
+          ) : null}
+
+          {/* Resolved info banner */}
+          {isResolved && (
+            <View style={[styles.resolvedCard, Shadow]}>
+              <Ionicons name="checkmark-circle" size={24} color="#2F7A2F" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.resolvedTitle}>Ticket đã được xử lý</Text>
+                <Text style={styles.resolvedSub}>Vui lòng đánh giá để đóng ticket</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Action card buttons */}
+          {canRate && (
+            <View style={[styles.actionCard, Shadow]}>
+              <Pressable style={[styles.rateBtn, ShadowPrimary]} onPress={() => setShowRateModal(true)}>
+                <Ionicons name="star" size={16} color="#fff" />
+                <Text style={styles.actionBtnText}>Đánh giá ticket</Text>
               </Pressable>
-            )}
-            {canReopen && (
-              <Pressable style={[styles.actionBtn, styles.reopenBtn]} onPress={() => setShowReopenModal(true)}>
-                <Text style={styles.actionBtnText}>↺ Mở lại</Text>
+              <Pressable style={styles.reopenLink} onPress={() => setShowReopenModal(true)}>
+                <Text style={styles.reopenLinkText}>Yêu cầu mở lại ticket</Text>
               </Pressable>
-            )}
-          </View>
-        )}
+            </View>
+          )}
 
-        {/* Comments */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Bình luận</Text>
-          <CommentList ticket={ticket} />
+          {isClosed && (
+            <View style={[styles.closedCard, Shadow]}>
+              <Ionicons name="lock-closed-outline" size={18} color={Colors.textMute} />
+              <Text style={styles.closedText}>Ticket đã được đóng hoàn toàn</Text>
+            </View>
+          )}
+
+          {/* Historical activities timeline */}
+          {(ticket.activities?.length ?? 0) > 0 && (
+            <View style={[styles.timelineCard, Shadow]}>
+              <Text style={styles.sectionH}>Lịch sử hoạt động</Text>
+              <ActivityTimeline activities={ticket.activities!} />
+            </View>
+          )}
+        </ScrollView>
+      )}
+
+      {/* Chat tab — messenger style */}
+      {activeTab === 'chat' && (
+        <View style={styles.chatContainer}>
+          <ScrollView
+            ref={chatScrollRef}
+            style={styles.chatScroll}
+            contentContainerStyle={styles.chatContent}
+            showsVerticalScrollIndicator={false}
+            onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: false })}
+            keyboardShouldPersistTaps="handled"
+          >
+            {comments.length === 0 ? (
+              <View style={styles.chatEmpty}>
+                <Ionicons name="chatbubbles-outline" size={36} color={Colors.textFaint} />
+                <Text style={styles.chatEmptyText}>Chưa có trao đổi nào.</Text>
+              </View>
+            ) : (
+              comments.map((c) => <ChatBubble key={c.id} comment={c} />)
+            )}
+          </ScrollView>
 
           {/* Attachment chips */}
           {attachments.length > 0 && (
@@ -279,113 +596,346 @@ export default function TicketDetailScreen() {
             </View>
           )}
 
-          {/* Input box */}
-          <View style={[styles.commentBox, commentError ? styles.commentBoxError : null]}>
+          {commentError ? (
+            <View style={styles.composerError}>
+              <Text style={styles.fieldError}>{commentError}</Text>
+            </View>
+          ) : null}
+
+          {/* Composer bar */}
+          <View style={[styles.composer, { paddingBottom: insets.bottom + 8 }]}>
+            <Pressable style={styles.composerIcon} onPress={handlePickAttachment} disabled={isUploading}>
+              {isUploading
+                ? <ActivityIndicator size="small" color={Colors.textMute} />
+                : <Ionicons name="camera-outline" size={20} color={Colors.textMute} />}
+            </Pressable>
             <TextInput
-              style={styles.commentInput}
+              style={styles.composerInput}
               value={commentText}
               onChangeText={(t) => { setCommentText(t); setCommentError(''); }}
-              placeholder="Thêm bình luận..."
-              placeholderTextColor="#B0B8C4"
+              placeholder="Nhập tin nhắn..."
+              placeholderTextColor={Colors.textFaint}
               multiline
               maxLength={1000}
             />
-            <View style={styles.commentToolbar}>
-              <Pressable
-                style={styles.attachBtn}
-                onPress={handlePickAttachment}
-                disabled={isUploading}
-              >
-                {isUploading
-                  ? <ActivityIndicator color="#1976D2" size="small" />
-                  : <Text style={styles.attachBtnText}>📎</Text>
-                }
-              </Pressable>
-              <Pressable
-                style={[styles.sendBtn, (!commentText.trim() || isCommenting || isUploading) && styles.btnDisabled]}
-                onPress={handleSendComment}
-                disabled={!commentText.trim() || isCommenting || isUploading}
-              >
-                {isCommenting
-                  ? <ActivityIndicator color="#fff" size="small" />
-                  : <Text style={styles.sendBtnText}>Gửi</Text>
-                }
-              </Pressable>
-            </View>
+            <Pressable
+              style={[styles.sendBtn, (!commentText.trim() || isCommenting) && styles.btnDisabled]}
+              onPress={handleSendComment}
+              disabled={!commentText.trim() || isCommenting}
+            >
+              {isCommenting
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Ionicons name="send" size={16} color="#fff" />}
+            </Pressable>
           </View>
-          {commentError ? <Text style={styles.fieldError}>{commentError}</Text> : null}
         </View>
+      )}
 
-        {/* Timeline */}
-        {(ticket.activities?.length ?? 0) > 0 && (
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Lịch sử hoạt động</Text>
-            <ActivityTimeline activities={ticket.activities!} />
-          </View>
-        )}
-      </ScrollView>
-
-      <RateModal
-        visible={showRateModal}
-        isLoading={isRating}
-        onClose={() => setShowRateModal(false)}
-        onSubmit={handleRate}
-      />
-      <ReopenModal
-        visible={showReopenModal}
-        isLoading={isReopening}
-        onClose={() => setShowReopenModal(false)}
-        onSubmit={handleReopen}
-      />
+      <RateModal visible={showRateModal} isLoading={isRating} onClose={() => setShowRateModal(false)} onSubmit={handleRate} />
+      <ReopenModal visible={showReopenModal} isLoading={isReopening} onClose={() => setShowReopenModal(false)} onSubmit={handleReopen} />
     </KeyboardAvoidingView>
-    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root:           { flex: 1, backgroundColor: '#F5F7FA' },
-  flex:           { flex: 1 },
-  center:         { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  errorText:      { color: '#666', fontSize: 15 },
-  retryBtn:       { paddingHorizontal: 20, paddingVertical: 9, borderRadius: 8, backgroundColor: '#1976D2' },
-  retryText:      { color: '#fff', fontWeight: '600' },
-  topBar:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#EEE' },
-  backBtn:        { width: 80 },
-  backText:       { color: '#1976D2', fontSize: 15, fontWeight: '600' },
-  topCode:        { flex: 1, textAlign: 'center', fontSize: 13, fontWeight: '700', color: '#333' },
-  scroll:         { padding: 12, gap: 12, paddingBottom: 40 },
-  card:           { backgroundColor: '#fff', borderRadius: 12, padding: 16, gap: 10, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  title:          { fontSize: 17, fontWeight: '700', color: '#111', lineHeight: 24 },
+  root:           { flex: 1, backgroundColor: Colors.bg },
+  center:         { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bg, gap: 10 },
+  errorMsg:       { color: Colors.textMute, fontSize: 14, marginTop: 4 },
+  retryBtn:       { backgroundColor: '#FF5E13', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 10, marginTop: 4 },
+  retryText:      { color: '#fff', fontWeight: '800', fontSize: 14 },
+
+  topBar:         {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 20, paddingBottom: 12,
+    backgroundColor: 'transparent',
+  },
+  backBtn:        {
+    width: 42, height: 42, borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.02)',
+  },
+  topCode:        { flex: 1, textAlign: 'center', fontSize: 14, fontWeight: '800', color: Colors.text },
+  moreBtn:        {
+    width: 42, height: 42, borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.02)',
+  },
+
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 20,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 6,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: {
+    borderBottomColor: '#FF5E13',
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textMute,
+  },
+  tabTextActive: {
+    color: '#FF5E13',
+    fontWeight: '800',
+  },
+  tabBadge: {
+    backgroundColor: '#FF5E13',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+  },
+  tabBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+
+  chatContainer: {
+    flex: 1,
+    backgroundColor: Colors.bg,
+  },
+  chatScroll: {
+    flex: 1,
+  },
+  chatContent: {
+    padding: 16,
+    gap: 8,
+    paddingBottom: 8,
+  },
+  chatEmpty: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    gap: 10,
+  },
+  chatEmptyText: {
+    color: Colors.textFaint,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  scroll:         { padding: 20, gap: 14, paddingBottom: 40 },
+
+  titleCard:      { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, gap: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
   badgeRow:       { flexDirection: 'row', gap: 8 },
-  sectionTitle:   { fontSize: 14, fontWeight: '700', color: '#333', marginBottom: 2 },
-  infoRow:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  infoLabel:      { fontSize: 13, color: '#666' },
-  infoValue:      { fontSize: 13, color: '#111', fontWeight: '500', flexShrink: 1, textAlign: 'right', marginLeft: 8 },
-  description:    { fontSize: 14, color: '#333', lineHeight: 22 },
-  actionRow:      { flexDirection: 'row', gap: 12 },
-  actionBtn:      { flex: 1, backgroundColor: '#1976D2', padding: 13, borderRadius: 10, alignItems: 'center' },
-  reopenBtn:      { backgroundColor: '#E53935' },
-  actionBtnText:  { color: '#fff', fontWeight: '700', fontSize: 14 },
-  commentList:    { gap: 12 },
-  emptyText:      { color: '#999', fontSize: 13, textAlign: 'center', paddingVertical: 8 },
-  commentItem:    { backgroundColor: '#F5F7FA', borderRadius: 8, padding: 12, gap: 4 },
-  commentHeader:  { flexDirection: 'row', justifyContent: 'space-between' },
-  commentAuthor:  { fontSize: 12, fontWeight: '600', color: '#333' },
-  commentTime:    { fontSize: 11, color: '#AAA' },
-  commentBody:    { fontSize: 13, color: '#444', lineHeight: 20 },
-  attachmentList:     { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
-  attachmentChip:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EDF2FF', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, gap: 5, maxWidth: 200 },
+  badge:          { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  badgeDot:       { width: 6, height: 6, borderRadius: 3 },
+  badgeLabel:     { fontSize: 11, fontWeight: '700' },
+  title:          { fontSize: 18, fontWeight: '800', color: Colors.text, lineHeight: 26, letterSpacing: -0.3 },
+  metaRow:        { flexDirection: 'row', alignItems: 'center' },
+  metaText:       { fontSize: 12, color: Colors.textMute, fontWeight: '600' },
+
+  stepperContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
+  },
+  stepperTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: Colors.text,
+    marginBottom: 16,
+  },
+  stepperRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  stepItemCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  circleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+  },
+  stepLine: {
+    flex: 1,
+    height: 3,
+    backgroundColor: '#EDECE8',
+  },
+  stepLineActive: {
+    backgroundColor: '#FF5E13',
+  },
+  invisibleLine: {
+    backgroundColor: 'transparent',
+  },
+  stepCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#EDECE8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepCircleActive: {
+    backgroundColor: '#FF5E13',
+  },
+  stepCircleCurrent: {
+    backgroundColor: '#FF5E13',
+    borderWidth: 2,
+    borderColor: '#FFE5DA',
+  },
+  inactiveInnerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#BFBDB4',
+  },
+  stepLabel: {
+    fontSize: 8,
+    fontWeight: '600',
+    color: Colors.textMute,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  stepLabelActive: {
+    fontWeight: '800',
+    color: '#FF5E13',
+  },
+
+  waitBanner:     {
+    backgroundColor: Colors.stWaiting, borderRadius: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    padding: 12,
+  },
+  waitText:       { color: '#fff', fontSize: 13, fontWeight: '700' },
+
+  batteryLinkCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
+  },
+  batteryIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  batteryLinkInfo: {
+    flex: 1,
+  },
+  batteryLinkTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  batteryLinkSub: {
+    fontSize: 11,
+    color: Colors.textMute,
+    marginTop: 3,
+    fontWeight: '600',
+  },
+
+  descCard:       { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, gap: 10, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
+  sectionH:       { fontSize: 14, fontWeight: '800', color: Colors.text },
+  descText:       { fontSize: 13, color: Colors.text2, lineHeight: 22, fontWeight: '500' },
+  attachRow:      { gap: 8 },
+  attachCard:     {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  attachImage:    {
+    width: '100%',
+    height: '100%',
+  },
+
+  resolvedCard:   {
+    backgroundColor: '#E8F5E9', borderRadius: 24,
+    padding: 16, alignItems: 'center', flexDirection: 'row', gap: 12,
+  },
+  resolvedTitle:  { fontSize: 14, fontWeight: '800', color: '#2F7A2F' },
+  resolvedSub:    { fontSize: 11, color: '#2F7A2F', opacity: 0.8, marginTop: 2 },
+
+  actionCard:     { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, gap: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
+  rateBtn:        {
+    backgroundColor: '#FF5E13', borderRadius: 16,
+    padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+  },
+  actionBtnText:  { color: '#fff', fontWeight: '800', fontSize: 14 },
+  reopenLink:     { alignItems: 'center' },
+  reopenLinkText: { color: '#FF5E13', fontSize: 13, fontWeight: '700' },
+
+  closedCard:     {
+    backgroundColor: Colors.card2, borderRadius: 24,
+    padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
+  closedText:     { fontSize: 13, fontWeight: '700', color: Colors.textMute },
+
+  timelineCard:   { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, gap: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
+
+  commentsCard:   { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, gap: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
+  chatList:       { gap: 10 },
+  emptyText:      { color: Colors.textFaint, fontSize: 13, textAlign: 'center', paddingVertical: 8 },
+
+  systemMsg:      { alignItems: 'center', paddingVertical: 4 },
+  systemMsgText:  { fontSize: 11, color: Colors.textMute, fontStyle: 'italic', fontWeight: '600' },
+
+  bubble:         { borderRadius: 20, padding: 14, maxWidth: '85%' },
+  bubbleUser:     { backgroundColor: '#FF5E13', alignSelf: 'flex-end', borderBottomRightRadius: 4 },
+  bubbleStaff:    { backgroundColor: Colors.card2, alignSelf: 'flex-start', borderBottomLeftRadius: 4 },
+  bubbleHeader:   { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginBottom: 4 },
+  bubbleAuthor:   { fontSize: 11, fontWeight: '800', color: Colors.text },
+  bubbleTime:     { fontSize: 10, color: Colors.textMute },
+  bubbleBody:     { fontSize: 13, color: Colors.text, lineHeight: 20, fontWeight: '500' },
+
+  composer:       {
+    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+    paddingHorizontal: 14, paddingTop: 10,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.02)',
+  },
+  composerIcon:   { padding: 8, paddingBottom: 10 },
+  composerInput:  {
+    flex: 1, backgroundColor: Colors.card2, borderRadius: 18,
+    paddingHorizontal: 14, paddingVertical: 9,
+    fontSize: 13, color: Colors.text,
+    maxHeight: 100,
+  },
+  sendBtn:        {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#FF5E13',
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 2,
+  },
+  btnDisabled:    { opacity: 0.35 },
+  composerError:  { backgroundColor: '#FFFFFF', paddingHorizontal: 18 },
+  fieldError:     { color: Colors.danger, fontSize: 12 },
+
+  attachmentList:     { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 14, paddingTop: 8, backgroundColor: '#FFFFFF' },
+  attachmentChip:     { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.card2, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, gap: 5, maxWidth: 200 },
   attachmentChipIcon: { fontSize: 12 },
-  attachmentName:     { flex: 1, fontSize: 12, color: '#1976D2', fontWeight: '500' },
-  attachmentRemove:   { fontSize: 12, color: '#90A4AE', fontWeight: '700', marginLeft: 2 },
-  commentBox:         { borderWidth: 1, borderColor: '#E0E6EF', borderRadius: 12, backgroundColor: '#FAFBFD', overflow: 'hidden' },
-  commentBoxError:    { borderColor: '#E53935' },
-  commentInput:       { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 6, fontSize: 14, color: '#222', minHeight: 64, maxHeight: 120, textAlignVertical: 'top' },
-  commentToolbar:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#EEF1F6', backgroundColor: '#F5F7FA' },
-  attachBtn:          { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  attachBtnText:      { fontSize: 18 },
-  sendBtn:            { backgroundColor: '#1976D2', paddingHorizontal: 18, paddingVertical: 7, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  btnDisabled:        { opacity: 0.45 },
-  sendBtnText:        { color: '#fff', fontWeight: '700', fontSize: 13 },
-  fieldError:         { color: '#E53935', fontSize: 12, marginTop: 4 },
+  attachmentName:     { flex: 1, fontSize: 12, color: Colors.text, fontWeight: '500' },
+  attachmentRemove:   { fontSize: 12, color: Colors.textMute, fontWeight: '700', marginLeft: 2 },
 });

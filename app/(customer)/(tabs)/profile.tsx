@@ -1,87 +1,397 @@
-import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState } from 'react';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View, Modal, KeyboardAvoidingView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { useProfile } from '../../../src/features/profile/hooks/useProfile';
-import { AvatarPicker } from '../../../src/features/profile/components/AvatarPicker';
-import { useUploadAvatar } from '../../../src/features/profile/hooks/useUploadAvatar';
+import { Ionicons } from '@expo/vector-icons';
 import { useLogout } from '../../../src/features/auth/hooks/useLogout';
+import { useProfile } from '../../../src/features/profile/hooks/useProfile';
+import { useUpdateProfile } from '../../../src/features/profile/hooks/useUpdateProfile';
+import { useUploadAvatar } from '../../../src/features/profile/hooks/useUploadAvatar';
+import { useTickets } from '../../../src/features/tickets/hooks/useTickets';
+import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
+import { useAlertsStore } from '../../../src/stores/alertsStore';
 import { handleErrorApi } from '../../../src/lib/errors';
+import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
+import { Colors, Shadow } from '../../../src/lib/theme';
+import { ProfileForm } from '../../../src/features/profile/components/ProfileForm';
+
+const BATTERY_STATUS_MAP: Record<number, { label: string; color: string }> = {
+  1: { label: 'Active', color: '#10B981' },
+  2: { label: 'Inactive', color: Colors.gray },
+  3: { label: 'Failed', color: Colors.danger },
+};
+
+function LinkRow({
+  icon,
+  label,
+  right,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  right?: React.ReactNode;
+  onPress?: () => void;
+}) {
+  return (
+    <Pressable style={styles.linkRow} onPress={onPress}>
+      <View style={styles.linkIcon}>
+        <Ionicons name={icon} size={16} color={Colors.text} />
+      </View>
+      <Text style={styles.linkLabel}>{label}</Text>
+      {right || <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />}
+    </Pressable>
+  );
+}
 
 export default function ProfileScreen() {
-  const { data: account, isLoading } = useProfile();
+  const insets = useSafeAreaInsets();
+  const { data: account, isLoading: profileLoading } = useProfile();
+  const updateProfile = useUpdateProfile();
   const uploadAvatar = useUploadAvatar();
   const logout = useLogout();
 
-  if (isLoading) {
+  const { data: ticketsData, isLoading: ticketsLoading } = useTickets({ PageSize: 100 });
+  const { data: batteries = [], isLoading: batteriesLoading } = useMyBatteryAssets();
+  const { alerts } = useAlertsStore();
+
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const handleUpdateProfile = async (data: any) => {
+    setFieldErrors({});
+    try {
+      await updateProfile.mutateAsync(data);
+      setIsEditModalVisible(false);
+    } catch (error) {
+      handleErrorApi({
+        error,
+        setFieldError: (field, msg) => setFieldErrors((prev) => ({ ...prev, [field]: msg })),
+      });
+    }
+  };
+
+  if (profileLoading || ticketsLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#6366f1" />
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
 
   if (!account) return null;
 
+  const tickets = ticketsData?.items ?? [];
+  const openCount = tickets.filter((t) =>
+    ['New', 'Open', 'Assigned', 'InProgress', 'WaitingCustomer', 'WaitingParts', 'WaitingOnsiteSchedule'].includes(t.status)
+  ).length;
+  const unreadAlertsCount = alerts.filter((a) => !a.read).length;
+
+  const initials = (account.fullName ?? 'KH')
+    .split(' ')
+    .map((w: string) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  const handleDevicePress = (id: string) => {
+    router.push({ pathname: '/(customer)/batteries/[id]', params: { id } });
+  };
+
   return (
-    <SafeAreaView style={styles.safe}>
-    <ScrollView contentContainerStyle={styles.container}>
-      <AvatarPicker
-        displayAvatarUrl={account.displayAvatarUrl}
-        fullName={account.fullName}
-        onPress={() =>
-          uploadAvatar.mutate(undefined, {
-            onError: (error) => handleErrorApi({ error }),
-          })
-        }
-        isLoading={uploadAvatar.isPending}
-      />
-
-      <Text style={styles.name}>{account.fullName}</Text>
-      <Text style={styles.role}>{account.role}</Text>
-      <Text style={styles.email}>{account.email}</Text>
-
-      <Pressable style={styles.btn} onPress={() => router.push('/(customer)/edit-profile')}>
-        <Text style={styles.btnText}>Chỉnh sửa thông tin</Text>
-      </Pressable>
-
-      <Pressable
-        style={[styles.btn, styles.btnOutline]}
-        onPress={() => router.push('/(customer)/settings')}
+    <View style={styles.root}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 10 }]}
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.btnText, styles.btnOutlineText]}>Cài đặt tài khoản</Text>
-      </Pressable>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.pageTitle}>Profile</Text>
+            <Text style={styles.pageSub}>Account & Settings</Text>
+          </View>
+        </View>
 
-      <Pressable
-        style={[styles.btn, styles.btnLogout]}
-        onPress={() => logout.mutate()}
-        disabled={logout.isPending}
-      >
-        {logout.isPending ? (
-          <ActivityIndicator color="#ef4444" />
-        ) : (
-          <Text style={[styles.btnText, styles.btnLogoutText]}>Đăng xuất</Text>
+        {/* Profile Info Card */}
+        <View style={[styles.profileCard, Shadow]}>
+          <View style={styles.profileTop}>
+            <Pressable
+              style={styles.avatar}
+              onPress={() =>
+                uploadAvatar.mutate(undefined, {
+                  onError: (error) => handleErrorApi({ error }),
+                })
+              }
+            >
+              {uploadAvatar.isPending ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.avatarText}>{initials}</Text>
+              )}
+            </Pressable>
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>{account.fullName}</Text>
+              <Text style={styles.profileEmail}>{account.email}</Text>
+              <View style={styles.roleTag}>
+                <Text style={styles.roleTagText}>CUSTOMER</Text>
+              </View>
+            </View>
+            <Pressable
+              style={styles.editChevron}
+              onPress={() => {
+                setFieldErrors({});
+                setIsEditModalVisible(true);
+              }}
+            >
+              <Ionicons name="create-outline" size={18} color={Colors.textMute} />
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Stats row */}
+        <View style={[styles.statsCard, Shadow]}>
+          <View style={styles.statCol}>
+            <Text style={styles.statVal}>{batteriesLoading ? '-' : batteries.length}</Text>
+            <Text style={styles.statLabel}>Devices</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statCol}>
+            <Text style={styles.statVal}>{openCount}</Text>
+            <Text style={styles.statLabel}>Open</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statCol}>
+            <Text style={styles.statVal}>{unreadAlertsCount}</Text>
+            <Text style={styles.statLabel}>Alerts</Text>
+          </View>
+        </View>
+
+        {/* Devices list */}
+        {batteries.length > 0 && (
+          <>
+            <Text style={styles.sectionH}>Devices</Text>
+            <View style={[styles.menuCard, Shadow]}>
+              {batteries.map((device: BatteryAssetDto, idx: number) => {
+                const statusInfo = BATTERY_STATUS_MAP[device.status] ?? { label: 'Unknown', color: Colors.gray };
+                return (
+                  <View key={device.id}>
+                    {idx > 0 && <View style={styles.separator} />}
+                    <Pressable style={styles.deviceRow} onPress={() => handleDevicePress(device.id)}>
+                      <View style={[styles.deviceIconWrap, { backgroundColor: '#E8F5E9' }]}>
+                        <Ionicons name="battery-charging" size={16} color={statusInfo.color} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.deviceLabel}>{device.batteryTypeName}</Text>
+                        <Text style={styles.deviceSub}>{device.serialNumber}</Text>
+                      </View>
+                      <Text style={[styles.deviceStatus, { color: statusInfo.color }]}>{statusInfo.label}</Text>
+                      <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </View>
+          </>
         )}
-      </Pressable>
-    </ScrollView>
-    </SafeAreaView>
+
+        {/* Security */}
+        <Text style={styles.sectionH}>Security</Text>
+        <View style={[styles.menuCard, Shadow]}>
+          <LinkRow
+            icon="lock-closed"
+            label="Change Password"
+            onPress={() => router.push('/(customer)/settings/change-password')}
+          />
+          <View style={styles.separator} />
+          <LinkRow
+            icon="shield-checkmark"
+            label="Two-Factor Auth"
+            right={
+              account.twoFactorEnabled ? (
+                <View style={styles.activeTag}>
+                  <Text style={styles.activeTagText}>ON</Text>
+                </View>
+              ) : undefined
+            }
+            onPress={() => router.push('/(customer)/settings/two-fa')}
+          />
+          <View style={styles.separator} />
+          <LinkRow
+            icon="phone-portrait-outline"
+            label="Sessions"
+            onPress={() => router.push('/(customer)/settings/sessions')}
+          />
+          <View style={styles.separator} />
+          <LinkRow
+            icon="warning-outline"
+            label="Danger Zone"
+            onPress={() => router.push('/(customer)/settings/danger-zone')}
+          />
+        </View>
+
+        {/* Logout */}
+        <Pressable style={[styles.logoutBtn, Shadow]} onPress={() => logout.mutate()}>
+          <Ionicons name="log-out-outline" size={16} color="#DC4F3D" style={{ marginRight: 6 }} />
+          <Text style={styles.logoutText}>Log out</Text>
+        </Pressable>
+      </ScrollView>
+
+      <Modal
+        visible={isEditModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsEditModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.keyboardOverlayView}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => setIsEditModalVisible(false)}>
+            {/* Pressable with empty handler on content container to block touch propagation from overlay */}
+            <Pressable
+              style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}
+              onPress={() => {}}
+            >
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Chỉnh sửa hồ sơ</Text>
+                <Pressable
+                  style={styles.modalCloseBtn}
+                  onPress={() => setIsEditModalVisible(false)}
+                >
+                  <Ionicons name="close" size={22} color={Colors.text} />
+                </Pressable>
+              </View>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={styles.modalScrollView}
+                contentContainerStyle={styles.modalFormScroll}
+              >
+                <ProfileForm
+                  account={account}
+                  onSubmit={handleUpdateProfile}
+                  isLoading={updateProfile.isPending}
+                  fieldErrors={fieldErrors}
+                />
+              </ScrollView>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe:         { flex: 1, backgroundColor: '#fff' },
-  center:       { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  container:    { padding: 24, alignItems: 'center', gap: 8 },
-  name:         { fontSize: 22, fontWeight: '700', color: '#111827', marginTop: 12 },
-  role:         { fontSize: 13, color: '#6366f1', fontWeight: '500' },
-  email:        { fontSize: 14, color: '#6b7280', marginBottom: 16 },
-  btn:          {
-    width: '100%', backgroundColor: '#6366f1',
-    borderRadius: 10, paddingVertical: 14, alignItems: 'center',
+  root: { flex: 1, backgroundColor: Colors.bg },
+  screen: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bg },
+  content: { paddingHorizontal: 20, paddingBottom: 110 },
+
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  headerLeft: { flex: 1 },
+  pageTitle: { fontSize: 22, fontWeight: '800', color: Colors.text, letterSpacing: -0.5 },
+  pageSub: { fontSize: 12, color: Colors.textMute, marginTop: 2 },
+
+  profileCard: {
+    backgroundColor: '#FFFFFF', borderRadius: 24, padding: 16, marginBottom: 12,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)',
   },
-  btnOutline:    { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#6366f1' },
-  btnLogout:     { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#ef4444' },
-  btnText:       { color: '#fff', fontSize: 15, fontWeight: '600' },
-  btnOutlineText: { color: '#6366f1' },
-  btnLogoutText:  { color: '#ef4444' },
+  profileTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatar: {
+    width: 58, height: 58, borderRadius: 20, backgroundColor: Colors.primary,
+    alignItems: 'center', justifyContent: 'center',
+    ...Platform.select({
+      ios: { shadowColor: Colors.primary, shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
+      android: { elevation: 4 },
+    }),
+  },
+  avatarText: { color: '#FFFFFF', fontWeight: '800', fontSize: 20 },
+  profileInfo: { flex: 1 },
+  profileName: { fontSize: 16, fontWeight: '800', color: Colors.text },
+  profileEmail: { fontSize: 11, color: Colors.textMute, marginTop: 2, fontWeight: '600' },
+  roleTag: { backgroundColor: Colors.primary, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginTop: 6 },
+  roleTagText: { fontSize: 8, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.5 },
+  editChevron: { width: 32, height: 32, borderRadius: 10, backgroundColor: Colors.card2, alignItems: 'center', justifyContent: 'center' },
+
+  statsCard: {
+    backgroundColor: '#FFFFFF', borderRadius: 24, paddingVertical: 14,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around',
+    marginBottom: 16, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)',
+  },
+  statCol: { alignItems: 'center', flex: 1 },
+  statVal: { fontSize: 18, fontWeight: '800', color: Colors.text },
+  statLabel: { fontSize: 11, color: Colors.textMute, marginTop: 2, fontWeight: '600' },
+  statDivider: { width: 1, height: 24, backgroundColor: 'rgba(0,0,0,0.03)' },
+
+  sectionH: { fontSize: 16, fontWeight: '800', color: Colors.text, letterSpacing: -0.3, paddingLeft: 4, paddingBottom: 10, marginTop: 8 },
+  menuCard: {
+    backgroundColor: '#FFFFFF', borderRadius: 24, marginBottom: 12,
+    overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)',
+  },
+  separator: { height: 1, backgroundColor: 'rgba(0,0,0,0.03)' },
+
+  deviceRow: { flexDirection: 'row', alignItems: 'center', padding: 16 },
+  deviceIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  deviceLabel: { fontSize: 13, fontWeight: '800', color: Colors.text },
+  deviceSub: { fontSize: 11, color: Colors.textMute, marginTop: 1 },
+  deviceStatus: { fontSize: 10, fontWeight: '700', marginRight: 8 },
+
+  linkRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 },
+  linkIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.card2, alignItems: 'center', justifyContent: 'center' },
+  linkLabel: { flex: 1, fontSize: 13, fontWeight: '700', color: Colors.text },
+  activeTag: { backgroundColor: '#E8F5E9', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  activeTagText: { fontSize: 9, fontWeight: '700', color: '#4CAF50' },
+
+  logoutBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FFFFFF', borderRadius: 24, padding: 16,
+    marginTop: 10, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)',
+  },
+  logoutText: { fontSize: 13, fontWeight: '800', color: '#DC4F3D' },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  keyboardOverlayView: {
+    flex: 1,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.card2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalScrollView: {
+    flexGrow: 0,
+  },
+  modalFormScroll: {
+    paddingBottom: 16,
+  },
 });

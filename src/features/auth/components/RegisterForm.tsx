@@ -1,15 +1,17 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { Colors, CommonStyles, Spacing } from '../../../lib/theme';
+import { HttpError, EntityError } from '../../../lib/errors';
 import { useRegister } from '../hooks/useRegister';
 import { registerSchema } from '../schemas/register.schema';
-import { HttpError, EntityError } from '../../../lib/errors';
 
 export function RegisterForm() {
   const { mutateAsync, isPending } = useRegister();
@@ -17,6 +19,7 @@ export function RegisterForm() {
   const [email, setEmail]             = useState('');
   const [password, setPassword]       = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState('');
 
@@ -56,31 +59,84 @@ export function RegisterForm() {
     }
   };
 
+  const fields: {
+    key: string;
+    label: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    placeholder: string;
+    value: string;
+    onChangeText: (t: string) => void;
+    keyboardType?: 'email-address' | 'phone-pad';
+    autoCapitalize?: 'none' | 'words';
+    secure?: boolean;
+    optional?: boolean;
+  }[] = [
+    { key: 'fullName', label: 'Họ và tên', icon: 'person-outline', placeholder: 'Nguyễn Văn A', value: fullName, onChangeText: setFullName, autoCapitalize: 'words' },
+    { key: 'email', label: 'Email', icon: 'mail-outline', placeholder: 'name@example.com', value: email, onChangeText: setEmail, keyboardType: 'email-address', autoCapitalize: 'none' },
+    { key: 'password', label: 'Mật khẩu', icon: 'lock-closed-outline', placeholder: 'Tối thiểu 8 ký tự', value: password, onChangeText: setPassword, secure: true },
+    { key: 'phoneNumber', label: 'Số điện thoại', icon: 'call-outline', placeholder: '0912345678', value: phoneNumber, onChangeText: setPhoneNumber, keyboardType: 'phone-pad', optional: true },
+  ];
+
   return (
     <View style={styles.container}>
-      <TextInput style={[styles.input, getError('fullName') && styles.inputError]} placeholder="Họ và tên" value={fullName} onChangeText={setFullName} />
-      {getError('fullName') ? <Text style={styles.errorText}>{getError('fullName')}</Text> : null}
-      <TextInput style={[styles.input, getError('email') && styles.inputError]} placeholder="Email" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
-      {getError('email') ? <Text style={styles.errorText}>{getError('email')}</Text> : null}
-      <TextInput style={[styles.input, getError('password') && styles.inputError]} placeholder="Mật khẩu" secureTextEntry value={password} onChangeText={setPassword} />
-      {getError('password') ? <Text style={styles.errorText}>{getError('password')}</Text> : null}
-      <TextInput style={[styles.input, getError('phoneNumber') && styles.inputError]} placeholder="Số điện thoại (tuỳ chọn)" keyboardType="phone-pad" value={phoneNumber} onChangeText={setPhoneNumber} />
-      {getError('phoneNumber') ? <Text style={styles.errorText}>{getError('phoneNumber')}</Text> : null}
-      {generalError ? <Text style={styles.generalError}>{generalError}</Text> : null}
-      <TouchableOpacity style={[styles.button, isPending && styles.buttonDisabled]} onPress={handleSubmit} disabled={isPending}>
-        {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Đăng ký</Text>}
-      </TouchableOpacity>
+      {fields.map((f) => (
+        <View key={f.key}>
+          <Text style={styles.label}>
+            {f.label}{f.optional ? '' : ' *'}
+            {f.optional && <Text style={styles.optional}> (tuỳ chọn)</Text>}
+          </Text>
+          <View style={[styles.inputWrap, getError(f.key) && styles.inputError]}>
+            <Ionicons name={f.icon} size={18} color={Colors.textTertiary} style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder={f.placeholder}
+              placeholderTextColor={Colors.placeholder}
+              value={f.value}
+              onChangeText={f.onChangeText}
+              keyboardType={f.keyboardType}
+              autoCapitalize={f.autoCapitalize}
+              secureTextEntry={f.secure && !showPassword}
+            />
+            {f.secure && (
+              <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
+                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textTertiary} />
+              </Pressable>
+            )}
+          </View>
+          {getError(f.key) ? <Text style={styles.errorText}>{getError(f.key)}</Text> : null}
+        </View>
+      ))}
+
+      {generalError ? (
+        <View style={CommonStyles.generalError}>
+          <Text style={CommonStyles.generalErrorText}>{generalError}</Text>
+        </View>
+      ) : null}
+
+      <Pressable style={[styles.button, isPending && styles.buttonDisabled]} onPress={handleSubmit} disabled={isPending}>
+        {isPending ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.buttonText}>Đăng ký</Text>}
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 12 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 16 },
-  inputError: { borderColor: '#e53e3e' },
-  errorText: { color: '#e53e3e', fontSize: 13 },
-  generalError: { color: '#e53e3e', fontSize: 14, backgroundColor: '#fff5f5', borderRadius: 8, padding: 10, textAlign: 'center', borderWidth: 1, borderColor: '#fed7d7' },
-  button: { backgroundColor: '#2563eb', borderRadius: 8, padding: 14, alignItems: 'center' },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  container:      { gap: 14 },
+  label:          { fontSize: 13, fontWeight: '500', color: Colors.textSecondary, marginBottom: 6 },
+  optional:       { color: Colors.textTertiary, fontWeight: '400' },
+  inputWrap:      {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.border,
+    borderRadius: 10, paddingHorizontal: 12,
+  },
+  inputIcon:      { marginRight: 8 },
+  input:          { flex: 1, fontSize: 15, color: Colors.text, paddingVertical: 13 },
+  inputError:     { borderColor: Colors.danger, backgroundColor: '#FFF5F5' },
+  errorText:      { color: Colors.danger, fontSize: 12, marginTop: 4 },
+  button:         {
+    backgroundColor: Colors.primary, borderRadius: 10,
+    paddingVertical: 15, alignItems: 'center', marginTop: 4,
+  },
+  buttonDisabled: { opacity: 0.5 },
+  buttonText:     { color: Colors.white, fontWeight: '600', fontSize: 16 },
 });

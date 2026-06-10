@@ -40,7 +40,7 @@ export const decodeToken = (token: string): SessionUser => {
 export const redirectByRole = (role: UserRole): string | null =>
   ({
     CUSTOMER: '/(customer)/(tabs)/dashboard',
-    STAFF:    '/(staff)/',
+    STAFF:    '/(staff)/(tabs)/dashboard',
     ADMIN:    null,
     MANAGER:  null,
   } as Record<UserRole, string | null>)[role] ?? null;

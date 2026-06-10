@@ -1,8 +1,10 @@
 import React from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useDeactivateAccount } from '../../../src/features/account/hooks/useDeactivateAccount';
 import { useDeleteAccount } from '../../../src/features/account/hooks/useDeleteAccount';
 import { handleErrorApi } from '../../../src/lib/errors';
+import { Colors } from '../../../src/lib/theme';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function DangerZoneScreen() {
   const deactivate = useDeactivateAccount();
@@ -63,41 +65,81 @@ export default function DangerZoneScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.warning}>
-        ⚠️ Các hành động bên dưới không thể hoàn tác. Hãy cân nhắc kỹ trước khi thực hiện.
-      </Text>
+    <ScrollView style={styles.root} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.warningBox}>
+        <Ionicons name="warning" size={20} color={Colors.warningDark} style={{ marginRight: 8 }} />
+        <Text style={styles.warningText}>
+          Các hành động dưới đây có tính chất nhạy cảm và ảnh hưởng trực tiếp đến tài khoản. Hãy cân nhắc thật kỹ.
+        </Text>
+      </View>
 
-      <Pressable
-        style={styles.deactivateBtn}
-        onPress={handleDeactivate}
-        disabled={deactivate.isPending}
-      >
-        <Text style={styles.deactivateText}>Vô hiệu hóa tài khoản</Text>
-        <Text style={styles.subtitle}>Tạm thời — có thể khôi phục qua hỗ trợ</Text>
-      </Pressable>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Vô hiệu hóa tài khoản</Text>
+        <Text style={styles.sectionDesc}>
+          Tạm thời khóa tài khoản và ẩn các thiết bị của bạn. Bạn có thể khôi phục lại tài khoản bất kỳ lúc nào bằng cách liên hệ bộ phận hỗ trợ.
+        </Text>
+        <Pressable
+          style={styles.deactivateBtn}
+          onPress={handleDeactivate}
+          disabled={deactivate.isPending}
+        >
+          <Text style={styles.deactivateBtnText}>Vô hiệu hóa tài khoản</Text>
+        </Pressable>
+      </View>
 
-      <Pressable
-        style={styles.deleteBtn}
-        onPress={handleDelete}
-        disabled={deleteAccount.isPending}
-      >
-        <Text style={styles.deleteText}>Xóa tài khoản vĩnh viễn</Text>
-        <Text style={[styles.subtitle, { color: '#fca5a5' }]}>Không thể khôi phục</Text>
-      </Pressable>
+      <View style={styles.divider} />
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitleDanger}>Xóa tài khoản vĩnh viễn</Text>
+        <Text style={styles.sectionDesc}>
+          Hành động này sẽ xóa vĩnh viễn tài khoản của bạn, bao gồm tất cả dữ liệu thiết bị, lịch sử vận hành và vé hỗ trợ. Không thể hoàn tác.
+        </Text>
+        <Pressable
+          style={styles.deleteBtn}
+          onPress={handleDelete}
+          disabled={deleteAccount.isPending}
+        >
+          <Text style={styles.deleteBtnText}>Xóa vĩnh viễn tài khoản</Text>
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container:      { padding: 24, gap: 16 },
-  warning:        {
-    backgroundColor: '#fef3c7', borderRadius: 8, padding: 12,
-    fontSize: 13, color: '#92400e', lineHeight: 18,
+  root:              { flex: 1, backgroundColor: Colors.bg },
+  container:         { padding: 24, gap: 20 },
+  warningBox:        {
+    flexDirection: 'row',
+    backgroundColor: Colors.warningLight,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 149, 0, 0.25)',
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  deactivateBtn:  { borderWidth: 1, borderColor: '#f59e0b', borderRadius: 10, padding: 16 },
-  deactivateText: { fontSize: 15, color: '#b45309', fontWeight: '600' },
-  deleteBtn:      { backgroundColor: '#ef4444', borderRadius: 10, padding: 16 },
-  deleteText:     { fontSize: 15, color: '#fff', fontWeight: '600' },
-  subtitle:       { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  warningText:       { flex: 1, fontSize: 13, color: Colors.warningDark, lineHeight: 18, fontWeight: '500' },
+  section:           { gap: 8 },
+  sectionTitle:      { fontSize: 16, fontWeight: '800', color: Colors.text },
+  sectionTitleDanger:{ fontSize: 16, fontWeight: '800', color: Colors.danger },
+  sectionDesc:       { fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
+  deactivateBtn:     {
+    borderWidth: 1.5,
+    borderColor: Colors.warning,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  deactivateBtnText: { color: Colors.warning, fontSize: 14, fontWeight: '700' },
+  deleteBtn:         {
+    backgroundColor: Colors.danger,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  deleteBtnText:     { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  divider:           { height: 1, backgroundColor: Colors.border, marginVertical: 10 },
 });

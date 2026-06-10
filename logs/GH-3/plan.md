@@ -1,7 +1,7 @@
 # Plan — GH-3: [Mobile] Flow Authentication
 
 ## Metadata
-- **Status:** REVIEWING | **Role:** Mobile | **Ngày:** 2026-05-29
+- **Status:** REVIEWING | **Role:** Mobile | **Ngày:** 2026-06-09
 - **Issue:** #3 — https://github.com/GSU26SE55/mobile/issues/3
 - **Sprint:** Sprint 1 (deadline 2026-05-30)
 

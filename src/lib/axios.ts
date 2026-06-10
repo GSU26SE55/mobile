@@ -1,15 +1,15 @@
 import axios, { create as axiosCreate } from 'axios';
+import { router } from 'expo-router';
+import { useSessionStore } from '../stores/sessionStore';
 import { ENDPOINTS } from './endpoints';
+import { EntityError, HttpError } from './errors';
 import {
+  clearTokens,
   getAccessToken,
   getRefreshToken,
   isTokenExpired,
   saveTokens,
-  clearTokens,
 } from './secureStore';
-import { useSessionStore } from '../stores/sessionStore';
-import { router } from 'expo-router';
-import { EntityError, HttpError } from './errors';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5000';
 
