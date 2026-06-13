@@ -7,6 +7,7 @@ import {
   View,
   ScrollView,
   Image,
+  ActivityIndicator,
   ActionSheetIOS,
   Alert,
   Platform,
@@ -15,6 +16,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TicketCategoryEnum, TicketPriorityEnum } from '../types/ticket.types';
+import type { UploadedTicketAttachment } from '../types/ticket.types';
+import { useUploadTicketAttachment } from '../hooks/useUploadTicketAttachment';
 import { useMyBatteryAssets } from '../../batteries/hooks/useMyBatteryAssets';
 import { BatteryAssetDto } from '../../batteries/types/battery.types';
 import { Colors, Shadow, ShadowPrimary } from '../../../lib/theme';
@@ -36,8 +39,8 @@ interface Props {
   setCategory: (c: TicketCategoryEnum | '') => void;
   description: string;
   setDescription: (desc: string) => void;
-  attachedFiles: string[];
-  setAttachedFiles: (files: string[] | ((f: string[]) => string[])) => void;
+  attachedFiles: UploadedTicketAttachment[];
+  setAttachedFiles: React.Dispatch<React.SetStateAction<UploadedTicketAttachment[]>>;
   onSubmit: () => void;
   isLoading: boolean;
   onCancel: () => void;
@@ -78,6 +81,24 @@ const CATEGORIES: { value: TicketCategoryEnum; label: string; sub: string; icon:
   },
 ];
 
+const getAssetUploadFile = (asset: ImagePicker.ImagePickerAsset) => {
+  const uriFileName = asset.uri.split('/').pop();
+  const assetFileName = asset.fileName ?? uriFileName;
+  const rawExt = assetFileName?.split('.').pop()?.toLowerCase();
+  const contentType = rawExt === 'png' || asset.mimeType === 'image/png' ? 'image/png' : 'image/jpeg';
+  const fallbackExt = contentType === 'image/png' ? 'png' : 'jpg';
+  const isAllowedExt = rawExt === 'jpg' || rawExt === 'jpeg' || rawExt === 'png';
+  const name = isAllowedExt && assetFileName
+    ? assetFileName
+    : `ticket-attachment-${Date.now()}.${fallbackExt}`;
+
+  return {
+    uri: asset.uri,
+    name,
+    type: contentType,
+  };
+};
+
 export function CreateTicketStepper({
   step,
   setStep,
@@ -109,6 +130,30 @@ export function CreateTicketStepper({
 
   const { data: batteries = [] } = useMyBatteryAssets();
   const selectedBattery = batteries.find((b: BatteryAssetDto) => b.id === selectedBatteryId);
+  const uploadTicketAttachment = useUploadTicketAttachment();
+  const isUploadingImage = uploadTicketAttachment.isPending;
+
+  const uploadPickedAssets = async (assets: ImagePicker.ImagePickerAsset[]) => {
+    const uploadedFiles: UploadedTicketAttachment[] = [];
+    let failedCount = 0;
+
+    for (const asset of assets) {
+      try {
+        const uploaded = await uploadTicketAttachment.mutateAsync(getAssetUploadFile(asset));
+        uploadedFiles.push(uploaded);
+      } catch {
+        failedCount += 1;
+      }
+    }
+
+    if (uploadedFiles.length > 0) {
+      setAttachedFiles((prev) => [...prev, ...uploadedFiles]);
+    }
+
+    if (failedCount > 0) {
+      Alert.alert('Error', `${failedCount} image(s) failed to upload. Please try again.`);
+    }
+  };
 
   // Image picker
   const pickFromCamera = async () => {
@@ -123,7 +168,7 @@ export function CreateTicketStepper({
         quality: 0.7,
       });
       if (!result.canceled && result.assets?.[0]?.uri) {
-        setAttachedFiles((prev) => [...prev, result.assets[0].uri]);
+        await uploadPickedAssets([result.assets[0]]);
       }
     } catch {
       Alert.alert('Lỗi', 'Không thể khởi động máy ảnh.');
@@ -143,8 +188,7 @@ export function CreateTicketStepper({
         quality: 0.7,
       });
       if (!result.canceled && result.assets) {
-        const uris = result.assets.map((a) => a.uri);
-        setAttachedFiles((prev) => [...prev, ...uris]);
+        await uploadPickedAssets(result.assets);
       }
     } catch {
       Alert.alert('Lỗi', 'Không thể truy cập thư viện ảnh.');
@@ -152,6 +196,8 @@ export function CreateTicketStepper({
   };
 
   const handleAddImage = () => {
+    if (isUploadingImage) return;
+
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         { options: ['Hủy', 'Chụp ảnh', 'Chọn từ thư viện'], cancelButtonIndex: 0 },
@@ -320,9 +366,9 @@ export function CreateTicketStepper({
             {/* Added images grid */}
             {attachedFiles.length > 0 && (
               <View style={styles.imageGrid}>
-                {attachedFiles.map((uri, idx) => (
-                  <View key={idx} style={[styles.imageSlot, Shadow]}>
-                    <Image source={{ uri }} style={styles.imageThumb} />
+                {attachedFiles.map((file, idx) => (
+                  <View key={file.fileId} style={[styles.imageSlot, Shadow]}>
+                    <Image source={{ uri: file.uri }} style={styles.imageThumb} />
                     <Pressable style={styles.removeImageBtn} onPress={() => handleRemoveFile(idx)}>
                       <Ionicons name="close-circle" size={20} color="#D32F2F" />
                     </Pressable>
@@ -332,8 +378,16 @@ export function CreateTicketStepper({
             )}
 
             {/* Add button — full width, dashed */}
-            <Pressable style={styles.addSlot} onPress={handleAddImage}>
-              <Ionicons name="image-outline" size={36} color={Colors.textMute} />
+            <Pressable
+              style={[styles.addSlot, isUploadingImage && styles.addSlotDisabled]}
+              onPress={handleAddImage}
+              disabled={isUploadingImage}
+            >
+              {isUploadingImage ? (
+                <ActivityIndicator color={Colors.textMute} />
+              ) : (
+                <Ionicons name="image-outline" size={36} color={Colors.textMute} />
+              )}
               <Text style={styles.addSlotText}>Thêm ảnh</Text>
             </Pressable>
 
@@ -400,6 +454,7 @@ export function CreateTicketStepper({
   const isNextDisabled = () => {
     if (step === 1) return !selectedBatteryId;
     if (step === 2) return !category || description.length < 10;
+    if (step === 3) return isUploadingImage;
     return false;
   };
 
@@ -434,9 +489,9 @@ export function CreateTicketStepper({
           </Pressable>
         ) : (
           <Pressable
-            style={[styles.submitBtn, isLoading && styles.continueBtnDisabled, ShadowPrimary]}
+            style={[styles.submitBtn, (isLoading || isUploadingImage) && styles.continueBtnDisabled, ShadowPrimary]}
             onPress={onSubmit}
-            disabled={isLoading}
+            disabled={isLoading || isUploadingImage}
           >
             <Text style={styles.continueBtnText}>Gửi ticket</Text>
             <Ionicons name="paper-plane" size={14} color="#fff" style={{ marginLeft: 6 }} />
@@ -560,6 +615,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 12,
   },
+  addSlotDisabled: { opacity: 0.65 },
   addSlotText: { fontSize: 13, color: Colors.textMute, fontWeight: '600' },
   imageCountText: { fontSize: 11, color: Colors.textMute, marginTop: 4, paddingBottom: 40 },
 

@@ -37,7 +37,7 @@ export const fileStorageLib = {
   uploadTicketAttachment: (uri: string, name: string, type: string) => {
     const form = new FormData();
     form.append('file', { uri, name, type } as unknown as Blob);
-    form.append('purpose', '3'); // FilePurposeEnum.TicketAttachment
+    form.append('purpose', '2'); // FilePurposeEnum.TicketAttachment
     return axiosInstance.post<CommonResponse<FileUploadResponse>>(
       ENDPOINTS.FILES.UPLOAD,
       form,
