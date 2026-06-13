@@ -7,7 +7,7 @@ import { CreateTicketSuccess } from '../../../src/features/tickets/components/Cr
 import { useCreateTicket } from '../../../src/features/tickets/hooks/useCreateTicket';
 import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
 import { TicketCategoryEnum } from '../../../src/features/tickets/types/ticket.types';
-import { fileStorageLib } from '../../../src/lib/fileStorage';
+import type { UploadedTicketAttachment } from '../../../src/features/tickets/types/ticket.types';
 import { Colors } from '../../../src/lib/theme';
 
 export default function CreateTicketScreen() {
@@ -19,7 +19,7 @@ export default function CreateTicketScreen() {
   const [selectedBatteryId, setSelectedBatteryId] = useState<string | null>(null);
   const [category, setCategory] = useState<TicketCategoryEnum | ''>('');
   const [description, setDescription] = useState('');
-  const [attachedFiles, setAttachedFiles] = useState<string[]>([]);
+  const [attachedFiles, setAttachedFiles] = useState<UploadedTicketAttachment[]>([]);
 
   const [createdTicketCode, setCreatedTicketCode] = useState<string>('');
   const [createdTicketId, setCreatedTicketId] = useState<string>('');
@@ -52,28 +52,12 @@ export default function CreateTicketScreen() {
     const title = battery ? `${catLabel} - ${battery.serialNumber}` : catLabel;
 
     try {
-      // Upload attachments first, collect fileIds
-      const attachmentFileIds: string[] = [];
-      for (const uri of attachedFiles) {
-        const fileName = uri.split('/').pop() ?? 'image.jpg';
-        const ext = fileName.split('.').pop()?.toLowerCase() ?? 'jpg';
-        const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
-        try {
-          const uploadRes = await fileStorageLib.uploadTicketAttachment(uri, fileName, mimeType);
-          if (uploadRes.data?.data?.fileId) {
-            attachmentFileIds.push(uploadRes.data.data.fileId);
-          }
-        } catch {
-          // skip failed uploads silently — ticket still creates
-        }
-      }
-
       const res = await mutateAsync({
         title,
         description,
         category: category as TicketCategoryEnum,
         batteryAssetId: selectedBatteryId ?? undefined,
-        attachmentFileIds: attachmentFileIds.length > 0 ? attachmentFileIds : undefined,
+        attachmentFileIds: attachedFiles.length > 0 ? attachedFiles.map((file) => file.fileId) : undefined,
       });
 
       const dataDto = res.data?.data;

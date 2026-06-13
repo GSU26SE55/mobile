@@ -134,6 +134,14 @@ export interface CreateTicketPayload {
   attachmentFileIds?: string[];
 }
 
+export interface UploadedTicketAttachment {
+  uri: string;
+  fileId: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+}
+
 export interface CommentAttachmentPayload {
   fileId: string;
   fileName: string;
