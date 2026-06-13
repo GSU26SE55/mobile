@@ -57,7 +57,14 @@ export default function CreateTicketScreen() {
         description,
         category: category as TicketCategoryEnum,
         batteryAssetId: selectedBatteryId ?? undefined,
-        attachmentFileIds: attachedFiles.length > 0 ? attachedFiles.map((file) => file.fileId) : undefined,
+        attachments: attachedFiles.length > 0
+          ? attachedFiles.map((file) => ({
+              fileId: file.fileId,
+              fileName: file.fileName,
+              contentType: file.contentType,
+              sizeBytes: file.sizeBytes,
+            }))
+          : undefined,
       });
 
       const dataDto = res.data?.data;

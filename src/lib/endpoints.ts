@@ -36,6 +36,7 @@ export const ENDPOINTS = {
   },
   FILES: {
     UPLOAD: '/api/files/upload',
+    DOWNLOAD: (id: string) => `/api/files/${id}/download`,
   },
   BATTERIES: {
     LIST:      '/api/batteries',

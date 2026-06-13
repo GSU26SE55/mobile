@@ -106,10 +106,12 @@ export interface TicketDetailDTO extends TicketDTO {
 
 export interface TicketAttachmentDTO {
   id: string;
+  fileId: string;
   fileName: string;
-  fileUrl: string;
-  mimeType: string | null;
-  uploadedAt: string | null;
+  contentType: string;
+  sizeBytes: number;
+  uploadedByUserId: string;
+  createdAt: string;
 }
 
 export interface TicketActionDto {
@@ -131,7 +133,7 @@ export interface CreateTicketPayload {
   description: string;
   category: TicketCategoryEnum;
   batteryAssetId?: string;
-  attachmentFileIds?: string[];
+  attachments?: CommentAttachmentPayload[];
 }
 
 export interface UploadedTicketAttachment {
