@@ -6,7 +6,12 @@ import {
   ChangePasswordPayload,
   ConfirmEmailChangePayload,
   PhoneOtpPayload,
-  TwoFAEnableResponse,
+  Init2faResponse,
+  Confirm2faPayload,
+  Confirm2faResponse,
+  Disable2faPayload,
+  RegenBackupPayload,
+  RegenBackupResponse,
 } from '../types/account.types';
 
 const { ACCOUNT } = ENDPOINTS;
@@ -27,11 +32,18 @@ export const accountService = {
   verifyPhoneOtp: (data: PhoneOtpPayload) =>
     axiosInstance.post<CommonResponse<null>>(ACCOUNT.VERIFY_PHONE_OTP, data),
 
-  enable2FA: () =>
-    axiosInstance.post<CommonResponse<TwoFAEnableResponse>>(ACCOUNT.ENABLE_2FA),
+  // GH-295: 2FA enroll flow 2 bước
+  init2FA: () =>
+    axiosInstance.post<CommonResponse<Init2faResponse>>(ACCOUNT.INIT_2FA),
 
-  disable2FA: () =>
-    axiosInstance.post<CommonResponse<null>>(ACCOUNT.DISABLE_2FA),
+  confirm2FA: (data: Confirm2faPayload) =>
+    axiosInstance.post<CommonResponse<Confirm2faResponse>>(ACCOUNT.CONFIRM_2FA, data),
+
+  disable2FA: (data: Disable2faPayload) =>
+    axiosInstance.post<CommonResponse<string>>(ACCOUNT.DISABLE_2FA, data),
+
+  regenerateBackupCodes: (data: RegenBackupPayload) =>
+    axiosInstance.post<CommonResponse<RegenBackupResponse>>(ACCOUNT.BACKUP_REGEN_2FA, data),
 
   deactivate: () =>
     axiosInstance.post<CommonResponse<null>>(ACCOUNT.DEACTIVATE),

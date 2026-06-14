@@ -33,10 +33,35 @@ export interface ResetPasswordPayload {
   newPassword: string;
 }
 
-export interface LoginResponseData {
+// ── GH-295: LoginResultDto — discriminated union (login + refresh) ──
+export interface TokenDto {
   accessToken: string;
   refreshToken: string;
 }
+
+export interface TwoFactorChallengeDto {
+  challengeToken: string; // 32 hex, TTL 5 phút
+  expiresInSeconds: number; // luôn 300
+  methods: string[]; // luôn ["totp", "backupCode"]
+}
+
+// Case A (login complete): tokens set, challenge null.
+// Case B (2FA on, chỉ login): tokens null, challenge set.
+export interface LoginResultData {
+  tokens: TokenDto | null;
+  challenge: TwoFactorChallengeDto | null;
+  requiresTwoFactor: boolean;
+}
+
+// Bước 2 của 2FA login (POST /api/auth/login/verify-2fa)
+export interface Verify2faLoginPayload {
+  challengeToken: string;
+  code: string;
+  isBackupCode: boolean;
+}
+
+// Key SecureStore giữ challengeToken giữa login → màn hình verify-2fa (TTL 5 phút server-side)
+export const CHALLENGE_TOKEN_KEY = 'login_2fa_challenge';
 
 export interface VerifyResetOtpData {
   resetToken: string;

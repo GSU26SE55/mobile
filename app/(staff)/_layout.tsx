@@ -23,6 +23,8 @@ export default function StaffLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="tickets/[id]" />
+      <Stack.Screen name="batteries/[id]" />
+      <Stack.Screen name="alerts/[id]" />
       <Stack.Screen name="index" />
     </Stack>
   );

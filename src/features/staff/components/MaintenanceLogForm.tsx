@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Colors, Shadow } from '../../../lib/theme';
+import type { MaintenanceLogPayload } from '../types/staff.types';
 
 interface Props {
   isLoading: boolean;
-  onSubmit: (data: { description: string; actionTaken?: string; partsUsed?: string; durationMinutes?: number }) => void;
+  onSubmit: (data: MaintenanceLogPayload) => void;
 }
 
 export function MaintenanceLogForm({ isLoading, onSubmit }: Props) {
@@ -21,8 +22,8 @@ export function MaintenanceLogForm({ isLoading, onSubmit }: Props) {
       return;
     }
     onSubmit({
-      description: trimmed,
-      actionTaken: actionTaken.trim() || undefined,
+      summary: trimmed,
+      actionsTaken: actionTaken.trim() || undefined,
       partsUsed: partsUsed.trim() || undefined,
       durationMinutes: duration ? parseInt(duration, 10) : undefined,
     });

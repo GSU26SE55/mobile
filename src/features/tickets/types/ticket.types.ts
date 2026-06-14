@@ -5,8 +5,10 @@ export {
   TicketOriginEnum,
   ImpactScopeEnum,
   UrgencyLevelEnum,
+  PauseReasonEnum,
   EscalationReasonEnum,
   SlaTimerStatusEnum,
+  MaintenanceLogTypeEnum,
   ActorRoleEnum,
   ActivityActionEnum,
 } from '../../../shared/enums/ticket.enum';
@@ -20,6 +22,7 @@ import type {
   UrgencyLevelEnum,
   EscalationReasonEnum,
   SlaTimerStatusEnum,
+  MaintenanceLogTypeEnum,
   ActorRoleEnum,
   ActivityActionEnum,
 } from '../../../shared/enums/ticket.enum';
@@ -83,6 +86,25 @@ export interface TicketDTO {
   slaTimer: SlaTimerDTO | null;
 }
 
+export interface MaintenanceLogDTO {
+  id: string;
+  ticketId: string;
+  staffId: string;
+  logType: MaintenanceLogTypeEnum;
+  summary: string | null;
+  diagnosisDetails: string | null;
+  actionsTaken: string | null;
+  durationMinutes: number;
+  resolutionNote: string | null;
+  startedAt: string;
+  completedAt: string | null;
+  attachmentFileIds: string[] | null;
+  beforePhotosFileIds: string[] | null;
+  afterPhotosFileIds: string[] | null;
+  relatedKbArticleIds: string[] | null;
+  createdAt: string;
+}
+
 export interface TicketDetailDTO extends TicketDTO {
   description: string | null;
   resolutionSummary: string | null;
@@ -100,16 +122,18 @@ export interface TicketDetailDTO extends TicketDTO {
   originAlertId: string | null;
   activities: TicketActivityDTO[] | null;
   comments: TicketCommentDTO[] | null;
-  maintenanceLogs: unknown[] | null;
+  maintenanceLogs: MaintenanceLogDTO[] | null;
   attachments: TicketAttachmentDTO[] | null;
 }
 
 export interface TicketAttachmentDTO {
   id: string;
+  fileId: string;
   fileName: string;
-  fileUrl: string;
-  mimeType: string | null;
-  uploadedAt: string | null;
+  contentType: string;
+  sizeBytes: number;
+  uploadedByUserId: string | null;
+  createdAt: string;
 }
 
 export interface TicketActionDto {
@@ -131,7 +155,7 @@ export interface CreateTicketPayload {
   description: string;
   category: TicketCategoryEnum;
   batteryAssetId?: string;
-  attachmentFileIds?: string[];
+  attachments?: CommentAttachmentPayload[];
 }
 
 export interface UploadedTicketAttachment {

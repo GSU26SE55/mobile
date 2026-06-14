@@ -30,8 +30,8 @@ import { useResolveTicket } from '../../../src/features/staff/hooks/useResolveTi
 import { useEscalateTicket } from '../../../src/features/staff/hooks/useEscalateTicket';
 import { useStaffAddComment } from '../../../src/features/staff/hooks/useStaffAddComment';
 import { useAddMaintenanceLog } from '../../../src/features/staff/hooks/useAddMaintenanceLog';
-import { HoldReasonEnum, MaintenanceLogPayload } from '../../../src/features/staff/types/staff.types';
-import { EscalationReasonEnum, TicketDetailDTO, TicketStatusEnum, TicketCommentDTO } from '../../../src/features/tickets/types/ticket.types';
+import { MaintenanceLogPayload } from '../../../src/features/staff/types/staff.types';
+import { EscalationReasonEnum, PauseReasonEnum, TicketStatusEnum, TicketCommentDTO } from '../../../src/features/tickets/types/ticket.types';
 import { useSessionStore } from '../../../src/stores/sessionStore';
 
 type TabKey = 'comments' | 'activities' | 'logs';
@@ -52,40 +52,6 @@ const PRIORITY_LABELS: Record<string, string> = {
   P1Critical: 'P1 Critical',
   P2High:     'P2 High',
   P3Normal:   'P3 Normal',
-};
-
-const NOW = Date.now();
-const MOCK_DETAIL: TicketDetailDTO = {
-  id: 'staff-mock-1', code: 'TK-0042', batteryAssetId: 'ba-001', customerId: 'cust-1',
-  assignedStaffId: 'me', title: 'Overheat - Battery BR-001 nhiệt độ vượt ngưỡng',
-  category: 'Overheat', priority: 'P1Critical', impactScope: 'SingleAsset', urgencyLevel: 'High',
-  status: 'InProgress', origin: 'AutoFromAlert', reopenCount: 0, isIncident: false,
-  createdAt: new Date(NOW - 2 * 3600_000).toISOString(),
-  updatedAt: new Date(NOW - 30 * 60_000).toISOString(),
-  slaTimer: {
-    id: 'sla-1', priority: 'P1Critical',
-    startedAt: new Date(NOW - 2 * 3600_000).toISOString(),
-    dueAt: new Date(NOW + 2 * 3600_000).toISOString(),
-    originalDueAt: new Date(NOW + 2 * 3600_000).toISOString(),
-    totalPausedMinutes: 0, warningSentAt: null, breachAt: null,
-    status: 'Running', remainingPercent: 50,
-  },
-  description: 'Hệ thống phát hiện nhiệt độ pin vượt ngưỡng 55°C lúc 09:15. Cần xử lý gấp để tránh nguy cơ an toàn.',
-  resolutionSummary: null, resolvedAt: null, resolvedByStaffId: null,
-  approvedAt: null, approvedByManagerId: null, rejectionReason: null,
-  closedAt: null, rating: null, ratingComment: null, ratedAt: null,
-  escalatedAt: null, escalationReason: null, originAlertId: 'alert-001',
-  activities: [
-    { id: 'a1', ticketId: 'staff-mock-1', actorUserId: null, actorRole: 'System', actorDisplayName: 'Hệ thống', action: 'Created', oldValue: null, newValue: 'New', reason: 'Tự động từ cảnh báo bất thường', createdAt: new Date(NOW - 2 * 3600_000).toISOString() },
-    { id: 'a2', ticketId: 'staff-mock-1', actorUserId: 'mgr-1', actorRole: 'Manager', actorDisplayName: 'Nguyễn Minh Quản', action: 'StaffAssigned', oldValue: null, newValue: 'Trần Văn Kỹ thuật (Tier 2)', reason: null, createdAt: new Date(NOW - 90 * 60_000).toISOString() },
-    { id: 'a3', ticketId: 'staff-mock-1', actorUserId: 'me', actorRole: 'Staff', actorDisplayName: 'Trần Văn Kỹ thuật', action: 'StatusChanged', oldValue: 'Assigned', newValue: 'InProgress', reason: null, createdAt: new Date(NOW - 60 * 60_000).toISOString() },
-  ],
-  comments: [
-    { id: 'c1', ticketId: 'staff-mock-1', authorUserId: null, authorRole: 'System', authorDisplayName: 'Hệ thống', body: 'Ticket được tạo tự động từ cảnh báo nhiệt độ bất thường (55.3°C).', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 2 * 3600_000).toISOString() },
-    { id: 'c2', ticketId: 'staff-mock-1', authorUserId: 'cust-1', authorRole: 'Customer', authorDisplayName: 'Lê Thanh Hải', body: 'Nhiệt độ đã giảm chưa? Thiết bị có an toàn không?', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 40 * 60_000).toISOString() },
-  ],
-  maintenanceLogs: [],
-  attachments: [],
 };
 
 const ROLE_AVATAR: Record<string, { icon: keyof typeof Ionicons.glyphMap; iconColor: string; bg: string }> = {
@@ -138,30 +104,30 @@ export default function StaffTicketDetailScreen() {
 
   const [activeTab, setActiveTab] = useState<TabKey>('comments');
   const [commentText, setCommentText] = useState('');
+  const [isInternalComment, setIsInternalComment] = useState(false);
   const [showHold, setShowHold] = useState(false);
   const [showResolve, setShowResolve] = useState(false);
   const [showEscalate, setShowEscalate] = useState(false);
   const [showLogForm, setShowLogForm] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
-  const ticket = apiDetail ?? MOCK_DETAIL;
-
   useEffect(() => {
     if (activeTab === 'comments') {
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 50);
     }
-  }, [activeTab, ticket.comments?.length]);
-  const pColor = PRIORITY_COLORS[ticket.priority] ?? PRIORITY_COLORS.P3Normal;
-  const isActioning = isStarting || isHolding || isResuming || isResolving || isEscalating;
+  }, [activeTab, apiDetail?.comments?.length]);
 
   const handleSendComment = () => {
     const trimmed = commentText.trim();
     if (!trimmed) return;
-    addComment({ body: trimmed, isInternal: false }, { onSuccess: () => setCommentText('') });
+    addComment(
+      { body: trimmed, isInternal: isInternalComment },
+      { onSuccess: () => setCommentText('') },
+    );
   };
 
   const handleStart = () => { startTicket(undefined); };
-  const handleHold = (reason: HoldReasonEnum) => { holdTicket({ reason }, { onSuccess: () => setShowHold(false) }); };
+  const handleHold = (reason: PauseReasonEnum, note?: string) => { holdTicket({ reason, note }, { onSuccess: () => setShowHold(false) }); };
   const handleResume = () => { resumeTicket(undefined); };
   const handleResolve = (summary: string) => { resolveTicket({ resolutionSummary: summary }, { onSuccess: () => setShowResolve(false) }); };
   const handleEscalate = (reason: EscalationReasonEnum, note?: string) => { escalateTicket({ reason, note }, { onSuccess: () => setShowEscalate(false) }); };
@@ -174,6 +140,25 @@ export default function StaffTicketDetailScreen() {
       </View>
     );
   }
+
+  if (!apiDetail) {
+    return (
+      <View style={[styles.loadingRoot, { paddingTop: insets.top, paddingHorizontal: 24 }]}>
+        <Ionicons name="alert-circle-outline" size={48} color={Colors.textFaint} />
+        <Text style={styles.notFoundTitle}>Không tải được ticket</Text>
+        <Text style={styles.notFoundText}>
+          Ticket không tồn tại hoặc bạn không có quyền xem. Vui lòng thử lại.
+        </Text>
+        <Pressable style={styles.notFoundBtn} onPress={() => router.back()}>
+          <Text style={styles.notFoundBtnText}>Quay lại</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const ticket = apiDetail;
+  const pColor = PRIORITY_COLORS[ticket.priority] ?? PRIORITY_COLORS.P3Normal;
+  const isActioning = isStarting || isHolding || isResuming || isResolving || isEscalating;
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -216,6 +201,23 @@ export default function StaffTicketDetailScreen() {
             <Text style={styles.sectionLabel}>Mô tả</Text>
             <Text style={styles.descText}>{ticket.description}</Text>
           </View>
+        )}
+
+        {/* Battery view entry point */}
+        {ticket.batteryAssetId && (
+          <Pressable
+            style={[styles.logButton, Shadow]}
+            onPress={() =>
+              router.push({
+                pathname: '/(staff)/batteries/[id]',
+                params: { id: ticket.batteryAssetId as string },
+              })
+            }
+          >
+            <Ionicons name="battery-charging-outline" size={18} color={Colors.primary} />
+            <Text style={styles.logButtonText}>Xem thông tin pin</Text>
+            <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
+          </Pressable>
         )}
 
         {/* Action Bar */}
@@ -278,13 +280,14 @@ export default function StaffTicketDetailScreen() {
             {(ticket.maintenanceLogs ?? []).length === 0 ? (
               <Text style={styles.emptyTab}>Chưa có nhật ký bảo trì</Text>
             ) : (
-              (ticket.maintenanceLogs ?? []).map((log: any, idx: number) => (
-                <View key={log.id ?? idx} style={[styles.logCard, Shadow]}>
-                  {!!log.description && <Text style={styles.logDesc}>{log.description}</Text>}
-                  {!!log.actionTaken && <Text style={styles.logMeta}>Hành động: {log.actionTaken}</Text>}
-                  {!!log.partsUsed && <Text style={styles.logMeta}>Phụ tùng: {log.partsUsed}</Text>}
-                  {log.durationMinutes != null && <Text style={styles.logMeta}>Thời gian: {log.durationMinutes} phút</Text>}
-                  {!!log.createdAt && <Text style={styles.logTime}>{new Date(log.createdAt).toLocaleString('vi-VN')}</Text>}
+              (ticket.maintenanceLogs ?? []).map((log) => (
+                <View key={log.id} style={[styles.logCard, Shadow]}>
+                  {!!log.summary && <Text style={styles.logDesc}>{log.summary}</Text>}
+                  {!!log.actionsTaken && <Text style={styles.logMeta}>Hành động: {log.actionsTaken}</Text>}
+                  {!!log.diagnosisDetails && <Text style={styles.logMeta}>Chẩn đoán: {log.diagnosisDetails}</Text>}
+                  {!!log.resolutionNote && <Text style={styles.logMeta}>Kết quả: {log.resolutionNote}</Text>}
+                  {log.durationMinutes > 0 && <Text style={styles.logMeta}>Thời gian: {log.durationMinutes} phút</Text>}
+                  <Text style={styles.logTime}>{new Date(log.createdAt).toLocaleString('vi-VN')}</Text>
                 </View>
               ))
             )}
@@ -297,6 +300,16 @@ export default function StaffTicketDetailScreen() {
       {/* Comment Composer — only for comments tab */}
       {activeTab === 'comments' && (
         <View style={[styles.composer, { paddingBottom: insets.bottom + 8 }]}>
+          <Pressable
+            style={[styles.internalToggle, isInternalComment && styles.internalToggleOn]}
+            onPress={() => setIsInternalComment((v) => !v)}
+          >
+            <Ionicons
+              name={isInternalComment ? 'lock-closed' : 'lock-open-outline'}
+              size={16}
+              color={isInternalComment ? Colors.warningDark : Colors.textMute}
+            />
+          </Pressable>
           <TextInput
             style={styles.composerInput}
             placeholder="Nhập tin nhắn..."
@@ -329,7 +342,11 @@ export default function StaffTicketDetailScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
-  loadingRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bg },
+  loadingRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bg, gap: 10 },
+  notFoundTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, marginTop: 4 },
+  notFoundText: { fontSize: 13, fontWeight: '500', color: Colors.textMute, textAlign: 'center', lineHeight: 19 },
+  notFoundBtn: { marginTop: 8, paddingHorizontal: 24, paddingVertical: 11, borderRadius: 14, backgroundColor: Colors.primary },
+  notFoundBtnText: { fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -417,4 +434,10 @@ const styles = StyleSheet.create({
     ...ShadowPrimary,
   },
   sendBtnDisabled: { backgroundColor: Colors.textFaint, shadowOpacity: 0 },
+  internalToggle: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: Colors.card2,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  internalToggleOn: { backgroundColor: Colors.warningLight },
 });

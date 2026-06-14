@@ -27,123 +27,14 @@ import { useRateTicket } from '../../../src/features/tickets/hooks/useRateTicket
 import { useReopenTicket } from '../../../src/features/tickets/hooks/useReopenTicket';
 import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/useUploadCommentAttachment';
 import { useTicketDetail } from '../../../src/features/tickets/hooks/useTicketDetail';
+import { useAuthImageHeaders } from '../../../src/features/tickets/hooks/useAuthImageHeaders';
 import { AttachmentForm, commentSchema } from '../../../src/features/tickets/schemas/comment.schema';
 import { RatePayload, ReopenPayload, TicketDetailDTO, TicketStatusEnum, TicketAttachmentDTO } from '../../../src/features/tickets/types/ticket.types';
+import { BASE_URL } from '../../../src/lib/axios';
+import { ENDPOINTS } from '../../../src/lib/endpoints';
 import { BadgeColors, Colors, Shadow, ShadowPrimary } from '../../../src/lib/theme';
 import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
 import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
-
-const NOW = Date.now();
-
-const MOCK_TICKET_DETAILS: Record<string, TicketDetailDTO> = {
-  'mock-1': {
-    id: 'mock-1', code: 'TK-0042', batteryAssetId: 'ba-001', customerId: 'cust-1',
-    assignedStaffId: 'staff-1', title: 'Overheat - Battery BR-001 nhiệt độ vượt ngưỡng',
-    category: 'Overheat', priority: 'P1Critical', impactScope: 'SingleAsset', urgencyLevel: 'High',
-    status: 'InProgress', origin: 'AutoFromAlert', reopenCount: 0, isIncident: false,
-    createdAt: new Date(NOW - 2 * 3600_000).toISOString(),
-    updatedAt: new Date(NOW - 30 * 60_000).toISOString(),
-    slaTimer: {
-      id: 'sla-1', priority: 'P1Critical',
-      startedAt: new Date(NOW - 2 * 3600_000).toISOString(),
-      dueAt: new Date(NOW + 2 * 3600_000).toISOString(),
-      originalDueAt: new Date(NOW + 2 * 3600_000).toISOString(),
-      totalPausedMinutes: 0, warningSentAt: null, breachAt: null,
-      status: 'Running', remainingPercent: 50,
-    },
-    description: 'Hệ thống phát hiện nhiệt độ pin vượt ngưỡng 55°C lúc 09:15. Cần xử lý gấp để tránh nguy cơ an toàn.',
-    resolutionSummary: null, resolvedAt: null, resolvedByStaffId: null,
-    approvedAt: null, approvedByManagerId: null, rejectionReason: null,
-    closedAt: null, rating: null, ratingComment: null, ratedAt: null,
-    escalatedAt: null, escalationReason: null, originAlertId: 'alert-001',
-    activities: [
-      { id: 'a1', ticketId: 'mock-1', actorUserId: null, actorRole: 'System', actorDisplayName: 'Hệ thống', action: 'Created', oldValue: null, newValue: 'New', reason: 'Tự động từ cảnh báo bất thường', createdAt: new Date(NOW - 2 * 3600_000).toISOString() },
-      { id: 'a2', ticketId: 'mock-1', actorUserId: 'mgr-1', actorRole: 'Manager', actorDisplayName: 'Nguyễn Minh Quản', action: 'StaffAssigned', oldValue: null, newValue: 'Trần Văn Kỹ thuật (Tier 2)', reason: null, createdAt: new Date(NOW - 90 * 60_000).toISOString() },
-      { id: 'a3', ticketId: 'mock-1', actorUserId: 'staff-1', actorRole: 'Staff', actorDisplayName: 'Trần Văn Kỹ thuật', action: 'StatusChanged', oldValue: 'Assigned', newValue: 'InProgress', reason: null, createdAt: new Date(NOW - 60 * 60_000).toISOString() },
-    ],
-    comments: [
-      { id: 'c1', ticketId: 'mock-1', authorUserId: null, authorRole: 'System', authorDisplayName: 'Hệ thống', body: 'Ticket được tạo tự động từ cảnh báo nhiệt độ bất thường (55.3°C).', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 2 * 3600_000).toISOString() },
-      { id: 'c2', ticketId: 'mock-1', authorUserId: 'staff-1', authorRole: 'Staff', authorDisplayName: 'Trần Văn Kỹ thuật', body: 'Đã tiếp nhận ticket. Đang kiểm tra hệ thống làm mát pin BR-001. Sẽ cập nhật trong 30 phút.', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 55 * 60_000).toISOString() },
-      { id: 'c3', ticketId: 'mock-1', authorUserId: 'cust-1', authorRole: 'Customer', authorDisplayName: 'Bạn', body: 'Cảm ơn. Nhiệt độ đã giảm chưa? Thiết bị có an toàn không?', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 40 * 60_000).toISOString() },
-      { id: 'c4', ticketId: 'mock-1', authorUserId: 'staff-1', authorRole: 'Staff', authorDisplayName: 'Trần Văn Kỹ thuật', body: 'Nhiệt độ đã giảm xuống 48°C sau khi tắt tải. Đang theo dõi tiếp. Thiết bị an toàn.', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 30 * 60_000).toISOString() },
-    ],
-    maintenanceLogs: [], attachments: [],
-  },
-  'mock-2': {
-    id: 'mock-2', code: 'TK-0038', batteryAssetId: 'ba-002', customerId: 'cust-1',
-    assignedStaffId: null, title: 'Sự cố sạc - Pin BR-002 không nhận sạc',
-    category: 'Charging', priority: 'P2High', impactScope: 'SingleAsset', urgencyLevel: 'Medium',
-    status: 'New', origin: 'ManualByCustomer', reopenCount: 0, isIncident: false,
-    createdAt: new Date(NOW - 5 * 3600_000).toISOString(), updatedAt: null, slaTimer: null,
-    description: 'Pin BR-002 không nhận sạc từ hệ thống tấm pin mặt trời. Đèn báo sạc không sáng dù trời nắng. Đã kiểm tra kết nối vật lý nhưng không có vấn đề rõ ràng.',
-    resolutionSummary: null, resolvedAt: null, resolvedByStaffId: null,
-    approvedAt: null, approvedByManagerId: null, rejectionReason: null,
-    closedAt: null, rating: null, ratingComment: null, ratedAt: null,
-    escalatedAt: null, escalationReason: null, originAlertId: null,
-    activities: [
-      { id: 'a10', ticketId: 'mock-2', actorUserId: 'cust-1', actorRole: 'Customer', actorDisplayName: 'Bạn', action: 'Created', oldValue: null, newValue: 'New', reason: null, createdAt: new Date(NOW - 5 * 3600_000).toISOString() },
-    ],
-    comments: [
-      { id: 'c10', ticketId: 'mock-2', authorUserId: 'cust-1', authorRole: 'Customer', authorDisplayName: 'Bạn', body: 'Pin BR-002 không nhận sạc từ sáng nay. Đèn báo không sáng. Nhờ kiểm tra giúp.', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 5 * 3600_000).toISOString() },
-    ],
-    maintenanceLogs: [], attachments: [],
-  },
-  'mock-3': {
-    id: 'mock-3', code: 'TK-0031', batteryAssetId: null, customerId: 'cust-1',
-    assignedStaffId: 'staff-2', title: 'Bảo trì định kỳ hệ thống pin mặt trời',
-    category: 'Repair', priority: 'P3Normal', impactScope: 'Site', urgencyLevel: 'Low',
-    status: 'Resolved', origin: 'ManualByCustomer', reopenCount: 0, isIncident: false,
-    createdAt: new Date(NOW - 3 * 86400_000).toISOString(),
-    updatedAt: new Date(NOW - 86400_000).toISOString(), slaTimer: null,
-    description: 'Yêu cầu bảo trì định kỳ 6 tháng. Kiểm tra điện trở nội tại, vệ sinh kết nối, cập nhật firmware BMS.',
-    resolutionSummary: 'Hoàn thành bảo trì định kỳ. Điện trở nội tại các cell bình thường. Đã vệ sinh kết nối và cập nhật BMS firmware v2.3.1.',
-    resolvedAt: new Date(NOW - 86400_000).toISOString(), resolvedByStaffId: 'staff-2',
-    approvedAt: new Date(NOW - 2.5 * 86400_000).toISOString(), approvedByManagerId: 'mgr-1',
-    rejectionReason: null, closedAt: null, rating: null, ratingComment: null, ratedAt: null,
-    escalatedAt: null, escalationReason: null, originAlertId: null,
-    activities: [
-      { id: 'a20', ticketId: 'mock-3', actorUserId: 'cust-1', actorRole: 'Customer', actorDisplayName: 'Bạn', action: 'Created', oldValue: null, newValue: 'New', reason: null, createdAt: new Date(NOW - 3 * 86400_000).toISOString() },
-      { id: 'a21', ticketId: 'mock-3', actorUserId: 'mgr-1', actorRole: 'Manager', actorDisplayName: 'Nguyễn Minh Quản', action: 'StaffAssigned', oldValue: null, newValue: 'Lê Thị Kỹ thuật (Tier 1)', reason: null, createdAt: new Date(NOW - 2.5 * 86400_000).toISOString() },
-      { id: 'a22', ticketId: 'mock-3', actorUserId: 'staff-2', actorRole: 'Staff', actorDisplayName: 'Lê Thị Kỹ thuật', action: 'StatusChanged', oldValue: 'Assigned', newValue: 'InProgress', reason: null, createdAt: new Date(NOW - 2 * 86400_000).toISOString() },
-      { id: 'a23', ticketId: 'mock-3', actorUserId: 'staff-2', actorRole: 'Staff', actorDisplayName: 'Lê Thị Kỹ thuật', action: 'Resolved', oldValue: 'InProgress', newValue: 'Resolved', reason: null, createdAt: new Date(NOW - 86400_000).toISOString() },
-    ],
-    comments: [
-      { id: 'c20', ticketId: 'mock-3', authorUserId: 'cust-1', authorRole: 'Customer', authorDisplayName: 'Bạn', body: 'Nhờ lên kế hoạch bảo trì định kỳ. Lần cuối bảo trì là 6 tháng trước.', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 3 * 86400_000).toISOString() },
-      { id: 'c21', ticketId: 'mock-3', authorUserId: 'staff-2', authorRole: 'Staff', authorDisplayName: 'Lê Thị Kỹ thuật', body: 'Đã tiếp nhận. Sẽ đến kiểm tra vào ngày mai từ 8h-12h. Vui lòng đảm bảo có người ở nhà.', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 2.8 * 86400_000).toISOString() },
-      { id: 'c22', ticketId: 'mock-3', authorUserId: 'staff-2', authorRole: 'Staff', authorDisplayName: 'Lê Thị Kỹ thuật', body: 'Đã hoàn thành bảo trì. Điện trở nội tại tốt, đã vệ sinh kết nối, cập nhật BMS v2.3.1. Hệ thống bình thường.', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 86400_000).toISOString() },
-    ],
-    maintenanceLogs: [], attachments: [],
-  },
-  'mock-4': {
-    id: 'mock-4', code: 'TK-0027', batteryAssetId: 'ba-001', customerId: 'cust-1',
-    assignedStaffId: 'staff-1', title: 'Mất nguồn - Hệ thống không xuất điện',
-    category: 'NoPower', priority: 'P1Critical', impactScope: 'Site', urgencyLevel: 'High',
-    status: 'Closed', origin: 'AutoFromAlert', reopenCount: 1, isIncident: true,
-    createdAt: new Date(NOW - 7 * 86400_000).toISOString(),
-    updatedAt: new Date(NOW - 5 * 86400_000).toISOString(), slaTimer: null,
-    description: 'Toàn bộ hệ thống ngừng xuất điện lúc 02:30 sáng. Inverter hiển thị lỗi E-006. Nguồn backup không hoạt động.',
-    resolutionSummary: 'Đã thay thế module inverter lỗi E-006. Kiểm tra toàn hệ thống, công suất xuất điện ổn định 4.2 kW.',
-    resolvedAt: new Date(NOW - 6 * 86400_000).toISOString(), resolvedByStaffId: 'staff-1',
-    approvedAt: new Date(NOW - 6.5 * 86400_000).toISOString(), approvedByManagerId: 'mgr-1',
-    rejectionReason: null, closedAt: new Date(NOW - 5 * 86400_000).toISOString(),
-    rating: 5, ratingComment: 'Xử lý rất nhanh và chuyên nghiệp. Cảm ơn team!',
-    ratedAt: new Date(NOW - 5 * 86400_000).toISOString(),
-    escalatedAt: new Date(NOW - 6.8 * 86400_000).toISOString(), escalationReason: 'SlaBreach',
-    originAlertId: 'alert-007',
-    activities: [
-      { id: 'a30', ticketId: 'mock-4', actorUserId: null, actorRole: 'System', actorDisplayName: 'Hệ thống', action: 'Created', oldValue: null, newValue: 'New', reason: 'Tự động từ cảnh báo mất điện', createdAt: new Date(NOW - 7 * 86400_000).toISOString() },
-      { id: 'a31', ticketId: 'mock-4', actorUserId: null, actorRole: 'System', actorDisplayName: 'Hệ thống', action: 'Escalated', oldValue: 'Assigned', newValue: 'Escalated', reason: 'SLA P1 sắp vi phạm', createdAt: new Date(NOW - 6.8 * 86400_000).toISOString() },
-      { id: 'a32', ticketId: 'mock-4', actorUserId: 'staff-1', actorRole: 'Staff', actorDisplayName: 'Trần Văn Kỹ thuật', action: 'Resolved', oldValue: 'InProgress', newValue: 'Resolved', reason: null, createdAt: new Date(NOW - 6 * 86400_000).toISOString() },
-      { id: 'a33', ticketId: 'mock-4', actorUserId: 'cust-1', actorRole: 'Customer', actorDisplayName: 'Bạn', action: 'Rated', oldValue: null, newValue: '5 sao', reason: null, createdAt: new Date(NOW - 5 * 86400_000).toISOString() },
-    ],
-    comments: [
-      { id: 'c30', ticketId: 'mock-4', authorUserId: null, authorRole: 'System', authorDisplayName: 'Hệ thống', body: 'Ticket P1 Critical tạo tự động. SLA: 4 giờ từ 02:30.', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 7 * 86400_000).toISOString() },
-      { id: 'c31', ticketId: 'mock-4', authorUserId: 'staff-1', authorRole: 'Staff', authorDisplayName: 'Trần Văn Kỹ thuật', body: 'Đã có mặt tại hiện trường. Xác nhận inverter lỗi E-006. Đang tiến hành thay thế module.', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 6.5 * 86400_000).toISOString() },
-      { id: 'c32', ticketId: 'mock-4', authorUserId: 'staff-1', authorRole: 'Staff', authorDisplayName: 'Trần Văn Kỹ thuật', body: 'Đã thay thế module và kiểm tra toàn hệ thống. Công suất xuất điện: 4.2 kW. Hoạt động bình thường.', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 6 * 86400_000).toISOString() },
-    ],
-    maintenanceLogs: [], attachments: [],
-  },
-};
 
 const PRIORITY_MAP: Record<string, { label: string; badge: keyof typeof BadgeColors }> = {
   P1Critical: { label: 'P1 Critical', badge: 'p1' },
@@ -263,10 +154,8 @@ function HorizontalStepper({ status }: { status: TicketStatusEnum }) {
 export default function TicketDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: rawTicket, isLoading: apiLoading, isError, refetch } = useTicketDetail(id ?? '');
-  const isMockId = (id ?? '').startsWith('mock-');
-  const ticket = rawTicket ?? (isMockId ? MOCK_TICKET_DETAILS[id!] : undefined);
-  const isLoading = apiLoading && !ticket;
+  const { data: ticket, isLoading, isError, refetch } = useTicketDetail(id ?? '');
+  const imageHeaders = useAuthImageHeaders();
 
   const { data: batteries = [] } = useMyBatteryAssets();
   const { mutateAsync: addComment,      isPending: isCommenting  } = useAddComment(id ?? '');
@@ -354,7 +243,6 @@ export default function TicketDetailScreen() {
   };
 
   const handleSendComment = async () => {
-    if (isMockId) { Alert.alert('Demo', 'Chức năng này chỉ khả dụng với ticket thực.'); return; }
     setCommentError('');
     const result = commentSchema.safeParse({ body: commentText, attachments });
     if (!result.success) {
@@ -539,7 +427,10 @@ export default function TicketDetailScreen() {
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.attachRow}>
                     {(ticket.attachments as TicketAttachmentDTO[]).map((att) => (
                       <View key={att.id} style={styles.attachCard}>
-                        <Image source={{ uri: att.fileUrl }} style={styles.attachImage} />
+                        <Image
+                          source={{ uri: `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(att.fileId)}`, headers: imageHeaders }}
+                          style={styles.attachImage}
+                        />
                       </View>
                     ))}
                   </ScrollView>

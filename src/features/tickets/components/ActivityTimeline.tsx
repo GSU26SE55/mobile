@@ -20,6 +20,7 @@ const ACTION_LABEL: Partial<Record<ActivityActionEnum, string>> = {
   Reopened:           'Ticket duoc mo lai',
   AutoClosed:         'Ticket tu dong dong',
   TriageApproved:     'Manager duyet triage',
+  Closed:             'Ticket da dong',
 };
 
 interface Props {

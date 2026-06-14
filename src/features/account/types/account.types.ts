@@ -21,9 +21,36 @@ export interface PhoneOtpPayload {
   otp: string;
 }
 
-export interface TwoFAEnableResponse {
-  secret: string;
-  otpAuthUri: string;
+// ── GH-295: 2FA enroll flow 2 bước ──
+// Bước 1 — POST /api/accounts/me/2fa/init (CHƯA activate)
+export interface Init2faResponse {
+  secret: string; // base32 — nhập tay nếu không quét QR
+  otpAuthUri: string; // otpauth://... — render QR
+  pendingToken: string; // gửi kèm bước confirm
+}
+
+// Bước 2 — POST /api/accounts/me/2fa/confirm
+export interface Confirm2faPayload {
+  pendingToken: string;
+  code: string; // TOTP 6 số
+}
+export interface Confirm2faResponse {
+  enabled: boolean;
+  backupCodes: string[]; // 8 codes — hiển thị 1 lần
+}
+
+// POST /api/accounts/me/2fa/disable — re-auth bằng password + TOTP
+export interface Disable2faPayload {
+  password: string;
+  totpCode: string;
+}
+
+// POST /api/accounts/me/2fa/backup-codes/regenerate
+export interface RegenBackupPayload {
+  totpCode: string;
+}
+export interface RegenBackupResponse {
+  backupCodes: string[];
 }
 
 export interface SessionDto {

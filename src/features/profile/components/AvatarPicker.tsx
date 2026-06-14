@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { getAccessToken } from '../../../lib/secureStore';
 import { Colors } from '../../../lib/theme';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? '';
@@ -22,10 +23,23 @@ export function AvatarPicker({ displayAvatarUrl, fullName, onPress, isLoading }:
 
   const avatarUri = displayAvatarUrl ? `${BASE_URL}${displayAvatarUrl}` : null;
 
+  // displayAvatarUrl trỏ tới GET /api/files/{id}/download — endpoint CẦN auth.
+  // RN <Image> không tự gắn Bearer → phải truyền header thủ công, nếu không avatar trả 401.
+  const [authHeaders, setAuthHeaders] = useState<{ Authorization: string } | undefined>(undefined);
+  useEffect(() => {
+    let active = true;
+    getAccessToken().then((token) => {
+      if (active && token) setAuthHeaders({ Authorization: `Bearer ${token}` });
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <Pressable onPress={onPress} style={styles.container}>
       {avatarUri ? (
-        <Image source={{ uri: avatarUri }} style={styles.avatar} />
+        <Image source={{ uri: avatarUri, headers: authHeaders }} style={styles.avatar} />
       ) : (
         <View style={styles.placeholder}>
           <Text style={styles.initials}>{initials}</Text>

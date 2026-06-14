@@ -1,102 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TicketCard } from '../../../src/features/tickets/components/TicketCard';
 import { useTickets } from '../../../src/features/tickets/hooks/useTickets';
-import { TicketDTO } from '../../../src/features/tickets/types/ticket.types';
 import { Colors, Shadow, ShadowPrimary } from '../../../src/lib/theme';
-
-const MOCK_TICKETS: TicketDTO[] = [
-  {
-    id: 'mock-1',
-    code: 'TK-0042',
-    batteryAssetId: 'ba-001',
-    customerId: 'cust-1',
-    assignedStaffId: 'staff-1',
-    title: 'Overheat - Battery BR-001 nhiệt độ vượt ngưỡng',
-    category: 'Overheat',
-    priority: 'P1Critical',
-    impactScope: 'SingleAsset',
-    urgencyLevel: 'High',
-    status: 'InProgress',
-    origin: 'AutoFromAlert',
-    reopenCount: 0,
-    isIncident: false,
-    createdAt: new Date(Date.now() - 2 * 3600_000).toISOString(),
-    updatedAt: new Date(Date.now() - 30 * 60_000).toISOString(),
-    slaTimer: {
-      id: 'sla-1',
-      priority: 'P1Critical',
-      startedAt: new Date(Date.now() - 2 * 3600_000).toISOString(),
-      dueAt: new Date(Date.now() + 2 * 3600_000).toISOString(),
-      originalDueAt: new Date(Date.now() + 2 * 3600_000).toISOString(),
-      totalPausedMinutes: 0,
-      warningSentAt: null,
-      breachAt: null,
-      status: 'Running',
-      remainingPercent: 50,
-    },
-  },
-  {
-    id: 'mock-2',
-    code: 'TK-0038',
-    batteryAssetId: 'ba-002',
-    customerId: 'cust-1',
-    assignedStaffId: null,
-    title: 'Sự cố sạc - Pin BR-002 không nhận sạc',
-    category: 'Charging',
-    priority: 'P2High',
-    impactScope: 'SingleAsset',
-    urgencyLevel: 'Medium',
-    status: 'New',
-    origin: 'ManualByCustomer',
-    reopenCount: 0,
-    isIncident: false,
-    createdAt: new Date(Date.now() - 5 * 3600_000).toISOString(),
-    updatedAt: null,
-    slaTimer: null,
-  },
-  {
-    id: 'mock-3',
-    code: 'TK-0031',
-    batteryAssetId: null,
-    customerId: 'cust-1',
-    assignedStaffId: 'staff-2',
-    title: 'Bảo trì định kỳ hệ thống pin mặt trời',
-    category: 'Repair',
-    priority: 'P3Normal',
-    impactScope: 'Site',
-    urgencyLevel: 'Low',
-    status: 'Resolved',
-    origin: 'ManualByCustomer',
-    reopenCount: 0,
-    isIncident: false,
-    createdAt: new Date(Date.now() - 3 * 86400_000).toISOString(),
-    updatedAt: new Date(Date.now() - 86400_000).toISOString(),
-    slaTimer: null,
-  },
-  {
-    id: 'mock-4',
-    code: 'TK-0027',
-    batteryAssetId: 'ba-001',
-    customerId: 'cust-1',
-    assignedStaffId: 'staff-1',
-    title: 'Mất nguồn - Hệ thống không xuất điện',
-    category: 'NoPower',
-    priority: 'P1Critical',
-    impactScope: 'Site',
-    urgencyLevel: 'High',
-    status: 'Closed',
-    origin: 'AutoFromAlert',
-    reopenCount: 1,
-    isIncident: true,
-    createdAt: new Date(Date.now() - 7 * 86400_000).toISOString(),
-    updatedAt: new Date(Date.now() - 5 * 86400_000).toISOString(),
-    slaTimer: null,
-  },
-];
 
 type FilterKey = 'all' | 'open' | 'closed';
 
@@ -104,9 +13,9 @@ export default function TicketListScreen() {
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<FilterKey>('all');
 
-  // Fetch all tickets — fall back to mock data when API returns nothing (demo)
-  const { data: allData, isRefetching, refetch } = useTickets({ PageSize: 100 });
-  const allTickets = (allData?.items?.length ?? 0) > 0 ? allData!.items : MOCK_TICKETS;
+  // Fetch all tickets from API
+  const { data: allData, isLoading, isError, isRefetching, refetch } = useTickets({ PageSize: 100 });
+  const allTickets = allData?.items ?? [];
   const totalCount = allTickets.length;
 
   const openCount = allTickets.filter((t) =>
@@ -170,7 +79,19 @@ export default function TicketListScreen() {
       </View>
 
       {/* List */}
-      {displayedTickets.length === 0 ? (
+      {isLoading ? (
+        <View style={styles.empty}>
+          <ActivityIndicator color="#34C759" size="large" />
+        </View>
+      ) : isError ? (
+        <View style={styles.empty}>
+          <Ionicons name="alert-circle-outline" size={36} color={Colors.textFaint} />
+          <Text style={styles.emptyText}>Không thể tải danh sách ticket</Text>
+          <Pressable style={[styles.emptyBtn, ShadowPrimary]} onPress={() => refetch()}>
+            <Text style={styles.emptyBtnText}>Thử lại</Text>
+          </Pressable>
+        </View>
+      ) : displayedTickets.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="document-text-outline" size={36} color={Colors.textFaint} />
           <Text style={styles.emptyText}>Không có ticket nào</Text>

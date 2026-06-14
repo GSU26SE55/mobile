@@ -4,7 +4,8 @@ import { CommonResponse } from '../../../types/api.types';
 import {
   ForgotPasswordPayload,
   LoginPayload,
-  LoginResponseData,
+  LoginResultData,
+  Verify2faLoginPayload,
   OtpVerifyPayload,
   RegisterPayload,
   ResendOtpPayload,
@@ -17,7 +18,11 @@ const { AUTH } = ENDPOINTS;
 
 export const authService = {
   login: (data: LoginPayload) =>
-    axiosInstance.post<CommonResponse<LoginResponseData>>(AUTH.LOGIN, data),
+    axiosInstance.post<CommonResponse<LoginResultData>>(AUTH.LOGIN, data),
+
+  // GH-295: bước 2 của 2FA login
+  verify2faLogin: (data: Verify2faLoginPayload) =>
+    axiosInstance.post<CommonResponse<LoginResultData>>(AUTH.LOGIN_VERIFY_2FA, data),
 
   register: (data: RegisterPayload) =>
     axiosInstance.post<CommonResponse<null>>(AUTH.REGISTER, data),

@@ -1,9 +1,32 @@
 # Plan — GH-3: [Mobile] Flow Authentication
 
 ## Metadata
-- **Status:** REVIEWING | **Role:** Mobile | **Ngày:** 2026-06-09
+- **Status:** REVIEWING → **NEEDS REWORK (GH-295)** | **Role:** Mobile | **Ngày:** 2026-06-09, cập nhật 2026-06-14
 - **Issue:** #3 — https://github.com/GSU26SE55/mobile/issues/3
 - **Sprint:** Sprint 1 (deadline 2026-05-30)
+
+---
+
+## ⚠️ GH-295 Contract Update (2026-06-14) — SỬA TRƯỚC KHI FIX CODE
+
+> Plan SHIPPED trước breaking change **GH-295**. `docs/api-auth.md` (đã đồng bộ 100% với BE) đổi shape response login. **Đã đối chiếu codebase mobile.** Mobile chỉ 2 role **Customer + Staff**, **không có Google login, không có accept-invite** → scope hẹp hơn web.
+
+### C1 — 🔴 Response login/refresh: wrap trong `data.tokens.*`
+
+- **Code (verified):** `auth.types.ts` `LoginResponseData { accessToken, refreshToken }` phẳng; đọc trực tiếp tại `useLogin.ts:18`, `authContext.tsx:45`, `axios.ts:53`.
+- **Doc/BE:** login & refresh trả `LoginResultDto` → `data.tokens.accessToken`, `data.challenge`, `data.requiresTwoFactor`.
+- → Thay 3 chỗ đọc token sang `res.data.data.tokens.*`. Thêm types `TokenDto`, `TwoFactorChallengeDto`, `LoginResultData`.
+
+### C2 — 🔴 Login phải xử lý `requiresTwoFactor` (2FA bước 1)
+
+- `useLogin` hiện chỉ handle token. Phải rẽ nhánh:
+  - `requiresTwoFactor === false` → `saveTokens(data.tokens.*)` → decode → setSession → `redirectByRole`.
+  - `requiresTwoFactor === true` → giữ `data.challenge.challengeToken` (SecureStore tạm) → điều hướng màn hình nhập TOTP → `POST /api/auth/login/verify-2fa` `{ challengeToken, code, isBackupCode }` → response giống login Case A.
+- → Thêm endpoint `LOGIN_VERIFY_2FA`, màn hình `app/(auth)/login-2fa.tsx`, hook `useVerify2faLogin`.
+
+### C3 — ✅ Register/forgot không đổi; redirectByRole giữ nguyên (Customer/Staff)
+
+`redirectByRole` đã đúng — Admin/Manager → null (block khỏi mobile). Không đụng. Không có Google/accept-invite trên mobile.
 
 ## Mục tiêu
 Thiết lập toàn bộ nền tảng project (axios, SecureStore, Zustand session, AuthContext) và implement đầy đủ auth flow cho **Customer** (Login · Register · OTP verify · Forgot Password) và **Staff** (Login · Forgot Password). Đây là ticket nền tảng Sprint 1 — các feature sau (battery, ticket, notification) đều phụ thuộc vào kết quả này.

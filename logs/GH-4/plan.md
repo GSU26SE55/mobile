@@ -1,9 +1,38 @@
 # Plan — GH-4: [Mobile] Profile & Account Management — Customer/Staff
 
 ## Metadata
-- **Status:** REVIEWING | **Role:** Mobile | **Ngày:** 2026-05-31 | **Reviewed:** 2026-05-31
+- **Status:** REVIEWING → **NEEDS REWORK (GH-295)** | **Role:** Mobile | **Ngày:** 2026-05-31, cập nhật 2026-06-14
 - **Issue:** #4 — https://github.com/GSU26SE55/mobile/issues/4
 - **Sprint:** Sprint 2 (due: 2026-06-13)
+
+---
+
+## ⚠️ GH-295 Contract Update (2026-06-14) — SỬA TRƯỚC KHI FIX CODE
+
+> **Đã đối chiếu codebase.** Flow 2FA cũ (1 bước `enable`) đã bị BE thay bằng 2 bước. `enable` cũ trả **410 Gone**.
+
+### C1 — 🔴 2FA enable flow CŨ đã chết → thay bằng init + confirm
+
+- **Code (verified):** `account.service.ts:30` `enable2FA()` POST `/2fa/enable` body rỗng → BE trả **410 Gone**. `disable2FA()` body rỗng → BE yêu cầu `{ password, totpCode }`.
+- **Thay bằng (doc/BE):**
+
+| Endpoint mới | Body | Response data |
+|---|---|---|
+| `POST /api/accounts/me/2fa/init` | — | `{ secret, otpAuthUri, pendingToken }` |
+| `POST /api/accounts/me/2fa/confirm` | `{ pendingToken, code }` | `{ enabled, backupCodes: string[8] }` (hiện 1 lần) |
+| `POST /api/accounts/me/2fa/disable` | `{ password, totpCode }` | `Guid` |
+| `POST /api/accounts/me/2fa/backup-codes/regenerate` | `{ totpCode }` | `{ backupCodes: string[8] }` |
+
+- → `endpoints.ts`: thêm `INIT_2FA`, `CONFIRM_2FA`, `BACKUP_REGEN_2FA`; bỏ `ENABLE_2FA`.
+- → `account.types.ts`: bỏ `TwoFAEnableResponse`, thêm `Init2faResponse {secret,otpAuthUri,pendingToken}`, `Confirm2faPayload`, `Confirm2faResponse {enabled,backupCodes}`, `Disable2faPayload {password,totpCode}`, `RegenBackupPayload {totpCode}`, `RegenBackupResponse {backupCodes}`.
+- → `account.service.ts`: `init2FA / confirm2FA / disable2FA(payload) / regenerateBackupCodes`.
+- → hooks: `useInit2FA`, `useConfirm2FA`, `useDisable2FA(payload)`, `useRegenerateBackupCodes`.
+- → `TwoFASetup.tsx`: wizard init → nhập TOTP confirm → hiển thị 8 backup codes (bắt buộc "Đã lưu"); thêm form disable (password + totpCode) + regenerate (totpCode).
+
+### C2 — ✅ Các endpoint khác (password, email change, phone, sessions) khớp doc — không đổi
+
+### Liên quan GH-3
+2FA login bước 2 (`/login/verify-2fa`) thuộc rework GH-3 C2 — không trùng GH-4.
 
 ## Mục tiêu
 Implement màn hình Profile, Bảo mật tài khoản, và Quản lý phiên đăng nhập cho Customer. Bao gồm 12 endpoint thuộc Nhóm 2, 3, 4 trong `docs/api-auth.md` chưa được GH-3 cover. Thêm tab "Hồ sơ" vào Customer layout.
@@ -202,19 +231,20 @@ interface SessionDto {
 **`src/lib/fileStorage.ts`** — multipart upload:
 ```ts
 // Không đặt trong features/file-storage/ — tránh cross-feature import
-// ⚠️ File Storage Service chạy trên port khác (port 4005) — KHÔNG dùng axiosInstance (auth-service)
-// Cần tạo riêng axios instance cho file storage hoặc hardcode base URL:
-// const FILE_STORAGE_BASE_URL = process.env.EXPO_PUBLIC_FILE_STORAGE_URL ?? 'http://localhost:4005';
+// ✅ RESOLVED (đối chiếu code 2026-06-14): tất cả route /api/* (gồm /api/files/*) đi qua
+//    cùng API gateway base URL (EXPO_PUBLIC_API_URL). KHÔNG có service riêng port 4005,
+//    KHÔNG cần axios instance riêng — dùng chung axiosInstance như frontend đã ship.
+// ⚠️ Content-Type 'multipart/form-data' set thủ công là ĐÚNG cho React Native (RN FormData
+//    không tự sinh boundary như browser) — khác với web (web KHÔNG được set thủ công).
 export const fileStorageLib = {
-  upload: (uri: string, name: string, type: string) => {
+  uploadAvatar: (uri: string, name: string, type: string) => {
     const form = new FormData();
-    form.append('file', { uri, name, type } as any);
+    form.append('file', { uri, name, type } as unknown as Blob);
     form.append('purpose', '1'); // FilePurposeEnum.Avatar
     return axiosInstance.post<CommonResponse<FileUploadResponse>>(
       ENDPOINTS.FILES.UPLOAD, form,
       { headers: { 'Content-Type': 'multipart/form-data' } }
     );
-    // TODO: đổi axiosInstance → fileStorageAxiosInstance nếu base URL khác
   },
 };
 
@@ -337,7 +367,7 @@ interface FileUploadResponse {
 | GET | `/api/sessions/me` | `?activeOnly=bool` (query) | `CommonResponse<SessionDto[]>` |
 | DELETE | `/api/sessions/{id}` | — | `CommonResponse<number>` |
 | POST | `/api/sessions/revoke-all` | `{ exceptCurrent?: bool, currentRefreshToken?: string }` | `CommonResponse<number>` |
-| POST | `/api/files/upload` | `FormData { file, purpose: '1' }` (multipart) | `CommonResponse<FileUploadResponse>` | ⚠️ Endpoint thuộc **File Storage Service (port 4005)** — KHÔNG phải auth-service. `ENDPOINTS.FILES.UPLOAD` phải trỏ đúng base URL của file storage |
+| POST | `/api/files/upload` | `FormData { file, purpose: '1' }` (multipart) | `CommonResponse<FileUploadResponse>` | ✅ Đi qua cùng API gateway base URL (`EXPO_PUBLIC_API_URL`) như mọi route `/api/*` — dùng chung `axiosInstance`, không cần base URL riêng |
 
 ## Query Keys
 
@@ -359,7 +389,9 @@ QUERY_KEY.sessions = {
 **Avatar display:**
 ```
 AccountDto.displayAvatarUrl → `/api/files/{fileId}/download` (path tương đối)
-→ render: Image source={{ uri: BASE_URL + displayAvatarUrl }}
+→ render: Image source={{ uri: BASE_URL + displayAvatarUrl, headers: { Authorization: `Bearer ${token}` } }}
+   ⚠️ Endpoint download CẦN auth → RN <Image> KHÔNG tự gắn Bearer, phải truyền `headers` trong source,
+      nếu không avatar trả 401. (Cùng pattern useAuthImageHeaders dùng cho ticket attachment.)
 → null → hiển thị placeholder initials avatar
 BASE_URL = EXPO_PUBLIC_API_URL từ env
 ```
@@ -413,6 +445,7 @@ onSuccess: async () => {
 
 ## Edge Cases
 - `displayAvatarUrl = null` → render initials placeholder, không crash
+- **Avatar download cần auth:** `displayAvatarUrl` trỏ `/api/files/{id}/download` (endpoint cần Bearer). `<Image>` phải truyền `headers: { Authorization }` trong `source`, nếu không trả 401 → avatar không hiển thị
 - Đổi email / Xóa tài khoản → clearToken trong `onSuccess` của mutation (không trong component)
 - OTP confirm email: không cần gửi lại email mới — server đọc từ `PendingEmail`
 - 2FA: `twoFactorEnabled` chưa enforce tại login (Sprint sau) → hiện disclaimer trong TwoFASetup
@@ -424,7 +457,7 @@ onSuccess: async () => {
 - **`birthDate` vs `dateOfBirth`:** PUT profile gửi `birthDate`, nhưng `AccountDto` response trả `dateOfBirth` — khi pre-fill form từ profile, map `account.profile?.birthDate` → form field `birthDate`
 - **Đổi email (2 endpoints chưa có Swagger):** `ChangeEmailForm` và hooks implement xong nhưng cần pending confirm từ BE. Nếu không kịp Sprint → comment out screen `change-email.tsx` trong settings menu (không xóa code)
 - **`GET /api/sessions/me` response `data` nullable:** guard `data ?? []` trước khi render FlatList
-- **File Storage base URL:** `ENDPOINTS.FILES.UPLOAD` cần trỏ đến port 4005, KHÔNG phải auth-service port — verify env var `EXPO_PUBLIC_FILE_STORAGE_URL` khi setup
+- **File Storage base URL (RESOLVED 2026-06-14):** `/api/files/*` đi qua cùng API gateway (`EXPO_PUBLIC_API_URL`) như mọi route `/api/*` — KHÔNG có service riêng port 4005, dùng chung `axiosInstance`. Giả định "port 4005" trong bản plan gốc không được áp dụng.
 
 ## Success Criteria
 | Tiêu chí | Cách verify |

@@ -54,6 +54,21 @@ export const UrgencyLevelEnum = {
 } as const;
 export type UrgencyLevelEnum = (typeof UrgencyLevelEnum)[keyof typeof UrgencyLevelEnum];
 
+export const PauseReasonEnum = {
+  WaitingCustomer: 'WaitingCustomer',
+  WaitingParts: 'WaitingParts',
+  WaitingOnsiteSchedule: 'WaitingOnsiteSchedule',
+} as const;
+export type PauseReasonEnum = (typeof PauseReasonEnum)[keyof typeof PauseReasonEnum];
+
+export const MaintenanceLogTypeEnum = {
+  RemoteSupport: 'RemoteSupport',
+  OnSite: 'OnSite',
+  PartReplacement: 'PartReplacement',
+  Inspection: 'Inspection',
+} as const;
+export type MaintenanceLogTypeEnum = (typeof MaintenanceLogTypeEnum)[keyof typeof MaintenanceLogTypeEnum];
+
 export const EscalationReasonEnum = {
   SkillGap: 'SkillGap',
   PartsRequired: 'PartsRequired',
@@ -104,5 +119,6 @@ export const ActivityActionEnum = {
   AutoClosed: 'AutoClosed',
   ResolvedByEscalatedStaff: 'ResolvedByEscalatedStaff',
   TriageApproved: 'TriageApproved',
+  Closed: 'Closed',
 } as const;
 export type ActivityActionEnum = (typeof ActivityActionEnum)[keyof typeof ActivityActionEnum];
