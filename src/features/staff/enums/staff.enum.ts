@@ -1,9 +1,5 @@
-export const HoldReasonEnum = {
-  WaitingCustomer: 'WaitingCustomer',
-  WaitingParts: 'WaitingParts',
-  WaitingOnsiteSchedule: 'WaitingOnsiteSchedule',
-} as const;
-export type HoldReasonEnum = (typeof HoldReasonEnum)[keyof typeof HoldReasonEnum];
+// Hold reason dùng PauseReasonEnum chuẩn từ shared/enums/ticket.enum (khớp api-ticket.md).
+// HoldReasonEnum cũ đã bỏ — tránh trùng lặp source-of-truth.
 
 export const StaffSkillTierEnum = {
   Tier1: 'Tier1',

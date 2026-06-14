@@ -1,6 +1,7 @@
 export const ENDPOINTS = {
   AUTH: {
     LOGIN:             '/api/auth/login',
+    LOGIN_VERIFY_2FA:  '/api/auth/login/verify-2fa', // GH-295 — bước 2 của 2FA login
     REGISTER:          '/api/auth/register',
     VERIFY_OTP:        '/api/auth/verify-otp',
     RESEND_OTP:        '/api/auth/resend-otp',
@@ -22,8 +23,11 @@ export const ENDPOINTS = {
     CONFIRM_EMAIL_CHANGE: '/api/accounts/me/confirm-email-change',
     SEND_PHONE_OTP:       '/api/accounts/me/send-phone-otp',
     VERIFY_PHONE_OTP:     '/api/accounts/me/verify-phone-otp',
-    ENABLE_2FA:           '/api/accounts/me/2fa/enable',
+    // GH-295: flow 2FA 2 bước. /enable cũ đã 410 Gone — không dùng.
+    INIT_2FA:             '/api/accounts/me/2fa/init',
+    CONFIRM_2FA:          '/api/accounts/me/2fa/confirm',
     DISABLE_2FA:          '/api/accounts/me/2fa/disable',
+    BACKUP_REGEN_2FA:     '/api/accounts/me/2fa/backup-codes/regenerate',
     LINK_GOOGLE:          '/api/accounts/me/link-google',
     UNLINK_GOOGLE:        '/api/accounts/me/unlink-google',
     DEACTIVATE:           '/api/accounts/me/deactivate',
@@ -38,10 +42,19 @@ export const ENDPOINTS = {
     UPLOAD: '/api/files/upload',
     DOWNLOAD: (id: string) => `/api/files/${id}/download`,
   },
-  BATTERIES: {
-    LIST:      '/api/batteries',
-    DETAIL:    (id: string) => `/api/batteries/${id}`,
-    MY_ASSETS: '/api/battery-assets/me',
+  BATTERY_ASSETS: {
+    MY:       '/api/battery-assets/me',
+    DETAIL:   (id: string) => `/api/battery-assets/${id}`,
+    REALTIME: (id: string) => `/api/battery-assets/${id}/realtime`,
+  },
+  SENSOR_READINGS: {
+    LATEST:    (assetId: string) => `/api/sensor-readings/${assetId}/latest`,
+    HISTORY:   (assetId: string) => `/api/sensor-readings/${assetId}/history`,
+    AGGREGATE: (assetId: string) => `/api/sensor-readings/${assetId}/aggregate`,
+  },
+  ALERTS: {
+    LIST:   '/api/alerts',
+    DETAIL: (id: string) => `/api/alerts/${id}`,
   },
   TICKETS: {
     CUSTOMER_LIST:   '/api/customer/tickets/me',

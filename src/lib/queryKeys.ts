@@ -2,7 +2,9 @@ export const KEY = {
   auth:          ['auth'] as const,
   profile:       ['profile'] as const,
   sessions:      ['sessions'] as const,
-  batteries:     ['batteries'] as const,
+  batteryAssets: ['batteryAssets'] as const,
+  sensorReadings:['sensorReadings'] as const,
+  alerts:        ['alerts'] as const,
   tickets:       ['tickets'] as const,
   staffProfile:  ['staffProfile'] as const,
   staffTickets:  ['staffTickets'] as const,
@@ -16,9 +18,21 @@ export const QUERY_KEY = {
   sessions: {
     list: (activeOnly?: boolean) => [...KEY.sessions, 'list', activeOnly] as const,
   },
-  batteries: {
-    list:   (params?: Record<string, unknown>) => [...KEY.batteries, 'list', params] as const,
-    detail: (id: string) => [...KEY.batteries, 'detail', id] as const,
+  batteryAssets: {
+    me:       (params?: Record<string, unknown>) => [...KEY.batteryAssets, 'me', params] as const,
+    detail:   (id: string) => [...KEY.batteryAssets, 'detail', id] as const,
+    realtime: (id: string) => [...KEY.batteryAssets, 'realtime', id] as const,
+  },
+  sensorReadings: {
+    latest:    (assetId: string) => [...KEY.sensorReadings, 'latest', assetId] as const,
+    history:   (assetId: string, params?: Record<string, unknown>) =>
+      [...KEY.sensorReadings, 'history', assetId, params] as const,
+    aggregate: (assetId: string, params?: Record<string, unknown>) =>
+      [...KEY.sensorReadings, 'aggregate', assetId, params] as const,
+  },
+  alerts: {
+    list:   (params?: Record<string, unknown>) => [...KEY.alerts, 'list', params] as const,
+    detail: (id: string) => [...KEY.alerts, 'detail', id] as const,
   },
   tickets: {
     list:   (params?: Record<string, unknown>) => [...KEY.tickets, 'list', params] as const,

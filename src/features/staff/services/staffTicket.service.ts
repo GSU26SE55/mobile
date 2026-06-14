@@ -1,8 +1,8 @@
 import { axiosInstance } from '../../../lib/axios';
 import { ENDPOINTS } from '../../../lib/endpoints';
 import { CommonResponse, PaginationResponse } from '../../../types/api.types';
-import { AddCommentPayload, TicketActionResponse, TicketDetailDTO, TicketDTO } from '../../tickets/types/ticket.types';
-import { EscalatePayload, HoldPayload, MaintenanceLogPayload, ResolvePayload, StaffTicketListParams } from '../types/staff.types';
+import { TicketActionResponse, TicketDetailDTO, TicketDTO } from '../../tickets/types/ticket.types';
+import { EscalatePayload, HoldPayload, MaintenanceLogPayload, ResolvePayload, StaffAddCommentPayload, StaffTicketListParams } from '../types/staff.types';
 
 const { STAFF_TICKETS, TICKETS } = ENDPOINTS;
 
@@ -28,7 +28,7 @@ export const staffTicketService = {
   escalateRequest: (id: string, data: EscalatePayload) =>
     axiosInstance.post<TicketActionResponse>(STAFF_TICKETS.ESCALATE_REQUEST(id), data),
 
-  addComment: (ticketId: string, data: AddCommentPayload) =>
+  addComment: (ticketId: string, data: StaffAddCommentPayload) =>
     axiosInstance.post<TicketActionResponse>(TICKETS.COMMENT(ticketId), data),
 
   addMaintenanceLog: (ticketId: string, data: MaintenanceLogPayload) =>
