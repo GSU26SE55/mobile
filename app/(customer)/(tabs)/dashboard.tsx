@@ -8,7 +8,8 @@ import Animated, { useAnimatedProps, useSharedValue, withRepeat, withTiming, Eas
 import { useProfile } from '../../../src/features/profile/hooks/useProfile';
 import { useTickets } from '../../../src/features/tickets/hooks/useTickets';
 import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
-import { useAlertsStore } from '../../../src/stores/alertsStore';
+import { useMyAlerts } from '../../../src/features/batteries/hooks/useMyAlerts';
+import { AlertStatusEnum } from '../../../src/shared/enums/alert.enum';
 import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
 import { Colors, Shadow } from '../../../src/lib/theme';
 
@@ -17,7 +18,7 @@ const AnimatedPath = Animated.createAnimatedComponent(Path);
 const BATTERY_STATUS_MAP: Record<number, { label: string; color: string }> = {
   1: { label: 'Active', color: '#10B981' },
   2: { label: 'Inactive', color: Colors.gray },
-  3: { label: 'Failed', color: Colors.danger },
+  3: { label: 'Ngừng sử dụng', color: Colors.danger },
 };
 
 function BatteryCard({ item, onPress }: { item: BatteryAssetDto; onPress: () => void }) {
@@ -174,9 +175,9 @@ export default function DashboardScreen() {
   const { data: account, isLoading: profileLoading } = useProfile();
   const { data: ticketsData, isLoading: ticketsLoading } = useTickets({ PageSize: 100 });
   const { data: batteries = [], isLoading: batteriesLoading } = useMyBatteryAssets();
-  const { alerts } = useAlertsStore();
+  const { data: alerts = [] } = useMyAlerts();
 
-  const unreadAlertsCount = alerts.filter((a) => !a.read).length;
+  const openAlertsCount = alerts.filter((a) => a.status === AlertStatusEnum.Open).length;
 
   const isLoading = profileLoading || ticketsLoading;
 
@@ -212,7 +213,7 @@ export default function DashboardScreen() {
               </View>
               <Pressable style={styles.bellBtn} onPress={() => router.push('/(customer)/(tabs)/alerts')}>
                 <Ionicons name="notifications-outline" size={20} color={Colors.accent} />
-                {unreadAlertsCount > 0 && <View style={styles.bellDot} />}
+                {openAlertsCount > 0 && <View style={styles.bellDot} />}
               </Pressable>
             </View>
 
@@ -232,7 +233,7 @@ export default function DashboardScreen() {
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statCol}>
-                <Text style={styles.statVal}>{unreadAlertsCount}</Text>
+                <Text style={styles.statVal}>{openAlertsCount}</Text>
                 <Text style={styles.statLabel}>Alerts</Text>
               </View>
             </View>

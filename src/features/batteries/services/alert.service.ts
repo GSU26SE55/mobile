@@ -3,7 +3,6 @@ import { ENDPOINTS } from '../../../lib/endpoints';
 import { CommonResponse, PaginationResponse } from '../../../types/api.types';
 import { AlertDto, AlertListParams } from '../types/alert.types';
 
-// Read-only — không có acknowledge/resolve (ngoài scope GH-24).
 export const alertService = {
   getList: (params?: AlertListParams) =>
     axiosInstance.get<CommonResponse<PaginationResponse<AlertDto>>>(
@@ -12,4 +11,7 @@ export const alertService = {
     ),
   getById: (id: string) =>
     axiosInstance.get<CommonResponse<AlertDto>>(ENDPOINTS.ALERTS.DETAIL(id)),
+  // Customer được ack alert của mình (Open → Acknowledged). 409 nếu Resolved/Merged.
+  acknowledge: (id: string) =>
+    axiosInstance.patch<CommonResponse<null>>(ENDPOINTS.ALERTS.ACKNOWLEDGE(id)),
 };

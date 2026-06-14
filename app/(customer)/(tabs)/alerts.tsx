@@ -1,104 +1,81 @@
 import React, { useState } from 'react';
-import { FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Shadow } from '../../../src/lib/theme';
-import { AlertItem, useAlertsStore } from '../../../src/stores/alertsStore';
-import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
-import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
+import { useMyAlerts } from '../../../src/features/batteries/hooks/useMyAlerts';
+import { AlertDto } from '../../../src/features/batteries/types/alert.types';
+import {
+  AlertSeverityEnum,
+  AlertStatusEnum,
+} from '../../../src/shared/enums/alert.enum';
+import { ANOMALY_LABEL } from '../../../src/features/batteries/components/AssetAlertList';
 
-type FilterType = 'all' | 'Critical' | 'Warning' | 'Info' | 'unread';
+type FilterKey = 'all' | AlertSeverityEnum;
+
+const SEVERITY_COLORS: Record<AlertSeverityEnum, { label: string; bg: string; iconColor: string; badgeBg: string; badgeText: string }> = {
+  [AlertSeverityEnum.Critical]: { label: 'CRITICAL', bg: '#FFEBEA', iconColor: '#DC4F3D', badgeBg: '#FFE5E3', badgeText: '#B73221' },
+  [AlertSeverityEnum.Warning]: { label: 'WARNING', bg: '#FFF3E3', iconColor: '#FFB703', badgeBg: '#FFF1B8', badgeText: '#9C7800' },
+  [AlertSeverityEnum.Info]: { label: 'INFO', bg: '#EBF3FF', iconColor: '#5081C7', badgeBg: '#DCE6F5', badgeText: '#2A538A' },
+};
+
+const STATUS_LABEL: Record<AlertStatusEnum, string> = {
+  [AlertStatusEnum.Open]: 'Mở',
+  [AlertStatusEnum.Acknowledged]: 'Đã xác nhận',
+  [AlertStatusEnum.Merged]: 'Đã gộp',
+  [AlertStatusEnum.Resolved]: 'Đã xử lý',
+};
+
+const FILTERS: { key: FilterKey; label: string }[] = [
+  { key: 'all', label: 'Tất cả' },
+  { key: AlertSeverityEnum.Critical, label: 'Critical' },
+  { key: AlertSeverityEnum.Warning, label: 'Warning' },
+  { key: AlertSeverityEnum.Info, label: 'Info' },
+];
 
 export default function AlertsScreen() {
   const insets = useSafeAreaInsets();
-  const { alerts, markAllAsRead, markAsRead } = useAlertsStore();
-  const { data: batteries = [] } = useMyBatteryAssets();
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const { data: alerts = [], isLoading } = useMyAlerts();
+  const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
 
-  const unreadCount = alerts.filter((a) => !a.read).length;
+  const openCount = alerts.filter((a) => a.status === AlertStatusEnum.Open).length;
   const totalCount = alerts.length;
 
-  const filteredAlerts = alerts.filter((alert) => {
-    if (activeFilter === 'all') return true;
-    if (activeFilter === 'unread') return !alert.read;
-    return alert.type === activeFilter;
-  });
+  const filteredAlerts = alerts.filter((alert) =>
+    activeFilter === 'all' ? true : alert.severity === activeFilter,
+  );
 
-  const getAlertColors = (type: string, read: boolean) => {
-    switch (type) {
-      case 'Critical':
-        return {
-          bg: '#FFEBEA',
-          iconColor: '#DC4F3D',
-          badgeBg: '#FFE5E3',
-          badgeText: '#B73221',
-          valueColor: '#B73221',
-        };
-      case 'Warning':
-        return {
-          bg: '#FFF3E3',
-          iconColor: '#FFB703',
-          badgeBg: '#FFF1B8',
-          badgeText: '#9C7800',
-          valueColor: '#9C7800',
-        };
-      case 'Info':
-      default:
-        return {
-          bg: '#EBF3FF',
-          iconColor: '#5081C7',
-          badgeBg: '#DCE6F5',
-          badgeText: '#2A538A',
-          valueColor: '#2A538A',
-        };
-    }
-  };
-
-  const renderAlertItem = ({ item }: { item: AlertItem }) => {
-    const colors = getAlertColors(item.type, item.read);
-    const battery = batteries.find((b: BatteryAssetDto) => b.id === item.batteryId);
-
-    const handlePress = () => {
-      markAsRead(item.id);
-      router.push({
-        pathname: '/(customer)/alerts/[id]',
-        params: { id: item.id },
-      });
-    };
+  const renderAlertItem = ({ item }: { item: AlertDto }) => {
+    const colors = SEVERITY_COLORS[item.severity] ?? SEVERITY_COLORS[AlertSeverityEnum.Info];
 
     return (
-      <Pressable style={[styles.card, Shadow]} onPress={handlePress}>
+      <Pressable
+        style={[styles.card, Shadow]}
+        onPress={() => router.push({ pathname: '/(customer)/alerts/[id]', params: { id: item.id } })}
+      >
         <View style={styles.cardHeader}>
           <View style={[styles.iconWrap, { backgroundColor: colors.bg }]}>
-            <Ionicons
-              name={item.type === 'Critical' || item.type === 'Warning' ? 'alert-circle-outline' : 'information-circle-outline'}
-              size={20}
-              color={colors.iconColor}
-            />
+            <Ionicons name="alert-circle-outline" size={20} color={colors.iconColor} />
           </View>
           <View style={styles.headerInfo}>
             <View style={styles.tagRow}>
               <View style={[styles.typeBadge, { backgroundColor: colors.badgeBg }]}>
                 <View style={[styles.badgeDot, { backgroundColor: colors.badgeText }]} />
-                <Text style={[styles.typeBadgeText, { color: colors.badgeText }]}>
-                  {item.type.toUpperCase()}
-                </Text>
+                <Text style={[styles.typeBadgeText, { color: colors.badgeText }]}>{colors.label}</Text>
               </View>
-              {!item.read && <View style={styles.unreadDot} />}
+              {item.status === AlertStatusEnum.Open && <View style={styles.unreadDot} />}
             </View>
-            <Text style={styles.alertTitle}>{item.title}</Text>
+            <Text style={styles.alertTitle}>{ANOMALY_LABEL[item.anomalyType] ?? 'Cảnh báo'}</Text>
             <Text style={styles.alertMeta}>
-              {battery?.serialNumber ?? 'Battery'} · {item.time}
+              {item.batterySerialNumber} · {STATUS_LABEL[item.status] ?? ''}
             </Text>
           </View>
           <View style={styles.valueWrap}>
-            <Text style={[styles.valText, { color: colors.valueColor }]}>
-              {item.actual}
+            <Text style={[styles.valText, { color: colors.badgeText }]}>
+              {item.actualValue}{item.unit}
             </Text>
-            <Text style={styles.thrText}>
-              thr {item.threshold}
-            </Text>
+            <Text style={styles.thrText}>thr {item.thresholdValue}{item.unit}</Text>
           </View>
         </View>
       </Pressable>
@@ -112,13 +89,9 @@ export default function AlertsScreen() {
         <View style={styles.headerLeft}>
           <Text style={styles.title}>Cảnh báo</Text>
           <Text style={styles.subtitle}>
-            {unreadCount} chưa đọc · {totalCount} tổng
+            {openCount} đang mở · {totalCount} tổng
           </Text>
         </View>
-        <Pressable style={[styles.readAllBtn, Shadow]} onPress={markAllAsRead}>
-          <Ionicons name="checkmark-done" size={14} color={Colors.text} style={{ marginRight: 4 }} />
-          <Text style={styles.readAllText}>Đã đọc</Text>
-        </Pressable>
       </View>
 
       {/* Filter Horizontal Row */}
@@ -128,29 +101,13 @@ export default function AlertsScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterScroll}
         >
-          {(
-            [
-              { key: 'all', label: 'Tất cả' },
-              { key: 'Critical', label: 'Critical' },
-              { key: 'Warning', label: 'Warning' },
-              { key: 'Info', label: 'Info' },
-              { key: 'unread', label: 'Chưa đọc' },
-            ] as const
-          ).map((f) => (
+          {FILTERS.map((f) => (
             <Pressable
-              key={f.key}
-              style={[
-                styles.filterTab,
-                activeFilter === f.key && styles.filterTabActive,
-              ]}
+              key={String(f.key)}
+              style={[styles.filterTab, activeFilter === f.key && styles.filterTabActive]}
               onPress={() => setActiveFilter(f.key)}
             >
-              <Text
-                style={[
-                  styles.filterText,
-                  activeFilter === f.key && styles.filterTextActive,
-                ]}
-              >
+              <Text style={[styles.filterText, activeFilter === f.key && styles.filterTextActive]}>
                 {f.label}
               </Text>
             </Pressable>
@@ -167,8 +124,14 @@ export default function AlertsScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="notifications-off-outline" size={48} color={Colors.textFaint} />
-            <Text style={styles.emptyText}>Không có cảnh báo nào</Text>
+            <Ionicons
+              name={isLoading ? 'hourglass-outline' : 'notifications-off-outline'}
+              size={48}
+              color={Colors.textFaint}
+            />
+            <Text style={styles.emptyText}>
+              {isLoading ? 'Đang tải…' : 'Không có cảnh báo nào'}
+            </Text>
           </View>
         }
       />
@@ -177,10 +140,7 @@ export default function AlertsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.bg,
-  },
+  container: { flex: 1, backgroundColor: Colors.bg },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -188,42 +148,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 14,
   },
-  headerLeft: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: Colors.text,
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 12,
-    color: Colors.textMute,
-    marginTop: 2,
-  },
-  readAllBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.02)',
-  },
-  readAllText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  filterContainer: {
-    marginBottom: 14,
-  },
-  filterScroll: {
-    paddingHorizontal: 20,
-    gap: 8,
-  },
+  headerLeft: { flex: 1 },
+  title: { fontSize: 22, fontWeight: '800', color: Colors.text, letterSpacing: -0.5 },
+  subtitle: { fontSize: 12, color: Colors.textMute, marginTop: 2 },
+  filterContainer: { marginBottom: 14 },
+  filterScroll: { paddingHorizontal: 20, gap: 8 },
   filterTab: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -232,21 +161,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.02)',
   },
-  filterTabActive: {
-    backgroundColor: '#34C759',
-  },
-  filterText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.textMute,
-  },
-  filterTextActive: {
-    color: '#FFFFFF',
-  },
-  list: {
-    paddingHorizontal: 20,
-    paddingBottom: 110,
-  },
+  filterTabActive: { backgroundColor: '#34C759' },
+  filterText: { fontSize: 12, fontWeight: '700', color: Colors.textMute },
+  filterTextActive: { color: '#FFFFFF' },
+  list: { paddingHorizontal: 20, paddingBottom: 110 },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
@@ -255,10 +173,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.03)',
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  cardHeader: { flexDirection: 'row', alignItems: 'center' },
   iconWrap: {
     width: 42,
     height: 42,
@@ -267,15 +182,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-  headerInfo: {
-    flex: 1,
-  },
-  tagRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
+  headerInfo: { flex: 1 },
+  tagRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   typeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -284,53 +192,14 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 6,
   },
-  badgeDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-  },
-  typeBadgeText: {
-    fontSize: 8,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  unreadDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#34C759',
-  },
-  alertTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: Colors.text,
-  },
-  alertMeta: {
-    fontSize: 11,
-    color: Colors.textMute,
-    marginTop: 3,
-  },
-  valueWrap: {
-    alignItems: 'flex-end',
-    marginLeft: 12,
-  },
-  valText: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  thrText: {
-    fontSize: 10,
-    color: Colors.textMute,
-    marginTop: 3,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 80,
-    gap: 10,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: Colors.textMute,
-  },
+  badgeDot: { width: 4, height: 4, borderRadius: 2 },
+  typeBadgeText: { fontSize: 8, fontWeight: '700', letterSpacing: 0.3 },
+  unreadDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#34C759' },
+  alertTitle: { fontSize: 14, fontWeight: '800', color: Colors.text },
+  alertMeta: { fontSize: 11, color: Colors.textMute, marginTop: 3 },
+  valueWrap: { alignItems: 'flex-end', marginLeft: 12 },
+  valText: { fontSize: 14, fontWeight: '800' },
+  thrText: { fontSize: 10, color: Colors.textMute, marginTop: 3 },
+  emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, gap: 10 },
+  emptyText: { fontSize: 13, color: Colors.textMute },
 });

@@ -53,8 +53,9 @@ export const ENDPOINTS = {
     AGGREGATE: (assetId: string) => `/api/sensor-readings/${assetId}/aggregate`,
   },
   ALERTS: {
-    LIST:   '/api/alerts',
-    DETAIL: (id: string) => `/api/alerts/${id}`,
+    LIST:        '/api/alerts',
+    DETAIL:      (id: string) => `/api/alerts/${id}`,
+    ACKNOWLEDGE: (id: string) => `/api/alerts/${id}/acknowledge`,
   },
   TICKETS: {
     CUSTOMER_LIST:   '/api/customer/tickets/me',
