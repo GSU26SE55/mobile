@@ -1,7 +1,7 @@
 # Plan — GH-25: [Mobile] FileStorage Infra
 
 ## Metadata
-- **Status:** IN_PROGRESS | **Role:** Mobile (FE) | **Ngày:** 2026-06-14
+- **Status:** IN_PROGRESS | **Role:** Mobile (FE) | **Ngày:** 2026-06-15
 - **Issue:** #25 — https://github.com/GSU26SE55/mobile/issues/25
 - **Sprint:** Sprint 3 (deadline 2026-06-27)
 - **Dev:** Shu1237 (Tran Minh Tri)
@@ -108,12 +108,12 @@ interface PresignedUrlOptions { expiresInMinutes?: number; }
 - [ ] `npx tsc --noEmit` PASS, không lỗi type, không broken import
 
 ## Steps
-- [ ] Bước 1: Tạo `enums/file-storage.enum.ts` + `types/file-storage.types.ts` + `utils/fileValidation.ts`
-- [ ] Bước 2: Cập nhật `endpoints.ts` (METADATA/PRESIGNED_URL/DELETE) + `queryKeys.ts` (files)
-- [ ] Bước 3: Tạo `services/file-storage.service.ts` (5 method)
-- [ ] Bước 4: Tạo hooks: `useUploadFile`, `useFileMetadata`, `usePresignedUrl`, `useDeleteFile`, `useFileStatusPolling`, `useAuthImageHeaders`
-- [ ] Bước 5: Migrate caller (`useUploadAvatar`, `useUploadCommentAttachment`, `useUploadTicketAttachment`, `app/(customer)/tickets/[id].tsx`) + xóa `src/lib/fileStorage.ts` & `features/tickets/hooks/useAuthImageHeaders.ts`
-- [ ] Bước 6: `npx tsc --noEmit` → PASS; smoke test upload avatar + attachment + hiển thị ảnh
+- [x] Bước 1: Tạo `enums/file-storage.enum.ts` + `types/file-storage.types.ts` + `utils/fileValidation.ts` — 2026-06-15
+- [x] Bước 2: Cập nhật `endpoints.ts` (METADATA/PRESIGNED_URL/DELETE) + `queryKeys.ts` (files) — 2026-06-15
+- [x] Bước 3: Tạo `services/file-storage.service.ts` (5 method) — 2026-06-15
+- [x] Bước 4: Tạo hooks: `useUploadFile`, `useFileMetadata`, `usePresignedUrl`, `useDeleteFile`, `useFileStatusPolling`, `useAuthImageHeaders` — 2026-06-15
+- [x] Bước 5: Migrate caller (`useUploadAvatar`, `useUploadCommentAttachment`, `useUploadTicketAttachment`, `app/(customer)/tickets/[id].tsx`) + xóa `src/lib/fileStorage.ts` & `features/tickets/hooks/useAuthImageHeaders.ts` — 2026-06-15
+- [x] Bước 6: `npx tsc --noEmit` → PASS (No errors found) — 2026-06-15
 
 ## Câu hỏi đã giải đáp
 - **Có TS enum hay `as const`?** → `as const` (theo `mobile.md`/`fe.md` + Web reference), mặc dù doc ghi mẫu `enum`. Giá trị int giữ nguyên đồng bộ BE.

@@ -39,8 +39,11 @@ export const ENDPOINTS = {
     REVOKE_ALL: '/api/sessions/revoke-all',
   },
   FILES: {
-    UPLOAD: '/api/files/upload',
-    DOWNLOAD: (id: string) => `/api/files/${id}/download`,
+    UPLOAD:        '/api/files/upload',
+    METADATA:      (id: string) => `/api/files/${id}/metadata`,
+    DOWNLOAD:      (id: string) => `/api/files/${id}/download`,
+    PRESIGNED_URL: (id: string) => `/api/files/${id}/presigned-url`,
+    DELETE:        (id: string) => `/api/files/${id}`,
   },
   BATTERY_ASSETS: {
     MY:       '/api/battery-assets/me',
