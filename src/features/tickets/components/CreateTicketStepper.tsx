@@ -27,7 +27,7 @@ const TOTAL_STEPS = 4;
 const BATTERY_STATUS_MAP: Record<number, { label: string; color: string; bg: string }> = {
   1: { label: 'Active', color: '#2E7D32', bg: '#E8F5E9' },
   2: { label: 'Inactive', color: '#E69A1A', bg: '#FFF3E3' },
-  3: { label: 'Failed', color: '#DC4F3D', bg: '#FFEBEA' },
+  3: { label: 'Ngừng sử dụng', color: '#DC4F3D', bg: '#FFEBEA' },
 };
 
 interface Props {

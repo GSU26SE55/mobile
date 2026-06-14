@@ -1,317 +1,225 @@
 import React from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Shadow } from '../../../src/lib/theme';
-import { useAlertsStore } from '../../../src/stores/alertsStore';
-import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
-import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
-import { useTickets } from '../../../src/features/tickets/hooks/useTickets';
+import { handleErrorApi } from '../../../src/lib/errors';
+import { useAlert } from '../../../src/features/batteries/hooks/useAlert';
+import { useAcknowledgeAlert } from '../../../src/features/batteries/hooks/useAcknowledgeAlert';
+import { ANOMALY_LABEL } from '../../../src/features/batteries/components/AssetAlertList';
+import {
+  AlertSeverityEnum,
+  AlertStatusEnum,
+} from '../../../src/shared/enums/alert.enum';
+
+const SEVERITY_STYLE: Record<AlertSeverityEnum, { label: string; color: string; bg: string }> = {
+  [AlertSeverityEnum.Info]: { label: 'Info', color: Colors.info, bg: Colors.infoLight },
+  [AlertSeverityEnum.Warning]: { label: 'Warning', color: Colors.warningDark, bg: Colors.warningLight },
+  [AlertSeverityEnum.Critical]: { label: 'Critical', color: Colors.danger, bg: Colors.dangerLight },
+};
+
+const STATUS_LABEL: Record<AlertStatusEnum, string> = {
+  [AlertStatusEnum.Open]: 'Mở',
+  [AlertStatusEnum.Acknowledged]: 'Đã xác nhận',
+  [AlertStatusEnum.Merged]: 'Đã gộp',
+  [AlertStatusEnum.Resolved]: 'Đã xử lý',
+};
 
 export default function AlertDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { alerts, acknowledge } = useAlertsStore();
-  const { data: batteries = [] } = useMyBatteryAssets();
+  const { data: alert, isLoading, isError } = useAlert(id ?? '');
+  const { mutateAsync: acknowledge, isPending } = useAcknowledgeAlert();
 
-  const alertItem = alerts.find((a) => a.id === id);
+  if (isLoading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
 
-  // Search for the ticket by code
-  const { data: ticketsData, isLoading: ticketsLoading } = useTickets({ PageSize: 100 });
-
-  if (!alertItem) {
+  if (isError || !alert) {
     return (
       <View style={styles.center}>
         <Ionicons name="alert-circle-outline" size={32} color={Colors.textFaint} />
-        <Text style={styles.errorText}>Không tìm thấy cảnh báo</Text>
-        <Pressable onPress={() => router.back()} style={styles.backBtnText}>
-          <Text style={{ color: Colors.primary, fontWeight: '600' }}>Quay lại</Text>
+        <Text style={styles.notFound}>Không tìm thấy cảnh báo</Text>
+        <Pressable onPress={() => router.back()} style={styles.goBackBtn}>
+          <Text style={styles.goBackText}>Quay lại</Text>
         </Pressable>
       </View>
     );
   }
 
-  const battery = batteries.find((b: BatteryAssetDto) => b.id === alertItem.batteryId);
+  const sev = SEVERITY_STYLE[alert.severity] ?? SEVERITY_STYLE[AlertSeverityEnum.Info];
+  const canAck = alert.status === AlertStatusEnum.Open;
 
-  // Match alertItem.ticketCode with ticket in cache
-  const linkedTicket = ticketsData?.items?.find((t) => t.code === alertItem.ticketCode);
-
-  const getAlertStyle = (type: string) => {
-    switch (type) {
-      case 'Critical':
-        return {
-          iconColor: '#DC4F3D',
-          iconBg: '#FFEBEA',
-          badgeBg: '#FFE5E3',
-          badgeText: '#B73221',
-          valueColor: '#DC4F3D',
-        };
-      case 'Warning':
-        return {
-          iconColor: '#FFB703',
-          iconBg: '#FFF3E3',
-          badgeBg: '#FFF1B8',
-          badgeText: '#9C7800',
-          valueColor: '#FFB703',
-        };
-      case 'Info':
-      default:
-        return {
-          iconColor: '#5081C7',
-          iconBg: '#EBF3FF',
-          badgeBg: '#DCE6F5',
-          badgeText: '#2A538A',
-          valueColor: '#5081C7',
-        };
-    }
-  };
-
-  const alertStyle = getAlertStyle(alertItem.type);
-
-  const handleAcknowledge = () => {
-    acknowledge(alertItem.id);
-    Alert.alert('Thành công', 'Đã xác nhận cảnh báo này.');
-    router.back();
-  };
-
-  const handleNavigateToBattery = () => {
-    const navId = battery?.id ?? alertItem.batteryId;
-    if (navId) {
-      router.push({
-        pathname: '/(customer)/batteries/[id]',
-        params: { id: navId },
-      });
-    }
-  };
-
-  const handleNavigateToTicket = () => {
-    if (linkedTicket) {
-      router.push({
-        pathname: '/(customer)/tickets/[id]',
-        params: { id: linkedTicket.id },
-      });
-    } else if (alertItem.ticketCode) {
-      Alert.alert('Thông tin', `Ticket ${alertItem.ticketCode} được tạo tự động bởi hệ thống.`);
+  const handleAcknowledge = async () => {
+    try {
+      await acknowledge(alert.id);
+      Alert.alert('Thành công', 'Đã xác nhận cảnh báo này.');
+    } catch (error) {
+      handleErrorApi({ error });
     }
   };
 
   return (
-    <View style={styles.container}>
-      {/* Seamless Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Pressable onPress={() => router.back()} style={[styles.backBtn, Shadow]}>
-          <Ionicons name="chevron-back" size={18} color={Colors.text} />
+    <View style={styles.root}>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <Pressable onPress={() => router.back()} style={[styles.headerBtn, Shadow]}>
+          <Ionicons name="chevron-back" size={18} color={Colors.accent} />
         </Pressable>
-        <Text style={styles.headerTitle}>{alertItem.id}</Text>
-        <View style={{ width: 42 }} />
+        <Text style={styles.headerTitle}>Chi tiết cảnh báo</Text>
+        <View style={{ width: 44 }} />
       </View>
 
-      <View style={styles.content}>
-        {/* Main Alert Card */}
-        <View style={[styles.mainCard, Shadow]}>
-          <View style={[styles.largeIconWrap, { backgroundColor: alertStyle.iconBg }]}>
-            <Ionicons
-              name={alertItem.type === 'Info' ? 'information-circle-outline' : 'alert-circle-outline'}
-              size={34}
-              color={alertStyle.iconColor}
-            />
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <View style={[styles.card, Shadow]}>
+          <View style={[styles.sevPill, { backgroundColor: sev.bg }]}>
+            <Text style={[styles.sevText, { color: sev.color }]}>{sev.label}</Text>
           </View>
-
-          <View style={[styles.typeBadge, { backgroundColor: alertStyle.badgeBg }]}>
-            <Text style={[styles.typeBadgeText, { color: alertStyle.badgeText }]}>
-              {alertItem.type.toUpperCase()}
-            </Text>
-          </View>
-
-          <Text style={styles.titleText}>{alertItem.title}</Text>
-          <Text style={styles.timeText}>{alertItem.time} · Hôm nay</Text>
-
-          {/* Ngưỡng vs Thực tế values box */}
-          <View style={styles.compBox}>
-            <View style={styles.compItem}>
-              <Text style={styles.compLabel}>NGƯỠNG</Text>
-              <Text style={styles.compVal}>{alertItem.threshold}</Text>
-            </View>
-            <Ionicons name="arrow-forward-outline" size={16} color={Colors.textFaint} />
-            <View style={styles.compItem}>
-              <Text style={styles.compLabel}>THỰC TẾ</Text>
-              <Text style={[styles.compVal, { color: alertStyle.valueColor }]}>
-                {alertItem.actual}
-              </Text>
-            </View>
-          </View>
+          <Text style={styles.title}>{ANOMALY_LABEL[alert.anomalyType] ?? 'Cảnh báo'}</Text>
+          <Text style={styles.subtitle}>{alert.batterySerialNumber}</Text>
         </View>
 
-        {/* Battery device link card */}
-        {alertItem.batteryId && (
-          <Pressable style={[styles.linkCard, Shadow]} onPress={handleNavigateToBattery}>
-            <View style={[styles.miniIconWrap, { backgroundColor: '#FFE5DA' }]}>
-              <Ionicons name="battery-charging" size={16} color="#FF5E13" />
-            </View>
-            <View style={styles.linkCardInfo}>
-              <Text style={styles.linkCardTitle}>
-                {battery ? battery.batteryTypeName : 'Battery Device'}
-              </Text>
-              <Text style={styles.linkCardMeta}>
-                {battery ? battery.serialNumber : 'View details'}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
-          </Pressable>
-        )}
+        <View style={[styles.card, Shadow]}>
+          <Row label="Trạng thái" value={STATUS_LABEL[alert.status] ?? '—'} />
+          <Divider />
+          <Row label="Ngưỡng" value={`${alert.thresholdValue} ${alert.unit}`} />
+          <Divider />
+          <Row label="Giá trị thực tế" value={`${alert.actualValue} ${alert.unit}`} />
+          <Divider />
+          <Row label="Phát hiện lúc" value={new Date(alert.detectedAt).toLocaleString()} />
+          {alert.acknowledgedAt ? (
+            <>
+              <Divider />
+              <Row label="Xác nhận lúc" value={new Date(alert.acknowledgedAt).toLocaleString()} />
+            </>
+          ) : null}
+          {alert.resolvedAt ? (
+            <>
+              <Divider />
+              <Row label="Xử lý lúc" value={new Date(alert.resolvedAt).toLocaleString()} />
+            </>
+          ) : null}
+        </View>
 
-        {/* Ticket link card */}
-        {alertItem.ticketCode && (
-          <Pressable style={[styles.linkCard, Shadow]} onPress={handleNavigateToTicket}>
+        {/* Battery link */}
+        <Pressable
+          style={[styles.linkCard, Shadow]}
+          onPress={() =>
+            router.push({ pathname: '/(customer)/batteries/[id]', params: { id: alert.batteryAssetId } })
+          }
+        >
+          <View style={[styles.miniIconWrap, { backgroundColor: '#FFE5DA' }]}>
+            <Ionicons name="battery-charging" size={16} color="#FF5E13" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.linkTitle}>{alert.batterySerialNumber}</Text>
+            <Text style={styles.linkMeta}>Xem chi tiết pin</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
+        </Pressable>
+
+        {/* Ticket link */}
+        {alert.ticketId ? (
+          <Pressable
+            style={[styles.linkCard, Shadow]}
+            onPress={() =>
+              router.push({ pathname: '/(customer)/tickets/[id]', params: { id: alert.ticketId as string } })
+            }
+          >
             <View style={[styles.miniIconWrap, { backgroundColor: '#EBF3FF' }]}>
               <Ionicons name="ticket" size={16} color="#5081C7" />
             </View>
-            <View style={styles.linkCardInfo}>
-              <Text style={styles.linkCardTitle}>Ticket {alertItem.ticketCode} đã tạo</Text>
-              <Text style={styles.linkCardMeta}>Chạm để mở chi tiết</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.linkTitle}>Ticket liên kết</Text>
+              <Text style={styles.linkMeta}>Chạm để mở chi tiết</Text>
             </View>
             <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
           </Pressable>
-        )}
-      </View>
+        ) : null}
+      </ScrollView>
 
-      {/* Acknowledge Action Button */}
+      {/* Acknowledge action */}
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
         <Pressable
-          style={[styles.ackBtn, Shadow, alertItem.acknowledged && styles.ackBtnDisabled]}
+          style={[styles.ackBtn, Shadow, !canAck && styles.ackBtnDisabled]}
           onPress={handleAcknowledge}
-          disabled={alertItem.acknowledged}
+          disabled={!canAck || isPending}
         >
-          <Ionicons name="checkmark-circle-outline" size={16} color="#FF5E13" style={{ marginRight: 6 }} />
-          <Text style={styles.ackBtnText}>
-            {alertItem.acknowledged ? 'Đã xác nhận' : 'Acknowledge'}
-          </Text>
+          {isPending ? (
+            <ActivityIndicator size="small" color="#FF5E13" />
+          ) : (
+            <>
+              <Ionicons name="checkmark-circle-outline" size={16} color="#FF5E13" style={{ marginRight: 6 }} />
+              <Text style={styles.ackBtnText}>
+                {canAck ? 'Acknowledge' : 'Đã xác nhận'}
+              </Text>
+            </>
+          )}
         </Pressable>
       </View>
     </View>
   );
 }
 
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.row}>
+      <Text style={styles.rowLabel}>{label}</Text>
+      <Text style={styles.rowValue}>{value}</Text>
+    </View>
+  );
+}
+
+function Divider() {
+  return <View style={styles.divider} />;
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.bg,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.bg,
-    gap: 12,
-  },
-  errorText: {
-    fontSize: 14,
-    color: Colors.textMute,
-  },
-  backBtnText: {
-    padding: 10,
-  },
+  root: { flex: 1, backgroundColor: Colors.bg },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bg, gap: 10 },
+  notFound: { fontSize: 16, fontWeight: '800', color: Colors.accent, marginTop: 8 },
+  goBackBtn: { backgroundColor: Colors.primary, borderRadius: 16, paddingHorizontal: 24, paddingVertical: 10, marginTop: 8 },
+  goBackText: { color: '#fff', fontWeight: '800', fontSize: 14 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 12,
-    backgroundColor: 'transparent',
   },
-  backBtn: {
-    width: 42,
-    height: 42,
+  headerBtn: {
+    width: 44,
+    height: 44,
     borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.02)',
   },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: Colors.text,
-    textAlign: 'center',
-  },
-  content: {
-    padding: 20,
-    gap: 14,
-  },
-  mainCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 24,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
-  },
-  largeIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  typeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginBottom: 14,
-  },
-  typeBadgeText: {
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  titleText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: Colors.text,
-    textAlign: 'center',
-  },
-  timeText: {
-    fontSize: 12,
-    color: Colors.textMute,
-    marginTop: 4,
-    marginBottom: 18,
-  },
-  compBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.card2,
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    width: '100%',
-    justifyContent: 'space-between',
-  },
-  compItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  compLabel: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: Colors.textMute,
-    marginBottom: 4,
-  },
-  compVal: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: Colors.text,
-  },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: Colors.accent },
+  scroll: { padding: 20, paddingBottom: 100 },
+  card: { backgroundColor: Colors.white, borderRadius: 24, padding: 18, marginBottom: 16 },
+  sevPill: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, marginBottom: 10 },
+  sevText: { fontSize: 11, fontWeight: '800' },
+  title: { fontSize: 20, fontWeight: '800', color: Colors.accent },
+  subtitle: { fontSize: 13, color: Colors.gray, fontWeight: '600', marginTop: 4 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },
+  rowLabel: { fontSize: 13, color: Colors.textMute, fontWeight: '600' },
+  rowValue: { fontSize: 13, fontWeight: '800', color: Colors.accent, flexShrink: 1, textAlign: 'right', marginLeft: 12 },
+  divider: { height: 1, backgroundColor: 'rgba(0,0,0,0.03)' },
   linkCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
     borderRadius: 24,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
+    marginBottom: 16,
   },
   miniIconWrap: {
     width: 36,
@@ -321,19 +229,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-  linkCardInfo: {
-    flex: 1,
-  },
-  linkCardTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: Colors.text,
-  },
-  linkCardMeta: {
-    fontSize: 11,
-    color: Colors.textMute,
-    marginTop: 3,
-  },
+  linkTitle: { fontSize: 13, fontWeight: '800', color: Colors.accent },
+  linkMeta: { fontSize: 11, color: Colors.textMute, marginTop: 3 },
   footer: {
     position: 'absolute',
     bottom: 0,
@@ -350,14 +247,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,0,0,0.02)',
     borderRadius: 16,
     paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
   },
-  ackBtnDisabled: {
-    opacity: 0.5,
-  },
-  ackBtnText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#FF5E13',
-  },
+  ackBtnDisabled: { opacity: 0.5 },
+  ackBtnText: { fontSize: 13, fontWeight: '800', color: '#FF5E13' },
 });

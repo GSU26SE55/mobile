@@ -11,7 +11,7 @@ import {
 const STATUS_LABEL: Record<BatteryStatusEnum, string> = {
   [BatteryStatusEnum.Active]: 'Active',
   [BatteryStatusEnum.Inactive]: 'Inactive',
-  [BatteryStatusEnum.Failed]: 'Failed',
+  [BatteryStatusEnum.Decommissioned]: 'Ngừng sử dụng',
 };
 
 const WARRANTY_LABEL: Record<WarrantyStatusEnum, string> = {
