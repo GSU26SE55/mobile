@@ -27,7 +27,7 @@ import { useRateTicket } from '../../../src/features/tickets/hooks/useRateTicket
 import { useReopenTicket } from '../../../src/features/tickets/hooks/useReopenTicket';
 import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/useUploadCommentAttachment';
 import { useTicketDetail } from '../../../src/features/tickets/hooks/useTicketDetail';
-import { useAuthImageHeaders } from '../../../src/features/tickets/hooks/useAuthImageHeaders';
+import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
 import { AttachmentForm, commentSchema } from '../../../src/features/tickets/schemas/comment.schema';
 import { RatePayload, ReopenPayload, TicketDetailDTO, TicketStatusEnum, TicketAttachmentDTO } from '../../../src/features/tickets/types/ticket.types';
 import { BASE_URL } from '../../../src/lib/axios';

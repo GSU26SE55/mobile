@@ -9,6 +9,7 @@ export const KEY = {
   staffProfile:  ['staffProfile'] as const,
   staffTickets:  ['staffTickets'] as const,
   notifications: ['notifications'] as const,
+  files:         ['files'] as const,
 } as const;
 
 export const QUERY_KEY = {
@@ -47,5 +48,9 @@ export const QUERY_KEY = {
   },
   notifications: {
     list: (params?: Record<string, unknown>) => [...KEY.notifications, 'list', params] as const,
+  },
+  files: {
+    metadata:     (id: string) => [...KEY.files, 'metadata', id] as const,
+    presignedUrl: (id: string) => [...KEY.files, 'presigned-url', id] as const,
   },
 } as const;
