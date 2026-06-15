@@ -3,8 +3,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -62,9 +64,18 @@ function PriorityBadge({ priority }: { priority: string }) {
   );
 }
 
-function ChatBubble({ comment }: { comment: NonNullable<TicketDetailDTO['comments']>[number] }) {
+function ChatBubble({
+  comment,
+  imageHeaders,
+  onImagePress,
+}: {
+  comment: NonNullable<TicketDetailDTO['comments']>[number];
+  imageHeaders?: { Authorization: string };
+  onImagePress?: (uri: string) => void;
+}) {
   const isCustomer = comment.authorRole === 'Customer';
   const isSystem = comment.authorRole === 'System';
+  const fileIds = comment.attachmentFileIds ?? [];
 
   if (isSystem) {
     return (
@@ -84,7 +95,25 @@ function ChatBubble({ comment }: { comment: NonNullable<TicketDetailDTO['comment
           {new Date(comment.createdAt).toLocaleString('vi-VN')}
         </Text>
       </View>
-      <Text style={[styles.bubbleBody, isCustomer && { color: '#fff' }]}>{comment.body}</Text>
+      {!!comment.body && (
+        <Text style={[styles.bubbleBody, isCustomer && { color: '#fff' }]}>{comment.body}</Text>
+      )}
+      {fileIds.length > 0 && (
+        <View style={styles.bubbleImages}>
+          {fileIds.map((fid, i) => {
+            const uri = `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(fid)}`;
+            return (
+              <Pressable key={fid ?? `img-${i}`} onPress={() => onImagePress?.(uri)}>
+                <Image
+                  source={{ uri, headers: imageHeaders }}
+                  style={styles.bubbleImageThumb}
+                  resizeMode="cover"
+                />
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
@@ -169,6 +198,7 @@ export default function TicketDetailScreen() {
   const [showRateModal,   setShowRateModal]   = useState(false);
   const [showReopenModal, setShowReopenModal] = useState(false);
   const [activeTab,       setActiveTab]       = useState<'info' | 'chat'>('info');
+  const [viewingImage,    setViewingImage]    = useState<string | null>(null);
   const chatScrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -425,14 +455,17 @@ export default function TicketDetailScreen() {
                 <>
                   <Text style={[styles.sectionH, { marginTop: 14, marginBottom: 8 }]}>Ảnh đính kèm</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.attachRow}>
-                    {(ticket.attachments as TicketAttachmentDTO[]).map((att) => (
-                      <View key={att.id} style={styles.attachCard}>
-                        <Image
-                          source={{ uri: `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(att.fileId)}`, headers: imageHeaders }}
-                          style={styles.attachImage}
-                        />
-                      </View>
-                    ))}
+                    {(ticket.attachments as TicketAttachmentDTO[]).map((att, i) => {
+                      const uri = `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(att.fileId)}`;
+                      return (
+                        <Pressable key={att.id ?? `att-${i}`} style={styles.attachCard} onPress={() => setViewingImage(uri)}>
+                          <Image
+                            source={{ uri, headers: imageHeaders }}
+                            style={styles.attachImage}
+                          />
+                        </Pressable>
+                      );
+                    })}
                   </ScrollView>
                 </>
               )}
@@ -504,7 +537,16 @@ export default function TicketDetailScreen() {
                 <Text style={styles.chatEmptyText}>Chưa có trao đổi nào.</Text>
               </View>
             ) : (
-              comments.map((c) => <ChatBubble key={c.id} comment={c} />)
+              <View style={styles.chatList}>
+                {comments.map((c, i) => (
+                  <ChatBubble
+                    key={c.id ?? `comment-${i}`}
+                    comment={c}
+                    imageHeaders={imageHeaders}
+                    onImagePress={setViewingImage}
+                  />
+                ))}
+              </View>
             )}
           </ScrollView>
 
@@ -560,6 +602,33 @@ export default function TicketDetailScreen() {
 
       <RateModal visible={showRateModal} isLoading={isRating} onClose={() => setShowRateModal(false)} onSubmit={handleRate} />
       <ReopenModal visible={showReopenModal} isLoading={isReopening} onClose={() => setShowReopenModal(false)} onSubmit={handleReopen} />
+
+      {/* Fullscreen image viewer */}
+      {viewingImage !== null && (
+        <Modal
+          visible
+          transparent
+          animationType="fade"
+          statusBarTranslucent
+          onRequestClose={() => setViewingImage(null)}
+        >
+          <View style={styles.imgOverlay}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setViewingImage(null)} />
+            <Image
+              source={{ uri: viewingImage, headers: imageHeaders ?? undefined }}
+              style={styles.imgFull}
+              resizeMode="contain"
+            />
+            <Pressable
+              style={[styles.imgCloseBtn, { top: insets.top + 12 }]}
+              onPress={() => setViewingImage(null)}
+              hitSlop={12}
+            >
+              <Ionicons name="close-circle" size={38} color="rgba(255,255,255,0.9)" />
+            </Pressable>
+          </View>
+        </Modal>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -872,4 +941,11 @@ const styles = StyleSheet.create({
   attachmentChipIcon: { fontSize: 12 },
   attachmentName:     { flex: 1, fontSize: 12, color: Colors.text, fontWeight: '500' },
   attachmentRemove:   { fontSize: 12, color: Colors.textMute, fontWeight: '700', marginLeft: 2 },
+
+  bubbleImages:     { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 },
+  bubbleImageThumb: { width: 150, height: 110, borderRadius: 10 },
+
+  imgOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.93)', alignItems: 'center', justifyContent: 'center' },
+  imgFull:     { width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.78 },
+  imgCloseBtn: { position: 'absolute', right: 16 },
 });

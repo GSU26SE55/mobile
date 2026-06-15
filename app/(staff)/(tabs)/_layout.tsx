@@ -59,9 +59,10 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         };
 
         let activeIcon, inactiveIcon, label;
-        if (route.name === 'dashboard')      { activeIcon = 'clipboard'; inactiveIcon = 'clipboard-outline'; label = 'Công việc'; }
+        if (route.name === 'dashboard')          { activeIcon = 'clipboard'; inactiveIcon = 'clipboard-outline'; label = 'Công việc'; }
+        else if (route.name === 'customers')     { activeIcon = 'chatbubbles'; inactiveIcon = 'chatbubbles-outline'; label = 'Khách hàng'; }
         else if (route.name === 'notifications') { activeIcon = 'notifications'; inactiveIcon = 'notifications-outline'; label = 'Thông báo'; }
-        else if (route.name === 'profile')   { activeIcon = 'person-circle'; inactiveIcon = 'person-circle-outline'; label = 'Cá nhân'; }
+        else if (route.name === 'profile')       { activeIcon = 'person-circle'; inactiveIcon = 'person-circle-outline'; label = 'Cá nhân'; }
         else return null;
 
         return (
@@ -81,6 +82,7 @@ export default function StaffTabsLayout() {
       screenOptions={{ headerShown: false }}
     >
       <Tabs.Screen name="dashboard" />
+      <Tabs.Screen name="customers" />
       <Tabs.Screen name="notifications" />
       <Tabs.Screen name="profile" />
     </Tabs>
@@ -92,7 +94,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 30 : 20,
     alignSelf: 'center',
-    width: 230,
+    width: 300,
     backgroundColor: '#FFFFFF',
     borderRadius: 28,
     height: 56,

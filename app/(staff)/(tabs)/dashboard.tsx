@@ -7,7 +7,7 @@ import { Colors, Shadow } from '../../../src/lib/theme';
 import { useStaffTickets } from '../../../src/features/staff/hooks/useStaffTickets';
 import { useStaffProfile } from '../../../src/features/staff/hooks/useStaffProfile';
 import { StaffTicketCard } from '../../../src/features/staff/components/StaffTicketCard';
-import { TicketDTO, TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
+import { TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
 
 type FilterTab = 'all' | 'active' | 'waiting' | 'resolved';
 
@@ -22,41 +22,6 @@ const ACTIVE_STATUSES: TicketStatusEnum[] = ['Assigned', 'InProgress'];
 const WAITING_STATUSES: TicketStatusEnum[] = ['WaitingCustomer', 'WaitingParts', 'WaitingOnsiteSchedule'];
 const RESOLVED_STATUSES: TicketStatusEnum[] = ['Resolved', 'Escalated'];
 
-const NOW = Date.now();
-const MOCK_TICKETS: TicketDTO[] = [
-  {
-    id: 'staff-mock-1', code: 'TK-0042', batteryAssetId: 'ba-001', customerId: 'cust-1',
-    assignedStaffId: 'me', title: 'Overheat - Battery BR-001 nhiệt độ vượt ngưỡng',
-    category: 'Overheat', priority: 'P1Critical', impactScope: 'SingleAsset', urgencyLevel: 'High',
-    status: 'InProgress', origin: 'AutoFromAlert', reopenCount: 0, isIncident: false,
-    createdAt: new Date(NOW - 2 * 3600_000).toISOString(), updatedAt: new Date(NOW - 30 * 60_000).toISOString(),
-    slaTimer: { id: 'sla-1', priority: 'P1Critical', startedAt: new Date(NOW - 2 * 3600_000).toISOString(), dueAt: new Date(NOW + 2 * 3600_000).toISOString(), originalDueAt: new Date(NOW + 2 * 3600_000).toISOString(), totalPausedMinutes: 0, warningSentAt: null, breachAt: null, status: 'Running', remainingPercent: 50 },
-  },
-  {
-    id: 'staff-mock-2', code: 'TK-0045', batteryAssetId: 'ba-003', customerId: 'cust-2',
-    assignedStaffId: 'me', title: 'Pin BR-003 không nhận sạc từ solar panel',
-    category: 'Charging', priority: 'P2High', impactScope: 'SingleAsset', urgencyLevel: 'Medium',
-    status: 'Assigned', origin: 'ManualByCustomer', reopenCount: 0, isIncident: false,
-    createdAt: new Date(NOW - 1 * 3600_000).toISOString(), updatedAt: null,
-    slaTimer: { id: 'sla-2', priority: 'P2High', startedAt: new Date(NOW - 1 * 3600_000).toISOString(), dueAt: new Date(NOW + 23 * 3600_000).toISOString(), originalDueAt: new Date(NOW + 23 * 3600_000).toISOString(), totalPausedMinutes: 0, warningSentAt: null, breachAt: null, status: 'Running', remainingPercent: 96 },
-  },
-  {
-    id: 'staff-mock-3', code: 'TK-0039', batteryAssetId: 'ba-002', customerId: 'cust-1',
-    assignedStaffId: 'me', title: 'Chờ khách cung cấp thông tin model inverter',
-    category: 'Performance', priority: 'P3Normal', impactScope: 'SingleAsset', urgencyLevel: 'Low',
-    status: 'WaitingCustomer', origin: 'ManualByCustomer', reopenCount: 0, isIncident: false,
-    createdAt: new Date(NOW - 24 * 3600_000).toISOString(), updatedAt: new Date(NOW - 3 * 3600_000).toISOString(),
-    slaTimer: { id: 'sla-3', priority: 'P3Normal', startedAt: new Date(NOW - 24 * 3600_000).toISOString(), dueAt: new Date(NOW + 48 * 3600_000).toISOString(), originalDueAt: new Date(NOW + 48 * 3600_000).toISOString(), totalPausedMinutes: 180, warningSentAt: null, breachAt: null, status: 'Paused', remainingPercent: 67 },
-  },
-  {
-    id: 'staff-mock-4', code: 'TK-0031', batteryAssetId: null, customerId: 'cust-3',
-    assignedStaffId: 'me', title: 'Bảo trì định kỳ hệ thống pin site D',
-    category: 'Repair', priority: 'P3Normal', impactScope: 'Site', urgencyLevel: 'Low',
-    status: 'Resolved', origin: 'ManualByCustomer', reopenCount: 0, isIncident: false,
-    createdAt: new Date(NOW - 3 * 86400_000).toISOString(), updatedAt: new Date(NOW - 86400_000).toISOString(),
-    slaTimer: null,
-  },
-];
 
 export default function StaffDashboardScreen() {
   const insets = useSafeAreaInsets();
@@ -64,7 +29,7 @@ export default function StaffDashboardScreen() {
   const { data: apiTickets, isLoading, refetch } = useStaffTickets();
   const { data: profile } = useStaffProfile();
 
-  const allTickets = apiTickets?.items ?? MOCK_TICKETS;
+  const allTickets = apiTickets?.items ?? [];
 
   const filtered = allTickets.filter((t) => {
     if (activeFilter === 'active')   return ACTIVE_STATUSES.includes(t.status);
@@ -109,7 +74,7 @@ export default function StaffDashboardScreen() {
         ))}
       </View>
 
-      {isLoading && allTickets === MOCK_TICKETS ? (
+      {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={Colors.primary} size="large" />
         </View>

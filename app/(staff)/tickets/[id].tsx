@@ -1,7 +1,12 @@
+import * as ImagePicker from 'expo-image-picker';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -30,8 +35,13 @@ import { useResolveTicket } from '../../../src/features/staff/hooks/useResolveTi
 import { useEscalateTicket } from '../../../src/features/staff/hooks/useEscalateTicket';
 import { useStaffAddComment } from '../../../src/features/staff/hooks/useStaffAddComment';
 import { useAddMaintenanceLog } from '../../../src/features/staff/hooks/useAddMaintenanceLog';
+import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/useUploadCommentAttachment';
+import { useAuthImageHeaders } from '../../../src/features/tickets/hooks/useAuthImageHeaders';
+import { AttachmentForm } from '../../../src/features/tickets/schemas/comment.schema';
 import { HoldReasonEnum, MaintenanceLogPayload } from '../../../src/features/staff/types/staff.types';
-import { EscalationReasonEnum, TicketDetailDTO, TicketStatusEnum, TicketCommentDTO } from '../../../src/features/tickets/types/ticket.types';
+import { EscalationReasonEnum, TicketStatusEnum, TicketCommentDTO } from '../../../src/features/tickets/types/ticket.types';
+import { BASE_URL } from '../../../src/lib/axios';
+import { ENDPOINTS } from '../../../src/lib/endpoints';
 import { useSessionStore } from '../../../src/stores/sessionStore';
 
 type TabKey = 'comments' | 'activities' | 'logs';
@@ -54,40 +64,6 @@ const PRIORITY_LABELS: Record<string, string> = {
   P3Normal:   'P3 Normal',
 };
 
-const NOW = Date.now();
-const MOCK_DETAIL: TicketDetailDTO = {
-  id: 'staff-mock-1', code: 'TK-0042', batteryAssetId: 'ba-001', customerId: 'cust-1',
-  assignedStaffId: 'me', title: 'Overheat - Battery BR-001 nhiệt độ vượt ngưỡng',
-  category: 'Overheat', priority: 'P1Critical', impactScope: 'SingleAsset', urgencyLevel: 'High',
-  status: 'InProgress', origin: 'AutoFromAlert', reopenCount: 0, isIncident: false,
-  createdAt: new Date(NOW - 2 * 3600_000).toISOString(),
-  updatedAt: new Date(NOW - 30 * 60_000).toISOString(),
-  slaTimer: {
-    id: 'sla-1', priority: 'P1Critical',
-    startedAt: new Date(NOW - 2 * 3600_000).toISOString(),
-    dueAt: new Date(NOW + 2 * 3600_000).toISOString(),
-    originalDueAt: new Date(NOW + 2 * 3600_000).toISOString(),
-    totalPausedMinutes: 0, warningSentAt: null, breachAt: null,
-    status: 'Running', remainingPercent: 50,
-  },
-  description: 'Hệ thống phát hiện nhiệt độ pin vượt ngưỡng 55°C lúc 09:15. Cần xử lý gấp để tránh nguy cơ an toàn.',
-  resolutionSummary: null, resolvedAt: null, resolvedByStaffId: null,
-  approvedAt: null, approvedByManagerId: null, rejectionReason: null,
-  closedAt: null, rating: null, ratingComment: null, ratedAt: null,
-  escalatedAt: null, escalationReason: null, originAlertId: 'alert-001',
-  activities: [
-    { id: 'a1', ticketId: 'staff-mock-1', actorUserId: null, actorRole: 'System', actorDisplayName: 'Hệ thống', action: 'Created', oldValue: null, newValue: 'New', reason: 'Tự động từ cảnh báo bất thường', createdAt: new Date(NOW - 2 * 3600_000).toISOString() },
-    { id: 'a2', ticketId: 'staff-mock-1', actorUserId: 'mgr-1', actorRole: 'Manager', actorDisplayName: 'Nguyễn Minh Quản', action: 'StaffAssigned', oldValue: null, newValue: 'Trần Văn Kỹ thuật (Tier 2)', reason: null, createdAt: new Date(NOW - 90 * 60_000).toISOString() },
-    { id: 'a3', ticketId: 'staff-mock-1', actorUserId: 'me', actorRole: 'Staff', actorDisplayName: 'Trần Văn Kỹ thuật', action: 'StatusChanged', oldValue: 'Assigned', newValue: 'InProgress', reason: null, createdAt: new Date(NOW - 60 * 60_000).toISOString() },
-  ],
-  comments: [
-    { id: 'c1', ticketId: 'staff-mock-1', authorUserId: null, authorRole: 'System', authorDisplayName: 'Hệ thống', body: 'Ticket được tạo tự động từ cảnh báo nhiệt độ bất thường (55.3°C).', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 2 * 3600_000).toISOString() },
-    { id: 'c2', ticketId: 'staff-mock-1', authorUserId: 'cust-1', authorRole: 'Customer', authorDisplayName: 'Lê Thanh Hải', body: 'Nhiệt độ đã giảm chưa? Thiết bị có an toàn không?', isInternal: false, attachmentFileIds: null, createdAt: new Date(NOW - 40 * 60_000).toISOString() },
-  ],
-  maintenanceLogs: [],
-  attachments: [],
-};
-
 const ROLE_AVATAR: Record<string, { icon: keyof typeof Ionicons.glyphMap; iconColor: string; bg: string }> = {
   System:   { icon: 'server-outline',  iconColor: Colors.info,        bg: Colors.infoLight },
   Customer: { icon: 'person-outline',  iconColor: Colors.warningDark, bg: Colors.warningLight },
@@ -95,7 +71,17 @@ const ROLE_AVATAR: Record<string, { icon: keyof typeof Ionicons.glyphMap; iconCo
   Staff:    { icon: 'shield-outline',  iconColor: Colors.primaryDark, bg: Colors.primaryLight },
 };
 
-function ChatBubble({ comment, isMe }: { comment: TicketCommentDTO; isMe: boolean }) {
+function ChatBubble({
+  comment,
+  isMe,
+  imageHeaders,
+  onImagePress,
+}: {
+  comment: TicketCommentDTO;
+  isMe: boolean;
+  imageHeaders?: { Authorization: string };
+  onImagePress?: (uri: string) => void;
+}) {
   const avatar = ROLE_AVATAR[comment.authorRole] ?? ROLE_AVATAR.Staff;
   const displayName =
     isMe ? 'Bạn' :
@@ -103,6 +89,16 @@ function ChatBubble({ comment, isMe }: { comment: TicketCommentDTO; isMe: boolea
     (comment.authorRole === 'System' ? 'Hệ thống' :
      comment.authorRole === 'Customer' ? 'Khách hàng' :
      comment.authorRole === 'Manager' ? 'Manager' : 'Nhân viên');
+
+  const fileIds = comment.attachmentFileIds ?? [];
+
+  if (comment.authorRole === 'System') {
+    return (
+      <View style={styles.systemMsg}>
+        <Text style={styles.systemMsgText}>{comment.body}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.bubbleRow, isMe && styles.bubbleRowMe]}>
@@ -113,7 +109,25 @@ function ChatBubble({ comment, isMe }: { comment: TicketCommentDTO; isMe: boolea
       )}
       <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleOther]}>
         {!isMe && <Text style={styles.bubbleName}>{displayName}</Text>}
-        <Text style={[styles.bubbleText, isMe && styles.bubbleTextMe]}>{comment.body}</Text>
+        {!!comment.body && (
+          <Text style={[styles.bubbleText, isMe && styles.bubbleTextMe]}>{comment.body}</Text>
+        )}
+        {fileIds.length > 0 && (
+          <View style={styles.bubbleImages}>
+            {fileIds.map((fid, i) => {
+              const uri = `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(fid)}`;
+              return (
+                <Pressable key={fid ?? `img-${i}`} onPress={() => onImagePress?.(uri)}>
+                  <Image
+                    source={{ uri, headers: imageHeaders }}
+                    style={styles.bubbleImage}
+                    resizeMode="cover"
+                  />
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
         <Text style={[styles.bubbleTime, isMe && styles.bubbleTimeMe]}>
           {new Date(comment.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
         </Text>
@@ -127,7 +141,8 @@ export default function StaffTicketDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const ticketId = id ?? '';
   const accountId = useSessionStore((s) => s.user?.accountId);
-  const { data: apiDetail, isLoading } = useStaffTicketDetail(ticketId);
+  const { data: ticket, isLoading, isError, refetch } = useStaffTicketDetail(ticketId);
+  const imageHeaders = useAuthImageHeaders();
   const { mutate: startTicket, isPending: isStarting } = useStartTicket(ticketId);
   const { mutate: holdTicket, isPending: isHolding } = useHoldTicket(ticketId);
   const { mutate: resumeTicket, isPending: isResuming } = useResumeTicket(ticketId);
@@ -135,29 +150,59 @@ export default function StaffTicketDetailScreen() {
   const { mutate: escalateTicket, isPending: isEscalating } = useEscalateTicket(ticketId);
   const { mutate: addComment, isPending: isSending } = useStaffAddComment(ticketId);
   const { mutate: addLog, isPending: isAddingLog } = useAddMaintenanceLog(ticketId);
+  const { mutateAsync: uploadAttachment, isPending: isUploading } = useUploadCommentAttachment();
 
   const [activeTab, setActiveTab] = useState<TabKey>('comments');
   const [commentText, setCommentText] = useState('');
+  const [attachments, setAttachments] = useState<AttachmentForm[]>([]);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [showHold, setShowHold] = useState(false);
   const [showResolve, setShowResolve] = useState(false);
   const [showEscalate, setShowEscalate] = useState(false);
   const [showLogForm, setShowLogForm] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
-  const ticket = apiDetail ?? MOCK_DETAIL;
-
   useEffect(() => {
     if (activeTab === 'comments') {
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 50);
     }
-  }, [activeTab, ticket.comments?.length]);
-  const pColor = PRIORITY_COLORS[ticket.priority] ?? PRIORITY_COLORS.P3Normal;
+  }, [activeTab, ticket?.comments?.length]);
   const isActioning = isStarting || isHolding || isResuming || isResolving || isEscalating;
+
+  const handlePickImage = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Quyền truy cập', 'Cần quyền truy cập thư viện ảnh để đính kèm.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: false,
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    const mimeType = asset.mimeType ?? 'image/jpeg';
+    const name = asset.fileName ?? `img_${Date.now()}.jpg`;
+    try {
+      const uploaded = await uploadAttachment({ uri: asset.uri, name, type: mimeType });
+      setAttachments((prev) => [...prev, uploaded]);
+    } catch {
+      Alert.alert('Lỗi', 'Không thể tải ảnh lên. Vui lòng thử lại.');
+    }
+  };
+
+  const handleRemoveAttachment = (fileId: string) => {
+    setAttachments((prev) => prev.filter((a) => a.fileId !== fileId));
+  };
 
   const handleSendComment = () => {
     const trimmed = commentText.trim();
-    if (!trimmed) return;
-    addComment({ body: trimmed, isInternal: false }, { onSuccess: () => setCommentText('') });
+    if (!trimmed && attachments.length === 0) return;
+    addComment(
+      { body: trimmed, isInternal: false, attachments: attachments.length > 0 ? attachments : undefined },
+      { onSuccess: () => { setCommentText(''); setAttachments([]); } },
+    );
   };
 
   const handleStart = () => { startTicket(undefined); };
@@ -167,13 +212,27 @@ export default function StaffTicketDetailScreen() {
   const handleEscalate = (reason: EscalationReasonEnum, note?: string) => { escalateTicket({ reason, note }, { onSuccess: () => setShowEscalate(false) }); };
   const handleAddLog = (log: MaintenanceLogPayload) => { addLog(log, { onSuccess: () => setShowLogForm(false) }); };
 
-  if (isLoading && !apiDetail) {
+  if (isLoading) {
     return (
       <View style={styles.loadingRoot}>
         <ActivityIndicator color={Colors.primary} size="large" />
       </View>
     );
   }
+
+  if (isError || !ticket) {
+    return (
+      <View style={styles.loadingRoot}>
+        <Ionicons name="alert-circle-outline" size={36} color={Colors.textFaint} />
+        <Text style={styles.errorMsg}>Không thể tải ticket.</Text>
+        <Pressable style={[styles.retryBtn, ShadowPrimary]} onPress={() => refetch()}>
+          <Text style={styles.retryText}>Thử lại</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const pColor = PRIORITY_COLORS[ticket.priority] ?? PRIORITY_COLORS.P3Normal;
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -258,11 +317,18 @@ export default function StaffTicketDetailScreen() {
         {/* Tab Content */}
         {activeTab === 'comments' && (
           <View style={styles.chatSection}>
-            {(ticket.comments ?? []).map((c) => (
-              <ChatBubble key={c.id} comment={c} isMe={!!accountId && c.authorUserId === accountId} />
-            ))}
-            {(ticket.comments ?? []).length === 0 && (
+            {(ticket.comments ?? []).length === 0 ? (
               <Text style={styles.emptyTab}>Chưa có trao đổi nào</Text>
+            ) : (
+              (ticket.comments ?? []).filter((c) => !c.isInternal).map((c, i) => (
+                <ChatBubble
+                  key={c.id ?? `comment-${i}`}
+                  comment={c}
+                  isMe={!!accountId && c.authorUserId === accountId}
+                  imageHeaders={imageHeaders}
+                  onImagePress={setViewingImage}
+                />
+              ))
             )}
           </View>
         )}
@@ -296,26 +362,46 @@ export default function StaffTicketDetailScreen() {
 
       {/* Comment Composer — only for comments tab */}
       {activeTab === 'comments' && (
-        <View style={[styles.composer, { paddingBottom: insets.bottom + 8 }]}>
-          <TextInput
-            style={styles.composerInput}
-            placeholder="Nhập tin nhắn..."
-            placeholderTextColor={Colors.textFaint}
-            value={commentText}
-            onChangeText={setCommentText}
-            multiline
-          />
-          <Pressable
-            style={[styles.sendBtn, (!commentText.trim() || isSending) && styles.sendBtnDisabled]}
-            onPress={handleSendComment}
-            disabled={!commentText.trim() || isSending}
-          >
-            {isSending ? (
-              <ActivityIndicator size="small" color="#FFF" />
-            ) : (
-              <Ionicons name="send" size={18} color="#FFF" />
-            )}
-          </Pressable>
+        <View style={styles.composerWrap}>
+          {attachments.length > 0 && (
+            <View style={styles.attachmentList}>
+              {attachments.map((a, i) => (
+                <View key={a.fileId ?? `a-${i}`} style={styles.attachmentChip}>
+                  <Ionicons name="image-outline" size={14} color={Colors.primary} />
+                  <Text style={styles.attachmentName} numberOfLines={1}>{a.fileName}</Text>
+                  <Pressable onPress={() => handleRemoveAttachment(a.fileId)} hitSlop={10}>
+                    <Ionicons name="close-circle" size={16} color={Colors.textMute} />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          )}
+          <View style={[styles.composer, { paddingBottom: insets.bottom + 8 }]}>
+            <Pressable style={styles.composerIcon} onPress={handlePickImage} disabled={isUploading}>
+              {isUploading
+                ? <ActivityIndicator size="small" color={Colors.textMute} />
+                : <Ionicons name="camera-outline" size={22} color={Colors.textMute} />}
+            </Pressable>
+            <TextInput
+              style={styles.composerInput}
+              placeholder="Nhập tin nhắn..."
+              placeholderTextColor={Colors.textFaint}
+              value={commentText}
+              onChangeText={setCommentText}
+              multiline
+            />
+            <Pressable
+              style={[styles.sendBtn, (!commentText.trim() && attachments.length === 0 || isSending) && styles.sendBtnDisabled]}
+              onPress={handleSendComment}
+              disabled={(!commentText.trim() && attachments.length === 0) || isSending}
+            >
+              {isSending ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <Ionicons name="send" size={18} color="#FFF" />
+              )}
+            </Pressable>
+          </View>
         </View>
       )}
 
@@ -323,6 +409,33 @@ export default function StaffTicketDetailScreen() {
       <HoldModal visible={showHold} onClose={() => setShowHold(false)} onSubmit={handleHold} isLoading={isHolding} />
       <ResolveModal visible={showResolve} onClose={() => setShowResolve(false)} onSubmit={handleResolve} isLoading={isResolving} />
       <EscalateModal visible={showEscalate} onClose={() => setShowEscalate(false)} onSubmit={handleEscalate} isLoading={isEscalating} />
+
+      {/* Fullscreen image viewer */}
+      {viewingImage !== null && (
+        <Modal
+          visible
+          transparent
+          animationType="fade"
+          statusBarTranslucent
+          onRequestClose={() => setViewingImage(null)}
+        >
+          <View style={styles.imgOverlay}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setViewingImage(null)} />
+            <Image
+              source={{ uri: viewingImage, headers: imageHeaders ?? undefined }}
+              style={styles.imgFull}
+              resizeMode="contain"
+            />
+            <Pressable
+              style={[styles.imgCloseBtn, { top: insets.top + 12 }]}
+              onPress={() => setViewingImage(null)}
+              hitSlop={12}
+            >
+              <Ionicons name="close-circle" size={38} color="rgba(255,255,255,0.9)" />
+            </Pressable>
+          </View>
+        </Modal>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -399,11 +512,24 @@ const styles = StyleSheet.create({
   logMeta: { fontSize: 12, fontWeight: '500', color: Colors.textMute },
   logTime: { fontSize: 11, fontWeight: '500', color: Colors.textFaint, marginTop: 4 },
 
+  composerWrap: {
+    backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: Colors.border,
+  },
+  attachmentList: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 6,
+    paddingHorizontal: 16, paddingTop: 8,
+  },
+  attachmentChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: Colors.card2, borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 5, maxWidth: 200,
+  },
+  attachmentName: { flex: 1, fontSize: 12, color: Colors.text, fontWeight: '500' },
   composer: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 8,
     paddingHorizontal: 16, paddingTop: 10,
-    backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: Colors.border,
   },
+  composerIcon: { padding: 6, paddingBottom: 8 },
   composerInput: {
     flex: 1, minHeight: 40, maxHeight: 100,
     backgroundColor: Colors.card2, borderRadius: 20,
@@ -417,4 +543,21 @@ const styles = StyleSheet.create({
     ...ShadowPrimary,
   },
   sendBtnDisabled: { backgroundColor: Colors.textFaint, shadowOpacity: 0 },
+
+  systemMsg: { alignItems: 'center', paddingVertical: 4 },
+  systemMsgText: { fontSize: 11, color: Colors.textMute, fontStyle: 'italic', fontWeight: '600' },
+
+  bubbleImages: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 },
+  bubbleImage: { width: 160, height: 120, borderRadius: 10 },
+
+  errorMsg: { color: Colors.textMute, fontSize: 14, marginTop: 8 },
+  retryBtn: {
+    backgroundColor: Colors.primary, borderRadius: 16,
+    paddingHorizontal: 24, paddingVertical: 10, marginTop: 8,
+  },
+  retryText: { color: '#fff', fontWeight: '800', fontSize: 14 },
+
+  imgOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.93)', alignItems: 'center', justifyContent: 'center' },
+  imgFull:     { width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.78 },
+  imgCloseBtn: { position: 'absolute', right: 16 },
 });
