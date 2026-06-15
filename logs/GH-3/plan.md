@@ -97,6 +97,8 @@ npm install @tanstack/react-query zustand axios jwt-decode
 | `src/features/auth/hooks/useVerifyResetOtp.ts` | create | `useMutation` |
 | `src/features/auth/hooks/useResendResetOtp.ts` | create | `useMutation` |
 | `src/features/auth/hooks/useResetPassword.ts` | create | `useMutation` |
+| `src/features/auth/hooks/useVerify2faLogin.ts` | create | `useMutation` — POST /api/auth/login/verify-2fa (GH-295 bước 2) |
+| `app/(auth)/login-2fa.tsx` | create | Màn hình nhập TOTP/backup code khi `requiresTwoFactor` (GH-295) |
 | `src/features/auth/components/LoginForm.tsx` | create | email + password + nút đăng nhập |
 | `src/features/auth/components/RegisterForm.tsx` | create | fullName + email + password + phone |
 | `src/features/auth/components/OtpVerifyForm.tsx` | create | 6-digit input + resend countdown |
@@ -180,23 +182,28 @@ interface CommonResponse<T> {
 // src/features/auth/types/auth.types.ts
 interface LoginPayload          { email: string; password: string; }
 interface RegisterPayload       { fullName: string; email: string; password: string; phoneNumber?: string; dateOfBirth?: string; address?: string; }
-interface RegisterResponseData { email: string; otpExpiresInSeconds: number; }  // ← countdown cho OTP verify sau register
+interface RegisterResponseData { email: string; otpExpiresInSeconds: number; }  // ← countdown cho OTP verify sau register (HTTP 201)
 interface OtpVerifyPayload      { email: string; otp: string; }
 interface ResendOtpPayload      { email: string; }
 interface ForgotPasswordPayload { email: string; }
 interface VerifyResetOtpPayload { email: string; otp: string; }
 interface ResetPasswordPayload  { resetToken: string; newPassword: string; }
-interface LoginResponseData     { accessToken: string; refreshToken: string; }
-interface VerifyResetOtpData    { resetToken: string; expiresInSeconds: number; }
+interface VerifyResetOtpData    { resetToken: string; expiresInSeconds: number; }  // expiresInSeconds = 900 (15 phút) — dùng động
+
+// ── GH-295: LoginResultDto — discriminated union (login + refresh) ──
+interface TokenDto              { accessToken: string; refreshToken: string; }
+interface TwoFactorChallengeDto { challengeToken: string; expiresInSeconds: number; methods: string[]; }  // expiresInSeconds luôn 300, methods=["totp","backupCode"]
+interface LoginResultData       { tokens: TokenDto | null; challenge: TwoFactorChallengeDto | null; requiresTwoFactor: boolean; }
+interface Verify2faLoginPayload { challengeToken: string; code: string; isBackupCode: boolean; }  // bước 2 login (POST /api/auth/login/verify-2fa)
 ```
 
 ## Form Validation
 Dùng **Zod** (`schema.safeParse()`) — nhất quán với Web, đã có trong `tech/mobile.md`. Không dùng React Hook Form (thiết kế cho web DOM). Schemas đặt trong `src/features/auth/schemas/`:
 ```ts
-// Ví dụ — login.schema.ts
+// Ví dụ — login.schema.ts (login chỉ sanity-check "không rỗng", BE không enforce strong-password ở login)
 const loginSchema = z.object({
   email:    z.string().email('Email không hợp lệ'),
-  password: z.string().min(8, 'Mật khẩu tối thiểu 8 ký tự'),
+  password: z.string().min(1, 'Mật khẩu không được để trống'),
 });
 
 // Dùng trong form handler
@@ -207,14 +214,15 @@ if (!result.success) {
 }
 await mutateAsync(result.data);
 ```
-Validation rules tuân theo API contract: email max 256, password 8–100 ký tự có chữ hoa/thường/số/ký tự đặc biệt, OTP đúng 6 chữ số.
+Validation rules tuân theo API contract: email max 256, OTP đúng 6 chữ số. **Login** password chỉ `.min(1)` (không enforce strong-password — BE login chỉ sanity-check). **Register / reset-password** password 8–100 ký tự có chữ hoa/thường/số/ký tự đặc biệt.
 
 ## Endpoints
 
 | Method | Path | Dùng bởi |
 |--------|------|----------|
-| POST | `/api/auth/login` | Customer + Staff |
-| POST | `/api/auth/register` | Customer | Response: `CommonResponse<RegisterResponseData>` — `{ email, otpExpiresInSeconds }` |
+| POST | `/api/auth/login` | Customer + Staff — response `CommonResponse<LoginResultData>` (GH-295 union: `tokens` \| `challenge` + `requiresTwoFactor`) |
+| POST | `/api/auth/login/verify-2fa` | Customer + Staff (2FA bước 2) — body `{ challengeToken, code, isBackupCode }` → response giống login Case A |
+| POST | `/api/auth/register` | Customer — **201** `CommonResponse<RegisterResponseData>` — `{ email, otpExpiresInSeconds }` |
 | POST | `/api/auth/verify-otp` | Customer |
 | POST | `/api/auth/resend-otp` | Customer |
 | POST | `/api/auth/forgot-password` | Customer + Staff |
@@ -426,6 +434,6 @@ router.replace(dest);
 - **Token storage?** → `expo-secure-store` (không AsyncStorage theo mobile rules)
 - **JwtPayload claim names?** → Xác nhận từ GH-11 (SHIPPED + confirmed BE): `AccountId` (PascalCase key), `FullName` (PascalCase key), `role` (lowercase key, value PascalCase "Customer"), `perm` (lowercase key, string[])
 - **perm[] có trong JWT không?** → Có — confirmed GH-11. Fallback `?? []` nếu claim thiếu
-- **Form validation?** → Native validation (controlled state), không dùng Zod (không có trong mobile stack)
+- **Form validation?** → **Zod** (`schema.safeParse()`) — nhất quán Web, có trong mobile.md stack. Login password `.min(1)` (sanity-check), register/reset `.min(8)` + regex strong-password.
 - **src/context/ và src/hooks/ có trong mobile.md không?** → Không list sẵn nhưng cần tạo — thêm vào Files table
 - **Reference plan?** → GH-11 FE (SHIPPED) — adapt patterns cho Expo Router + SecureStore

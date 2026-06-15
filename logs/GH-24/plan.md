@@ -101,7 +101,7 @@ interface BatteryAssetRealtimeDto {
 interface SensorReadingDto { time; batteryAssetId; voltage; current; temperature; socPercent; cycleCount: number|null; sourceDeviceId: string|null; }
 interface SensorReadingHistoryResponseDto { items: SensorReadingDto[]; nextCursor: string|null; hasMore: boolean; }
 interface SensorReadingAggregateDto { time; avgVoltage; avgCurrent; avgTemperature; avgSocPercent; avgSohPercent: number|null; }
-interface AlertDto { id; batteryAssetId; batterySerialNumber; anomalyType; severity; thresholdValue; actualValue; unit; detectedAt; status; ticketId?: string|null; acknowledgedAt?: string|null; resolvedAt?: string|null; dedupWindowEndUtc; createdAt; }
+interface AlertDto { id; batteryAssetId; batterySerialNumber; anomalyType; severity; thresholdValue: number|null; actualValue: number|null; unit: string|null; detectedAt; status; ticketId?: string|null; acknowledgedByUserId?: string|null; acknowledgedAt?: string|null; resolvedAt?: string|null; dedupWindowEndUtc; createdAt; }
 ```
 
 ## Schema (Zod)
@@ -112,6 +112,7 @@ Không có — view **read-only**, không có form input. Bỏ qua section schem
 - **Realtime:** `useBatteryAssetRealtime` dùng `staleTime:0 + refetchInterval:30_000` (poll), nhất quán FE.
 - **Chart:** `SensorChart` nhận `SensorReadingAggregateDto[]`, tự normalize min/max → vẽ `<Polyline>`/`<Path>` bằng `react-native-svg`. Mặc định range 24h, `interval=1h`. Không có data → empty state.
 - **Alerts read-only:** list theo `batteryAssetId` (mặc định `excludeMerged=true`), tap → `app/(staff)/alerts/[id]`. Không hiển thị nút ack/resolve.
+- **AlertDto nullable (đồng bộ docs `api-battery.md`):** `thresholdValue`/`actualValue` là `number|null`, `unit` là `string|null` — BE trả `null` cho alert không gắn ngưỡng (vd `DeviceOffline`, `EnvironmentalIncident`, `SensorMismatch`). Render qua helper `formatMeasure(value, unit)` (trả `—` khi null) trong `alert.types.ts`, KHÔNG nội suy chuỗi thẳng để tránh hiện "null null".
 - **Entry point:** trong Staff ticket detail, render card "Xem pin" chỉ khi `ticket.batteryAssetId != null`; navigate kèm `id`.
 - **Reuse-ready cho Customer:** mọi component/hook đặt trong `src/features/batteries/` không phụ thuộc role → Customer screen có thể import lại.
 
@@ -122,6 +123,7 @@ Không có — view **read-only**, không có form input. Bỏ qua section schem
 - Aggregate trả mảng rỗng → chart empty state.
 - `sohPercent`/`chargingState`/`cycleCount` null → field optional, render placeholder.
 - Alerts rỗng → "Không có cảnh báo".
+- Alert có `thresholdValue`/`actualValue`/`unit` = null (alert không gắn ngưỡng) → `formatMeasure` trả "—", không hiện "null null".
 - Lỗi mạng/401 → axios interceptor xử lý refresh/logout; query `isError` → hiển thị thông báo lỗi nhẹ.
 - Phân biệt 0 vs null: SOC/temp có thể = 0 hợp lệ → check `!= null`, không dùng truthy.
 

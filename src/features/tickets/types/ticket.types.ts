@@ -74,9 +74,10 @@ export interface TicketDTO {
   assignedStaffName?: string | null;
   title: string;
   category: TicketCategoryEnum;
-  priority: TicketPriorityEnum;
-  impactScope: ImpactScopeEnum;
-  urgencyLevel: UrgencyLevelEnum;
+  // BE trả null khi ticket chưa triage (state New/Open) — gán tại bước triage.
+  priority: TicketPriorityEnum | null;
+  impactScope: ImpactScopeEnum | null;
+  urgencyLevel: UrgencyLevelEnum | null;
   status: TicketStatusEnum;
   origin: TicketOriginEnum;
   reopenCount: number;
@@ -123,17 +124,8 @@ export interface TicketDetailDTO extends TicketDTO {
   activities: TicketActivityDTO[] | null;
   comments: TicketCommentDTO[] | null;
   maintenanceLogs: MaintenanceLogDTO[] | null;
-  attachments: TicketAttachmentDTO[] | null;
-}
-
-export interface TicketAttachmentDTO {
-  id: string;
-  fileId: string;
-  fileName: string;
-  contentType: string;
-  sizeBytes: number;
-  uploadedByUserId: string | null;
-  createdAt: string;
+  // BE trả mảng FileId (string[]), KHÔNG phải mảng TicketAttachmentDTO.
+  attachmentFileIds: string[] | null;
 }
 
 export interface TicketActionDto {

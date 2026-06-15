@@ -17,9 +17,9 @@ export interface AlertDto {
   batterySerialNumber: string;
   anomalyType: AnomalyTypeEnum;
   severity: AlertSeverityEnum;
-  thresholdValue: number;
-  actualValue: number;
-  unit: string;
+  thresholdValue: number | null;
+  actualValue: number | null;
+  unit: string | null;
   detectedAt: string; // UTC
   status: AlertStatusEnum;
   ticketId: string | null;
@@ -40,3 +40,9 @@ export interface AlertListParams {
   from?: string;
   to?: string;
 }
+
+// Giá trị đo có thể null từ BE (thresholdValue/actualValue/unit là nullable).
+export const formatMeasure = (
+  value?: number | null,
+  unit?: string | null,
+): string => (value == null ? '—' : `${value}${unit ? ` ${unit}` : ''}`);

@@ -15,6 +15,27 @@
 
 ---
 
+## ⚠️ Contract Reconciliation (2026-06-15) — đối chiếu codebase BE TicketService + fix code
+
+> Sau khi đối chiếu trực tiếp code BE (`TicketService.Application/DTOs` + `CQRS/Command`), phát hiện vài mismatch còn lại trong code mobile và **đã fix**. Cập nhật plan cho khớp:
+
+### M1 — 🔴 `priority`/`impactScope`/`urgencyLevel` NULLABLE
+BE (`TicketDTO.cs:15-17`): cả 3 là `?` — **null khi ticket chưa triage** (`New`/`Open`). Code mobile khai non-null → **đã sửa** `ticket.types.ts` → `TicketPriorityEnum | null` v.v. + guard badge (`TicketCard`, `PriorityBadge` inline trong `[id].tsx`) hiển thị "Chưa phân loại" thay vì fallback nhầm P3.
+
+### M2 — 🔴 `attachments` là `string[]`, KHÔNG phải `TicketAttachmentDTO[]`
+BE (`TicketDetailDTO.cs:25`) trả field **`attachmentFileIds: string[]`** (mảng FileId), không có object attachment. Code mobile khai `attachments: TicketAttachmentDTO[]` + render `att.fileId`/`att.id` → **đã sửa**: đổi type sang `attachmentFileIds: string[] | null`, xóa `TicketAttachmentDTO` (dead), `[id].tsx` render map trực tiếp `fileId`.
+
+### M3 — 🟡 `createTicketSchema.category` dùng `z.enum([...])` hardcode
+Đã đổi sang **`z.nativeEnum(TicketCategoryEnum)`** — tránh drift nếu enum đổi (giá trị vẫn khớp BE 6 category).
+
+### M4 — 🟢 `escalationReason` đính chính: nullable, KHÔNG phải `0`
+BE (`TicketDetailDTO.cs:20`) khai `EscalationReasonEnum?` — trả `null` khi chưa escalate (Edge Case cũ ghi "BE trả `0`" là sai). Type code đã `| null` đúng. Guard `escalatedAt != null` vẫn an toàn.
+
+### M5 — ✅ Reopen: `reopenReason` BE **required**
+BE (`TicketReopenCommand.cs:29`) validate non-empty → 400 nếu rỗng. `ReopenModal` cũ gửi `reopenReason: reason.trim() || undefined` → **bug 400 khi rỗng**. **Đã sửa**: thêm validation chặn rỗng + hiển thị lỗi (giống ResolveModal). Payload `ReopenPayload.reopenReason?` giữ optional ở type nhưng UI luôn gửi non-empty.
+
+---
+
 ## Mục tiêu
 Quản lý ticket cho **Customer** trên Mobile: danh sách, tạo mới (kèm attachment), chi tiết +
 activity timeline + comment, và các action vòng đời cuối (reopen, rate). Data flow chuẩn:
@@ -116,9 +137,13 @@ interface TicketDTO {
   id; code; batteryAssetId: string | null; customerId;
   assignedStaffId: string | null;
   assignedStaffName?: string | null;          // ← thực tế BE có trả, doc chưa liệt kê → optional
-  title; category; priority; impactScope; urgencyLevel; status; origin;
+  title; category;
+  priority:    TicketPriorityEnum | null;     // ← [M1] NULLABLE — null khi chưa triage
+  impactScope: ImpactScopeEnum   | null;      // ← [M1] NULLABLE
+  urgencyLevel:UrgencyLevelEnum  | null;      // ← [M1] NULLABLE
+  status; origin;
   reopenCount; isIncident; createdAt; updatedAt: string | null;
-  slaTimer: SlaTimerDTO | null;                // ← NULLABLE (doc ghi non-null) — guard trước khi render SLA
+  slaTimer: SlaTimerDTO | null;                // ← NULLABLE — guard trước khi render SLA
 }
 
 interface TicketDetailDTO extends TicketDTO {
@@ -126,12 +151,12 @@ interface TicketDetailDTO extends TicketDTO {
   approvedAt; approvedByManagerId; rejectionReason; closedAt;
   rating: number | null; ratingComment; ratedAt;
   escalatedAt: string | null;
-  escalationReason: EscalationReasonEnum | null;   // ← treat optional: check escalatedAt != null trước
+  escalationReason: EscalationReasonEnum | null;   // ← [M4] nullable, trả null khi chưa escalate (KHÔNG phải 0); guard escalatedAt != null
   originAlertId;
   activities: TicketActivityDTO[] | null;
   comments: TicketCommentDTO[] | null;
-  maintenanceLogs: unknown[] | null;               // ← stub ngoài scope (Staff #22)
-  attachments: TicketAttachmentDTO[] | null;       // ← in scope: render ảnh qua auth download
+  maintenanceLogs: MaintenanceLogDTO[] | null;     // ← type hóa ở #22 (không còn unknown[])
+  attachmentFileIds: string[] | null;              // ← [M2] mảng FileId (string[]), KHÔNG phải TicketAttachmentDTO[]; render ảnh qua auth download
 }
 
 interface TicketActionResponse {                   // wrapper RIÊNG, không phải CommonResponse<T>
@@ -158,7 +183,7 @@ interface CommentAttachmentPayload { fileId; fileName; contentType; sizeBytes; }
 // createTicket.schema.ts
 title:          z.string().trim().min(1).max(200)
 description:    z.string().trim().min(1).max(2000)
-category:       z.enum(['Charging','Overheat','NoPower','Performance','Repair','Other'])
+category:       z.nativeEnum(TicketCategoryEnum)   // ← [M3] dùng nativeEnum, không hardcode array
 batteryAssetId: z.string().uuid().optional()
 
 // comment.schema.ts  (export CommentForm + AttachmentForm)
@@ -224,12 +249,14 @@ useTicketDetail(id) → render info + PriorityBadge + SlaCountdown (guard slaTim
 ```
 
 ## Edge Cases
+- **`priority`/`impactScope`/`urgencyLevel` null [M1]:** ticket chưa triage (`New`/`Open`) → 3 field này `null`. Badge guard hiển thị "Chưa phân loại", KHÔNG fallback nhầm P3.
 - **`slaTimer` null:** `SlaCountdown` phải guard `slaTimer != null` trước khi đọc `remainingPercent`/`dueAt`.
-- **`escalationReason`:** chỉ tin khi `escalatedAt != null` (BE trả `0`/null default khi chưa escalate).
+- **`escalationReason` [M4]:** chỉ tin khi `escalatedAt != null` (BE trả **`null`** default khi chưa escalate — KHÔNG phải `0`).
 - **Comment internal:** `isInternal` hardcode `false`; render filter ẩn `isInternal=true`.
 - **Rate/Reopen:** chỉ render nút khi `status === 'ClosedPendingRate'`.
+- **Reopen `reopenReason` bắt buộc [M5]:** BE required → `ReopenModal` chặn submit khi rỗng (hiện lỗi inline), không gửi `undefined`.
 - **Reopen 403 (quá 7 ngày / sai trạng thái):** toast nghiệp vụ thay vì generic error (map `HttpError`).
-- **Attachment download cần auth:** `<Image>` phải đính `Authorization: Bearer` qua `useAuthImageHeaders` (GET `/api/files/{id}/download`).
+- **Attachment download cần auth [M2]:** BE trả `attachmentFileIds: string[]`; `<Image>` đính `Authorization: Bearer` qua `useAuthImageHeaders` (GET `/api/files/{id}/download`), map trực tiếp từ `fileId`.
 - **Empty list / error / loading:** hiển thị state tương ứng trong tab list.
 - **`maintenanceLogs`:** stub `unknown[] | null` — không render ở UI Customer.
 
