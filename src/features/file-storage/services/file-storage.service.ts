@@ -9,7 +9,9 @@ import type {
 } from '../types/file-storage.types';
 
 export const fileStorageService = {
-  // RN: append { uri, name, type } as Blob; để axios tự set multipart boundary → Content-Type undefined.
+  // RN: append { uri, name, type } as Blob. Content-Type = undefined để axios tự đặt
+  // 'multipart/form-data; boundary=...' khi body là FormData (ghi đè default 'application/json'
+  // của axiosInstance). Set cứng 'multipart/form-data' (thiếu boundary) sẽ làm BE không parse được.
   uploadFile: (payload: UploadFilePayload) => {
     const form = new FormData();
     form.append('file', {
@@ -22,7 +24,7 @@ export const fileStorageService = {
     return axiosInstance.post<CommonResponse<FileUploadResponse>>(
       ENDPOINTS.FILES.UPLOAD,
       form,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
+      { headers: { 'Content-Type': undefined } },
     );
   },
 

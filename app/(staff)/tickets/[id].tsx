@@ -157,7 +157,8 @@ export default function StaffTicketDetailScreen() {
   }
 
   const ticket = apiDetail;
-  const pColor = PRIORITY_COLORS[ticket.priority] ?? PRIORITY_COLORS.P3Normal;
+  // priority null khi ticket chưa triage.
+  const pColor = ticket.priority ? (PRIORITY_COLORS[ticket.priority] ?? PRIORITY_COLORS.P3Normal) : PRIORITY_COLORS.P3Normal;
   const isActioning = isStarting || isHolding || isResuming || isResolving || isEscalating;
 
   return (
@@ -188,7 +189,7 @@ export default function StaffTicketDetailScreen() {
           <Text style={styles.ticketTitle}>{ticket.title}</Text>
           <View style={styles.metaRow}>
             <View style={[styles.priorityBadge, { backgroundColor: pColor.bg }]}>
-              <Text style={[styles.priorityText, { color: pColor.text }]}>{PRIORITY_LABELS[ticket.priority] ?? ticket.priority}</Text>
+              <Text style={[styles.priorityText, { color: pColor.text }]}>{ticket.priority ? (PRIORITY_LABELS[ticket.priority] ?? ticket.priority) : 'Chưa phân loại'}</Text>
             </View>
             <Text style={styles.metaCategory}>{ticket.category}</Text>
           </View>

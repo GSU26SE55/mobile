@@ -33,9 +33,12 @@ interface Props {
 }
 
 export function TicketCard({ ticket, onPress }: Props) {
-  const pKey = PRIORITY_BADGE[ticket.priority] ?? 'p3';
+  // priority có thể null khi ticket chưa triage — không fallback nhầm sang P3.
+  const pKey = ticket.priority ? (PRIORITY_BADGE[ticket.priority] ?? 'p3') : 'p3';
   const pColors = BadgeColors[pKey];
-  const pLabel = PRIORITY_LABEL[ticket.priority] ?? ticket.priority;
+  const pLabel = ticket.priority
+    ? (PRIORITY_LABEL[ticket.priority] ?? ticket.priority)
+    : 'Chưa phân loại';
 
   const technicianName = ticket.assignedStaffName ?? (ticket.assignedStaffId ? 'Đã phân công' : 'Chưa phân công');
 

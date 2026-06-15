@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Shadow } from '../../../src/lib/theme';
 import { useMyAlerts } from '../../../src/features/batteries/hooks/useMyAlerts';
-import { AlertDto } from '../../../src/features/batteries/types/alert.types';
+import { AlertDto, formatMeasure } from '../../../src/features/batteries/types/alert.types';
 import {
   AlertSeverityEnum,
   AlertStatusEnum,
@@ -73,9 +73,11 @@ export default function AlertsScreen() {
           </View>
           <View style={styles.valueWrap}>
             <Text style={[styles.valText, { color: colors.badgeText }]}>
-              {item.actualValue}{item.unit}
+              {formatMeasure(item.actualValue, item.unit)}
             </Text>
-            <Text style={styles.thrText}>thr {item.thresholdValue}{item.unit}</Text>
+            <Text style={styles.thrText}>
+              thr {formatMeasure(item.thresholdValue, item.unit)}
+            </Text>
           </View>
         </View>
       </Pressable>

@@ -76,8 +76,9 @@ Thay màn Customer battery detail đang **giả lập** (`app/(customer)/batteri
 //   socPercent?, cycleCount?, sohPercent?, chargingState?, activeAlerts
 // SensorReadingDto: time, batteryAssetId, voltage, current, temperature, socPercent, cycleCount?, sourceDeviceId?
 // SensorReadingAggregateDto: time, avgVoltage, avgCurrent, avgTemperature, avgSocPercent, avgSohPercent?
-// AlertDto: id, batteryAssetId, batterySerialNumber, anomalyType, severity, thresholdValue, actualValue,
-//   unit, detectedAt, status, ticketId?, acknowledgedByUserId?, acknowledgedAt?, resolvedAt?, dedupWindowEndUtc, createdAt
+// AlertDto: id, batteryAssetId, batterySerialNumber, anomalyType, severity,
+//   thresholdValue: number|null, actualValue: number|null, unit: string|null,  (nullable — đồng bộ docs api-battery.md)
+//   detectedAt, status, ticketId?, acknowledgedByUserId?, acknowledgedAt?, resolvedAt?, dedupWindowEndUtc, createdAt
 ```
 
 ## Approach
@@ -86,6 +87,7 @@ Thay màn Customer battery detail đang **giả lập** (`app/(customer)/batteri
 - **Chart:** reuse `SensorChart` (svg, base GH-24), range 24h interval `1h` từ `aggregate`.
 - **Alerts thật:** `useAlerts({ batteryAssetId })` cho section trong detail; `useAlerts()` (không filter) cho tab Customer. Mặc định `excludeMerged=true`.
 - **Acknowledge:** `useAcknowledgeAlert` → `onSuccess` invalidate `QUERY_KEY.alerts.list` + `alerts.detail(id)`; `onError` `handleErrorApi` (toast — non-form). Disable nút khi `status !== Open`.
+- **AlertDto nullable:** render `thresholdValue`/`actualValue`/`unit` qua helper `formatMeasure(value, unit)` (base GH-24, trả `—` khi null) ở alert list tab + alert detail — KHÔNG nội suy chuỗi thẳng (tránh "null null" với alert không gắn ngưỡng).
 - **Phân biệt 0 vs null:** SOC/voltage/temp = `0` hợp lệ → check `!= null`, không dùng truthy.
 - **Cắt mock:** thay `useAlertsStore` ở 3 màn → xóa `alertsStore.ts`.
 
@@ -107,6 +109,7 @@ Thay màn Customer battery detail đang **giả lập** (`app/(customer)/batteri
 - Aggregate rỗng → chart empty state; alerts rỗng → "Không có cảnh báo".
 - SOC/temp/current `= 0` hợp lệ → check `!= null`, không bỏ qua.
 - Acknowledge alert đã `Resolved`/`Merged` → 409 → toast, không đổi UI.
+- Alert `thresholdValue`/`actualValue`/`unit` = null (alert không gắn ngưỡng) → `formatMeasure` trả "—", không hiện "null null".
 - Lỗi mạng / 401 → axios interceptor xử lý (refresh/logout).
 
 ## Acceptance Criteria

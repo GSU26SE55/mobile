@@ -11,13 +11,31 @@ Chuẩn hóa lại phần Staff Ticket Management (đã code rải rác từ GH-
 
 > Quyết định approach (đã chốt với user): **Reconcile + fix bug** (giữ structure mobile, surgical) · detail dùng **embedded arrays** trong `TicketDetailDTO` · staff internal comment dùng **payload riêng** `StaffAddCommentPayload`.
 
+---
+
+## ⚠️ Contract Reconciliation bổ sung (2026-06-15) — đối chiếu codebase BE + fix code
+
+> Đối chiếu trực tiếp code BE TicketService phát hiện thêm mismatch ngoài phần GH-22 gốc — **đã fix**:
+
+### M1 — 🔴 `priority`/`impactScope`/`urgencyLevel` NULLABLE
+BE (`TicketDTO.cs:15-17`): `?` — null khi chưa triage. **Đã sửa** `ticket.types.ts` → `| null`; staff `[id].tsx` guard `PRIORITY_COLORS`/`PRIORITY_LABELS` khi null, `StaffTicketCard` hiển thị "Chưa phân loại" thay vì fallback nhầm P3.
+
+### M2 — 🔴 `attachments` → `attachmentFileIds: string[]`; bỏ `TicketAttachmentDTO`
+BE (`TicketDetailDTO.cs:25`) trả `attachmentFileIds: string[]`. **Đã sửa**: đổi field + **xóa interface `TicketAttachmentDTO`** (không serialize trong response nào). → Điểm "reconcile `TicketAttachmentDTO.uploadedByUserId` → string|null" trong scope GH-22 gốc **không còn áp dụng** (DTO đã bị xóa).
+
+### M3 — 🟡 `ResolvePayload.resolutionSummary` BE **required**
+BE (`TicketResolveCommand.cs:27`) validate non-empty → 400. **Đã sửa** `staff.types.ts` → `resolutionSummary: string` (bỏ `?`). `ResolveModal` vốn đã validate ≥10 ký tự nên không gây 400 runtime — chỉ siết type cho khớp.
+
+### M4 — 🟢 `escalationReason` đính chính: nullable, KHÔNG phải `0`
+BE (`TicketDetailDTO.cs:20`) khai `?`, trả `null` khi chưa escalate. Edge Case cũ ghi "non-null mặc định `0`" là sai → guard `escalatedAt != null` vẫn đúng.
+
 ## Scope
 
 **Trong scope:**
 - Type hóa `TicketDetailDTO.maintenanceLogs` từ `unknown[]` → `MaintenanceLogDTO[]` (thêm `MaintenanceLogDTO` theo doc §DTOs).
 - Cho phép Staff comment nội bộ (`isInternal=true`) — tách `StaffAddCommentPayload` (customer giữ `isInternal:false` cố định).
 - Gỡ `MOCK_DETAIL` trong `app/(staff)/tickets/[id].tsx` — wire dữ liệu thật từ `useStaffTicketDetail` + loading/error/empty state.
-- Reconcile nullability lẻ với doc: `TicketAttachmentDTO.uploadedByUserId` → `string | null`.
+- ~~Reconcile nullability lẻ với doc: `TicketAttachmentDTO.uploadedByUserId` → `string | null`.~~ **(2026-06-15: obsolete — `TicketAttachmentDTO` đã bị xóa, BE trả `attachmentFileIds: string[]` — xem M2.)**
 - Viết plan + bảng cấu trúc đầy đủ (deliverable tài liệu).
 
 **Ngoài scope (giữ nguyên / để issue sau):**
@@ -64,8 +82,8 @@ app/(staff)/
 ## Files
 | File | Action | Ghi chú |
 |------|--------|---------|
-| `src/features/tickets/types/ticket.types.ts` | modify | Thêm `MaintenanceLogDTO`; `TicketDetailDTO.maintenanceLogs: MaintenanceLogDTO[] \| null`; `TicketAttachmentDTO.uploadedByUserId: string \| null` |
-| `src/features/staff/types/staff.types.ts` | modify | Thêm `StaffAddCommentPayload { body; isInternal?; attachments? }` |
+| `src/features/tickets/types/ticket.types.ts` | modify | Thêm `MaintenanceLogDTO`; `TicketDetailDTO.maintenanceLogs: MaintenanceLogDTO[] \| null`; **[2026-06-15]** `priority/impactScope/urgencyLevel → \| null`; `attachments → attachmentFileIds: string[] \| null` + xóa `TicketAttachmentDTO` |
+| `src/features/staff/types/staff.types.ts` | modify | Thêm `StaffAddCommentPayload { body; isInternal?; attachments? }`; **[2026-06-15]** `ResolvePayload.resolutionSummary` → required (bỏ `?`) — M3 |
 | `src/features/staff/services/staffTicket.service.ts` | modify | `addComment` param → `StaffAddCommentPayload` |
 | `src/features/staff/hooks/useStaffAddComment.ts` | modify | dùng `StaffAddCommentPayload` thay `AddCommentPayload` |
 | `app/(staff)/tickets/[id].tsx` | modify | Gỡ `MOCK_DETAIL` + fallback; loading/error/empty state thật; render `maintenanceLogs` theo `MaintenanceLogDTO`; cho phép toggle internal comment |
@@ -107,7 +125,9 @@ interface StaffAddCommentPayload {
 - `maintenanceLogs`/`comments`/`activities` = `null`: render empty (`?? []`).
 - POST maintenance-log khi đã có 1 log mở → BE trả `409`: hiện toast lỗi qua `handleErrorApi`.
 - Action sai trạng thái ticket → BE `403`: hiện message từ response, `TicketActionBar` chỉ show action hợp lệ theo `status`.
-- `escalationReason` non-null mặc định `0` khi chưa escalate → chỉ tin khi `escalatedAt != null`.
+- `escalationReason` **nullable** — BE trả `null` khi chưa escalate (KHÔNG phải `0`) → chỉ tin khi `escalatedAt != null`. [M4]
+- `priority`/`impactScope`/`urgencyLevel` **null khi chưa triage** → guard badge/màu, hiển thị "Chưa phân loại". [M1]
+- `resolve` body `resolutionSummary` **bắt buộc** (BE 400 nếu rỗng) — `ResolveModal` validate ≥10 ký tự. [M3]
 
 ## Acceptance Criteria
 - [ ] `MaintenanceLogDTO` tồn tại; `TicketDetailDTO.maintenanceLogs` không còn `unknown[]`.

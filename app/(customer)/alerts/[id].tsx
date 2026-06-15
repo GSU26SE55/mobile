@@ -8,6 +8,7 @@ import { handleErrorApi } from '../../../src/lib/errors';
 import { useAlert } from '../../../src/features/batteries/hooks/useAlert';
 import { useAcknowledgeAlert } from '../../../src/features/batteries/hooks/useAcknowledgeAlert';
 import { ANOMALY_LABEL } from '../../../src/features/batteries/components/AssetAlertList';
+import { formatMeasure } from '../../../src/features/batteries/types/alert.types';
 import {
   AlertSeverityEnum,
   AlertStatusEnum,
@@ -87,9 +88,9 @@ export default function AlertDetailScreen() {
         <View style={[styles.card, Shadow]}>
           <Row label="Trạng thái" value={STATUS_LABEL[alert.status] ?? '—'} />
           <Divider />
-          <Row label="Ngưỡng" value={`${alert.thresholdValue} ${alert.unit}`} />
+          <Row label="Ngưỡng" value={formatMeasure(alert.thresholdValue, alert.unit)} />
           <Divider />
-          <Row label="Giá trị thực tế" value={`${alert.actualValue} ${alert.unit}`} />
+          <Row label="Giá trị thực tế" value={formatMeasure(alert.actualValue, alert.unit)} />
           <Divider />
           <Row label="Phát hiện lúc" value={new Date(alert.detectedAt).toLocaleString()} />
           {alert.acknowledgedAt ? (

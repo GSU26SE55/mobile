@@ -29,7 +29,7 @@ import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/
 import { useTicketDetail } from '../../../src/features/tickets/hooks/useTicketDetail';
 import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
 import { AttachmentForm, commentSchema } from '../../../src/features/tickets/schemas/comment.schema';
-import { RatePayload, ReopenPayload, TicketDetailDTO, TicketStatusEnum, TicketAttachmentDTO } from '../../../src/features/tickets/types/ticket.types';
+import { RatePayload, ReopenPayload, TicketDetailDTO, TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
 import { BASE_URL } from '../../../src/lib/axios';
 import { ENDPOINTS } from '../../../src/lib/endpoints';
 import { BadgeColors, Colors, Shadow, ShadowPrimary } from '../../../src/lib/theme';
@@ -51,8 +51,11 @@ const CATEGORY_LABEL: Record<string, string> = {
   Other: 'Khác',
 };
 
-function PriorityBadge({ priority }: { priority: string }) {
-  const cfg = PRIORITY_MAP[priority] ?? { label: priority, badge: 'p3' as const };
+function PriorityBadge({ priority }: { priority: string | null }) {
+  // priority null khi ticket chưa triage — hiển thị nhãn trung tính, không nhầm P3.
+  const cfg = priority
+    ? (PRIORITY_MAP[priority] ?? { label: priority, badge: 'p3' as const })
+    : { label: 'Chưa phân loại', badge: 'p3' as const };
   const bc = BadgeColors[cfg.badge];
   return (
     <View style={[styles.badge, { backgroundColor: bc.bg }]}>
@@ -420,15 +423,15 @@ export default function TicketDetailScreen() {
               <Text style={styles.sectionH}>Mô tả ban đầu</Text>
               <Text style={styles.descText}>{ticket.description}</Text>
 
-              {/* Attachments — only shown when there are real files from API */}
-              {(ticket.attachments?.length ?? 0) > 0 && (
+              {/* Attachments — BE trả mảng FileId (string[]) */}
+              {(ticket.attachmentFileIds?.length ?? 0) > 0 && (
                 <>
                   <Text style={[styles.sectionH, { marginTop: 14, marginBottom: 8 }]}>Ảnh đính kèm</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.attachRow}>
-                    {(ticket.attachments as TicketAttachmentDTO[]).map((att) => (
-                      <View key={att.id} style={styles.attachCard}>
+                    {ticket.attachmentFileIds!.map((fileId) => (
+                      <View key={fileId} style={styles.attachCard}>
                         <Image
-                          source={{ uri: `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(att.fileId)}`, headers: imageHeaders }}
+                          source={{ uri: `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(fileId)}`, headers: imageHeaders }}
                           style={styles.attachImage}
                         />
                       </View>

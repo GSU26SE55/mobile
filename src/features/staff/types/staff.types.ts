@@ -31,7 +31,8 @@ export interface HoldPayload {
 }
 
 export interface ResolvePayload {
-  resolutionSummary?: string;
+  // BE required (TicketResolveCommand) — rỗng → 400.
+  resolutionSummary: string;
 }
 
 export interface EscalatePayload {
