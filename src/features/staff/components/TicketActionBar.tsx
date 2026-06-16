@@ -26,7 +26,7 @@ export function TicketActionBar({ status, onStart, onHold, onResume, onResolve, 
   if (status === 'Assigned') {
     return (
       <View style={[styles.bar, Shadow]}>
-        <Pressable style={[styles.btnPrimary, ShadowPrimary]} onPress={onStart}>
+        <Pressable style={[styles.btnPrimary, ShadowPrimary, { flex: 1 }]} onPress={onStart}>
           <Ionicons name="play" size={16} color="#fff" />
           <Text style={styles.btnPrimaryText}>Bắt đầu xử lý</Text>
         </Pressable>
