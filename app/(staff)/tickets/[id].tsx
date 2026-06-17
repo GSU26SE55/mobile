@@ -32,6 +32,9 @@ import { useStaffAddComment } from '../../../src/features/staff/hooks/useStaffAd
 import { useAddMaintenanceLog } from '../../../src/features/staff/hooks/useAddMaintenanceLog';
 import { MaintenanceLogPayload } from '../../../src/features/staff/types/staff.types';
 import { EscalationReasonEnum, PauseReasonEnum, TicketStatusEnum, TicketCommentDTO } from '../../../src/features/tickets/types/ticket.types';
+import { AttachmentPicker, UploadedAttachment } from '../../../src/features/file-storage/components/AttachmentPicker';
+import { AttachmentThumbnails } from '../../../src/features/file-storage/components/AttachmentThumbnails';
+import { FilePurposeEnum } from '../../../src/features/file-storage/enums/file-storage.enum';
 import { useSessionStore } from '../../../src/stores/sessionStore';
 
 type TabKey = 'comments' | 'activities' | 'logs';
@@ -80,6 +83,7 @@ function ChatBubble({ comment, isMe }: { comment: TicketCommentDTO; isMe: boolea
       <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleOther]}>
         {!isMe && <Text style={styles.bubbleName}>{displayName}</Text>}
         <Text style={[styles.bubbleText, isMe && styles.bubbleTextMe]}>{comment.body}</Text>
+        <AttachmentThumbnails fileIds={comment.attachmentFileIds} size={64} />
         <Text style={[styles.bubbleTime, isMe && styles.bubbleTimeMe]}>
           {new Date(comment.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
         </Text>
@@ -105,6 +109,8 @@ export default function StaffTicketDetailScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>('comments');
   const [commentText, setCommentText] = useState('');
   const [isInternalComment, setIsInternalComment] = useState(false);
+  const [commentAttachments, setCommentAttachments] = useState<UploadedAttachment[]>([]);
+  const [uploadingComment, setUploadingComment] = useState(false);
   const [showHold, setShowHold] = useState(false);
   const [showResolve, setShowResolve] = useState(false);
   const [showEscalate, setShowEscalate] = useState(false);
@@ -121,8 +127,17 @@ export default function StaffTicketDetailScreen() {
     const trimmed = commentText.trim();
     if (!trimmed) return;
     addComment(
-      { body: trimmed, isInternal: isInternalComment },
-      { onSuccess: () => setCommentText('') },
+      {
+        body: trimmed,
+        isInternal: isInternalComment,
+        attachments: commentAttachments.length > 0 ? commentAttachments : undefined,
+      },
+      {
+        onSuccess: () => {
+          setCommentText('');
+          setCommentAttachments([]);
+        },
+      },
     );
   };
 
@@ -201,6 +216,14 @@ export default function StaffTicketDetailScreen() {
           <View style={[styles.card, Shadow]}>
             <Text style={styles.sectionLabel}>Mô tả</Text>
             <Text style={styles.descText}>{ticket.description}</Text>
+          </View>
+        )}
+
+        {/* Ảnh khách đính kèm khi tạo ticket */}
+        {(ticket.attachmentFileIds?.length ?? 0) > 0 && (
+          <View style={[styles.card, Shadow]}>
+            <Text style={styles.sectionLabel}>Ảnh đính kèm</Text>
+            <AttachmentThumbnails fileIds={ticket.attachmentFileIds} size={72} />
           </View>
         )}
 
@@ -288,6 +311,18 @@ export default function StaffTicketDetailScreen() {
                   {!!log.diagnosisDetails && <Text style={styles.logMeta}>Chẩn đoán: {log.diagnosisDetails}</Text>}
                   {!!log.resolutionNote && <Text style={styles.logMeta}>Kết quả: {log.resolutionNote}</Text>}
                   {log.durationMinutes > 0 && <Text style={styles.logMeta}>Thời gian: {log.durationMinutes} phút</Text>}
+                  {(log.beforePhotosFileIds?.length ?? 0) > 0 && (
+                    <>
+                      <Text style={styles.logMeta}>Ảnh trước:</Text>
+                      <AttachmentThumbnails fileIds={log.beforePhotosFileIds} size={64} />
+                    </>
+                  )}
+                  {(log.afterPhotosFileIds?.length ?? 0) > 0 && (
+                    <>
+                      <Text style={styles.logMeta}>Ảnh sau:</Text>
+                      <AttachmentThumbnails fileIds={log.afterPhotosFileIds} size={64} />
+                    </>
+                  )}
                   <Text style={styles.logTime}>{new Date(log.createdAt).toLocaleString('vi-VN')}</Text>
                 </View>
               ))
@@ -301,35 +336,43 @@ export default function StaffTicketDetailScreen() {
       {/* Comment Composer — only for comments tab */}
       {activeTab === 'comments' && (
         <View style={[styles.composer, { paddingBottom: insets.bottom + 8 }]}>
-          <Pressable
-            style={[styles.internalToggle, isInternalComment && styles.internalToggleOn]}
-            onPress={() => setIsInternalComment((v) => !v)}
-          >
-            <Ionicons
-              name={isInternalComment ? 'lock-closed' : 'lock-open-outline'}
-              size={16}
-              color={isInternalComment ? Colors.warningDark : Colors.textMute}
-            />
-          </Pressable>
-          <TextInput
-            style={styles.composerInput}
-            placeholder="Nhập tin nhắn..."
-            placeholderTextColor={Colors.textFaint}
-            value={commentText}
-            onChangeText={setCommentText}
-            multiline
+          <AttachmentPicker
+            purpose={FilePurposeEnum.TicketAttachment}
+            value={commentAttachments}
+            onChange={setCommentAttachments}
+            onUploadingChange={setUploadingComment}
           />
-          <Pressable
-            style={[styles.sendBtn, (!commentText.trim() || isSending) && styles.sendBtnDisabled]}
-            onPress={handleSendComment}
-            disabled={!commentText.trim() || isSending}
-          >
-            {isSending ? (
-              <ActivityIndicator size="small" color="#FFF" />
-            ) : (
-              <Ionicons name="send" size={18} color="#FFF" />
-            )}
-          </Pressable>
+          <View style={styles.composerRow}>
+            <Pressable
+              style={[styles.internalToggle, isInternalComment && styles.internalToggleOn]}
+              onPress={() => setIsInternalComment((v) => !v)}
+            >
+              <Ionicons
+                name={isInternalComment ? 'lock-closed' : 'lock-open-outline'}
+                size={16}
+                color={isInternalComment ? Colors.warningDark : Colors.textMute}
+              />
+            </Pressable>
+            <TextInput
+              style={styles.composerInput}
+              placeholder="Nhập tin nhắn..."
+              placeholderTextColor={Colors.textFaint}
+              value={commentText}
+              onChangeText={setCommentText}
+              multiline
+            />
+            <Pressable
+              style={[styles.sendBtn, (!commentText.trim() || isSending || uploadingComment) && styles.sendBtnDisabled]}
+              onPress={handleSendComment}
+              disabled={!commentText.trim() || isSending || uploadingComment}
+            >
+              {isSending ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <Ionicons name="send" size={18} color="#FFF" />
+              )}
+            </Pressable>
+          </View>
         </View>
       )}
 
@@ -418,9 +461,12 @@ const styles = StyleSheet.create({
   logTime: { fontSize: 11, fontWeight: '500', color: Colors.textFaint, marginTop: 4 },
 
   composer: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+    gap: 8,
     paddingHorizontal: 16, paddingTop: 10,
     backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: Colors.border,
+  },
+  composerRow: {
+    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
   },
   composerInput: {
     flex: 1, minHeight: 40, maxHeight: 100,
