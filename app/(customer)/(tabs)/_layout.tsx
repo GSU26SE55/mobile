@@ -72,6 +72,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         let activeIcon, inactiveIcon, label;
         if (route.name === 'dashboard') { activeIcon = 'grid'; inactiveIcon = 'grid-outline'; label = 'Dashboard'; }
         else if (route.name === 'tickets') { activeIcon = 'document-text'; inactiveIcon = 'document-text-outline'; label = 'Tickets'; }
+        else if (route.name === 'wiki') { activeIcon = 'book'; inactiveIcon = 'book-outline'; label = 'Wiki'; }
         else if (route.name === 'profile') { activeIcon = 'settings'; inactiveIcon = 'settings-outline'; label = 'Settings'; }
         else return null;
 
@@ -104,6 +105,7 @@ export default function CustomerTabsLayout() {
     >
       <Tabs.Screen name="dashboard" />
       <Tabs.Screen name="tickets" />
+      <Tabs.Screen name="wiki" />
       <Tabs.Screen name="profile" />
 
       {/* Hidden but routable */}
@@ -117,7 +119,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 30 : 20,
     alignSelf: 'center',
-    width: 230,
+    width: 300,
     backgroundColor: '#FFFFFF',
     borderRadius: 28,
     height: 56,

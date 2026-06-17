@@ -61,6 +61,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         let activeIcon, inactiveIcon, label;
         if (route.name === 'dashboard')      { activeIcon = 'clipboard'; inactiveIcon = 'clipboard-outline'; label = 'Công việc'; }
         else if (route.name === 'notifications') { activeIcon = 'notifications'; inactiveIcon = 'notifications-outline'; label = 'Thông báo'; }
+        else if (route.name === 'wiki')      { activeIcon = 'book'; inactiveIcon = 'book-outline'; label = 'Wiki'; }
         else if (route.name === 'profile')   { activeIcon = 'person-circle'; inactiveIcon = 'person-circle-outline'; label = 'Cá nhân'; }
         else return null;
 
@@ -82,6 +83,7 @@ export default function StaffTabsLayout() {
     >
       <Tabs.Screen name="dashboard" />
       <Tabs.Screen name="notifications" />
+      <Tabs.Screen name="wiki" />
       <Tabs.Screen name="profile" />
     </Tabs>
   );
@@ -92,7 +94,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 30 : 20,
     alignSelf: 'center',
-    width: 230,
+    width: 300,
     backgroundColor: '#FFFFFF',
     borderRadius: 28,
     height: 56,

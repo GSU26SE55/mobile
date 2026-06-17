@@ -35,6 +35,8 @@ import { ENDPOINTS } from '../../../src/lib/endpoints';
 import { BadgeColors, Colors, Shadow, ShadowPrimary } from '../../../src/lib/theme';
 import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
 import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
+import { useKbSuggest } from '../../../src/features/knowledge-base/hooks/useKbSuggest';
+import { KbSuggestList } from '../../../src/features/knowledge-base/components/KbSuggestList';
 
 const PRIORITY_MAP: Record<string, { label: string; badge: keyof typeof BadgeColors }> = {
   P1Critical: { label: 'P1 Critical', badge: 'p1' },
@@ -165,6 +167,7 @@ export default function TicketDetailScreen() {
   const { mutateAsync: rateTicket,      isPending: isRating      } = useRateTicket(id ?? '');
   const { mutateAsync: reopenTicket,    isPending: isReopening   } = useReopenTicket(id ?? '');
   const { mutateAsync: uploadAttachment, isPending: isUploading  } = useUploadCommentAttachment();
+  const { data: relatedArticles = [] } = useKbSuggest(id);
 
   const [commentText,     setCommentText]     = useState('');
   const [commentError,    setCommentError]    = useState('');
@@ -448,6 +451,17 @@ export default function TicketDetailScreen() {
               <Text style={styles.descText}>{ticket.resolutionSummary}</Text>
             </View>
           ) : null}
+
+          {/* Bài viết Wiki liên quan (gợi ý theo category của ticket) */}
+          {relatedArticles && relatedArticles.length > 0 && (
+            <KbSuggestList
+              title="Bài viết hỗ trợ liên quan"
+              items={relatedArticles}
+              onPressItem={(articleId) =>
+                router.push({ pathname: '/(customer)/wiki/[id]', params: { id: articleId } })
+              }
+            />
+          )}
 
           {/* Resolved info banner */}
           {isResolved && (

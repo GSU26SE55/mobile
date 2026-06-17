@@ -21,6 +21,10 @@ import { useUploadTicketAttachment } from '../hooks/useUploadTicketAttachment';
 import { useMyBatteryAssets } from '../../batteries/hooks/useMyBatteryAssets';
 import { BatteryAssetDto } from '../../batteries/types/battery.types';
 import { Colors, Shadow, ShadowPrimary } from '../../../lib/theme';
+import { router } from 'expo-router';
+import { useKbArticles } from '../../knowledge-base/hooks/useKbArticles';
+import { KbSuggestList } from '../../knowledge-base/components/KbSuggestList';
+import { CATEGORY_TO_INT } from '../../knowledge-base/types/knowledge-base.types';
 
 const TOTAL_STEPS = 4;
 
@@ -132,6 +136,13 @@ export function CreateTicketStepper({
   const selectedBattery = batteries.find((b: BatteryAssetDto) => b.id === selectedBatteryId);
   const uploadTicketAttachment = useUploadTicketAttachment();
   const isUploadingImage = uploadTicketAttachment.isPending;
+
+  // Self-help: gợi ý bài Wiki cùng category (dùng list endpoint vì ticket chưa tồn tại để gọi suggest).
+  const categoryInt = category ? CATEGORY_TO_INT[category] : undefined;
+  const { data: selfHelp } = useKbArticles(
+    categoryInt ? { Category: categoryInt, PageSize: 3 } : undefined,
+    { enabled: !!categoryInt },
+  );
 
   const uploadPickedAssets = async (assets: ImagePicker.ImagePickerAsset[]) => {
     const uploadedFiles: UploadedTicketAttachment[] = [];
@@ -325,6 +336,19 @@ export function CreateTicketStepper({
                 );
               })}
             </View>
+
+            {/* Self-help: bài Wiki cùng loại sự cố — đọc thử trước khi tạo ticket */}
+            {category !== '' && selfHelp?.items && selfHelp.items.length > 0 && (
+              <View style={{ marginBottom: 16 }}>
+                <KbSuggestList
+                  title="Có thể tự khắc phục?"
+                  items={selfHelp.items}
+                  onPressItem={(articleId) =>
+                    router.push({ pathname: '/(customer)/wiki/[id]', params: { id: articleId } })
+                  }
+                />
+              </View>
+            )}
 
             {/* Description */}
             <Text style={styles.descLabel}>Mô tả sự cố</Text>

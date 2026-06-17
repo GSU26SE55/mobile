@@ -10,6 +10,7 @@ export const KEY = {
   staffTickets:  ['staffTickets'] as const,
   notifications: ['notifications'] as const,
   files:         ['files'] as const,
+  knowledgeBase: ['knowledgeBase'] as const,
 } as const;
 
 export const QUERY_KEY = {
@@ -52,5 +53,10 @@ export const QUERY_KEY = {
   files: {
     metadata:     (id: string) => [...KEY.files, 'metadata', id] as const,
     presignedUrl: (id: string) => [...KEY.files, 'presigned-url', id] as const,
+  },
+  knowledgeBase: {
+    list:    (params?: Record<string, unknown>) => [...KEY.knowledgeBase, 'list', params] as const,
+    detail:  (id: string) => [...KEY.knowledgeBase, 'detail', id] as const,
+    suggest: (ticketId: string) => [...KEY.knowledgeBase, 'suggest', ticketId] as const,
   },
 } as const;
