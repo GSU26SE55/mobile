@@ -5,8 +5,10 @@ export {
   TicketOriginEnum,
   ImpactScopeEnum,
   UrgencyLevelEnum,
+  PauseReasonEnum,
   EscalationReasonEnum,
   SlaTimerStatusEnum,
+  MaintenanceLogTypeEnum,
   ActorRoleEnum,
   ActivityActionEnum,
 } from '../../../shared/enums/ticket.enum';
@@ -20,6 +22,7 @@ import type {
   UrgencyLevelEnum,
   EscalationReasonEnum,
   SlaTimerStatusEnum,
+  MaintenanceLogTypeEnum,
   ActorRoleEnum,
   ActivityActionEnum,
 } from '../../../shared/enums/ticket.enum';
@@ -71,9 +74,10 @@ export interface TicketDTO {
   assignedStaffName?: string | null;
   title: string;
   category: TicketCategoryEnum;
-  priority: TicketPriorityEnum;
-  impactScope: ImpactScopeEnum;
-  urgencyLevel: UrgencyLevelEnum;
+  // BE trả null khi ticket chưa triage (state New/Open) — gán tại bước triage.
+  priority: TicketPriorityEnum | null;
+  impactScope: ImpactScopeEnum | null;
+  urgencyLevel: UrgencyLevelEnum | null;
   status: TicketStatusEnum;
   origin: TicketOriginEnum;
   reopenCount: number;
@@ -81,6 +85,25 @@ export interface TicketDTO {
   createdAt: string;
   updatedAt: string | null;
   slaTimer: SlaTimerDTO | null;
+}
+
+export interface MaintenanceLogDTO {
+  id: string;
+  ticketId: string;
+  staffId: string;
+  logType: MaintenanceLogTypeEnum;
+  summary: string | null;
+  diagnosisDetails: string | null;
+  actionsTaken: string | null;
+  durationMinutes: number;
+  resolutionNote: string | null;
+  startedAt: string;
+  completedAt: string | null;
+  attachmentFileIds: string[] | null;
+  beforePhotosFileIds: string[] | null;
+  afterPhotosFileIds: string[] | null;
+  relatedKbArticleIds: string[] | null;
+  createdAt: string;
 }
 
 export interface TicketDetailDTO extends TicketDTO {
@@ -100,18 +123,9 @@ export interface TicketDetailDTO extends TicketDTO {
   originAlertId: string | null;
   activities: TicketActivityDTO[] | null;
   comments: TicketCommentDTO[] | null;
-  maintenanceLogs: unknown[] | null;
-  attachments: TicketAttachmentDTO[] | null;
-}
-
-export interface TicketAttachmentDTO {
-  id: string;
-  fileId: string;
-  fileName: string;
-  contentType: string;
-  sizeBytes: number;
-  uploadedByUserId: string;
-  createdAt: string;
+  maintenanceLogs: MaintenanceLogDTO[] | null;
+  // BE trả mảng FileId (string[]), KHÔNG phải mảng TicketAttachmentDTO.
+  attachmentFileIds: string[] | null;
 }
 
 export interface TicketActionDto {

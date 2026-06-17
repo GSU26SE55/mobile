@@ -13,9 +13,16 @@ interface Props {
 
 export function ReopenModal({ visible, isLoading, onClose, onSubmit }: Props) {
   const [reason, setReason] = useState('');
+  const [error, setError] = useState('');
 
   const handleSubmit = () => {
-    onSubmit({ reopenReason: reason.trim() || undefined });
+    const trimmed = reason.trim();
+    // BE required (TicketReopenCommand) — rỗng → 400. Chặn sớm ở client.
+    if (!trimmed) {
+      setError('Vui lòng nhập lý do reopen');
+      return;
+    }
+    onSubmit({ reopenReason: trimmed });
   };
 
   return (
@@ -41,13 +48,14 @@ export function ReopenModal({ visible, isLoading, onClose, onSubmit }: Props) {
           <TextInput
             style={styles.input}
             value={reason}
-            onChangeText={setReason}
+            onChangeText={(t) => { setReason(t); setError(''); }}
             placeholder="VD: Pin van nong vao buoi trua..."
             placeholderTextColor={Colors.textFaint}
             multiline
             numberOfLines={4}
             maxLength={500}
           />
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           <Pressable
             style={[styles.submitBtn, isLoading && styles.btnDisabled]}
@@ -92,6 +100,7 @@ const styles = StyleSheet.create({
   },
   warningText: { flex: 1, fontSize: 12, color: '#7F4513', lineHeight: 18 },
   inputLabel:  { fontSize: 12, fontWeight: '500', color: Colors.textMute },
+  errorText:   { fontSize: 12, color: Colors.danger, marginTop: -6 },
   input:       {
     backgroundColor: Colors.card2,
     borderRadius: 12, padding: 13,

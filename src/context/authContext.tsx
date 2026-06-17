@@ -38,13 +38,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Case 3: có refreshToken → thử refresh
         try {
-          const res = await axiosInstance.post<{ data: { accessToken: string; refreshToken: string } }>(
+          // GH-295: refresh trả LoginResultDto — token nằm trong data.tokens
+          const res = await axiosInstance.post<{ data: { tokens: { accessToken: string; refreshToken: string } | null } }>(
             ENDPOINTS.AUTH.REFRESH_TOKEN,
             { refreshToken },
           );
-          const { accessToken: newAccess, refreshToken: newRefresh } = res.data.data;
-          await saveTokens(newAccess, newRefresh);
-          setSession(decodeToken(newAccess));
+          const tokens = res.data.data?.tokens;
+          if (!tokens) throw new Error('Refresh failed');
+          await saveTokens(tokens.accessToken, tokens.refreshToken);
+          setSession(decodeToken(tokens.accessToken));
         } catch {
           await clearTokens();
           clearSession();

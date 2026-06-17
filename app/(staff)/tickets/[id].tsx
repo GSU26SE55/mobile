@@ -36,10 +36,10 @@ import { useEscalateTicket } from '../../../src/features/staff/hooks/useEscalate
 import { useStaffAddComment } from '../../../src/features/staff/hooks/useStaffAddComment';
 import { useAddMaintenanceLog } from '../../../src/features/staff/hooks/useAddMaintenanceLog';
 import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/useUploadCommentAttachment';
-import { useAuthImageHeaders } from '../../../src/features/tickets/hooks/useAuthImageHeaders';
+import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
 import { AttachmentForm } from '../../../src/features/tickets/schemas/comment.schema';
-import { HoldReasonEnum, MaintenanceLogPayload } from '../../../src/features/staff/types/staff.types';
-import { EscalationReasonEnum, TicketStatusEnum, TicketCommentDTO } from '../../../src/features/tickets/types/ticket.types';
+import { MaintenanceLogPayload } from '../../../src/features/staff/types/staff.types';
+import { EscalationReasonEnum, PauseReasonEnum, TicketStatusEnum, TicketCommentDTO } from '../../../src/features/tickets/types/ticket.types';
 import { BASE_URL } from '../../../src/lib/axios';
 import { ENDPOINTS } from '../../../src/lib/endpoints';
 import { useSessionStore } from '../../../src/stores/sessionStore';
@@ -156,6 +156,7 @@ export default function StaffTicketDetailScreen() {
   const [commentText, setCommentText] = useState('');
   const [attachments, setAttachments] = useState<AttachmentForm[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [isInternalComment, setIsInternalComment] = useState(false);
   const [showHold, setShowHold] = useState(false);
   const [showResolve, setShowResolve] = useState(false);
   const [showEscalate, setShowEscalate] = useState(false);
@@ -200,13 +201,13 @@ export default function StaffTicketDetailScreen() {
     const trimmed = commentText.trim();
     if (!trimmed && attachments.length === 0) return;
     addComment(
-      { body: trimmed, isInternal: false, attachments: attachments.length > 0 ? attachments : undefined },
+      { body: trimmed, isInternal: isInternalComment, attachments: attachments.length > 0 ? attachments : undefined },
       { onSuccess: () => { setCommentText(''); setAttachments([]); } },
     );
   };
 
   const handleStart = () => { startTicket(undefined); };
-  const handleHold = (reason: HoldReasonEnum) => { holdTicket({ reason }, { onSuccess: () => setShowHold(false) }); };
+  const handleHold = (reason: PauseReasonEnum, note?: string) => { holdTicket({ reason, note }, { onSuccess: () => setShowHold(false) }); };
   const handleResume = () => { resumeTicket(undefined); };
   const handleResolve = (summary: string) => { resolveTicket({ resolutionSummary: summary }, { onSuccess: () => setShowResolve(false) }); };
   const handleEscalate = (reason: EscalationReasonEnum, note?: string) => { escalateTicket({ reason, note }, { onSuccess: () => setShowEscalate(false) }); };
@@ -222,17 +223,20 @@ export default function StaffTicketDetailScreen() {
 
   if (isError || !ticket) {
     return (
-      <View style={styles.loadingRoot}>
-        <Ionicons name="alert-circle-outline" size={36} color={Colors.textFaint} />
-        <Text style={styles.errorMsg}>Không thể tải ticket.</Text>
-        <Pressable style={[styles.retryBtn, ShadowPrimary]} onPress={() => refetch()}>
-          <Text style={styles.retryText}>Thử lại</Text>
+      <View style={[styles.loadingRoot, { paddingTop: insets.top, paddingHorizontal: 24 }]}>
+        <Ionicons name="alert-circle-outline" size={48} color={Colors.textFaint} />
+        <Text style={styles.notFoundTitle}>Không tải được ticket</Text>
+        <Text style={styles.notFoundText}>
+          Ticket không tồn tại hoặc bạn không có quyền xem. Vui lòng thử lại.
+        </Text>
+        <Pressable style={styles.notFoundBtn} onPress={() => refetch()}>
+          <Text style={styles.notFoundBtnText}>Thử lại</Text>
         </Pressable>
       </View>
     );
   }
 
-  const pColor = PRIORITY_COLORS[ticket.priority] ?? PRIORITY_COLORS.P3Normal;
+  const pColor = ticket.priority ? (PRIORITY_COLORS[ticket.priority] ?? PRIORITY_COLORS.P3Normal) : PRIORITY_COLORS.P3Normal;
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -262,7 +266,7 @@ export default function StaffTicketDetailScreen() {
           <Text style={styles.ticketTitle}>{ticket.title}</Text>
           <View style={styles.metaRow}>
             <View style={[styles.priorityBadge, { backgroundColor: pColor.bg }]}>
-              <Text style={[styles.priorityText, { color: pColor.text }]}>{PRIORITY_LABELS[ticket.priority] ?? ticket.priority}</Text>
+              <Text style={[styles.priorityText, { color: pColor.text }]}>{ticket.priority ? (PRIORITY_LABELS[ticket.priority] ?? ticket.priority) : 'Chưa phân loại'}</Text>
             </View>
             <Text style={styles.metaCategory}>{ticket.category}</Text>
           </View>
@@ -275,6 +279,23 @@ export default function StaffTicketDetailScreen() {
             <Text style={styles.sectionLabel}>Mô tả</Text>
             <Text style={styles.descText}>{ticket.description}</Text>
           </View>
+        )}
+
+        {/* Battery view entry point */}
+        {ticket.batteryAssetId && (
+          <Pressable
+            style={[styles.logButton, Shadow]}
+            onPress={() =>
+              router.push({
+                pathname: '/(staff)/batteries/[id]',
+                params: { id: ticket.batteryAssetId as string },
+              })
+            }
+          >
+            <Ionicons name="battery-charging-outline" size={18} color={Colors.primary} />
+            <Text style={styles.logButtonText}>Xem thông tin pin</Text>
+            <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
+          </Pressable>
         )}
 
         {/* Action Bar */}
@@ -344,13 +365,14 @@ export default function StaffTicketDetailScreen() {
             {(ticket.maintenanceLogs ?? []).length === 0 ? (
               <Text style={styles.emptyTab}>Chưa có nhật ký bảo trì</Text>
             ) : (
-              (ticket.maintenanceLogs ?? []).map((log: any, idx: number) => (
-                <View key={log.id ?? idx} style={[styles.logCard, Shadow]}>
-                  {!!log.description && <Text style={styles.logDesc}>{log.description}</Text>}
-                  {!!log.actionTaken && <Text style={styles.logMeta}>Hành động: {log.actionTaken}</Text>}
-                  {!!log.partsUsed && <Text style={styles.logMeta}>Phụ tùng: {log.partsUsed}</Text>}
-                  {log.durationMinutes != null && <Text style={styles.logMeta}>Thời gian: {log.durationMinutes} phút</Text>}
-                  {!!log.createdAt && <Text style={styles.logTime}>{new Date(log.createdAt).toLocaleString('vi-VN')}</Text>}
+              (ticket.maintenanceLogs ?? []).map((log) => (
+                <View key={log.id} style={[styles.logCard, Shadow]}>
+                  {!!log.summary && <Text style={styles.logDesc}>{log.summary}</Text>}
+                  {!!log.actionsTaken && <Text style={styles.logMeta}>Hành động: {log.actionsTaken}</Text>}
+                  {!!log.diagnosisDetails && <Text style={styles.logMeta}>Chẩn đoán: {log.diagnosisDetails}</Text>}
+                  {!!log.resolutionNote && <Text style={styles.logMeta}>Kết quả: {log.resolutionNote}</Text>}
+                  {log.durationMinutes > 0 && <Text style={styles.logMeta}>Thời gian: {log.durationMinutes} phút</Text>}
+                  <Text style={styles.logTime}>{new Date(log.createdAt).toLocaleString('vi-VN')}</Text>
                 </View>
               ))
             )}
@@ -382,6 +404,16 @@ export default function StaffTicketDetailScreen() {
                 ? <ActivityIndicator size="small" color={Colors.textMute} />
                 : <Ionicons name="camera-outline" size={22} color={Colors.textMute} />}
             </Pressable>
+            <Pressable
+              style={[styles.internalToggle, isInternalComment && styles.internalToggleOn]}
+              onPress={() => setIsInternalComment((v) => !v)}
+            >
+              <Ionicons
+                name={isInternalComment ? 'lock-closed' : 'lock-open-outline'}
+                size={16}
+                color={isInternalComment ? Colors.warningDark : Colors.textMute}
+              />
+            </Pressable>
             <TextInput
               style={styles.composerInput}
               placeholder="Nhập tin nhắn..."
@@ -391,7 +423,7 @@ export default function StaffTicketDetailScreen() {
               multiline
             />
             <Pressable
-              style={[styles.sendBtn, (!commentText.trim() && attachments.length === 0 || isSending) && styles.sendBtnDisabled]}
+              style={[styles.sendBtn, ((!commentText.trim() && attachments.length === 0) || isSending) && styles.sendBtnDisabled]}
               onPress={handleSendComment}
               disabled={(!commentText.trim() && attachments.length === 0) || isSending}
             >
@@ -442,7 +474,11 @@ export default function StaffTicketDetailScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
-  loadingRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bg },
+  loadingRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bg, gap: 10 },
+  notFoundTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, marginTop: 4 },
+  notFoundText: { fontSize: 13, fontWeight: '500', color: Colors.textMute, textAlign: 'center', lineHeight: 19 },
+  notFoundBtn: { marginTop: 8, paddingHorizontal: 24, paddingVertical: 11, borderRadius: 14, backgroundColor: Colors.primary },
+  notFoundBtnText: { fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -550,14 +586,14 @@ const styles = StyleSheet.create({
   bubbleImages: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 },
   bubbleImage: { width: 160, height: 120, borderRadius: 10 },
 
-  errorMsg: { color: Colors.textMute, fontSize: 14, marginTop: 8 },
-  retryBtn: {
-    backgroundColor: Colors.primary, borderRadius: 16,
-    paddingHorizontal: 24, paddingVertical: 10, marginTop: 8,
-  },
-  retryText: { color: '#fff', fontWeight: '800', fontSize: 14 },
-
   imgOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.93)', alignItems: 'center', justifyContent: 'center' },
   imgFull:     { width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.78 },
   imgCloseBtn: { position: 'absolute', right: 16 },
+
+  internalToggle: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: Colors.card2,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  internalToggleOn: { backgroundColor: Colors.warningLight },
 });

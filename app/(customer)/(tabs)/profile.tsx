@@ -9,7 +9,8 @@ import { useUpdateProfile } from '../../../src/features/profile/hooks/useUpdateP
 import { useUploadAvatar } from '../../../src/features/profile/hooks/useUploadAvatar';
 import { useTickets } from '../../../src/features/tickets/hooks/useTickets';
 import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
-import { useAlertsStore } from '../../../src/stores/alertsStore';
+import { useMyAlerts } from '../../../src/features/batteries/hooks/useMyAlerts';
+import { AlertStatusEnum } from '../../../src/shared/enums/alert.enum';
 import { handleErrorApi } from '../../../src/lib/errors';
 import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
 import { Colors, Shadow } from '../../../src/lib/theme';
@@ -18,7 +19,7 @@ import { ProfileForm } from '../../../src/features/profile/components/ProfileFor
 const BATTERY_STATUS_MAP: Record<number, { label: string; color: string }> = {
   1: { label: 'Active', color: '#10B981' },
   2: { label: 'Inactive', color: Colors.gray },
-  3: { label: 'Failed', color: Colors.danger },
+  3: { label: 'Ngừng sử dụng', color: Colors.danger },
 };
 
 function LinkRow({
@@ -52,7 +53,7 @@ export default function ProfileScreen() {
 
   const { data: ticketsData, isLoading: ticketsLoading } = useTickets({ PageSize: 100 });
   const { data: batteries = [], isLoading: batteriesLoading } = useMyBatteryAssets();
-  const { alerts } = useAlertsStore();
+  const { data: alerts = [] } = useMyAlerts();
 
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -84,7 +85,7 @@ export default function ProfileScreen() {
   const openCount = tickets.filter((t) =>
     ['New', 'Open', 'Assigned', 'InProgress', 'WaitingCustomer', 'WaitingParts', 'WaitingOnsiteSchedule'].includes(t.status)
   ).length;
-  const unreadAlertsCount = alerts.filter((a) => !a.read).length;
+  const unreadAlertsCount = alerts.filter((a) => a.status === AlertStatusEnum.Open).length;
 
   const initials = (account.fullName ?? 'KH')
     .split(' ')

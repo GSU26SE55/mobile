@@ -1,31 +1,33 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Colors, Shadow } from '../../../lib/theme';
-import { HoldReasonEnum } from '../enums/staff.enum';
+import { PauseReasonEnum } from '../../tickets/types/ticket.types';
 
-const HOLD_OPTIONS: { value: HoldReasonEnum; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { value: HoldReasonEnum.WaitingCustomer,       label: 'Chờ khách phản hồi',     icon: 'person-outline' },
-  { value: HoldReasonEnum.WaitingParts,          label: 'Chờ linh kiện/phụ tùng', icon: 'construct-outline' },
-  { value: HoldReasonEnum.WaitingOnsiteSchedule, label: 'Chờ lịch on-site',       icon: 'calendar-outline' },
+const HOLD_OPTIONS: { value: PauseReasonEnum; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { value: PauseReasonEnum.WaitingCustomer,       label: 'Chờ khách phản hồi',     icon: 'person-outline' },
+  { value: PauseReasonEnum.WaitingParts,          label: 'Chờ linh kiện/phụ tùng', icon: 'construct-outline' },
+  { value: PauseReasonEnum.WaitingOnsiteSchedule, label: 'Chờ lịch on-site',       icon: 'calendar-outline' },
 ];
 
 interface Props {
   visible: boolean;
   isLoading: boolean;
   onClose: () => void;
-  onSubmit: (reason: HoldReasonEnum) => void;
+  onSubmit: (reason: PauseReasonEnum, note?: string) => void;
 }
 
 export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
-  const [selected, setSelected] = useState<HoldReasonEnum | null>(null);
+  const [selected, setSelected] = useState<PauseReasonEnum | null>(null);
+  const [note, setNote] = useState('');
 
   const handleSubmit = () => {
-    if (selected) onSubmit(selected);
+    if (selected) onSubmit(selected, note.trim() || undefined);
   };
 
   const handleClose = () => {
     setSelected(null);
+    setNote('');
     onClose();
   };
 
@@ -52,6 +54,17 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
               );
             })}
           </View>
+
+          <TextInput
+            style={styles.noteInput}
+            value={note}
+            onChangeText={setNote}
+            placeholder="Ghi chú (tuỳ chọn)..."
+            placeholderTextColor={Colors.textFaint}
+            multiline
+            textAlignVertical="top"
+            maxLength={500}
+          />
 
           <View style={styles.actions}>
             <Pressable style={styles.cancelBtn} onPress={handleClose}>
@@ -100,6 +113,15 @@ const styles = StyleSheet.create({
   },
   options: {
     gap: 10,
+  },
+  noteInput: {
+    backgroundColor: Colors.card2,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontSize: 14,
+    color: Colors.text,
+    minHeight: 64,
   },
   option: {
     flexDirection: 'row',

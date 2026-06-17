@@ -1,345 +1,289 @@
 # Plan — GH-10: [Mobile] Customer Ticket Management
 
 ## Metadata
-- **Status:** REVIEWING | **Role:** Mobile | **Ngày:** 2026-06-05
+- **Status:** AS-BUILT (reference) | **Role:** Mobile | **Ngày:** 2026-06-14 (refactor as-built)
 - **Issue:** #10 — https://github.com/GSU26SE55/mobile/issues/10
 - **Sprint:** Sprint 2 (due: 2026-06-13)
+- **Branch:** `fix-image-moblie`
+
+> **Mục đích bản plan này:** Feature đã được implement xong. Tài liệu này được **viết lại as-built** —
+> đối chiếu code thực tế (`src/features/tickets/**`, `app/(customer)/tickets/**`) ↔ `docs/api-ticket.md` —
+> để làm **cấu trúc chuẩn tham khảo** cho FE (mobile + web `/frontend`). Không thay đổi code trong lần này.
+>
+> **Scope reframe (2026-06-14):** Issue #10 **chỉ còn Customer**. Phần Staff ticket → **#22**.
+> Attachment upload đưa **vào scope** (đã hoạt động); hạ tầng FileStorage chuẩn hóa ở **#25** — issue này chỉ *consume* API.
+
+---
+
+## ⚠️ Contract Reconciliation (2026-06-15) — đối chiếu codebase BE TicketService + fix code
+
+> Sau khi đối chiếu trực tiếp code BE (`TicketService.Application/DTOs` + `CQRS/Command`), phát hiện vài mismatch còn lại trong code mobile và **đã fix**. Cập nhật plan cho khớp:
+
+### M1 — 🔴 `priority`/`impactScope`/`urgencyLevel` NULLABLE
+BE (`TicketDTO.cs:15-17`): cả 3 là `?` — **null khi ticket chưa triage** (`New`/`Open`). Code mobile khai non-null → **đã sửa** `ticket.types.ts` → `TicketPriorityEnum | null` v.v. + guard badge (`TicketCard`, `PriorityBadge` inline trong `[id].tsx`) hiển thị "Chưa phân loại" thay vì fallback nhầm P3.
+
+### M2 — 🔴 `attachments` là `string[]`, KHÔNG phải `TicketAttachmentDTO[]`
+BE (`TicketDetailDTO.cs:25`) trả field **`attachmentFileIds: string[]`** (mảng FileId), không có object attachment. Code mobile khai `attachments: TicketAttachmentDTO[]` + render `att.fileId`/`att.id` → **đã sửa**: đổi type sang `attachmentFileIds: string[] | null`, xóa `TicketAttachmentDTO` (dead), `[id].tsx` render map trực tiếp `fileId`.
+
+### M3 — 🟡 `createTicketSchema.category` dùng `z.enum([...])` hardcode
+Đã đổi sang **`z.nativeEnum(TicketCategoryEnum)`** — tránh drift nếu enum đổi (giá trị vẫn khớp BE 6 category).
+
+### M4 — 🟢 `escalationReason` đính chính: nullable, KHÔNG phải `0`
+BE (`TicketDetailDTO.cs:20`) khai `EscalationReasonEnum?` — trả `null` khi chưa escalate (Edge Case cũ ghi "BE trả `0`" là sai). Type code đã `| null` đúng. Guard `escalatedAt != null` vẫn an toàn.
+
+### M5 — ✅ Reopen: `reopenReason` BE **required**
+BE (`TicketReopenCommand.cs:29`) validate non-empty → 400 nếu rỗng. `ReopenModal` cũ gửi `reopenReason: reason.trim() || undefined` → **bug 400 khi rỗng**. **Đã sửa**: thêm validation chặn rỗng + hiển thị lỗi (giống ResolveModal). Payload `ReopenPayload.reopenReason?` giữ optional ở type nhưng UI luôn gửi non-empty.
+
+---
 
 ## Mục tiêu
-Implement toàn bộ luồng quản lý ticket cho Customer trên Mobile app:
-danh sách ticket, tạo mới, xem chi tiết + activity timeline, và các action (comment, reopen, rate).
+Quản lý ticket cho **Customer** trên Mobile: danh sách, tạo mới (kèm attachment), chi tiết +
+activity timeline + comment, và các action vòng đời cuối (reopen, rate). Data flow chuẩn:
+Screen → TanStack Query hook → `ticketService` → `axiosInstance` → BE.
 
 ## Scope
-**Trong scope:**
-- Ticket list screen: GET /api/customer/tickets/me (filter status, pagination)
-- Create ticket screen: POST /api/customer/tickets (title, description, category, batteryAssetId)
-- Ticket detail screen: GET /api/tickets/{id} (activities + comments embedded trong response)
-- Add comment: POST /api/tickets/{ticketId}/comments (body, isInternal=false)
-- Reopen ticket: POST /api/customer/tickets/{id}/reopen (khi status=ClosedPendingRate)
-- Rate ticket: POST /api/customer/tickets/{id}/rate (rating 1-5, ratingComment)
-- Thêm tab "Tickets" vào tab navigator của Customer
+**Trong scope (Customer):**
+- Ticket list — `GET /api/customer/tickets/me` (filter client-side all/open/closed, pagination)
+- Create ticket — `POST /api/customer/tickets` (`title`, `description`, `category`, `batteryAssetId?`) + **attachment**
+- Ticket detail — `GET /api/tickets/{id}` (activities + comments embedded; chỉ render `isInternal=false`)
+- Add comment — `POST /api/tickets/{ticketId}/comments` (`isInternal=false`) + **attachment**
+- Reopen — `POST /api/customer/tickets/{id}/reopen` (chỉ khi `status=ClosedPendingRate`; 403 nếu quá 7 ngày)
+- Rate — `POST /api/customer/tickets/{id}/rate` (`rating` 1–5, `ratingComment?`; chỉ khi `status=ClosedPendingRate`)
+- Tab "Tickets" trong Customer tab navigator
 
 **Ngoài scope:**
-- File attachment upload (cần FileStorageService riêng)
-- Internal comments (isInternal=true — chỉ Staff/Manager xem được)
-- Maintenance logs (Staff only)
-- Staff/Manager ticket actions
-- Push notification khi ticket thay đổi trạng thái
+- Staff/Manager/Admin ticket actions → **#22**
+- Hạ tầng upload/download file chuẩn hóa (`lib/fileStorage`, `/api/files/*`) → **#25** (issue này chỉ consume)
+- Internal comments (`isInternal=true` — chỉ Staff/Manager xem)
+- Maintenance logs (Staff) — type `maintenanceLogs` chỉ là stub `unknown[] | null` để DTO compile đúng
+- Push notification khi ticket đổi trạng thái
 
-## Files
+---
 
-| File | Action | Ghi chú |
-|------|--------|---------|
-| `src/lib/endpoints.ts` | modify | Thêm customer ticket endpoints, activities, comment, reopen, rate |
-| `src/lib/queryKeys.ts` | — | Không cần sửa — `tickets.list/detail` đã đủ, activities embedded trong detail |
-| `app/(customer)/(tabs)/_layout.tsx` | modify | Thêm Tickets tab |
-| `src/features/tickets/types/ticket.types.ts` | create | Enums + DTOs |
-| `src/features/tickets/services/ticket.service.ts` | create | Tất cả API calls |
-| `src/features/tickets/hooks/useTickets.ts` | create | GET list (useQuery) |
-| `src/features/tickets/hooks/useTicketDetail.ts` | create | GET detail (useQuery) |
-| `src/features/tickets/hooks/useCreateTicket.ts` | create | POST create (useMutation) |
-| `src/features/tickets/hooks/useAddComment.ts` | create | POST comment (useMutation) |
-| `src/features/tickets/hooks/useReopenTicket.ts` | create | POST reopen (useMutation) |
-| `src/features/tickets/hooks/useRateTicket.ts` | create | POST rate (useMutation) |
-| `src/features/tickets/schemas/createTicket.schema.ts` | create | Zod: manual safeParse |
-| `src/features/tickets/schemas/rateTicket.schema.ts` | create | Zod: manual safeParse |
-| `src/features/tickets/schemas/comment.schema.ts` | create | Zod: manual safeParse |
-| `src/features/tickets/components/TicketCard.tsx` | create | Card item cho danh sách |
-| `src/features/tickets/components/TicketStatusBadge.tsx` | create | Badge màu theo TicketStatusEnum |
-| `src/features/tickets/components/SlaCountdown.tsx` | create | Hiển thị SLA remaining % + dueAt |
-| `src/features/tickets/components/ActivityTimeline.tsx` | create | Timeline lịch sử hành động |
-| `src/features/tickets/components/CreateTicketForm.tsx` | create | Form tạo ticket mới |
-| `src/features/tickets/components/RateModal.tsx` | create | Modal đánh giá 1-5 sao |
-| `src/features/tickets/components/ReopenModal.tsx` | create | Modal confirm reopen + lý do |
-| `app/(customer)/tickets/index.tsx` | create | Ticket list screen |
-| `app/(customer)/tickets/[id].tsx` | create | Ticket detail screen |
-| `app/(customer)/tickets/create.tsx` | create | Create ticket screen |
+## Cấu trúc thư mục (as-built — đây là cấu trúc chuẩn tham khảo)
+
+```
+src/features/tickets/
+├── types/
+│   └── ticket.types.ts          ← re-export enums từ shared/enums + DTOs + payloads (KHÔNG define enum inline)
+├── services/
+│   └── ticket.service.ts        ← 6 method: getList, getDetail, create, addComment, reopen, rate
+├── schemas/                     ← Zod, parse thủ công bằng safeParse (KHÔNG dùng React Hook Form)
+│   ├── createTicket.schema.ts   ← CreateTicketForm
+│   ├── comment.schema.ts        ← CommentForm + AttachmentForm
+│   └── rateTicket.schema.ts     ← RateTicketForm
+├── hooks/
+│   ├── useTickets.ts            ← useQuery — list
+│   ├── useTicketDetail.ts       ← useQuery — detail (enabled: !!id)
+│   ├── useCreateTicket.ts       ← useMutation — invalidate KEY.tickets
+│   ├── useAddComment.ts         ← useMutation(ticketId) — invalidate detail
+│   ├── useReopenTicket.ts       ← useMutation(ticketId) — invalidate detail + list
+│   ├── useRateTicket.ts         ← useMutation(ticketId) — invalidate detail + list
+│   ├── useUploadTicketAttachment.ts   ← upload file khi create ticket (consume #25)
+│   ├── useUploadCommentAttachment.ts  ← upload file khi comment (consume #25)
+│   └── useAuthImageHeaders.ts   ← dựng header Bearer cho <Image> tải ảnh attachment (auth download)
+└── components/
+    ├── TicketCard.tsx           ← item danh sách
+    ├── TicketStatusBadge.tsx    ← badge màu theo TicketStatusEnum
+    ├── SlaCountdown.tsx         ← remainingPercent + dueAt (guard slaTimer != null)
+    ├── ActivityTimeline.tsx     ← timeline từ activities[]
+    ├── CreateTicketStepper.tsx  ← form tạo ticket nhiều bước (battery → category → mô tả → attachment)
+    ├── CreateTicketSuccess.tsx  ← màn hình thành công sau khi tạo
+    ├── RateModal.tsx            ← modal đánh giá 1–5 sao
+    └── ReopenModal.tsx          ← modal confirm reopen + lý do
+
+app/(customer)/
+├── (tabs)/
+│   ├── _layout.tsx              ← tab navigator (đã thêm tab "Tickets")
+│   └── tickets.tsx              ← Ticket LIST screen (FlatList + filter all/open/closed + pull-to-refresh)
+└── tickets/
+    ├── [id].tsx                 ← Ticket DETAIL screen (info + SLA + timeline + comments + actions)
+    └── create.tsx               ← Create ticket screen (state machine step + stepper)
+
+src/lib/
+├── endpoints.ts                 ← ENDPOINTS.TICKETS + ENDPOINTS.FILES
+├── queryKeys.ts                 ← KEY.tickets + QUERY_KEY.tickets.{list,detail}
+└── fileStorage.ts               ← (#25) wrapper upload/download — consume bởi 2 hook upload
+
+src/shared/enums/
+└── ticket.enum.ts               ← nguồn enum duy nhất (`as const` object + type alias)
+```
+
+> **Khác biệt so với plan gốc (đã chuẩn hóa):**
+> - Create flow dùng `CreateTicketStepper` + `CreateTicketSuccess` (multi-step), **không** phải `CreateTicketForm.tsx`.
+> - List screen là tab `(tabs)/tickets.tsx` (filter client-side), **không** phải `tickets/index.tsx`.
+> - Thêm 3 hook attachment (`useUploadTicketAttachment`, `useUploadCommentAttachment`, `useAuthImageHeaders`) — do attachment nay trong scope.
 
 ---
 
 ## Enums
 
-> **Note (thêm sau khi SHIPPED):** Plan gốc dùng plain type union (`export type TicketStatusEnum = 'New' | ...`) — codebase thực tế đã đổi sang `as const` object pattern và tách ra file riêng.
+`ticket.types.ts` **chỉ re-export** từ `shared/enums/ticket.enum.ts` — không define inline. Pattern `as const` object + type alias.
 
-| Enum | File |
-|------|------|
+| Enum | File nguồn |
+|------|-----------|
 | `TicketStatusEnum`, `TicketPriorityEnum`, `TicketCategoryEnum`, `TicketOriginEnum` | `shared/enums/ticket.enum.ts` |
 | `ImpactScopeEnum`, `UrgencyLevelEnum`, `EscalationReasonEnum`, `SlaTimerStatusEnum` | `shared/enums/ticket.enum.ts` |
 | `ActorRoleEnum`, `ActivityActionEnum` | `shared/enums/ticket.enum.ts` |
 
-`ticket.types.ts` chỉ re-export từ `shared/enums/ticket.enum` — không define inline.
+> `ActivityActionEnum` đã đủ tới `Closed=25` (khớp `docs/api-ticket.md`). `PauseReasonEnum`/`MaintenanceLogTypeEnum`
+> cũng có trong file enum nhưng thuộc luồng Staff (#22) — không dùng trong UI Customer.
 
-## Types
+## Types / DTOs (as-built — `src/features/tickets/types/ticket.types.ts`)
 
-// --- DTOs ---
-export interface SlaTimerDTO {
-  id: string;
-  priority: TicketPriorityEnum;
-  startedAt: string;
-  dueAt: string;
-  originalDueAt: string;
-  totalPausedMinutes: number;
-  warningSentAt: string | null;
-  breachAt: string | null;
-  status: SlaTimerStatusEnum;
-  remainingPercent: number;
-}
-
-export interface TicketActivityDTO {
-  id: string;
-  ticketId: string;
-  actorUserId: string | null;
-  actorRole: ActorRoleEnum;
-  actorDisplayName: string | null;
-  action: ActivityActionEnum;
-  oldValue: string | null;
-  newValue: string | null;
-  reason: string | null;
-  createdAt: string;
-}
-
-export interface TicketCommentDTO {
-  id: string;
-  ticketId: string;
-  authorUserId: string | null;
-  authorRole: ActorRoleEnum;
-  authorDisplayName: string | null;
-  body: string;
-  isInternal: boolean;
-  attachmentFileIds: string[] | null;
-  createdAt: string;
-}
-
-export interface TicketDTO {
-  id: string;
-  code: string;
-  batteryAssetId: string | null;
-  customerId: string;
+```ts
+// Khớp docs/api-ticket.md, với 3 điểm thực tế cần lưu ý:
+interface TicketDTO {
+  id; code; batteryAssetId: string | null; customerId;
   assignedStaffId: string | null;
-  title: string;
-  category: TicketCategoryEnum;
-  priority: TicketPriorityEnum;
-  impactScope: ImpactScopeEnum;
-  urgencyLevel: UrgencyLevelEnum;
-  status: TicketStatusEnum;
-  origin: TicketOriginEnum;
-  reopenCount: number;
-  isIncident: boolean;
-  createdAt: string;
-  updatedAt: string | null;
-  slaTimer: SlaTimerDTO;
+  assignedStaffName?: string | null;          // ← thực tế BE có trả, doc chưa liệt kê → optional
+  title; category;
+  priority:    TicketPriorityEnum | null;     // ← [M1] NULLABLE — null khi chưa triage
+  impactScope: ImpactScopeEnum   | null;      // ← [M1] NULLABLE
+  urgencyLevel:UrgencyLevelEnum  | null;      // ← [M1] NULLABLE
+  status; origin;
+  reopenCount; isIncident; createdAt; updatedAt: string | null;
+  slaTimer: SlaTimerDTO | null;                // ← NULLABLE — guard trước khi render SLA
 }
 
-export interface TicketDetailDTO extends TicketDTO {
-  description: string | null;
-  resolutionSummary: string | null;
-  resolvedAt: string | null;
-  resolvedByStaffId: string | null;
-  approvedAt: string | null;
-  approvedByManagerId: string | null;
-  rejectionReason: string | null;
-  closedAt: string | null;
-  rating: number | null;
-  ratingComment: string | null;
-  ratedAt: string | null;
+interface TicketDetailDTO extends TicketDTO {
+  description; resolutionSummary; resolvedAt; resolvedByStaffId;
+  approvedAt; approvedByManagerId; rejectionReason; closedAt;
+  rating: number | null; ratingComment; ratedAt;
   escalatedAt: string | null;
-  escalationReason: EscalationReasonEnum | null;  // treat as optional per API doc note
-  originAlertId: string | null;
+  escalationReason: EscalationReasonEnum | null;   // ← [M4] nullable, trả null khi chưa escalate (KHÔNG phải 0); guard escalatedAt != null
+  originAlertId;
   activities: TicketActivityDTO[] | null;
   comments: TicketCommentDTO[] | null;
-  maintenanceLogs: MaintenanceLogDTO[] | null;  // ngoài scope — type từ Swagger, không dùng trong GH-10 UI
-  attachments: TicketAttachmentDTO[] | null;    // ngoài scope — type từ Swagger, không dùng trong GH-10 UI
+  maintenanceLogs: MaintenanceLogDTO[] | null;     // ← type hóa ở #22 (không còn unknown[])
+  attachmentFileIds: string[] | null;              // ← [M2] mảng FileId (string[]), KHÔNG phải TicketAttachmentDTO[]; render ảnh qua auth download
 }
 
-// --- TicketActionResponse (dùng trong mọi mutation hook) ---
-export interface TicketActionDto {
-  id: string | null;
-  code: string | null;
-  status: TicketStatusEnum;
+interface TicketActionResponse {                   // wrapper RIÊNG, không phải CommonResponse<T>
+  isSuccess; statusCode; message: string | null;
+  data: { id: string | null; code: string | null; status: TicketStatusEnum } | null;
+  listErrors: { field: string | null; detail: string | null }[] | null;
 }
 
-export interface TicketActionResponse {
-  isSuccess: boolean;
-  statusCode: number;
-  message: string | null;
-  data: TicketActionDto | null;
-  listErrors: Array<{ field: string | null; detail: string | null }> | null;
-}
+// Payloads
+interface CreateTicketPayload { title; description; category: TicketCategoryEnum; batteryAssetId?; attachments?: CommentAttachmentPayload[]; }
+interface AddCommentPayload   { body; isInternal: false; attachments?: CommentAttachmentPayload[]; }
+interface RatePayload         { rating: number; ratingComment?: string; }
+interface ReopenPayload       { reopenReason?: string; }
+interface TicketListParams    { Status?: TicketStatusEnum; PageNumber?: number; PageSize?: number; }
 
-// --- Stub types cho ngoài scope (tránh TS error khi BE trả data) ---
-// Không dùng trong GH-10 UI — khai báo để TicketDetailDTO compile đúng
-export interface MaintenanceLogDTO { id: string; [key: string]: unknown; }
-export interface TicketAttachmentDTO { id: string; fileId: string; fileName: string; [key: string]: unknown; }
-
-// --- Payloads ---
-export interface CreateTicketPayload {
-  title: string;
-  description: string;
-  category: TicketCategoryEnum;
-  batteryAssetId?: string;
-}
-
-export interface AddCommentPayload {
-  body: string;
-  isInternal: false;   // hardcoded false cho Customer — filter isInternal=true khi render
-  // attachments?: string[];  // ngoài scope GH-10 — bỏ qua, không gửi
-}
-
-export interface RatePayload {
-  rating: number;
-  ratingComment?: string;
-}
-
-export interface ReopenPayload {
-  reopenReason?: string;
-}
-
-// --- Query params ---
-export interface TicketListParams {
-  Status?: TicketStatusEnum;
-  PageNumber?: number;
-  PageSize?: number;
-}
+// Attachment (consume #25)
+interface UploadedTicketAttachment { uri; fileId; fileName; contentType; sizeBytes; }
+interface CommentAttachmentPayload { fileId; fileName; contentType; sizeBytes; }
 ```
 
----
-
-## Schema (Zod)
-
-> **Lưu ý:** Mobile dùng `schema.safeParse(data)` thủ công — **không dùng React Hook Form**. Lỗi parse được map vào local state để hiển thị inline.
+## Schemas (Zod — `safeParse` thủ công, không React Hook Form)
 
 ```ts
 // createTicket.schema.ts
-export const createTicketSchema = z.object({
-  title:         z.string().min(1, 'Không được để trống').max(200, 'Tối đa 200 ký tự'),
-  description:   z.string().min(1, 'Không được để trống').max(2000, 'Tối đa 2000 ký tự'),
-  category:      z.enum(['Charging', 'Overheat', 'NoPower', 'Performance', 'Repair', 'Other']),
-  batteryAssetId: z.string().uuid().optional(),
-});
+title:          z.string().trim().min(1).max(200)
+description:    z.string().trim().min(1).max(2000)
+category:       z.nativeEnum(TicketCategoryEnum)   // ← [M3] dùng nativeEnum, không hardcode array
+batteryAssetId: z.string().uuid().optional()
+
+// comment.schema.ts  (export CommentForm + AttachmentForm)
+body:        z.string().min(1).max(1000)         // max là FE-only constraint
+attachments: z.array(attachmentSchema).optional()  // { fileId, fileName, contentType, sizeBytes }
 
 // rateTicket.schema.ts
-export const rateTicketSchema = z.object({
-  rating:        z.number().int().min(1, 'Tối thiểu 1 sao').max(5, 'Tối đa 5 sao'),
-  ratingComment: z.string().max(500).optional(),  // FE-only constraint — API doc không có max length
-});
-
-// comment.schema.ts
-export const commentSchema = z.object({
-  body: z.string().min(1, 'Không được để trống').max(1000, 'Tối đa 1000 ký tự'),  // FE-only constraint — API doc không có max length
-});
+rating:        z.number().int().min(1).max(5)
+ratingComment: z.string().max(500).optional()    // max là FE-only constraint
 ```
-
----
 
 ## Endpoints
 
 | Method | Path | Body / Query | Response |
-|--------|------|-------------|----------|
-| GET | `/api/customer/tickets/me` | `?Status&PageNumber&PageSize` | `CommonResponse<PaginationResponse<TicketDTO>>` |
+|--------|------|--------------|----------|
+| GET  | `/api/customer/tickets/me` | `?Status&PageNumber&PageSize` | `CommonResponse<PaginationResponse<TicketDTO>>` |
 | POST | `/api/customer/tickets` | `CreateTicketPayload` | `TicketActionResponse` |
-| GET | `/api/tickets/{id}` | — | `CommonResponse<TicketDetailDTO>` |
-| POST | `/api/tickets/{ticketId}/comments` | `AddCommentPayload` | `TicketActionResponse` | ← Swagger dùng `{ticketId}` (không phải `{id}`) |
+| GET  | `/api/tickets/{id}` | — | `CommonResponse<TicketDetailDTO>` |
+| POST | `/api/tickets/{ticketId}/comments` | `AddCommentPayload` | `TicketActionResponse` |
 | POST | `/api/customer/tickets/{id}/reopen` | `ReopenPayload` | `TicketActionResponse` |
 | POST | `/api/customer/tickets/{id}/rate` | `RatePayload` | `TicketActionResponse` |
+| POST | `/api/files/upload` (#25) | multipart file | `CommonResponse<{ fileId, fileName, contentType, size }>` |
+| GET  | `/api/files/{id}/download` (#25) | — (cần `Authorization`) | binary (dùng `useAuthImageHeaders`) |
 
-**ENDPOINTS update cần thêm:**
+`ENDPOINTS.TICKETS` (as-built):
 ```ts
 TICKETS: {
   CUSTOMER_LIST:   '/api/customer/tickets/me',
   CUSTOMER_CREATE: '/api/customer/tickets',
-  DETAIL:          (id: string) => `/api/tickets/${id}`,       // đã có, giữ nguyên
-  COMMENT:         (id: string) => `/api/tickets/${id}/comments`,
-  REOPEN:          (id: string) => `/api/customer/tickets/${id}/reopen`,
-  RATE:            (id: string) => `/api/customer/tickets/${id}/rate`,
+  DETAIL:  (id) => `/api/tickets/${id}`,
+  COMMENT: (id) => `/api/tickets/${id}/comments`,
+  REOPEN:  (id) => `/api/customer/tickets/${id}/reopen`,
+  RATE:    (id) => `/api/customer/tickets/${id}/rate`,
 }
 ```
 
----
+## Workflow (luồng chính)
 
-## Workflow
-
-**Create ticket flow:**
+**Create ticket (stepper):**
 ```
-Submit form → createTicketSchema.safeParse(formData)
-  → invalid: set errors vào local state → hiển thị inline dưới input → abort
-  → valid:   useCreateTicket.mutateAsync(payload)
-              → OK:   invalidate KEY.tickets → router.back() (về ticket list)
-              → FAIL: toast.error(message)
+create.tsx giữ state: step / selectedBatteryId / category / description / attachedFiles[]
+  CreateTicketStepper → từng bước chọn battery → category → mô tả → đính kèm (upload qua useUploadTicketAttachment)
+  handleSubmit → useCreateTicket.mutateAsync({ ...payload, attachments: attachedFiles.map(...) })
+    → OK:   invalidate KEY.tickets → hiện CreateTicketSuccess (code + id)
+    → FAIL: toast/Alert lỗi
 ```
 
-**Add comment flow:**
+**List (tab tickets.tsx):**
 ```
-Submit comment → commentSchema.safeParse({ body })
-  → invalid: set error state → hiển thị inline
-  → valid:   useAddComment.mutateAsync({ ticketId, body, isInternal: false })
-              → OK:   invalidate QUERY_KEY.tickets.detail(id) → input cleared
-              → FAIL: toast.error(message)
+useTickets({ PageSize: 100 }) → allTickets
+  filter client-side: all / open / closed (open = không thuộc Resolved/Closed/ClosedPendingRate/ClosedRejected)
+  FlatList + RefreshControl (pull-to-refresh refetch) → tap card → router push detail
 ```
 
-**Rate ticket flow:**
+**Detail ([id].tsx):**
 ```
-Tap "Đánh giá" (chỉ hiện khi status === 'ClosedPendingRate') → mở RateModal
-  → user chọn sao + nhập comment → rateTicketSchema.safeParse
-  → invalid: hiển thị lỗi inline trong modal → abort
-  → valid: useRateTicket.mutateAsync
-           → OK:   invalidate detail + list → đóng modal
-           → FAIL: toast.error
+useTicketDetail(id) → render info + PriorityBadge + SlaCountdown (guard slaTimer) + ActivityTimeline
+  comments: chỉ render isInternal=false; ảnh attachment tải qua <Image source={{ uri, headers: useAuthImageHeaders() }}>
+  Comment: commentSchema.safeParse({ body, attachments }) → useAddComment(id).mutateAsync → invalidate detail
+  Rate:   chỉ khi status===ClosedPendingRate → RateModal → useRateTicket → invalidate detail + list
+  Reopen: chỉ khi status===ClosedPendingRate → ReopenModal → useReopenTicket → invalidate detail + list
+          403 → toast "Đã quá 7 ngày để mở lại ticket"
 ```
-
-**Reopen ticket flow:**
-```
-Tap "Yêu cầu xử lý lại" (chỉ hiện khi status === 'ClosedPendingRate') → mở ReopenModal
-  → user nhập lý do (optional) → useReopenTicket.mutateAsync
-  → OK: invalidate detail + list → đóng modal
-  → FAIL (403 quá 7 ngày): toast.error("Đã quá 7 ngày để mở lại ticket")
-```
-
----
-
-## Approach
-
-- **Data flow:** Screen → useMutation/useQuery hook → ticketService → axiosInstance → BE
-- **List:** FlatList với pagination (PageNumber, PageSize=10), filter tab theo status, pull-to-refresh
-- **Detail:** ScrollView hiển thị ticket info + SlaCountdown + ActivityTimeline + comments list (chỉ filter `isInternal=false`); floating action buttons tuỳ theo status
-- **Mutations:** Sau khi thành công → invalidate `KEY.tickets` để list + detail tự refetch
 
 ## Edge Cases
-- **Comment:** `isInternal` hardcode `false`; filter ẩn comment có `isInternal=true` khi render
-- **Rate/Reopen:** Chỉ render nút khi `status === 'ClosedPendingRate'`
-- **Activities:** Embedded trong `TicketDetailDTO.activities[]` — không cần gọi separate endpoint
-- **403 reopen:** Hiển thị toast "Đã quá 7 ngày để mở lại ticket" thay vì generic error
-- **Empty list:** Hiển thị EmptyState component
-- **POST /api/tickets/{ticketId}/comments path:** Swagger dùng `{ticketId}` (không phải `{id}`) — `ENDPOINTS.TICKETS.COMMENT` đã dùng `(id: string) => \`/api/tickets/${id}/comments\`` (đúng về runtime vì chỉ là naming, nhưng cần nhất quán với docs)
-- **`CreateTicketPayload` validation:** Swagger không đánh `required` nhưng Zod schema cần enforce `title`, `description`, `category` là required — đây là FE validation chắc chắn (confirmed từ context dự án)
-- **`maintenanceLogs` và `attachments`:** Đã có type `MaintenanceLogDTO[]` và `TicketAttachmentDTO[]` — không render trong GH-10 UI, chỉ có trong type để tránh TS error
-- **`ActorCustomerId` query param:** Param internal/admin trên GET /api/customer/tickets/me — Mobile không cần gửi, bỏ qua
+- **`priority`/`impactScope`/`urgencyLevel` null [M1]:** ticket chưa triage (`New`/`Open`) → 3 field này `null`. Badge guard hiển thị "Chưa phân loại", KHÔNG fallback nhầm P3.
+- **`slaTimer` null:** `SlaCountdown` phải guard `slaTimer != null` trước khi đọc `remainingPercent`/`dueAt`.
+- **`escalationReason` [M4]:** chỉ tin khi `escalatedAt != null` (BE trả **`null`** default khi chưa escalate — KHÔNG phải `0`).
+- **Comment internal:** `isInternal` hardcode `false`; render filter ẩn `isInternal=true`.
+- **Rate/Reopen:** chỉ render nút khi `status === 'ClosedPendingRate'`.
+- **Reopen `reopenReason` bắt buộc [M5]:** BE required → `ReopenModal` chặn submit khi rỗng (hiện lỗi inline), không gửi `undefined`.
+- **Reopen 403 (quá 7 ngày / sai trạng thái):** toast nghiệp vụ thay vì generic error (map `HttpError`).
+- **Attachment download cần auth [M2]:** BE trả `attachmentFileIds: string[]`; `<Image>` đính `Authorization: Bearer` qua `useAuthImageHeaders` (GET `/api/files/{id}/download`), map trực tiếp từ `fileId`.
+- **Empty list / error / loading:** hiển thị state tương ứng trong tab list.
+- **`maintenanceLogs`:** stub `unknown[] | null` — không render ở UI Customer.
 
-## Success Criteria
+## Acceptance Criteria
+- [x] Danh sách ticket hiển thị, filter all/open/closed + pull-to-refresh hoạt động
+- [x] Create ticket: stepper validate inline + đính kèm + submit → ticket mới xuất hiện trong list, hiện màn success
+- [x] Detail hiển thị info + SLA (guard null) + activities (embedded) + comments (ẩn internal)
+- [x] Comment kèm attachment ảnh tải được qua auth header
+- [x] Rate + Reopen chỉ xuất hiện khi `status=ClosedPendingRate`; reopen 403 → toast đúng nghiệp vụ
+- [x] Quality gate: `npx tsc --noEmit` PASS — "No errors found" (rà lại 2026-06-14)
+- [ ] `npx eslint . --max-warnings=0` — còn warning baseline `no-redeclare` (pattern `export const`+`export type`, có trước thay đổi này)
 
-| Tiêu chí | Cách verify |
-|----------|------------|
-| Danh sách ticket hiển thị đúng, phân trang hoạt động | Gọi GET /api/customer/tickets/me, scroll xuống |
-| Create ticket: form validate inline + submit thành công | Điền form, submit, ticket mới xuất hiện trong list |
-| Ticket detail hiển thị đủ info + activities (activities embedded) | Mở ticket bất kỳ |
-| Comment được thêm, không hiển thị internal comments | Gửi comment, kiểm tra filter isInternal |
-| Rate + Reopen chỉ xuất hiện khi status=ClosedPendingRate | Kiểm tra ticket ở đúng trạng thái |
-| `npx tsc --noEmit` + `npx eslint . --max-warnings=0` PASS | Chạy trong terminal |
-
-## Steps
-- [x] Bước 1: Update `src/lib/endpoints.ts` (thêm CUSTOMER_LIST, CUSTOMER_CREATE, COMMENT, REOPEN, RATE) — 2026-06-05
-- [ ] Bước 2: ~~`src/lib/queryKeys.ts`~~ — bỏ qua, không cần sửa
-- [x] Bước 3: Tạo `src/features/tickets/types/ticket.types.ts` (enums + DTOs + payloads) — 2026-06-05
-- [x] Bước 4: Tạo schemas (createTicket, rateTicket, comment — manual safeParse, không dùng useForm) — 2026-06-05
-- [x] Bước 5: Tạo `src/features/tickets/services/ticket.service.ts` — 2026-06-05
-- [x] Bước 6: Tạo hooks (useTickets, useTicketDetail, useCreateTicket, useAddComment, useReopenTicket, useRateTicket) — 2026-06-05
-- [x] Bước 7: Tạo components (TicketCard, TicketStatusBadge, SlaCountdown, ActivityTimeline, CreateTicketForm, RateModal, ReopenModal) — 2026-06-05
-- [x] Bước 8: Tạo screens (`app/(customer)/(tabs)/tickets.tsx`, `app/(customer)/tickets/[id].tsx`, `app/(customer)/tickets/create.tsx`) — 2026-06-05
-- [x] Bước 9: Update tab layout (thêm Tickets tab) — 2026-06-05
-- [x] Bước 10: `npx tsc --noEmit` + `npx eslint . --max-warnings=0` → PASS — 2026-06-05
+## Steps (as-built — đã hoàn thành)
+- [x] Bước 1: `src/lib/endpoints.ts` — `ENDPOINTS.TICKETS` + `ENDPOINTS.FILES`
+- [x] Bước 2: `src/features/tickets/types/ticket.types.ts` — re-export enums + DTOs + payloads
+- [x] Bước 3: schemas — `createTicket` / `comment` (+AttachmentForm) / `rateTicket`
+- [x] Bước 4: `services/ticket.service.ts` — 6 method
+- [x] Bước 5: hooks — `useTickets`, `useTicketDetail`, `useCreateTicket`, `useAddComment`, `useReopenTicket`, `useRateTicket`
+- [x] Bước 6: hooks attachment — `useUploadTicketAttachment`, `useUploadCommentAttachment`, `useAuthImageHeaders` (consume #25)
+- [x] Bước 7: components — `TicketCard`, `TicketStatusBadge`, `SlaCountdown`, `ActivityTimeline`, `CreateTicketStepper`, `CreateTicketSuccess`, `RateModal`, `ReopenModal`
+- [x] Bước 8: screens — `(tabs)/tickets.tsx`, `tickets/[id].tsx`, `tickets/create.tsx`
+- [x] Bước 9: thêm tab "Tickets" vào `(tabs)/_layout.tsx`
+- [x] Bước 10: reconcile type/enum ↔ `docs/api-ticket.md` (2026-06-14)
 
 ## Câu hỏi đã giải đáp
-- **TicketDetailDTO shape:** activities[] và comments[] embedded trong response GET /api/tickets/{id} — không cần separate endpoint cho activities
-- **batteryAssetId:** Tên field nhất quán giữa request payload và response DTO (dạng string UUID)
-- **Category enum:** Confirmed từ API docs: Charging, Overheat, NoPower, Performance, Repair, Other
-- **Sprint:** Đã chuyển sang Sprint 2 (due 2026-06-13) do Sprint 1 đã quá hạn
-- **endpoints.ts / queryKeys.ts:** Đã tồn tại từ GH-4 → action là modify (không create)
+- **Deliverable:** chỉ refactor `logs/GH-10/plan.md` (mobile) thành as-built chuẩn — không đụng code.
+- **Scope:** chỉ Customer (theo issue reframe). Staff → #22, FileStorage infra → #25. Đã bỏ toàn bộ note Staff (S1–S5) khỏi plan GH-10.
+- **`/frontend` (web):** lần này chỉ là tham khảo/động lực — không tạo gì trong repo `/frontend`. Cấu trúc thư mục ở trên là bản chuẩn để FE web map theo `fe.md` sau này (pages/components/hooks/services/schemas/types).
+- **Activities/comments:** embedded trong `GET /api/tickets/{id}` — không gọi endpoint riêng.
+- **Attachment:** nay trong scope GH-10 (consume API #25), không còn "ngoài scope" như plan gốc.

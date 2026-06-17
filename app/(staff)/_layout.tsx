@@ -24,6 +24,8 @@ export default function StaffLayout() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="tickets/[id]" />
       <Stack.Screen name="customers/[customerId]" />
+      <Stack.Screen name="batteries/[id]" />
+      <Stack.Screen name="alerts/[id]" />
       <Stack.Screen name="index" />
     </Stack>
   );

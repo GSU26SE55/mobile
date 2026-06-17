@@ -1,8 +1,13 @@
-import type { EscalationReasonEnum, TicketStatusEnum } from '../../tickets/types/ticket.types';
+import type {
+  EscalationReasonEnum,
+  TicketStatusEnum,
+  PauseReasonEnum,
+  MaintenanceLogTypeEnum,
+  CommentAttachmentPayload,
+} from '../../tickets/types/ticket.types';
+import type { StaffSkillTierEnum } from '../enums/staff.enum';
 
-export { HoldReasonEnum, StaffSkillTierEnum } from '../enums/staff.enum';
-
-import type { HoldReasonEnum, StaffSkillTierEnum } from '../enums/staff.enum';
+export { StaffSkillTierEnum } from '../enums/staff.enum';
 
 export interface StaffProfileDTO {
   accountId: string;
@@ -21,10 +26,12 @@ export interface StaffProfileDTO {
 }
 
 export interface HoldPayload {
-  reason: HoldReasonEnum;
+  reason: PauseReasonEnum;
+  note?: string;
 }
 
 export interface ResolvePayload {
+  // BE required (TicketResolveCommand) — rỗng → 400.
   resolutionSummary: string;
 }
 
@@ -34,14 +41,24 @@ export interface EscalatePayload {
 }
 
 export interface MaintenanceLogPayload {
-  description: string;
-  actionTaken?: string;
-  partsUsed?: string;
+  logType?: MaintenanceLogTypeEnum;
+  summary: string;
+  diagnosisDetails?: string;
+  actionsTaken?: string;
   durationMinutes?: number;
+  resolutionNote?: string;
+  partsUsed?: string;
 }
 
 export interface StaffTicketListParams {
   Status?: TicketStatusEnum;
   PageNumber?: number;
   PageSize?: number;
+}
+
+// Staff được phép comment nội bộ (isInternal=true) — khác customer (luôn false).
+export interface StaffAddCommentPayload {
+  body: string;
+  isInternal?: boolean;
+  attachments?: CommentAttachmentPayload[];
 }

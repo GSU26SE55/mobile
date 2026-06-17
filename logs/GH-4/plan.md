@@ -1,9 +1,44 @@
 # Plan — GH-4: [Mobile] Profile & Account Management — Customer/Staff
 
 ## Metadata
-- **Status:** REVIEWING | **Role:** Mobile | **Ngày:** 2026-05-31 | **Reviewed:** 2026-05-31
+- **Status:** REVIEWING → **NEEDS REWORK (GH-295)** | **Role:** Mobile | **Ngày:** 2026-05-31, cập nhật 2026-06-14
 - **Issue:** #4 — https://github.com/GSU26SE55/mobile/issues/4
 - **Sprint:** Sprint 2 (due: 2026-06-13)
+
+---
+
+## ⚠️ GH-295 Contract Update (2026-06-14) — SỬA TRƯỚC KHI FIX CODE
+
+> **Đã đối chiếu codebase.** Flow 2FA cũ (1 bước `enable`) đã bị BE thay bằng 2 bước. `enable` cũ trả **410 Gone**.
+
+### C0 — ⚙️ FileStorage (đối chiếu docs/api-filestorage.md + code, 2026-06-15)
+
+- **Module hoá:** `src/lib/fileStorage.ts` đã được GH-25 gỡ → thay bằng `src/features/file-storage/` (service + hooks). Avatar upload dùng `useUploadFile`. Tham chiếu `fileStorageLib` bên dưới đã lỗi thời.
+- **Upload Content-Type:** KHÔNG set `'multipart/form-data'` thủ công (thiếu boundary → BE không parse được). Dùng `Content-Type: undefined` để axios tự sinh boundary — đồng bộ frontend web. *(Khẳng định "set thủ công đúng cho RN" bản 2026-05-31 là SAI; đã sửa cả code lẫn plan.)*
+- **Avatar download cần Bearer:** `<Image source={{ uri, headers: { Authorization } }}>` — đã đúng trong plan + code (`AvatarPicker`).
+
+### C1 — 🔴 2FA enable flow CŨ đã chết → thay bằng init + confirm
+
+- **Code (verified):** `account.service.ts:30` `enable2FA()` POST `/2fa/enable` body rỗng → BE trả **410 Gone**. `disable2FA()` body rỗng → BE yêu cầu `{ password, totpCode }`.
+- **Thay bằng (doc/BE):**
+
+| Endpoint mới | Body | Response data |
+|---|---|---|
+| `POST /api/accounts/me/2fa/init` | — | `{ secret, otpAuthUri, pendingToken }` |
+| `POST /api/accounts/me/2fa/confirm` | `{ pendingToken, code }` | `{ enabled, backupCodes: string[8] }` (hiện 1 lần) |
+| `POST /api/accounts/me/2fa/disable` | `{ password, totpCode }` | `Guid` |
+| `POST /api/accounts/me/2fa/backup-codes/regenerate` | `{ totpCode }` | `{ backupCodes: string[8] }` |
+
+- → `endpoints.ts`: thêm `INIT_2FA`, `CONFIRM_2FA`, `BACKUP_REGEN_2FA`; bỏ `ENABLE_2FA`.
+- → `account.types.ts`: bỏ `TwoFAEnableResponse`, thêm `Init2faResponse {secret,otpAuthUri,pendingToken}`, `Confirm2faPayload`, `Confirm2faResponse {enabled,backupCodes}`, `Disable2faPayload {password,totpCode}`, `RegenBackupPayload {totpCode}`, `RegenBackupResponse {backupCodes}`.
+- → `account.service.ts`: `init2FA / confirm2FA / disable2FA(payload) / regenerateBackupCodes`.
+- → hooks: `useInit2FA`, `useConfirm2FA`, `useDisable2FA(payload)`, `useRegenerateBackupCodes`.
+- → `TwoFASetup.tsx`: wizard init → nhập TOTP confirm → hiển thị 8 backup codes (bắt buộc "Đã lưu"); thêm form disable (password + totpCode) + regenerate (totpCode).
+
+### C2 — ✅ Các endpoint khác (password, email change, phone, sessions) khớp doc — không đổi
+
+### Liên quan GH-3
+2FA login bước 2 (`/login/verify-2fa`) thuộc rework GH-3 C2 — không trùng GH-4.
 
 ## Mục tiêu
 Implement màn hình Profile, Bảo mật tài khoản, và Quản lý phiên đăng nhập cho Customer. Bao gồm 12 endpoint thuộc Nhóm 2, 3, 4 trong `docs/api-auth.md` chưa được GH-3 cover. Thêm tab "Hồ sơ" vào Customer layout.
@@ -44,8 +79,11 @@ ACCOUNT: {
   CONFIRM_EMAIL_CHANGE:    '/api/accounts/me/confirm-email-change',
   SEND_PHONE_OTP:          '/api/accounts/me/send-phone-otp',
   VERIFY_PHONE_OTP:        '/api/accounts/me/verify-phone-otp',
-  ENABLE_2FA:              '/api/accounts/me/2fa/enable',
+  // 2FA flow 2 bước (GH-295). /2fa/enable cũ đã 410 Gone — KHÔNG dùng.
+  INIT_2FA:                '/api/accounts/me/2fa/init',
+  CONFIRM_2FA:             '/api/accounts/me/2fa/confirm',
   DISABLE_2FA:             '/api/accounts/me/2fa/disable',
+  BACKUP_REGEN_2FA:        '/api/accounts/me/2fa/backup-codes/regenerate',
   DEACTIVATE:              '/api/accounts/me/deactivate',
   DELETE:                  '/api/accounts/me',
 },
@@ -83,7 +121,7 @@ QUERY_KEY.sessions.list   = [...KEY.sessions, 'list']
 | File | Action | Shape key |
 |------|--------|-----------|
 | `src/features/profile/types/profile.types.ts` | create | AccountDto, AccountProfileDto, StaffProfileDto, UpdateProfilePayload — enums re-export từ `profile.enum.ts` |
-| `src/features/account/types/account.types.ts` | create | ChangePasswordPayload, ChangeEmailPayload, ConfirmEmailChangePayload, PhoneOtpPayload, TwoFAEnableResponse, SessionDto, RevokeAllPayload — enums re-export từ `account.enum.ts` |
+| `src/features/account/types/account.types.ts` | create | ChangePasswordPayload, ChangeEmailPayload, ConfirmEmailChangePayload, PhoneOtpPayload, Init2faResponse, Confirm2faPayload/Response, Disable2faPayload, RegenBackupPayload/Response, SessionDto, RevokeAllPayload — enums re-export từ `account.enum.ts` |
 
 **ChangePasswordPayload** — Swagger có đủ 3 fields:
 ```ts
@@ -157,6 +195,7 @@ interface StaffProfileDto {
   department: string | null;
   maxConcurrentTickets: number;
   isAvailable: boolean;
+  skillTier: number;               // ← StaffSkillTierEnum 1–3 (api-auth.md §Nhóm 6)
   notes: string | null;
   skills: StaffSkillDto[] | null;  // ← Swagger: nullable: true — luôn guard bằng `skills ?? []` khi render
 }
@@ -167,12 +206,14 @@ interface StaffSkillDto {
 }
 ```
 
-**TwoFAEnableResponse** — shape từ `docs/api-auth.md §POST /api/accounts/me/2fa/enable`:
+**2FA types (GH-295 — flow 2 bước)** — `docs/api-auth.md §/2fa/init, §/2fa/confirm, §/2fa/disable, §/2fa/backup-codes/regenerate`:
 ```ts
-interface TwoFAEnableResponse {
-  secret: string;      // Base32 key — nhập thủ công vào Authenticator app
-  otpAuthUri: string;  // otpauth://totp/... — dùng làm value cho QRCode
-}
+interface Init2faResponse    { secret: string; otpAuthUri: string; pendingToken: string; }  // bước 1
+interface Confirm2faPayload  { pendingToken: string; code: string; }
+interface Confirm2faResponse { enabled: boolean; backupCodes: string[]; }  // 8 codes — hiện 1 lần
+interface Disable2faPayload  { password: string; totpCode: string; }       // BẮT BUỘC cả 2
+interface RegenBackupPayload { totpCode: string; }
+interface RegenBackupResponse { backupCodes: string[]; }  // 8 codes mới — hiện 1 lần
 ```
 
 **SessionDto** — shape từ `docs/api-auth.md §SessionDto`:
@@ -195,26 +236,31 @@ interface SessionDto {
 | File | Action | Ghi chú |
 |------|--------|---------|
 | `src/features/profile/services/profile.service.ts` | create | getMe, updateProfile, setAvatar |
-| `src/features/account/services/account.service.ts` | create | changePassword, changeEmail, confirmEmailChange, sendPhoneOtp, verifyPhoneOtp, enable2FA, disable2FA, deactivate, deleteAccount |
+| `src/features/account/services/account.service.ts` | create | changePassword, changeEmail, confirmEmailChange, sendPhoneOtp, verifyPhoneOtp, init2FA, confirm2FA, disable2FA(payload), regenerateBackupCodes, deactivate, deleteAccount |
 | `src/features/account/services/session.service.ts` | create | getSessions, revokeSession, revokeAll |
-| `src/lib/fileStorage.ts` | create | uploadFile — đặt trong lib/ để tránh cross-feature import (profile/hooks → lib/) |
+| ~~`src/lib/fileStorage.ts`~~ → `src/features/file-storage/services/file-storage.service.ts` | create | uploadFile multipart. **GH-25 (2026-06-15): module hoá vào `features/file-storage/`, `src/lib/fileStorage.ts` đã xóa.** |
 
-**`src/lib/fileStorage.ts`** — multipart upload:
+**Upload service** — multipart upload:
+
+> ⚠️ **SUPERSEDED bởi GH-25 (2026-06-15):** `src/lib/fileStorage.ts` (`fileStorageLib`) đã được gỡ; toàn bộ logic FileStorage gom vào module chuẩn `src/features/file-storage/` (`fileStorageService` + hooks). Avatar upload giờ dùng `useUploadFile` từ module này. Khối dưới giữ lại để tham chiếu lịch sử — **không còn áp dụng.**
+
 ```ts
-// Không đặt trong features/file-storage/ — tránh cross-feature import
-// ⚠️ File Storage Service chạy trên port khác (port 4005) — KHÔNG dùng axiosInstance (auth-service)
-// Cần tạo riêng axios instance cho file storage hoặc hardcode base URL:
-// const FILE_STORAGE_BASE_URL = process.env.EXPO_PUBLIC_FILE_STORAGE_URL ?? 'http://localhost:4005';
-export const fileStorageLib = {
-  upload: (uri: string, name: string, type: string) => {
+// ✅ RESOLVED (đối chiếu code 2026-06-14): tất cả route /api/* (gồm /api/files/*) đi qua
+//    cùng API gateway base URL (EXPO_PUBLIC_API_URL). KHÔNG có service riêng port 4005,
+//    KHÔNG cần axios instance riêng — dùng chung axiosInstance như frontend đã ship.
+// ⚠️ FIX (2026-06-15): KHÔNG set 'Content-Type': 'multipart/form-data' thủ công.
+//    Set cứng chuỗi này THIẾU boundary → BE không parse được multipart.
+//    Dùng Content-Type: undefined để axios tự sinh 'multipart/form-data; boundary=...'
+//    (đồng bộ với frontend web). Khẳng định "set thủ công là ĐÚNG cho RN" trong bản cũ là SAI.
+export const fileStorageService = {
+  uploadFile: (payload: { uri: string; name: string; type: string; purpose?: number }) => {
     const form = new FormData();
-    form.append('file', { uri, name, type } as any);
-    form.append('purpose', '1'); // FilePurposeEnum.Avatar
+    form.append('file', { uri: payload.uri, name: payload.name, type: payload.type } as unknown as Blob);
+    if (payload.purpose !== undefined) form.append('purpose', String(payload.purpose));
     return axiosInstance.post<CommonResponse<FileUploadResponse>>(
       ENDPOINTS.FILES.UPLOAD, form,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
+      { headers: { 'Content-Type': undefined } }
     );
-    // TODO: đổi axiosInstance → fileStorageAxiosInstance nếu base URL khác
   },
 };
 
@@ -238,7 +284,7 @@ interface FileUploadResponse {
 |------|--------|---------|
 | `src/features/profile/hooks/useProfile.ts` | create | `useQuery` GET /api/auth/me |
 | `src/features/profile/hooks/useUpdateProfile.ts` | create | `useMutation` PUT /api/auth/me/profile → invalidate `QUERY_KEY.profile.me` |
-| `src/features/profile/hooks/useUploadAvatar.ts` | create | `useMutation`: pick image → `fileStorageLib.upload()` → POST /api/auth/me/avatar → invalidate profile |
+| `src/features/profile/hooks/useUploadAvatar.ts` | create | `useMutation`: pick image → `useUploadFile()` (module `features/file-storage/`, GH-25) → POST /api/auth/me/avatar → invalidate profile |
 
 ### Bước 8 — Hooks account
 | File | Action | Ghi chú |
@@ -248,8 +294,10 @@ interface FileUploadResponse {
 | `src/features/account/hooks/useConfirmEmailChange.ts` | create | Step 2 mutation → onSuccess: clearTokens + clearSession + navigate('/login') |
 | `src/features/account/hooks/useSendPhoneOtp.ts` | create | Mutation gửi OTP SMS |
 | `src/features/account/hooks/useVerifyPhoneOtp.ts` | create | Mutation xác thực OTP SMS → invalidate profile |
-| `src/features/account/hooks/useEnable2FA.ts` | create | Mutation → trả TwoFAEnableResponse |
-| `src/features/account/hooks/useDisable2FA.ts` | create | Mutation → invalidate profile |
+| `src/features/account/hooks/useInit2FA.ts` | create | Mutation → trả Init2faResponse {secret, otpAuthUri, pendingToken} |
+| `src/features/account/hooks/useConfirm2FA.ts` | create | Mutation {pendingToken, code} → {enabled, backupCodes[8]} → invalidate profile |
+| `src/features/account/hooks/useDisable2FA.ts` | create | Mutation {password, totpCode} → invalidate profile |
+| `src/features/account/hooks/useRegenerateBackupCodes.ts` | create | Mutation {totpCode} → {backupCodes[8]} |
 | `src/features/account/hooks/useDeactivateAccount.ts` | create | onSuccess → clearTokens + clearSession + navigate('/login') |
 | `src/features/account/hooks/useDeleteAccount.ts` | create | onSuccess → clearTokens + clearSession + navigate('/login') |
 
@@ -286,7 +334,7 @@ interface FileUploadResponse {
 | `src/features/account/components/ChangeEmailForm.tsx` | create | Step 1: newEmail + currentPassword |
 | `src/features/account/components/ConfirmEmailOtpForm.tsx` | create | Step 2: OTP input + countdown via `useCountdown` |
 | `src/features/account/components/PhoneVerifyForm.tsx` | create | Nút gửi OTP + OTP input + countdown 60s via `useCountdown` |
-| `src/features/account/components/TwoFASetup.tsx` | create | QRCode (react-native-qrcode-svg, value={otpAuthUri}) + secret text + disclaimer "2FA sẽ enforce tại login ở Sprint sau" |
+| `src/features/account/components/TwoFASetup.tsx` | create | Wizard GH-295: init (QRCode value={otpAuthUri} + secret) → confirm (nhập TOTP) → modal 8 backup codes "Đã lưu". Kèm form disable {password, totpCode} + regenerate {totpCode} |
 | `src/features/account/components/SessionCard.tsx` | create | IP, userAgent, issuedAt, isCurrent badge, nút revoke (disabled nếu isCurrent) |
 
 ### Bước 11 — Screens
@@ -298,7 +346,7 @@ interface FileUploadResponse {
 | `app/(customer)/settings/change-password.tsx` | create | ChangePasswordForm |
 | `app/(customer)/settings/change-email.tsx` | create | ChangeEmailForm → ConfirmEmailOtpForm (2 bước trong 1 screen). `useState<1\|2>(1)` quản lý step — chuyển step 2 trong `onSuccess` của mutation (không trong handleSubmit) để tránh race condition. |
 | `app/(customer)/settings/phone-verify.tsx` | create | PhoneVerifyForm |
-| `app/(customer)/settings/two-fa.tsx` | create | TwoFASetup (enable) hoặc nút disable nếu đang bật |
+| `app/(customer)/settings/two-fa.tsx` | create | TwoFASetup wizard (init→confirm) hoặc form disable {password, totpCode} + regenerate nếu đang bật |
 | `app/(customer)/settings/sessions.tsx` | create | FlatList SessionCard + nút "Đăng xuất tất cả thiết bị khác" |
 | `app/(customer)/settings/danger-zone.tsx` | create | Deactivate + Delete với Alert confirm 2 lần |
 
@@ -326,18 +374,21 @@ interface FileUploadResponse {
 | PUT | `/api/auth/me/profile` | `UpdateProfilePayload { fullName, phoneNumber?, address?, birthDate?, timeZone? }` | `CommonResponse<AccountDto>` | ← field tên `birthDate` trong request (response `AccountDto` dùng `dateOfBirth`) |
 | POST | `/api/auth/me/avatar` | `{ avatarFileId: string }` | `CommonResponse<AccountDto>` |
 | PATCH | `/api/accounts/me/password` | `{ currentPassword, newPassword, confirmPassword }` | `CommonResponse<null>` | ← `confirmPassword` bắt buộc gửi lên BE |
-| POST | `/api/accounts/me/change-email` | `ChangeEmailPayload` | `CommonResponse<null>` | ⚠️ **CHƯA CÓ TRONG SWAGGER** — endpoint chưa được BE deploy, giữ code nhưng pending confirm |
-| POST | `/api/accounts/me/confirm-email-change` | `{ otp: string }` | `CommonResponse<null>` | ⚠️ **CHƯA CÓ TRONG SWAGGER** — endpoint chưa được BE deploy, giữ code nhưng pending confirm |
+| POST | `/api/accounts/me/change-email` | `ChangeEmailPayload` | `CommonResponse<Guid>` | BE đã wire route (api-auth.md). Lỗi: 401 password sai · 409 email đã dùng · 422 email trùng hiện tại |
+| POST | `/api/accounts/me/confirm-email-change` | `{ otp: string }` | `CommonResponse<Guid>` | BE đã wire route. Success → revoke session. Lỗi: 401 OTP sai/hết hạn · 409 no pending · 423 lockout |
 | POST | `/api/accounts/me/send-phone-otp` | *(không có body)* | `CommonResponse<null>` |
 | POST | `/api/accounts/me/verify-phone-otp` | `{ otp: string }` | `CommonResponse<null>` |
-| POST | `/api/accounts/me/2fa/enable` | *(không có body)* | `CommonResponse<TwoFAEnableResponse>` |
-| POST | `/api/accounts/me/2fa/disable` | *(không có body)* | `CommonResponse<null>` |
+| ~~POST~~ | ~~`/api/accounts/me/2fa/enable`~~ | — | ⚠️ **DEPRECATED (GH-295) — luôn 410 Gone.** Dùng init+confirm. |
+| POST | `/api/accounts/me/2fa/init` | *(không có body)* | `CommonResponse<Init2faResponse>` — `{ secret, otpAuthUri, pendingToken }` |
+| POST | `/api/accounts/me/2fa/confirm` | `{ pendingToken, code }` | `CommonResponse<Confirm2faResponse>` — `{ enabled, backupCodes[8] }` |
+| POST | `/api/accounts/me/2fa/disable` | `{ password, totpCode }` | `CommonResponse<Guid>` |
+| POST | `/api/accounts/me/2fa/backup-codes/regenerate` | `{ totpCode }` | `CommonResponse<RegenBackupResponse>` — `{ backupCodes[8] }` |
 | POST | `/api/accounts/me/deactivate` | *(không có body)* | `CommonResponse<null>` |
 | DELETE | `/api/accounts/me` | *(không có body)* | `CommonResponse<null>` |
 | GET | `/api/sessions/me` | `?activeOnly=bool` (query) | `CommonResponse<SessionDto[]>` |
 | DELETE | `/api/sessions/{id}` | — | `CommonResponse<number>` |
 | POST | `/api/sessions/revoke-all` | `{ exceptCurrent?: bool, currentRefreshToken?: string }` | `CommonResponse<number>` |
-| POST | `/api/files/upload` | `FormData { file, purpose: '1' }` (multipart) | `CommonResponse<FileUploadResponse>` | ⚠️ Endpoint thuộc **File Storage Service (port 4005)** — KHÔNG phải auth-service. `ENDPOINTS.FILES.UPLOAD` phải trỏ đúng base URL của file storage |
+| POST | `/api/files/upload` | `FormData { file, purpose: '1' }` (multipart) | `CommonResponse<FileUploadResponse>` | ✅ Đi qua cùng API gateway base URL (`EXPO_PUBLIC_API_URL`) như mọi route `/api/*` — dùng chung `axiosInstance`, không cần base URL riêng |
 
 ## Query Keys
 
@@ -359,7 +410,9 @@ QUERY_KEY.sessions = {
 **Avatar display:**
 ```
 AccountDto.displayAvatarUrl → `/api/files/{fileId}/download` (path tương đối)
-→ render: Image source={{ uri: BASE_URL + displayAvatarUrl }}
+→ render: Image source={{ uri: BASE_URL + displayAvatarUrl, headers: { Authorization: `Bearer ${token}` } }}
+   ⚠️ Endpoint download CẦN auth → RN <Image> KHÔNG tự gắn Bearer, phải truyền `headers` trong source,
+      nếu không avatar trả 401. (Cùng pattern useAuthImageHeaders dùng cho ticket attachment.)
 → null → hiển thị placeholder initials avatar
 BASE_URL = EXPO_PUBLIC_API_URL từ env
 ```
@@ -369,7 +422,7 @@ BASE_URL = EXPO_PUBLIC_API_URL từ env
 user tap AvatarPicker
 → expo-image-picker.launchImageLibraryAsync({ mediaTypes: Images })
 → { uri, fileName, mimeType }
-→ fileStorageLib.upload(uri, fileName, mimeType)      // POST /api/files/upload multipart
+→ useUploadFile().mutate({ uri, name, type, purpose: 1 })  // POST /api/files/upload multipart (GH-25 module)
 → { fileId }
 → profileService.setAvatar({ avatarFileId: fileId })  // POST /api/auth/me/avatar
 → invalidate QUERY_KEY.profile.me → UI refresh
@@ -383,13 +436,17 @@ Step 2: ConfirmEmailOtpForm → useConfirmEmailChange.mutate({ otp })
         → success → clearTokens() + clearSession() + navigate('/(auth)/login')
 ```
 
-**2FA enable flow:**
+**2FA enable flow (GH-295 — wizard 2 bước):**
 ```
-useEnable2FA.mutate()
-→ { secret, otpAuthUri }
-→ render <QRCode value={otpAuthUri} size={200} />
-→ render secret text để user nhập thủ công
-→ disclaimer: "2FA sẽ được enforce tại bước đăng nhập ở Sprint sau"
+Bước 1: useInit2FA.mutate()
+  → { secret, otpAuthUri, pendingToken }
+  → render <QRCode value={otpAuthUri} size={200} /> + secret text (nhập tay)
+  → giữ pendingToken trong state
+Bước 2: user nhập 6 số TOTP → useConfirm2FA.mutate({ pendingToken, code })
+  → { enabled: true, backupCodes[8] }
+  → hiển thị 8 backup codes, BẮT BUỘC user "Đã lưu" trước khi đóng (hiện 1 lần)
+Disable: form { password, totpCode } → useDisable2FA.mutate(...)  (422 message generic)
+Regenerate: { totpCode } → useRegenerateBackupCodes.mutate(...) → 8 codes mới
 ```
 
 **Session management:**
@@ -413,18 +470,19 @@ onSuccess: async () => {
 
 ## Edge Cases
 - `displayAvatarUrl = null` → render initials placeholder, không crash
+- **Avatar download cần auth:** `displayAvatarUrl` trỏ `/api/files/{id}/download` (endpoint cần Bearer). `<Image>` phải truyền `headers: { Authorization }` trong `source`, nếu không trả 401 → avatar không hiển thị
 - Đổi email / Xóa tài khoản → clearToken trong `onSuccess` của mutation (không trong component)
 - OTP confirm email: không cần gửi lại email mới — server đọc từ `PendingEmail`
-- 2FA: `twoFactorEnabled` chưa enforce tại login (Sprint sau) → hiện disclaimer trong TwoFASetup
+- 2FA: enable BẮT BUỘC verify TOTP qua confirm (không activate ngay); backup codes hiện 1 lần — modal "Đã lưu". `twoFactorEnabled=true` → login sẽ yêu cầu verify-2fa (GH-3 đã có) → KHÔNG còn disclaimer "enforce Sprint sau"
 - Deactivate / Delete → Alert confirm 2 lần trước khi gọi mutation
 - Session `isCurrent = true` → disable nút revoke
 - Phone OTP cooldown 60s → dùng `useCountdown(60)` trong PhoneVerifyForm
 - Confirm email OTP cooldown → `useCountdown` từ `otpExpiresInSeconds` (nếu BE trả) hoặc 300s default
 - `expo-image-picker` cần permission camera roll → gọi `requestMediaLibraryPermissionsAsync()` trước khi launch
 - **`birthDate` vs `dateOfBirth`:** PUT profile gửi `birthDate`, nhưng `AccountDto` response trả `dateOfBirth` — khi pre-fill form từ profile, map `account.profile?.birthDate` → form field `birthDate`
-- **Đổi email (2 endpoints chưa có Swagger):** `ChangeEmailForm` và hooks implement xong nhưng cần pending confirm từ BE. Nếu không kịp Sprint → comment out screen `change-email.tsx` trong settings menu (không xóa code)
+- **Đổi email:** BE đã wire route `/change-email` + `/confirm-email-change` (api-auth.md) → enable screen `change-email.tsx`. Sau `confirm-email-change` thành công → mọi session bị revoke → clearTokens + redirect login.
 - **`GET /api/sessions/me` response `data` nullable:** guard `data ?? []` trước khi render FlatList
-- **File Storage base URL:** `ENDPOINTS.FILES.UPLOAD` cần trỏ đến port 4005, KHÔNG phải auth-service port — verify env var `EXPO_PUBLIC_FILE_STORAGE_URL` khi setup
+- **File Storage base URL (RESOLVED 2026-06-14):** `/api/files/*` đi qua cùng API gateway (`EXPO_PUBLIC_API_URL`) như mọi route `/api/*` — KHÔNG có service riêng port 4005, dùng chung `axiosInstance`. Giả định "port 4005" trong bản plan gốc không được áp dụng.
 
 ## Success Criteria
 | Tiêu chí | Cách verify |
@@ -446,13 +504,13 @@ onSuccess: async () => {
 - [x] Bước 2: Thêm PROFILE, ACCOUNT, SESSIONS, FILES vào `src/lib/endpoints.ts` — 2026-05-31
 - [x] Bước 3: Thêm `KEY.profile`, `KEY.sessions`, `QUERY_KEY.profile.me`, `QUERY_KEY.sessions.list` vào `src/lib/queryKeys.ts` — 2026-05-31
 - [x] Bước 4: Tạo `src/features/profile/types/profile.types.ts` (AccountDto, AccountProfileDto, StaffProfileDto, AvatarSourceEnum, AccountStatusEnum) — 2026-05-31
-- [x] Bước 5: Tạo `src/features/account/types/account.types.ts` (ChangePasswordPayload, TwoFAEnableResponse, SessionDto, RevokeAllPayload — currentRefreshToken optional) — 2026-05-31
-- [x] Bước 6: Tạo `src/lib/fileStorage.ts` (uploadFile multipart — đặt trong lib/ tránh cross-feature) — 2026-05-31
+- [x] Bước 5: Tạo `src/features/account/types/account.types.ts` (ChangePasswordPayload, 2FA types GH-295: Init2faResponse/Confirm2fa*/Disable2faPayload/RegenBackup*, SessionDto, RevokeAllPayload — currentRefreshToken optional) — 2026-05-31 · ⚠️ rework C1
+- [x] Bước 6: Tạo `src/lib/fileStorage.ts` (uploadFile multipart) — 2026-05-31 — *superseded bởi GH-25 (2026-06-15): chuyển sang `features/file-storage/services/file-storage.service.ts`, file lib đã xóa*
 - [x] Bước 7: Tạo `src/features/profile/services/profile.service.ts` — 2026-05-31
 - [x] Bước 8: Tạo `src/features/account/services/account.service.ts` + `session.service.ts` — 2026-05-31
 - [x] Bước 9: Tạo `src/hooks/useCountdown.ts` (dùng chung cho mọi OTP countdown) — 2026-05-31
 - [x] Bước 10: Tạo hooks profile: `useProfile`, `useUpdateProfile`, `useUploadAvatar` — 2026-05-31
-- [x] Bước 11: Tạo hooks account: `useChangePassword`, `useChangeEmail`, `useConfirmEmailChange`, `useSendPhoneOtp`, `useVerifyPhoneOtp`, `useEnable2FA`, `useDisable2FA`, `useDeactivateAccount`, `useDeleteAccount` — 2026-05-31
+- [x] Bước 11: Tạo hooks account: `useChangePassword`, `useChangeEmail`, `useConfirmEmailChange`, `useSendPhoneOtp`, `useVerifyPhoneOtp`, `useInit2FA`, `useConfirm2FA`, `useDisable2FA`, `useRegenerateBackupCodes`, `useDeactivateAccount`, `useDeleteAccount` — 2026-05-31 · ⚠️ rework C1 (init/confirm/regenerate thay enable)
 - [x] Bước 12: Tạo hook sessions: `useSessions` — 2026-05-31
 - [x] Bước 13: Tạo components: `AvatarPicker`, `ProfileForm`, `ChangePasswordForm`, `ChangeEmailForm`, `ConfirmEmailOtpForm`, `PhoneVerifyForm`, `TwoFASetup`, `SessionCard` — 2026-05-31
 - [x] Bước 14: Tạo screens: `profile.tsx`, `edit-profile.tsx` — 2026-05-31
@@ -468,6 +526,6 @@ onSuccess: async () => {
 | 2FA QR: library hay text? | Cả hai — `react-native-qrcode-svg` + secret text — đã cập nhật `mobile.md` |
 | Staff navigation scope? | Ngoài scope GH-4 — Staff chỉ có `/(staff)/index.tsx` từ GH-3 |
 | `usePhoneVerify` gộp hay tách? | Tách thành `useSendPhoneOtp` + `useVerifyPhoneOtp` |
-| file-storage trong features/ hay lib/? | Đặt trong `src/lib/fileStorage.ts` — tránh cross-feature import |
+| file-storage trong features/ hay lib/? | Ban đầu `src/lib/fileStorage.ts`. **GH-25 (2026-06-15) đổi sang module `src/features/file-storage/`** (bám theo frontend web) — lib cũ đã xóa. |
 | Package install: npm hay expo? | Tất cả dùng `npx expo install` — đảm bảo version compat Expo SDK 51 |
 | Avatar URL construct từ fileId hay displayAvatarUrl? | Dùng `displayAvatarUrl` (prepend BASE_URL), không tự construct từ fileId |

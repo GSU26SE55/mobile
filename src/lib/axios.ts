@@ -44,13 +44,14 @@ const tryRefresh = async (): Promise<string | null> => {
     const refreshToken = await getRefreshToken();
     if (!refreshToken) throw new Error('No refresh token');
 
-    const res = await axios.post<{ isSuccess: boolean; data: { accessToken: string; refreshToken: string } }>(
+    const res = await axios.post<{ isSuccess: boolean; data: { tokens: { accessToken: string; refreshToken: string } | null } }>(
       `${BASE_URL}${ENDPOINTS.AUTH.REFRESH_TOKEN}`,
       { refreshToken },
     );
 
-    if (!res.data?.isSuccess) throw new Error('Refresh failed');
-    const { accessToken, refreshToken: newRefresh } = res.data.data;
+    // GH-295: refresh trả LoginResultDto — token nằm trong data.tokens
+    if (!res.data?.isSuccess || !res.data.data?.tokens) throw new Error('Refresh failed');
+    const { accessToken, refreshToken: newRefresh } = res.data.data.tokens;
     await saveTokens(accessToken, newRefresh);
     flushQueue(accessToken);
     return accessToken;
