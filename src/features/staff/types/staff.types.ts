@@ -48,6 +48,8 @@ export interface MaintenanceLogPayload {
   durationMinutes?: number;
   resolutionNote?: string;
   partsUsed?: string;
+  beforePhotos?: CommentAttachmentPayload[];
+  afterPhotos?: CommentAttachmentPayload[];
 }
 
 export interface StaffTicketListParams {
