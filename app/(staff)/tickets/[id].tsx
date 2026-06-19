@@ -44,13 +44,15 @@ import { AttachmentPicker, UploadedAttachment } from '../../../src/features/file
 import { AttachmentThumbnails } from '../../../src/features/file-storage/components/AttachmentThumbnails';
 import { FilePurposeEnum } from '../../../src/features/file-storage/enums/file-storage.enum';
 import { useSessionStore } from '../../../src/stores/sessionStore';
+import { useTicketKbRefs } from '../../../src/features/kb/hooks/useTicketKbRefs';
 
-type TabKey = 'comments' | 'activities' | 'logs';
+type TabKey = 'comments' | 'activities' | 'logs' | 'kb';
 
 const TABS: { key: TabKey; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: 'comments',   label: 'Trao đổi',  icon: 'chatbubbles-outline' },
   { key: 'activities', label: 'Lịch sử',   icon: 'time-outline' },
   { key: 'logs',       label: 'Nhật ký',    icon: 'document-text-outline' },
+  { key: 'kb',         label: 'Bài KB',     icon: 'book-outline' },
 ];
 
 const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
@@ -135,6 +137,7 @@ export default function StaffTicketDetailScreen() {
   const { mutate: addComment, isPending: isSending } = useStaffAddComment(ticketId);
   const { mutate: addLog, isPending: isAddingLog } = useAddMaintenanceLog(ticketId);
   const { mutateAsync: uploadAttachment, isPending: isUploading } = useUploadCommentAttachment();
+  const { data: kbRefs, isLoading: kbRefsLoading } = useTicketKbRefs(ticketId || undefined);
 
   const [activeTab, setActiveTab] = useState<TabKey>('comments');
   const [commentText, setCommentText] = useState('');
@@ -394,6 +397,42 @@ export default function StaffTicketDetailScreen() {
           </View>
         )}
 
+        {activeTab === 'kb' && (
+          <View style={styles.tabContent}>
+            {kbRefsLoading ? (
+              <ActivityIndicator color={Colors.primary} style={{ marginTop: 24 }} />
+            ) : !kbRefs || kbRefs.length === 0 ? (
+              <Text style={styles.emptyTab}>Chưa có bài KB nào được gán</Text>
+            ) : (
+              kbRefs.map((ref) => (
+                <Pressable
+                  key={ref.id}
+                  style={[styles.kbRefCard, Shadow]}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(staff)/kb/[id]' as never,
+                      params: { id: ref.kbArticleId } as never,
+                    } as never)
+                  }
+                >
+                  <View style={styles.kbRefTop}>
+                    <Ionicons name="book-outline" size={16} color={Colors.primary} />
+                    <Text style={styles.kbRefCode}>{ref.kbArticleCode}</Text>
+                    <Ionicons name="chevron-forward" size={14} color={Colors.textFaint} style={{ marginLeft: 'auto' }} />
+                  </View>
+                  {ref.kbArticleTitle ? (
+                    <Text style={styles.kbRefTitle}>{ref.kbArticleTitle}</Text>
+                  ) : null}
+                  {ref.note ? (
+                    <Text style={styles.kbRefNote}>{ref.note}</Text>
+                  ) : null}
+                  <Text style={styles.kbRefTime}>{new Date(ref.createdAt).toLocaleDateString('vi-VN')}</Text>
+                </Pressable>
+              ))
+            )}
+          </View>
+        )}
+
         <View style={{ height: 100 }} />
       </ScrollView>
 
@@ -601,4 +640,14 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   internalToggleOn: { backgroundColor: Colors.warningLight },
+
+  kbRefCard: {
+    backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, gap: 6,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)',
+  },
+  kbRefTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  kbRefCode: { fontSize: 12, fontWeight: '800', color: Colors.primary },
+  kbRefTitle: { fontSize: 13, fontWeight: '600', color: Colors.text, lineHeight: 18 },
+  kbRefNote: { fontSize: 12, fontWeight: '500', color: Colors.textMute, fontStyle: 'italic' },
+  kbRefTime: { fontSize: 11, fontWeight: '500', color: Colors.textFaint },
 });

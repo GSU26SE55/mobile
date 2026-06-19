@@ -38,6 +38,7 @@ import { ENDPOINTS } from '../../../src/lib/endpoints';
 import { BadgeColors, Colors, Shadow, ShadowPrimary } from '../../../src/lib/theme';
 import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
 import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
+import { KbRelatedSection } from '../../../src/features/kb/components/KbRelatedSection';
 
 const PRIORITY_MAP: Record<string, { label: string; badge: keyof typeof BadgeColors }> = {
   P1Critical: { label: 'P1 Critical', badge: 'p1' },
@@ -513,6 +514,9 @@ export default function TicketDetailScreen() {
               <Text style={styles.closedText}>Ticket đã được đóng hoàn toàn</Text>
             </View>
           )}
+
+          {/* Related KB articles */}
+          <KbRelatedSection ticket={ticket} />
 
           {/* Historical activities timeline */}
           {(ticket.activities?.length ?? 0) > 0 && (

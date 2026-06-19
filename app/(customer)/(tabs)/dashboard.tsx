@@ -11,6 +11,7 @@ import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyB
 import { useMyAlerts } from '../../../src/features/batteries/hooks/useMyAlerts';
 import { AlertStatusEnum } from '../../../src/shared/enums/alert.enum';
 import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
+import { PopularKbSection } from '../../../src/features/kb/components/PopularKbSection';
 import { Colors, Shadow } from '../../../src/lib/theme';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
@@ -264,6 +265,7 @@ export default function DashboardScreen() {
             </View>
           ) : null
         }
+        ListFooterComponent={<PopularKbSection limit={5} />}
       />
     </View>
   );
