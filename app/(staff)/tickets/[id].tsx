@@ -1,7 +1,12 @@
+import * as ImagePicker from 'expo-image-picker';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -30,19 +35,24 @@ import { useResolveTicket } from '../../../src/features/staff/hooks/useResolveTi
 import { useEscalateTicket } from '../../../src/features/staff/hooks/useEscalateTicket';
 import { useStaffAddComment } from '../../../src/features/staff/hooks/useStaffAddComment';
 import { useAddMaintenanceLog } from '../../../src/features/staff/hooks/useAddMaintenanceLog';
+import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/useUploadCommentAttachment';
+import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
+import { AttachmentForm } from '../../../src/features/tickets/schemas/comment.schema';
 import { MaintenanceLogPayload } from '../../../src/features/staff/types/staff.types';
 import { EscalationReasonEnum, PauseReasonEnum, TicketStatusEnum, TicketCommentDTO } from '../../../src/features/tickets/types/ticket.types';
 import { AttachmentPicker, UploadedAttachment } from '../../../src/features/file-storage/components/AttachmentPicker';
 import { AttachmentThumbnails } from '../../../src/features/file-storage/components/AttachmentThumbnails';
 import { FilePurposeEnum } from '../../../src/features/file-storage/enums/file-storage.enum';
 import { useSessionStore } from '../../../src/stores/sessionStore';
+import { useTicketKbRefs } from '../../../src/features/kb/hooks/useTicketKbRefs';
 
-type TabKey = 'comments' | 'activities' | 'logs';
+type TabKey = 'comments' | 'activities' | 'logs' | 'kb';
 
 const TABS: { key: TabKey; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: 'comments',   label: 'Trao đổi',  icon: 'chatbubbles-outline' },
   { key: 'activities', label: 'Lịch sử',   icon: 'time-outline' },
   { key: 'logs',       label: 'Nhật ký',    icon: 'document-text-outline' },
+  { key: 'kb',         label: 'Bài KB',     icon: 'book-outline' },
 ];
 
 const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
@@ -64,7 +74,17 @@ const ROLE_AVATAR: Record<string, { icon: keyof typeof Ionicons.glyphMap; iconCo
   Staff:    { icon: 'shield-outline',  iconColor: Colors.primaryDark, bg: Colors.primaryLight },
 };
 
-function ChatBubble({ comment, isMe }: { comment: TicketCommentDTO; isMe: boolean }) {
+function ChatBubble({
+  comment,
+  isMe,
+  imageHeaders,
+  onImagePress,
+}: {
+  comment: TicketCommentDTO;
+  isMe: boolean;
+  imageHeaders?: { Authorization: string };
+  onImagePress?: (uri: string) => void;
+}) {
   const avatar = ROLE_AVATAR[comment.authorRole] ?? ROLE_AVATAR.Staff;
   const displayName =
     isMe ? 'Bạn' :
@@ -72,6 +92,16 @@ function ChatBubble({ comment, isMe }: { comment: TicketCommentDTO; isMe: boolea
     (comment.authorRole === 'System' ? 'Hệ thống' :
      comment.authorRole === 'Customer' ? 'Khách hàng' :
      comment.authorRole === 'Manager' ? 'Manager' : 'Nhân viên');
+
+  const fileIds = comment.attachmentFileIds ?? [];
+
+  if (comment.authorRole === 'System') {
+    return (
+      <View style={styles.systemMsg}>
+        <Text style={styles.systemMsgText}>{comment.body}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.bubbleRow, isMe && styles.bubbleRowMe]}>
@@ -97,7 +127,8 @@ export default function StaffTicketDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const ticketId = id ?? '';
   const accountId = useSessionStore((s) => s.user?.accountId);
-  const { data: apiDetail, isLoading } = useStaffTicketDetail(ticketId);
+  const { data: ticket, isLoading, isError, refetch } = useStaffTicketDetail(ticketId);
+  const imageHeaders = useAuthImageHeaders();
   const { mutate: startTicket, isPending: isStarting } = useStartTicket(ticketId);
   const { mutate: holdTicket, isPending: isHolding } = useHoldTicket(ticketId);
   const { mutate: resumeTicket, isPending: isResuming } = useResumeTicket(ticketId);
@@ -105,9 +136,13 @@ export default function StaffTicketDetailScreen() {
   const { mutate: escalateTicket, isPending: isEscalating } = useEscalateTicket(ticketId);
   const { mutate: addComment, isPending: isSending } = useStaffAddComment(ticketId);
   const { mutate: addLog, isPending: isAddingLog } = useAddMaintenanceLog(ticketId);
+  const { mutateAsync: uploadAttachment, isPending: isUploading } = useUploadCommentAttachment();
+  const { data: kbRefs, isLoading: kbRefsLoading } = useTicketKbRefs(ticketId || undefined);
 
   const [activeTab, setActiveTab] = useState<TabKey>('comments');
   const [commentText, setCommentText] = useState('');
+  const [attachments, setAttachments] = useState<AttachmentForm[]>([]);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isInternalComment, setIsInternalComment] = useState(false);
   const [commentAttachments, setCommentAttachments] = useState<UploadedAttachment[]>([]);
   const [uploadingComment, setUploadingComment] = useState(false);
@@ -121,11 +156,39 @@ export default function StaffTicketDetailScreen() {
     if (activeTab === 'comments') {
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 50);
     }
-  }, [activeTab, apiDetail?.comments?.length]);
+  }, [activeTab, ticket?.comments?.length]);
+  const isActioning = isStarting || isHolding || isResuming || isResolving || isEscalating;
+
+  const handlePickImage = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Quyền truy cập', 'Cần quyền truy cập thư viện ảnh để đính kèm.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: false,
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    const mimeType = asset.mimeType ?? 'image/jpeg';
+    const name = asset.fileName ?? `img_${Date.now()}.jpg`;
+    try {
+      const uploaded = await uploadAttachment({ uri: asset.uri, name, type: mimeType });
+      setAttachments((prev) => [...prev, uploaded]);
+    } catch {
+      Alert.alert('Lỗi', 'Không thể tải ảnh lên. Vui lòng thử lại.');
+    }
+  };
+
+  const handleRemoveAttachment = (fileId: string) => {
+    setAttachments((prev) => prev.filter((a) => a.fileId !== fileId));
+  };
 
   const handleSendComment = () => {
     const trimmed = commentText.trim();
-    if (!trimmed) return;
+    if (!trimmed && attachments.length === 0) return;
     addComment(
       {
         body: trimmed,
@@ -148,7 +211,7 @@ export default function StaffTicketDetailScreen() {
   const handleEscalate = (reason: EscalationReasonEnum, note?: string) => { escalateTicket({ reason, note }, { onSuccess: () => setShowEscalate(false) }); };
   const handleAddLog = (log: MaintenanceLogPayload) => { addLog(log, { onSuccess: () => setShowLogForm(false) }); };
 
-  if (isLoading && !apiDetail) {
+  if (isLoading) {
     return (
       <View style={styles.loadingRoot}>
         <ActivityIndicator color={Colors.primary} size="large" />
@@ -156,7 +219,7 @@ export default function StaffTicketDetailScreen() {
     );
   }
 
-  if (!apiDetail) {
+  if (isError || !ticket) {
     return (
       <View style={[styles.loadingRoot, { paddingTop: insets.top, paddingHorizontal: 24 }]}>
         <Ionicons name="alert-circle-outline" size={48} color={Colors.textFaint} />
@@ -164,17 +227,14 @@ export default function StaffTicketDetailScreen() {
         <Text style={styles.notFoundText}>
           Ticket không tồn tại hoặc bạn không có quyền xem. Vui lòng thử lại.
         </Text>
-        <Pressable style={styles.notFoundBtn} onPress={() => router.back()}>
-          <Text style={styles.notFoundBtnText}>Quay lại</Text>
+        <Pressable style={styles.notFoundBtn} onPress={() => refetch()}>
+          <Text style={styles.notFoundBtnText}>Thử lại</Text>
         </Pressable>
       </View>
     );
   }
 
-  const ticket = apiDetail;
-  // priority null khi ticket chưa triage.
   const pColor = ticket.priority ? (PRIORITY_COLORS[ticket.priority] ?? PRIORITY_COLORS.P3Normal) : PRIORITY_COLORS.P3Normal;
-  const isActioning = isStarting || isHolding || isResuming || isResolving || isEscalating;
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -284,11 +344,18 @@ export default function StaffTicketDetailScreen() {
         {/* Tab Content */}
         {activeTab === 'comments' && (
           <View style={styles.chatSection}>
-            {(ticket.comments ?? []).map((c) => (
-              <ChatBubble key={c.id} comment={c} isMe={!!accountId && c.authorUserId === accountId} />
-            ))}
-            {(ticket.comments ?? []).length === 0 && (
+            {(ticket.comments ?? []).length === 0 ? (
               <Text style={styles.emptyTab}>Chưa có trao đổi nào</Text>
+            ) : (
+              (ticket.comments ?? []).filter((c) => !c.isInternal).map((c, i) => (
+                <ChatBubble
+                  key={c.id ?? `comment-${i}`}
+                  comment={c}
+                  isMe={!!accountId && c.authorUserId === accountId}
+                  imageHeaders={imageHeaders}
+                  onImagePress={setViewingImage}
+                />
+              ))
             )}
           </View>
         )}
@@ -325,6 +392,42 @@ export default function StaffTicketDetailScreen() {
                   )}
                   <Text style={styles.logTime}>{new Date(log.createdAt).toLocaleString('vi-VN')}</Text>
                 </View>
+              ))
+            )}
+          </View>
+        )}
+
+        {activeTab === 'kb' && (
+          <View style={styles.tabContent}>
+            {kbRefsLoading ? (
+              <ActivityIndicator color={Colors.primary} style={{ marginTop: 24 }} />
+            ) : !kbRefs || kbRefs.length === 0 ? (
+              <Text style={styles.emptyTab}>Chưa có bài KB nào được gán</Text>
+            ) : (
+              kbRefs.map((ref) => (
+                <Pressable
+                  key={ref.id}
+                  style={[styles.kbRefCard, Shadow]}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(staff)/kb/[id]' as never,
+                      params: { id: ref.kbArticleId } as never,
+                    } as never)
+                  }
+                >
+                  <View style={styles.kbRefTop}>
+                    <Ionicons name="book-outline" size={16} color={Colors.primary} />
+                    <Text style={styles.kbRefCode}>{ref.kbArticleCode}</Text>
+                    <Ionicons name="chevron-forward" size={14} color={Colors.textFaint} style={{ marginLeft: 'auto' }} />
+                  </View>
+                  {ref.kbArticleTitle ? (
+                    <Text style={styles.kbRefTitle}>{ref.kbArticleTitle}</Text>
+                  ) : null}
+                  {ref.note ? (
+                    <Text style={styles.kbRefNote}>{ref.note}</Text>
+                  ) : null}
+                  <Text style={styles.kbRefTime}>{new Date(ref.createdAt).toLocaleDateString('vi-VN')}</Text>
+                </Pressable>
               ))
             )}
           </View>
@@ -380,6 +483,33 @@ export default function StaffTicketDetailScreen() {
       <HoldModal visible={showHold} onClose={() => setShowHold(false)} onSubmit={handleHold} isLoading={isHolding} />
       <ResolveModal visible={showResolve} onClose={() => setShowResolve(false)} onSubmit={handleResolve} isLoading={isResolving} />
       <EscalateModal visible={showEscalate} onClose={() => setShowEscalate(false)} onSubmit={handleEscalate} isLoading={isEscalating} />
+
+      {/* Fullscreen image viewer */}
+      {viewingImage !== null && (
+        <Modal
+          visible
+          transparent
+          animationType="fade"
+          statusBarTranslucent
+          onRequestClose={() => setViewingImage(null)}
+        >
+          <View style={styles.imgOverlay}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setViewingImage(null)} />
+            <Image
+              source={{ uri: viewingImage, headers: imageHeaders ?? undefined }}
+              style={styles.imgFull}
+              resizeMode="contain"
+            />
+            <Pressable
+              style={[styles.imgCloseBtn, { top: insets.top + 12 }]}
+              onPress={() => setViewingImage(null)}
+              hitSlop={12}
+            >
+              <Ionicons name="close-circle" size={38} color="rgba(255,255,255,0.9)" />
+            </Pressable>
+          </View>
+        </Modal>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -460,10 +590,22 @@ const styles = StyleSheet.create({
   logMeta: { fontSize: 12, fontWeight: '500', color: Colors.textMute },
   logTime: { fontSize: 11, fontWeight: '500', color: Colors.textFaint, marginTop: 4 },
 
+  composerWrap: {
+    backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: Colors.border,
+  },
+  attachmentList: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 6,
+    paddingHorizontal: 16, paddingTop: 8,
+  },
+  attachmentChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: Colors.card2, borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 5, maxWidth: 200,
+  },
+  attachmentName: { flex: 1, fontSize: 12, color: Colors.text, fontWeight: '500' },
   composer: {
     gap: 8,
     paddingHorizontal: 16, paddingTop: 10,
-    backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: Colors.border,
   },
   composerRow: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 8,
@@ -481,10 +623,31 @@ const styles = StyleSheet.create({
     ...ShadowPrimary,
   },
   sendBtnDisabled: { backgroundColor: Colors.textFaint, shadowOpacity: 0 },
+
+  systemMsg: { alignItems: 'center', paddingVertical: 4 },
+  systemMsgText: { fontSize: 11, color: Colors.textMute, fontStyle: 'italic', fontWeight: '600' },
+
+  bubbleImages: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 },
+  bubbleImage: { width: 160, height: 120, borderRadius: 10 },
+
+  imgOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.93)', alignItems: 'center', justifyContent: 'center' },
+  imgFull:     { width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.78 },
+  imgCloseBtn: { position: 'absolute', right: 16 },
+
   internalToggle: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: Colors.card2,
     alignItems: 'center', justifyContent: 'center',
   },
   internalToggleOn: { backgroundColor: Colors.warningLight },
+
+  kbRefCard: {
+    backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, gap: 6,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)',
+  },
+  kbRefTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  kbRefCode: { fontSize: 12, fontWeight: '800', color: Colors.primary },
+  kbRefTitle: { fontSize: 13, fontWeight: '600', color: Colors.text, lineHeight: 18 },
+  kbRefNote: { fontSize: 12, fontWeight: '500', color: Colors.textMute, fontStyle: 'italic' },
+  kbRefTime: { fontSize: 11, fontWeight: '500', color: Colors.textFaint },
 });

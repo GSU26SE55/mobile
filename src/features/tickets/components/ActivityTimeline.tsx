@@ -38,7 +38,7 @@ export function ActivityTimeline({ activities }: Props) {
         const isLast = index === activities.length - 1;
         const isFirst = index === 0;
         return (
-          <View key={item.id} style={styles.item}>
+          <View key={item.id ?? `activity-${index}`} style={styles.item}>
             <View style={styles.dotCol}>
               <View style={[styles.dot, isFirst && styles.dotActive]} />
               {!isLast && <View style={[styles.line, isFirst && styles.lineActive]} />}

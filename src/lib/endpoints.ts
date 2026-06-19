@@ -85,4 +85,12 @@ export const ENDPOINTS = {
     READ:     (id: string) => `/api/notifications/${id}/read`,
     READ_ALL: '/api/notifications/read-all',
   },
+  KNOWLEDGE_BASE: {
+    LIST:    '/api/knowledge-base',
+    DETAIL:  (id: string) => `/api/knowledge-base/${id}`,
+    HELPFUL: (id: string) => `/api/knowledge-base/${id}/helpful`,
+  },
+  KB_REFERENCES: {
+    LIST: '/api/knowledge-base/references', // GET ?ticketId=
+  },
 } as const;
