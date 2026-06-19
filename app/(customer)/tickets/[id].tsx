@@ -30,6 +30,7 @@ import { useReopenTicket } from '../../../src/features/tickets/hooks/useReopenTi
 import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/useUploadCommentAttachment';
 import { useTicketDetail } from '../../../src/features/tickets/hooks/useTicketDetail';
 import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
+import { AttachmentThumbnails } from '../../../src/features/file-storage/components/AttachmentThumbnails';
 import { AttachmentForm, commentSchema } from '../../../src/features/tickets/schemas/comment.schema';
 import { RatePayload, ReopenPayload, TicketDetailDTO, TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
 import { BASE_URL } from '../../../src/lib/axios';

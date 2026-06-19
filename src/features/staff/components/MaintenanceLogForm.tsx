@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Colors, Shadow } from '../../../lib/theme';
+import { AttachmentPicker, UploadedAttachment } from '../../file-storage/components/AttachmentPicker';
+import { FilePurposeEnum } from '../../file-storage/enums/file-storage.enum';
 import type { MaintenanceLogPayload } from '../types/staff.types';
 
 interface Props {
@@ -13,6 +15,11 @@ export function MaintenanceLogForm({ isLoading, onSubmit }: Props) {
   const [actionTaken, setActionTaken] = useState('');
   const [partsUsed, setPartsUsed] = useState('');
   const [duration, setDuration] = useState('');
+  const [beforePhotos, setBeforePhotos] = useState<UploadedAttachment[]>([]);
+  const [afterPhotos, setAfterPhotos] = useState<UploadedAttachment[]>([]);
+  const [uploadingBefore, setUploadingBefore] = useState(false);
+  const [uploadingAfter, setUploadingAfter] = useState(false);
+  const uploading = uploadingBefore || uploadingAfter;
   const [error, setError] = useState('');
 
   const handleSubmit = () => {
@@ -26,11 +33,15 @@ export function MaintenanceLogForm({ isLoading, onSubmit }: Props) {
       actionsTaken: actionTaken.trim() || undefined,
       partsUsed: partsUsed.trim() || undefined,
       durationMinutes: duration ? parseInt(duration, 10) : undefined,
+      beforePhotos: beforePhotos.length > 0 ? beforePhotos : undefined,
+      afterPhotos: afterPhotos.length > 0 ? afterPhotos : undefined,
     });
     setDescription('');
     setActionTaken('');
     setPartsUsed('');
     setDuration('');
+    setBeforePhotos([]);
+    setAfterPhotos([]);
     setError('');
   };
 
@@ -91,10 +102,28 @@ export function MaintenanceLogForm({ isLoading, onSubmit }: Props) {
         </View>
       </View>
 
+      <View style={styles.field}>
+        <Text style={styles.label}>Ảnh trước / sau khi xử lý</Text>
+        <AttachmentPicker
+          purpose={FilePurposeEnum.MaintenancePhoto}
+          value={beforePhotos}
+          onChange={setBeforePhotos}
+          onUploadingChange={setUploadingBefore}
+          label="Ảnh trước"
+        />
+        <AttachmentPicker
+          purpose={FilePurposeEnum.MaintenancePhoto}
+          value={afterPhotos}
+          onChange={setAfterPhotos}
+          onUploadingChange={setUploadingAfter}
+          label="Ảnh sau"
+        />
+      </View>
+
       <Pressable
-        style={[styles.submitBtn, isLoading && styles.btnDisabled]}
+        style={[styles.submitBtn, (isLoading || uploading) && styles.btnDisabled]}
         onPress={handleSubmit}
-        disabled={isLoading}
+        disabled={isLoading || uploading}
       >
         {isLoading ? (
           <ActivityIndicator color="#fff" size="small" />

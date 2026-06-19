@@ -146,21 +146,34 @@ axiosInstance.interceptors.response.use(
       payload ?? err,
     );
 
-    // 401 → try refresh once (skip if MISSING_TOKEN — no point refreshing without a token)
-    if (status === 401 && !err.config._retried) {
+    // 401 → CHỈ TOKEN_EXPIRED mới thử refresh (token còn hợp lệ nhưng hết hạn).
+    // MISSING_TOKEN (không có token), INVALID_SIGNATURE / INVALID_TOKEN (token hỏng/giả mạo)
+    // → refresh vô nghĩa → logout ngay. Đồng bộ với web (shared/lib/axios.ts).
+    if (status === 401) {
       const errorCode = payload?.data?.errorCode;
-      if (errorCode === 'MISSING_TOKEN') {
+      const retryCount: number = err.config._retryCount ?? 0;
+
+      const logoutAndReject = async () => {
         await clearTokens();
         useSessionStore.getState().clearSession();
         router.replace('/(auth)/login');
         return Promise.reject(new HttpError(status, makeFallbackPayload(status, payload?.message)));
+      };
+
+      // errorCode khác TOKEN_EXPIRED, hoặc đã retry 1 lần vẫn fail → logout.
+      if (errorCode !== 'TOKEN_EXPIRED' || retryCount >= 1) {
+        return logoutAndReject();
       }
-      err.config._retried = true;
+
+      err.config._retryCount = retryCount + 1;
       const newToken = await tryRefresh();
+      // tryRefresh OK → đã saveTokens (secure-store) với token mới → đệ quy gọi lại request.
       if (newToken) {
         err.config.headers.Authorization = `Bearer ${newToken}`;
         return axiosInstance(err.config);
       }
+      // tryRefresh trả null → bên trong đã logout rồi, chỉ cần reject.
+      return Promise.reject(new HttpError(status, makeFallbackPayload(status, payload?.message)));
     }
 
     // Wrap BE error into HttpError / EntityError so screens can catch them

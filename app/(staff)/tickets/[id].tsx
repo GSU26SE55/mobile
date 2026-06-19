@@ -40,8 +40,9 @@ import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/us
 import { AttachmentForm } from '../../../src/features/tickets/schemas/comment.schema';
 import { MaintenanceLogPayload } from '../../../src/features/staff/types/staff.types';
 import { EscalationReasonEnum, PauseReasonEnum, TicketStatusEnum, TicketCommentDTO } from '../../../src/features/tickets/types/ticket.types';
-import { BASE_URL } from '../../../src/lib/axios';
-import { ENDPOINTS } from '../../../src/lib/endpoints';
+import { AttachmentPicker, UploadedAttachment } from '../../../src/features/file-storage/components/AttachmentPicker';
+import { AttachmentThumbnails } from '../../../src/features/file-storage/components/AttachmentThumbnails';
+import { FilePurposeEnum } from '../../../src/features/file-storage/enums/file-storage.enum';
 import { useSessionStore } from '../../../src/stores/sessionStore';
 
 type TabKey = 'comments' | 'activities' | 'logs';
@@ -109,25 +110,8 @@ function ChatBubble({
       )}
       <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleOther]}>
         {!isMe && <Text style={styles.bubbleName}>{displayName}</Text>}
-        {!!comment.body && (
-          <Text style={[styles.bubbleText, isMe && styles.bubbleTextMe]}>{comment.body}</Text>
-        )}
-        {fileIds.length > 0 && (
-          <View style={styles.bubbleImages}>
-            {fileIds.map((fid, i) => {
-              const uri = `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(fid)}`;
-              return (
-                <Pressable key={fid ?? `img-${i}`} onPress={() => onImagePress?.(uri)}>
-                  <Image
-                    source={{ uri, headers: imageHeaders }}
-                    style={styles.bubbleImage}
-                    resizeMode="cover"
-                  />
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
+        <Text style={[styles.bubbleText, isMe && styles.bubbleTextMe]}>{comment.body}</Text>
+        <AttachmentThumbnails fileIds={comment.attachmentFileIds} size={64} />
         <Text style={[styles.bubbleTime, isMe && styles.bubbleTimeMe]}>
           {new Date(comment.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
         </Text>
@@ -157,6 +141,8 @@ export default function StaffTicketDetailScreen() {
   const [attachments, setAttachments] = useState<AttachmentForm[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [isInternalComment, setIsInternalComment] = useState(false);
+  const [commentAttachments, setCommentAttachments] = useState<UploadedAttachment[]>([]);
+  const [uploadingComment, setUploadingComment] = useState(false);
   const [showHold, setShowHold] = useState(false);
   const [showResolve, setShowResolve] = useState(false);
   const [showEscalate, setShowEscalate] = useState(false);
@@ -201,8 +187,17 @@ export default function StaffTicketDetailScreen() {
     const trimmed = commentText.trim();
     if (!trimmed && attachments.length === 0) return;
     addComment(
-      { body: trimmed, isInternal: isInternalComment, attachments: attachments.length > 0 ? attachments : undefined },
-      { onSuccess: () => { setCommentText(''); setAttachments([]); } },
+      {
+        body: trimmed,
+        isInternal: isInternalComment,
+        attachments: commentAttachments.length > 0 ? commentAttachments : undefined,
+      },
+      {
+        onSuccess: () => {
+          setCommentText('');
+          setCommentAttachments([]);
+        },
+      },
     );
   };
 
@@ -278,6 +273,14 @@ export default function StaffTicketDetailScreen() {
           <View style={[styles.card, Shadow]}>
             <Text style={styles.sectionLabel}>Mô tả</Text>
             <Text style={styles.descText}>{ticket.description}</Text>
+          </View>
+        )}
+
+        {/* Ảnh khách đính kèm khi tạo ticket */}
+        {(ticket.attachmentFileIds?.length ?? 0) > 0 && (
+          <View style={[styles.card, Shadow]}>
+            <Text style={styles.sectionLabel}>Ảnh đính kèm</Text>
+            <AttachmentThumbnails fileIds={ticket.attachmentFileIds} size={72} />
           </View>
         )}
 
@@ -372,6 +375,18 @@ export default function StaffTicketDetailScreen() {
                   {!!log.diagnosisDetails && <Text style={styles.logMeta}>Chẩn đoán: {log.diagnosisDetails}</Text>}
                   {!!log.resolutionNote && <Text style={styles.logMeta}>Kết quả: {log.resolutionNote}</Text>}
                   {log.durationMinutes > 0 && <Text style={styles.logMeta}>Thời gian: {log.durationMinutes} phút</Text>}
+                  {(log.beforePhotosFileIds?.length ?? 0) > 0 && (
+                    <>
+                      <Text style={styles.logMeta}>Ảnh trước:</Text>
+                      <AttachmentThumbnails fileIds={log.beforePhotosFileIds} size={64} />
+                    </>
+                  )}
+                  {(log.afterPhotosFileIds?.length ?? 0) > 0 && (
+                    <>
+                      <Text style={styles.logMeta}>Ảnh sau:</Text>
+                      <AttachmentThumbnails fileIds={log.afterPhotosFileIds} size={64} />
+                    </>
+                  )}
                   <Text style={styles.logTime}>{new Date(log.createdAt).toLocaleString('vi-VN')}</Text>
                 </View>
               ))
@@ -384,26 +399,14 @@ export default function StaffTicketDetailScreen() {
 
       {/* Comment Composer — only for comments tab */}
       {activeTab === 'comments' && (
-        <View style={styles.composerWrap}>
-          {attachments.length > 0 && (
-            <View style={styles.attachmentList}>
-              {attachments.map((a, i) => (
-                <View key={a.fileId ?? `a-${i}`} style={styles.attachmentChip}>
-                  <Ionicons name="image-outline" size={14} color={Colors.primary} />
-                  <Text style={styles.attachmentName} numberOfLines={1}>{a.fileName}</Text>
-                  <Pressable onPress={() => handleRemoveAttachment(a.fileId)} hitSlop={10}>
-                    <Ionicons name="close-circle" size={16} color={Colors.textMute} />
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-          )}
-          <View style={[styles.composer, { paddingBottom: insets.bottom + 8 }]}>
-            <Pressable style={styles.composerIcon} onPress={handlePickImage} disabled={isUploading}>
-              {isUploading
-                ? <ActivityIndicator size="small" color={Colors.textMute} />
-                : <Ionicons name="camera-outline" size={22} color={Colors.textMute} />}
-            </Pressable>
+        <View style={[styles.composer, { paddingBottom: insets.bottom + 8 }]}>
+          <AttachmentPicker
+            purpose={FilePurposeEnum.TicketAttachment}
+            value={commentAttachments}
+            onChange={setCommentAttachments}
+            onUploadingChange={setUploadingComment}
+          />
+          <View style={styles.composerRow}>
             <Pressable
               style={[styles.internalToggle, isInternalComment && styles.internalToggleOn]}
               onPress={() => setIsInternalComment((v) => !v)}
@@ -423,9 +426,9 @@ export default function StaffTicketDetailScreen() {
               multiline
             />
             <Pressable
-              style={[styles.sendBtn, ((!commentText.trim() && attachments.length === 0) || isSending) && styles.sendBtnDisabled]}
+              style={[styles.sendBtn, (!commentText.trim() || isSending || uploadingComment) && styles.sendBtnDisabled]}
               onPress={handleSendComment}
-              disabled={(!commentText.trim() && attachments.length === 0) || isSending}
+              disabled={!commentText.trim() || isSending || uploadingComment}
             >
               {isSending ? (
                 <ActivityIndicator size="small" color="#FFF" />
@@ -562,10 +565,12 @@ const styles = StyleSheet.create({
   },
   attachmentName: { flex: 1, fontSize: 12, color: Colors.text, fontWeight: '500' },
   composer: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+    gap: 8,
     paddingHorizontal: 16, paddingTop: 10,
   },
-  composerIcon: { padding: 6, paddingBottom: 8 },
+  composerRow: {
+    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+  },
   composerInput: {
     flex: 1, minHeight: 40, maxHeight: 100,
     backgroundColor: Colors.card2, borderRadius: 20,
