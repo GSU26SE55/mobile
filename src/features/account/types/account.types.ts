@@ -70,3 +70,94 @@ export interface RevokeAllPayload {
   exceptCurrent: boolean;
   currentRefreshToken?: string;
 }
+
+// ── #AUTH-48: Trusted Devices ──
+// GET /api/accounts/me/trusted-devices
+export interface TrustedDeviceDto {
+  id: string;
+  label: string;
+  ipPrefix: string;
+  userAgentSnapshot: string | null;
+  trustedAt: string;
+  expiresAt: string;
+  lastUsedAt: string | null;
+  usageCount: number;
+  isCurrentDevice: boolean;
+}
+
+// ── #AUTH-62: GDPR data export (GET /api/accounts/me/export) ──
+// Lưu ý: mọi field enum BE serialize thành STRING ("Active", "LoginSuccess", "Tier2") — type là string.
+export interface AccountExportSnapshot {
+  id: string;
+  email: string;
+  phoneNumber: string | null;
+  fullName: string;
+  avatarUrl: string | null;
+  dateOfBirth: string | null;
+  address: string | null;
+  emailConfirmed: boolean;
+  phoneConfirmed: boolean;
+  twoFactorEnabled: boolean;
+  status: string;
+  googleId: string | null;
+  provider: string | null;
+  lastLoginAt: string | null;
+  lastLoginIp: string | null;
+  role: string;
+  createdAt: string;
+}
+
+export interface AccountProfileExportSnapshot {
+  externalAvatarUrl: string | null;
+  avatarSource: string | null;
+  address: string | null;
+  birthDate: string | null;
+  timeZone: string | null;
+}
+
+export interface StaffProfileExportSnapshot {
+  employeeCode: string | null;
+  department: string | null;
+  skillTier: string | null;
+  notes: string | null;
+}
+
+export interface SessionExportSnapshot {
+  id: string;
+  issuedAt: string;
+  expiredAt: string;
+  status: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  deviceId: string | null;
+  revokedAt: string | null;
+  revokedReason: string | null;
+}
+
+export interface AuditLogExportSnapshot {
+  id: string;
+  action: string;
+  occurredAt: string;
+  isSuccess: boolean;
+  ipAddress: string | null;
+  userAgent: string | null;
+  reason: string | null;
+}
+
+export interface BackupCodeExportSnapshot {
+  id: string;
+  createdAt: string;
+  redeemedAt: string | null;
+}
+
+export interface AccountDataExportDto {
+  account: AccountExportSnapshot;
+  profile: AccountProfileExportSnapshot | null;
+  staffProfile: StaffProfileExportSnapshot | null;
+  sessions: SessionExportSnapshot[];
+  auditLogs: AuditLogExportSnapshot[];
+  backupCodes: BackupCodeExportSnapshot[];
+  exportedAt: string;
+  format: string;
+  version: string;
+}

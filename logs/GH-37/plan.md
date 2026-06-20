@@ -1,7 +1,7 @@
 # Plan — GH-37: [Mobile] Auth self-service endpoints (Trusted Devices, SMS 2FA, Reactivate, GDPR export)
 
 ## Metadata
-- **Status:** PLANNING | **Role:** Mobile (FE rules) | **Ngày:** 2026-06-20
+- **Status:** REVIEWING | **Role:** Mobile (FE rules) | **Ngày:** 2026-06-20
 - **Issue:** #37 — https://github.com/GSU26SE55/mobile/issues/37
 - **Sprint:** Sprint 3 (current, due 2026-06-27)
 - **Dev:** Trần Minh Trí (SE183109)
@@ -131,12 +131,12 @@ npx expo install expo-crypto expo-file-system expo-sharing
 - [ ] `npx tsc --noEmit` PASS (không lỗi type).
 
 ## Steps
-- [ ] Bước 1 — Types + Schema: mở rộng `account.types.ts` (TrustedDeviceDto, AccountDataExportDto), `auth.types.ts` (verify-2fa fields, Sms2fa, Reactivate*); `reactivate.schema.ts`.
-- [ ] Bước 2 — Infra: cài 3 package; `deviceId.ts`; axios attach `X-Device-Id` + mở rộng `PUBLIC_ENDPOINTS`; `endpoints.ts`; `queryKeys.ts`.
-- [ ] Bước 3 — Services: `trustedDevice.service.ts`; `auth.service.ts` (send2faSms + X-Challenge-Token, reactivate*); `account.service.ts` (exportMyData).
-- [ ] Bước 4 — Hooks: `useTrustedDevices`, `useSend2faSms`, `useReactivateRequest`, `useReactivateVerify`, `useExportMyData`.
-- [ ] Bước 5 — Screens/Components: `TrustedDeviceCard` + `trusted-devices.tsx` + settings item; `login-2fa.tsx` (SMS + trust checkbox); `reactivate.tsx` + login link; `danger-zone.tsx` (export button).
-- [ ] Bước 6 — Quality gate: `npx tsc --noEmit` → PASS; smoke test flow trên Expo (đặc biệt regression 2FA login + trust device end-to-end).
+- [x] Bước 1 — Types + Schema: mở rộng `account.types.ts` (TrustedDeviceDto, AccountDataExportDto), `auth.types.ts` (verify-2fa fields, Sms2fa, Reactivate*); `reactivate.schema.ts`. — 2026-06-20
+- [x] Bước 2 — Infra: cài 3 package; `deviceId.ts`; axios attach `X-Device-Id` + UA + mở rộng `PUBLIC_ENDPOINTS` (gồm bug-fix LOGIN_VERIFY_2FA); `endpoints.ts`; `queryKeys.ts`. — 2026-06-20
+- [x] Bước 3 — Services: `trustedDevice.service.ts`; `auth.service.ts` (send2faSms + X-Challenge-Token, reactivate*); `account.service.ts` (exportMyData). — 2026-06-20
+- [x] Bước 4 — Hooks: `useTrustedDevices`, `useSend2faSms`, `useReactivateRequest`, `useReactivateVerify`, `useExportMyData`. — 2026-06-20
+- [x] Bước 5 — Screens/Components: `TrustedDeviceCard` + `trusted-devices.tsx` + settings item + _layout; `login-2fa.tsx` (3-mode SMS + trust checkbox); `reactivate.tsx` + login link + _layout; `danger-zone.tsx` (export button). — 2026-06-20
+- [x] Bước 6 — Quality gate: `npx tsc --noEmit` → **PASS (0 errors)**; eslint changed files 0 errors (1 warning pre-existing `account.types.ts:3` import/first, không thuộc code mới). Smoke test trên Expo (regression 2FA + trust e2e) → chạy ở `/kltn-test 37`. — 2026-06-20
 
 > **🔶 Ship hygiene (bài học GH-88):** working tree đang lẫn file ngoài scope (`docs/api-notification.md`, `docs/api-sms.md`, `docs/api-*.md` modified — 1 file đang mở trong IDE). Khi `/kltn-ship`: **stage thủ công từng file của GH-37**, TUYỆT ĐỐI không `git add -A`/`git add .`. Branch `feat/GH-37-auth-self-service` chỉ chứa file thuộc 4 feature + infra.
 

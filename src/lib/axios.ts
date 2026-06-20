@@ -1,6 +1,8 @@
 import axios, { create as axiosCreate } from 'axios';
 import { router } from 'expo-router';
+import { Platform } from 'react-native';
 import { useSessionStore } from '../stores/sessionStore';
+import { getDeviceId } from './deviceId';
 import { ENDPOINTS } from './endpoints';
 import { EntityError, HttpError } from './errors';
 import {
@@ -16,7 +18,12 @@ export const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:500
 export const axiosInstance = axiosCreate({
   baseURL: BASE_URL,
   timeout: 15_000,
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+    // #AUTH-48: UA ổn định per-install (KHÔNG kèm app version) cho fingerprint trust device.
+    // Best-effort: RN Android (OkHttp) có thể ghi đè — fingerprint vẫn deterministic nhờ UA mặc định ổn định.
+    'User-Agent': `SolarBatteryMobile (${Platform.OS})`,
+  },
 });
 
 let isRefreshing = false;
@@ -69,6 +76,10 @@ const tryRefresh = async (): Promise<string | null> => {
 
 const PUBLIC_ENDPOINTS = new Set([
   ENDPOINTS.AUTH.LOGIN,
+  ENDPOINTS.AUTH.LOGIN_VERIFY_2FA, // GH-295 bug-fix: không có token ở bước này → tránh tryRefresh→logout
+  ENDPOINTS.AUTH.LOGIN_2FA_SMS,    // #AUTH-58 — gọi khi đang mid-login (chưa auth)
+  ENDPOINTS.AUTH.REACTIVATE_REQUEST, // #AUTH-50 — public
+  ENDPOINTS.AUTH.REACTIVATE_VERIFY,  // #AUTH-50 — public
   ENDPOINTS.AUTH.REGISTER,
   ENDPOINTS.AUTH.VERIFY_OTP,
   ENDPOINTS.AUTH.RESEND_OTP,
@@ -82,6 +93,9 @@ const PUBLIC_ENDPOINTS = new Set([
 axiosInstance.interceptors.request.use(async (config) => {
   const url = config.url ?? '';
   console.log(`[API] → ${config.method?.toUpperCase()} ${url}`);
+
+  // #AUTH-48: attach X-Device-Id cho MỌI request (kể cả public verify-2fa) — cần cho fingerprint trust device.
+  config.headers['X-Device-Id'] = await getDeviceId();
 
   if ([...PUBLIC_ENDPOINTS].some((ep) => url.endsWith(ep))) return config;
 

@@ -2,6 +2,7 @@ export const KEY = {
   auth:          ['auth'] as const,
   profile:       ['profile'] as const,
   sessions:      ['sessions'] as const,
+  trustedDevices:['trustedDevices'] as const,
   batteryAssets: ['batteryAssets'] as const,
   sensorReadings:['sensorReadings'] as const,
   alerts:        ['alerts'] as const,
@@ -19,6 +20,9 @@ export const QUERY_KEY = {
   },
   sessions: {
     list: (activeOnly?: boolean) => [...KEY.sessions, 'list', activeOnly] as const,
+  },
+  trustedDevices: {
+    list: () => [...KEY.trustedDevices, 'list'] as const,
   },
   batteryAssets: {
     me:       (params?: Record<string, unknown>) => [...KEY.batteryAssets, 'me', params] as const,
