@@ -8,6 +8,7 @@ const ITEMS = [
   { label: 'Xác thực số điện thoại', route: '/(customer)/settings/phone-verify' as const },
   { label: 'Xác thực 2 yếu tố (2FA)', route: '/(customer)/settings/two-fa' as const },
   { label: 'Phiên đăng nhập', route: '/(customer)/settings/sessions' as const },
+  { label: 'Thiết bị tin cậy', route: '/(customer)/settings/trusted-devices' as const },
   { label: 'Vùng nguy hiểm', route: '/(customer)/settings/danger-zone' as const },
 ];
 

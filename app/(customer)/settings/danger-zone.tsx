@@ -1,7 +1,8 @@
 import React from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useDeactivateAccount } from '../../../src/features/account/hooks/useDeactivateAccount';
 import { useDeleteAccount } from '../../../src/features/account/hooks/useDeleteAccount';
+import { useExportMyData } from '../../../src/features/account/hooks/useExportMyData';
 import { handleErrorApi } from '../../../src/lib/errors';
 import { Colors } from '../../../src/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +10,14 @@ import { Ionicons } from '@expo/vector-icons';
 export default function DangerZoneScreen() {
   const deactivate = useDeactivateAccount();
   const deleteAccount = useDeleteAccount();
+  const exportData = useExportMyData();
+
+  const handleExport = () => {
+    // non-form → onError trực tiếp. Share sheet tự mở khi success.
+    exportData.mutate(undefined, {
+      onError: (error) => handleErrorApi({ error }),
+    });
+  };
 
   const handleDeactivate = () => {
     Alert.alert(
@@ -72,6 +81,22 @@ export default function DangerZoneScreen() {
           Các hành động dưới đây có tính chất nhạy cảm và ảnh hưởng trực tiếp đến tài khoản. Hãy cân nhắc thật kỹ.
         </Text>
       </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Dữ liệu cá nhân (GDPR)</Text>
+        <Text style={styles.sectionDesc}>
+          Tải về toàn bộ dữ liệu cá nhân của bạn dưới dạng tệp JSON (hồ sơ, phiên đăng nhập, nhật ký hoạt động).
+        </Text>
+        <Pressable style={styles.exportBtn} onPress={handleExport} disabled={exportData.isPending}>
+          {exportData.isPending ? (
+            <ActivityIndicator color={Colors.primary} />
+          ) : (
+            <Text style={styles.exportBtnText}>Tải dữ liệu của tôi</Text>
+          )}
+        </Pressable>
+      </View>
+
+      <View style={styles.divider} />
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Vô hiệu hóa tài khoản</Text>
@@ -141,5 +166,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   deleteBtnText:     { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  exportBtn:         {
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  exportBtnText:     { color: Colors.primary, fontSize: 14, fontWeight: '700' },
   divider:           { height: 1, backgroundColor: Colors.border, marginVertical: 10 },
 });

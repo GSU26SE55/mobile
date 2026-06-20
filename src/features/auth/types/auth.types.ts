@@ -58,6 +58,26 @@ export interface Verify2faLoginPayload {
   challengeToken: string;
   code: string;
   isBackupCode: boolean;
+  // #AUTH-58: true ⇒ code là SMS OTP (mutex với isBackupCode — không gửi cả 2 = true).
+  isSmsCode?: boolean;
+  // #AUTH-48: trust device 30 ngày — chỉ hiệu lực khi isBackupCode=false.
+  trustDevice?: boolean;
+  trustDeviceLabel?: string;
+}
+
+// #AUTH-58: gửi OTP qua SMS (POST /api/auth/login/2fa/sms) — header X-Challenge-Token kèm theo.
+export interface Sms2faPayload {
+  challengeToken: string;
+}
+
+// #AUTH-50: khôi phục account đã soft-delete trong 90 ngày.
+export interface ReactivateRequestPayload {
+  email: string;
+}
+
+export interface ReactivateVerifyPayload {
+  email: string;
+  otp: string;
 }
 
 // Key SecureStore giữ challengeToken giữa login → màn hình verify-2fa (TTL 5 phút server-side)

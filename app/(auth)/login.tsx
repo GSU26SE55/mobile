@@ -39,6 +39,10 @@ export default function LoginScreen() {
           <Text style={styles.registerText}>Chưa có tài khoản? </Text>
           <Link href="/(auth)/register" style={styles.link}>Đăng ký ngay</Link>
         </View>
+
+        <Link href="/(auth)/reactivate" style={styles.reactivateLink}>
+          Khôi phục tài khoản đã xóa
+        </Link>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -67,4 +71,5 @@ const styles = StyleSheet.create({
   registerRow:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: Spacing.xl },
   registerText: { color: Colors.textSecondary, fontSize: 14 },
   link:         { color: Colors.primary, fontSize: 14, fontWeight: '600' },
+  reactivateLink: { color: Colors.textMute, fontSize: 13, textAlign: 'center', marginTop: Spacing.lg, fontWeight: '500' },
 });

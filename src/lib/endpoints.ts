@@ -2,6 +2,9 @@ export const ENDPOINTS = {
   AUTH: {
     LOGIN:             '/api/auth/login',
     LOGIN_VERIFY_2FA:  '/api/auth/login/verify-2fa', // GH-295 — bước 2 của 2FA login
+    LOGIN_2FA_SMS:     '/api/auth/login/2fa/sms',    // #AUTH-58 — gửi OTP qua SMS (fallback)
+    REACTIVATE_REQUEST:'/api/auth/reactivate-request', // #AUTH-50 — bước 1 khôi phục account
+    REACTIVATE_VERIFY: '/api/auth/reactivate-verify',  // #AUTH-50 — bước 2 khôi phục account
     REGISTER:          '/api/auth/register',
     VERIFY_OTP:        '/api/auth/verify-otp',
     RESEND_OTP:        '/api/auth/resend-otp',
@@ -32,6 +35,10 @@ export const ENDPOINTS = {
     UNLINK_GOOGLE:        '/api/accounts/me/unlink-google',
     DEACTIVATE:           '/api/accounts/me/deactivate',
     DELETE:               '/api/accounts/me',
+    // #AUTH-48 — trusted devices (GET list + DELETE all dùng chung path; DELETE 1 dùng TRUSTED_DEVICE)
+    TRUSTED_DEVICES:      '/api/accounts/me/trusted-devices',
+    TRUSTED_DEVICE:       (id: string) => `/api/accounts/me/trusted-devices/${id}`,
+    EXPORT:               '/api/accounts/me/export', // #AUTH-62 — GDPR data export
   },
   SESSIONS: {
     ME:         '/api/sessions/me',

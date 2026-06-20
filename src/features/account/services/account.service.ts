@@ -2,6 +2,7 @@ import { axiosInstance } from '../../../lib/axios';
 import { ENDPOINTS } from '../../../lib/endpoints';
 import { CommonResponse } from '../../../types/api.types';
 import {
+  AccountDataExportDto,
   ChangeEmailPayload,
   ChangePasswordPayload,
   ConfirmEmailChangePayload,
@@ -50,4 +51,8 @@ export const accountService = {
 
   deleteAccount: () =>
     axiosInstance.delete<CommonResponse<null>>(ACCOUNT.DELETE),
+
+  // #AUTH-62: GDPR export — trả full data; hook đọc res.data.data (axios không unwrap).
+  exportMyData: () =>
+    axiosInstance.get<CommonResponse<AccountDataExportDto>>(ACCOUNT.EXPORT),
 };
