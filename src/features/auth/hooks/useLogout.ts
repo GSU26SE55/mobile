@@ -3,12 +3,16 @@ import { router } from 'expo-router';
 import { authService } from '../services/auth.service';
 import { clearTokens, getRefreshToken } from '../../../lib/secureStore';
 import { useSessionStore } from '../../../stores/sessionStore';
+import { syncDeviceTokenOnLogout } from '../../notifications/services/device-token.service';
 
 export function useLogout() {
   const clearSession = useSessionStore((s) => s.clearSession);
 
   return useMutation({
     mutationFn: async () => {
+      // Hủy đăng ký push token trước khi clear token (cần access token còn hợp lệ).
+      await syncDeviceTokenOnLogout();
+
       const refreshToken = await getRefreshToken();
       if (refreshToken) {
         try {
