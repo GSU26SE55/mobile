@@ -8,10 +8,4 @@ const { NOTIFICATIONS } = ENDPOINTS;
 export const notificationService = {
   getList: (params?: NotificationListParams) =>
     axiosInstance.get<CommonResponse<PaginationResponse<NotificationDTO>>>(NOTIFICATIONS.LIST, { params }),
-
-  markRead: (id: string) =>
-    axiosInstance.patch<CommonResponse<null>>(NOTIFICATIONS.READ(id)),
-
-  markAllRead: () =>
-    axiosInstance.patch<CommonResponse<null>>(NOTIFICATIONS.READ_ALL),
 };

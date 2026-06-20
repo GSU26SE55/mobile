@@ -1,21 +1,39 @@
-export { NotificationTypeEnum } from '../enums/notification.enum';
+import {
+  NotificationChannelEnum,
+  NotificationStatusEnum,
+  NotificationTypeEnum,
+} from '../enums/notification.enum';
 
-import type { NotificationTypeEnum } from '../enums/notification.enum';
+export {
+  NotificationChannelEnum,
+  NotificationStatusEnum,
+  NotificationTypeEnum,
+} from '../enums/notification.enum';
 
 export interface NotificationDTO {
   id: string;
   userId: string;
   type: NotificationTypeEnum;
+  channel: NotificationChannelEnum;
+  status: NotificationStatusEnum;
   title: string;
   body: string;
-  referenceId: string | null;
-  referenceType: string | null;
-  isRead: boolean;
+  payloadJson: string | null;
+  entityType: string | null;
+  entityId: string | null;
+  sentAt: string | null;
+  readAt: string | null;
   createdAt: string;
 }
 
+/** Unread = chưa ở trạng thái Read (BE không trả field `isRead`). */
+export const isUnread = (n: NotificationDTO): boolean => n.status !== NotificationStatusEnum.Read;
+
 export interface NotificationListParams {
-  IsRead?: boolean;
-  PageNumber?: number;
-  PageSize?: number;
+  pageNumber?: number;
+  pageSize?: number;
+  type?: NotificationTypeEnum;
+  channel?: NotificationChannelEnum;
+  status?: NotificationStatusEnum;
+  unreadOnly?: boolean;
 }

@@ -81,9 +81,10 @@ export const ENDPOINTS = {
     MAINTENANCE_LOG:  (id: string) => `/api/tickets/${id}/maintenance-logs`,
   },
   NOTIFICATIONS: {
-    LIST:     '/api/notifications',
-    READ:     (id: string) => `/api/notifications/${id}/read`,
-    READ_ALL: '/api/notifications/read-all',
+    LIST: '/api/notifications',
+  },
+  DEVICE_TOKENS: {
+    BASE: '/api/device-tokens',
   },
   KNOWLEDGE_BASE: {
     LIST:    '/api/knowledge-base',

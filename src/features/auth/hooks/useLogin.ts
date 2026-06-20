@@ -6,6 +6,7 @@ import { saveTokens, clearTokens, setToken } from '../../../lib/secureStore';
 import { decodeToken, redirectByRole } from '../../../types/session.types';
 import { useSessionStore } from '../../../stores/sessionStore';
 import { LoginPayload, CHALLENGE_TOKEN_KEY } from '../types/auth.types';
+import { syncDeviceTokenOnLogin } from '../../notifications/services/device-token.service';
 
 export function useLogin() {
   const setSession = useSessionStore((s) => s.setSession);
@@ -43,6 +44,9 @@ export function useLogin() {
 
       setSession(user);
       router.replace(dest as never);
+
+      // Đăng ký push token (best-effort, không chặn luồng login).
+      void syncDeviceTokenOnLogin();
     },
     // Không xử lý onError — error propagate lên caller (LoginForm try-catch)
   });
