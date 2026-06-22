@@ -9,8 +9,18 @@ import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyB
 import { TicketCategoryEnum } from '../../../src/features/tickets/types/ticket.types';
 import type { UploadedTicketAttachment } from '../../../src/features/tickets/types/ticket.types';
 import { Colors } from '../../../src/lib/theme';
+import { P } from '../../../src/lib/authz';
+import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
 
 export default function CreateTicketScreen() {
+  return (
+    <PermissionGuard permission={P.TICKET_CREATE}>
+      <CreateTicketScreenInner />
+    </PermissionGuard>
+  );
+}
+
+function CreateTicketScreenInner() {
   const insets = useSafeAreaInsets();
   const { mutateAsync, isPending } = useCreateTicket();
   const { data: batteries = [] } = useMyBatteryAssets();

@@ -48,6 +48,8 @@ import { AttachmentPicker, UploadedAttachment } from '../../../src/features/file
 import { AttachmentThumbnails } from '../../../src/features/file-storage/components/AttachmentThumbnails';
 import { FilePurposeEnum } from '../../../src/features/file-storage/enums/file-storage.enum';
 import { useSessionStore } from '../../../src/stores/sessionStore';
+import { checkPermission, P } from '../../../src/lib/authz';
+import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
 import { useTicketKbRefs } from '../../../src/features/kb/hooks/useTicketKbRefs';
 import { useRemoveKbRef } from '../../../src/features/kb/hooks/useRemoveKbRef';
 import { KbReferencePicker } from '../../../src/features/staff/components/KbReferencePicker';
@@ -129,10 +131,20 @@ function ChatBubble({
 }
 
 export default function StaffTicketDetailScreen() {
+  return (
+    <PermissionGuard permission={P.TICKET_VIEW}>
+      <StaffTicketDetailScreenInner />
+    </PermissionGuard>
+  );
+}
+
+function StaffTicketDetailScreenInner() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const ticketId = id ?? '';
   const accountId = useSessionStore((s) => s.user?.accountId);
+  const user = useSessionStore((s) => s.user);
+  const canResolve = checkPermission(user, P.TICKET_RESOLVE); // GH-47
   const { data: ticket, isLoading, isError, refetch } = useStaffTicketDetail(ticketId);
   const imageHeaders = useAuthImageHeaders();
   const { mutate: startTicket, isPending: isStarting } = useStartTicket(ticketId);
@@ -349,6 +361,7 @@ export default function StaffTicketDetailScreen() {
           onResolve={() => setShowResolve(true)}
           onEscalate={() => setShowEscalate(true)}
           isLoading={isActioning}
+          canResolve={canResolve}
         />
 
         {/* Maintenance log button */}
