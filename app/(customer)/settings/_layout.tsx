@@ -15,6 +15,7 @@ export default function SettingsLayout() {
       <Stack.Screen name="two-fa" options={{ title: 'Xác thực 2 yếu tố' }} />
       <Stack.Screen name="sessions" options={{ title: 'Phiên đăng nhập' }} />
       <Stack.Screen name="trusted-devices" options={{ title: 'Thiết bị tin cậy' }} />
+      <Stack.Screen name="notifications" options={{ title: 'Cài đặt thông báo' }} />
       <Stack.Screen name="danger-zone" options={{ title: 'Vùng nguy hiểm' }} />
     </Stack>
   );

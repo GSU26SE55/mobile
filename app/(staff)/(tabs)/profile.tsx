@@ -127,6 +127,15 @@ export default function StaffProfileScreen() {
         </View>
       )}
 
+      <Pressable
+        style={[styles.settingsBtn, Shadow]}
+        onPress={() => router.push('/(staff)/notification-preferences')}
+      >
+        <Ionicons name="notifications-outline" size={18} color={Colors.text} />
+        <Text style={styles.settingsText}>Cài đặt thông báo</Text>
+        <Ionicons name="chevron-forward" size={18} color={Colors.textMute} />
+      </Pressable>
+
       <Pressable style={styles.logoutBtn} onPress={handleLogout}>
         <Ionicons name="log-out-outline" size={18} color={Colors.danger} />
         <Text style={styles.logoutText}>Đăng xuất</Text>
@@ -194,6 +203,12 @@ const styles = StyleSheet.create({
   },
   skillText: { fontSize: 12, fontWeight: '700', color: Colors.primaryDark },
 
+  settingsBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 14, paddingHorizontal: 16, borderRadius: 14,
+    backgroundColor: Colors.card,
+  },
+  settingsText: { flex: 1, fontSize: 15, fontWeight: '600', color: Colors.text },
   logoutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     paddingVertical: 14, borderRadius: 14,
