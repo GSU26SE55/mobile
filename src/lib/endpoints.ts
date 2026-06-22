@@ -71,7 +71,8 @@ export const ENDPOINTS = {
     CUSTOMER_LIST:   '/api/customer/tickets/me',
     CUSTOMER_CREATE: '/api/customer/tickets',
     DETAIL:          (id: string) => `/api/tickets/${id}`,
-    COMMENT:         (id: string) => `/api/tickets/${id}/comments`,
+    COMMENT:         (id: string) => `/api/tickets/${id}/comments`,   // GET list (?page&pageSize) + POST
+    ACTIVITIES:      (id: string) => `/api/tickets/${id}/activities`, // GH-44 — timeline
     REOPEN:          (id: string) => `/api/customer/tickets/${id}/reopen`,
     RATE:            (id: string) => `/api/customer/tickets/${id}/rate`,
   },
@@ -86,6 +87,9 @@ export const ENDPOINTS = {
     RESOLVE:          (id: string) => `/api/staff/tickets/${id}/resolve`,
     ESCALATE_REQUEST: (id: string) => `/api/staff/tickets/${id}/escalate-request`,
     MAINTENANCE_LOG:  (id: string) => `/api/tickets/${id}/maintenance-logs`,
+    MY_MAINTENANCE_LOGS: '/api/staff/tickets/maintenance-logs/me', // GH-44 #3
+    MAINTENANCE_LOG_ITEM: (ticketId: string, logId: string) =>
+      `/api/tickets/${ticketId}/maintenance-logs/${logId}`,        // GH-44 #4 — PATCH
   },
   NOTIFICATIONS: {
     LIST: '/api/notifications',
@@ -100,8 +104,10 @@ export const ENDPOINTS = {
     LIST:    '/api/knowledge-base',
     DETAIL:  (id: string) => `/api/knowledge-base/${id}`,
     HELPFUL: (id: string) => `/api/knowledge-base/${id}/helpful`,
+    SUGGEST: '/api/knowledge-base/suggest', // GH-44 #7 — GET ?TicketId=
   },
   KB_REFERENCES: {
-    LIST: '/api/knowledge-base/references', // GET ?ticketId=
+    LIST: '/api/knowledge-base/references',                          // GET ?ticketId= + POST
+    ITEM: (refId: string) => `/api/knowledge-base/references/${refId}`, // GH-44 #6 — DELETE
   },
 } as const;

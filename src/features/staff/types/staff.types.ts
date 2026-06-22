@@ -3,6 +3,7 @@ import type {
   TicketStatusEnum,
   PauseReasonEnum,
   MaintenanceLogTypeEnum,
+  MaintenanceLogDTO,
   CommentAttachmentPayload,
 } from '../../tickets/types/ticket.types';
 import type { StaffSkillTierEnum } from '../enums/staff.enum';
@@ -50,6 +51,29 @@ export interface MaintenanceLogPayload {
   partsUsed?: string;
   beforePhotos?: CommentAttachmentPayload[];
   afterPhotos?: CommentAttachmentPayload[];
+}
+
+// GH-44 #4 — PATCH /tickets/{ticketId}/maintenance-logs/{logId}. Mọi field optional (partial update).
+export interface UpdateMaintenanceLogPayload {
+  logType?: MaintenanceLogTypeEnum;
+  summary?: string;
+  diagnosisDetails?: string;
+  actionsTaken?: string;
+  durationMinutes?: number;
+  resolutionNote?: string;
+  partsUsed?: string;
+  attachments?: CommentAttachmentPayload[];
+  beforePhotos?: CommentAttachmentPayload[];
+  afterPhotos?: CommentAttachmentPayload[];
+  relatedKbArticleIds?: string[];
+}
+
+// GH-44 #3 — GET /staff/tickets/maintenance-logs/me → log gom nhóm theo ticket.
+export interface StaffMaintenanceLogGroupDTO {
+  ticketId: string;
+  ticketCode: string;
+  ticketTitle: string;
+  logs: MaintenanceLogDTO[];
 }
 
 export interface StaffTicketListParams {

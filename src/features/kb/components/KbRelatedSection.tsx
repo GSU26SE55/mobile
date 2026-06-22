@@ -1,45 +1,28 @@
 import { router } from 'expo-router';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Colors } from '../../../lib/theme';
 import type { TicketDetailDTO } from '../../tickets/types/ticket.types';
-import { useRelatedKb } from '../hooks/useRelatedKb';
-import { KbCompactCard } from './KbCompactCard';
+import { useKbSuggest } from '../hooks/useKbSuggest';
+import { KbSuggestCard } from './KbSuggestCard';
 
 interface Props {
   ticket: TicketDetailDTO;
 }
 
+// GH-44 #7 — gợi ý KB server-driven (GET /suggest), thay useRelatedKb client-side cũ.
 export function KbRelatedSection({ ticket }: Props) {
-  const relatedIds = useMemo(() => {
-    const ids = (ticket.maintenanceLogs ?? []).flatMap(
-      (log) => log.relatedKbArticleIds ?? [],
-    );
-    return Array.from(new Set(ids)).filter(Boolean);
-  }, [ticket.maintenanceLogs]);
-
-  const { data, isLoading, source } = useRelatedKb({
-    relatedIds,
-    fallbackCategory: ticket.category ?? null,
-    fallbackLimit: 3,
-  });
+  const { data = [], isLoading } = useKbSuggest(ticket.id);
 
   if (!isLoading && data.length === 0) {
     return null;
   }
 
-  const subtitle =
-    source === 'primary'
-      ? 'Kỹ thuật viên đề xuất'
-      : source === 'fallback'
-      ? 'Gợi ý theo loại lỗi'
-      : '';
-
   return (
     <View style={styles.wrap}>
       <View style={styles.header}>
         <Text style={styles.title}>Bài hướng dẫn liên quan</Text>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        <Text style={styles.subtitle}>Gợi ý theo ticket</Text>
       </View>
 
       {isLoading ? (
@@ -51,7 +34,7 @@ export function KbRelatedSection({ ticket }: Props) {
       ) : (
         <View style={styles.list}>
           {data.map((article) => (
-            <KbCompactCard
+            <KbSuggestCard
               key={article.id}
               article={article}
               onPress={() =>

@@ -1,7 +1,7 @@
 # Plan — GH-44: [Mobile] Bổ sung ticket & KB endpoints còn thiếu + SignalR realtime
 
 ## Metadata
-- **Status:** IN_PROGRESS | **Role:** Mobile (FE) | **Ngày:** 2026-06-22
+- **Status:** REVIEWING | **Role:** Mobile (FE) | **Ngày:** 2026-06-22
 - **Issue:** #44 — https://github.com/GSU26SE55/mobile/issues/44
 - **Sprint:** Sprint 3 (due 2026-06-27)
 - **Dev:** Trần Minh Trí
@@ -142,14 +142,14 @@ fake client-side). Output: data layer đầy đủ (endpoints + service + hook +
 - [ ] `npx tsc --noEmit` PASS, `npx expo lint` không lỗi.
 
 ## Steps
-- [ ] Bước 1: Endpoints + queryKeys + `KbReferenceTypeEnum` enum
-- [ ] Bước 2: Types (comment params, update log payload, suggest DTO, group DTO, add-ref payload)
-- [ ] Bước 3: Services (ticket: comments/activities; staffTicket: /me + PATCH; kb: suggest/add/remove ref)
-- [ ] Bước 4: Hooks REST (useTicketComments, useTicketActivities, useMyMaintenanceLogs, useUpdateMaintenanceLog, useKbSuggest, useAddKbRef, useRemoveKbRef)
-- [ ] Bước 5: SignalR — cài `@microsoft/signalr` + `useTicketCommentsRealtime`
-- [ ] Bước 6: Rewire UI — customer `[id].tsx` (comments/activities/suggest/realtime)
-- [ ] Bước 7: Rewire UI — staff `[id].tsx` (+ edit log, add/remove KB ref) + `KbReferencePicker` + `MaintenanceLogForm` initialValues; xóa `useRelatedKb`
-- [ ] Bước 8: `npx tsc --noEmit` + `npx expo lint` → PASS
+- [x] Bước 1: Endpoints + queryKeys + `KbReferenceTypeEnum` enum — 2026-06-22
+- [x] Bước 2: Types (comment params, update log payload, suggest DTO, group DTO, add-ref payload) — 2026-06-22
+- [x] Bước 3: Services (ticket: comments/activities; staffTicket: /me + PATCH; kb: suggest/add/remove ref) — 2026-06-22
+- [x] Bước 4: Hooks REST (useTicketComments, useTicketActivities, useMyMaintenanceLogs, useUpdateMaintenanceLog, useKbSuggest, useAddKbRef, useRemoveKbRef) — 2026-06-22
+- [x] Bước 5: SignalR — cài `@microsoft/signalr` + `useTicketCommentsRealtime` — 2026-06-22
+- [x] Bước 6: Rewire UI — customer `[id].tsx` (comments/activities/realtime; KB suggest qua KbRelatedSection ở B7) — 2026-06-22
+- [x] Bước 7: Rewire UI — staff `[id].tsx` (+ edit log, add/remove KB ref) + `KbReferencePicker` + `KbSuggestCard` + `MaintenanceLogForm` initialValues; xóa `useRelatedKb`; thêm màn `maintenance-history` (#3) + link từ profile — 2026-06-22
+- [x] Bước 8: `npx tsc --noEmit` (No errors) + `npx expo lint` (0 errors, 49 warnings pre-existing) → PASS — 2026-06-22
 
 ## Câu hỏi đã giải đáp
 - **SignalR gộp hay tách? (task-size — quyết định của Leader):** → **Leader (Trí) CHỐT gộp** tất cả 8 item vào GH-44. Chấp nhận trade-off PR lớn vs DoD `/kltn-reviewcode` PASS. **Mitigation:** commit theo từng Bước (8 commit rạch ròi), reviewer review theo nhóm chức năng (REST data-layer → SignalR → rewire UI). Không phải warning tồn đọng — là quyết định đã chốt.

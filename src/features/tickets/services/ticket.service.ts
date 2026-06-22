@@ -3,10 +3,13 @@ import { ENDPOINTS } from '../../../lib/endpoints';
 import { CommonResponse, PaginationResponse } from '../../../types/api.types';
 import {
   AddCommentPayload,
+  CommentListParams,
   CreateTicketPayload,
   RatePayload,
   ReopenPayload,
   TicketActionResponse,
+  TicketActivityDTO,
+  TicketCommentDTO,
   TicketDetailDTO,
   TicketDTO,
   TicketListParams,
@@ -23,6 +26,15 @@ export const ticketService = {
 
   create: (data: CreateTicketPayload) =>
     axiosInstance.post<TicketActionResponse>(TICKETS.CUSTOMER_CREATE, data),
+
+  getComments: (ticketId: string, params?: CommentListParams) =>
+    axiosInstance.get<CommonResponse<PaginationResponse<TicketCommentDTO>>>(
+      TICKETS.COMMENT(ticketId),
+      { params },
+    ),
+
+  getActivities: (ticketId: string) =>
+    axiosInstance.get<CommonResponse<TicketActivityDTO[]>>(TICKETS.ACTIVITIES(ticketId)),
 
   addComment: (ticketId: string, data: AddCommentPayload) =>
     axiosInstance.post<TicketActionResponse>(TICKETS.COMMENT(ticketId), data),

@@ -1,7 +1,7 @@
 import type { TicketCategoryEnum } from '../../../shared/enums/ticket.enum';
-import type { KbArticleStatusEnum } from '../../../shared/enums/kb.enum';
+import type { KbArticleStatusEnum, KbReferenceTypeEnum } from '../../../shared/enums/kb.enum';
 
-export { KbArticleStatusEnum } from '../../../shared/enums/kb.enum';
+export { KbArticleStatusEnum, KbReferenceTypeEnum } from '../../../shared/enums/kb.enum';
 
 export interface KbArticleSummaryDTO {
   id: string;
@@ -48,6 +48,24 @@ export interface TicketKbReferenceDTO {
   referenceType: string;
   note?: string | null;
   createdAt: string;
+}
+
+// GH-44 #7 — GET /knowledge-base/suggest. Shape KHÁC KbArticleSummaryDTO (có symptoms, không category/status).
+export interface KbArticleSuggestDTO {
+  id: string;
+  code: string;
+  title: string;
+  symptoms: string;
+  helpfulCount: number;
+  viewCount: number;
+}
+
+// GH-44 #5 — POST /knowledge-base/references. referenceType gửi BE dạng chuỗi.
+export interface AddKbReferencePayload {
+  ticketId: string;
+  kbArticleId: string;
+  referenceType: KbReferenceTypeEnum;
+  note?: string;
 }
 
 export interface KbListParams {

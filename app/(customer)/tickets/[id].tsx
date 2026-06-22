@@ -1,5 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -29,6 +29,9 @@ import { useRateTicket } from '../../../src/features/tickets/hooks/useRateTicket
 import { useReopenTicket } from '../../../src/features/tickets/hooks/useReopenTicket';
 import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/useUploadCommentAttachment';
 import { useTicketDetail } from '../../../src/features/tickets/hooks/useTicketDetail';
+import { useTicketComments } from '../../../src/features/tickets/hooks/useTicketComments';
+import { useTicketActivities } from '../../../src/features/tickets/hooks/useTicketActivities';
+import { useTicketCommentsRealtime } from '../../../src/features/tickets/hooks/useTicketCommentsRealtime';
 import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
 import { AttachmentThumbnails } from '../../../src/features/file-storage/components/AttachmentThumbnails';
 import { AttachmentForm, commentSchema } from '../../../src/features/tickets/schemas/comment.schema';
@@ -197,6 +200,11 @@ export default function TicketDetailScreen() {
   const { mutateAsync: reopenTicket,    isPending: isReopening   } = useReopenTicket(id ?? '');
   const { mutateAsync: uploadAttachment, isPending: isUploading  } = useUploadCommentAttachment();
 
+  // GH-44 — comments qua GET phân trang (DESC newest-first) + activities standalone + realtime.
+  const commentsQuery = useTicketComments(id);
+  const activitiesQuery = useTicketActivities(id);
+  const { isConnected, typingUsers, notifyTyping } = useTicketCommentsRealtime(id);
+
   const [commentText,     setCommentText]     = useState('');
   const [commentError,    setCommentError]    = useState('');
   const [attachments,     setAttachments]     = useState<AttachmentForm[]>([]);
@@ -205,12 +213,7 @@ export default function TicketDetailScreen() {
   const [activeTab,       setActiveTab]       = useState<'info' | 'chat'>('info');
   const [viewingImage,    setViewingImage]    = useState<string | null>(null);
   const chatScrollRef = useRef<ScrollView>(null);
-
-  useEffect(() => {
-    if (activeTab === 'chat') {
-      setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 80);
-    }
-  }, [activeTab]);
+  // GH-44: bỏ auto scrollToEnd — comments giờ DESC (newest-first), comment mới hiện ở đầu danh sách.
 
   if (isLoading) {
     return (
@@ -239,7 +242,17 @@ export default function TicketDetailScreen() {
   const isClosed  = ['Closed', 'ClosedRejected'].includes(ticket.status);
   const isWaiting = ticket.status === 'WaitingCustomer';
 
-  const comments = (ticket.comments ?? []).filter((c) => !c.isInternal);
+  // BE đã ẩn comment internal cho Customer; flatten các page (DESC newest-first).
+  // Dedup theo id: offset-pagination + realtime prepend có thể trả trùng 1 comment ở ranh giới trang.
+  const seenCommentIds = new Set<string>();
+  const comments = (commentsQuery.data?.pages ?? [])
+    .flatMap((p) => p?.items ?? [])
+    .filter((c) => {
+      if (c.isInternal || seenCommentIds.has(c.id)) return false;
+      seenCommentIds.add(c.id);
+      return true;
+    });
+  const activities = activitiesQuery.data ?? [];
 
   const battery = batteries.find((b: BatteryAssetDto) => b.id === ticket.batteryAssetId);
 
@@ -288,6 +301,9 @@ export default function TicketDetailScreen() {
       await addComment({ body: result.data.body, attachments: result.data.attachments });
       setCommentText('');
       setAttachments([]);
+      // Realtime là nguồn chính: hub đẩy CommentAdded (cả người gửi) → setQueryData prepend.
+      // Chỉ fallback refetch khi hub không kết nối (WS bị chặn / chưa connect).
+      if (!isConnected) commentsQuery.refetch();
     } catch {
       Alert.alert('Lỗi', 'Không thể gửi bình luận. Vui lòng thử lại.');
     }
@@ -518,11 +534,11 @@ export default function TicketDetailScreen() {
           {/* Related KB articles */}
           <KbRelatedSection ticket={ticket} />
 
-          {/* Historical activities timeline */}
-          {(ticket.activities?.length ?? 0) > 0 && (
+          {/* Historical activities timeline — GH-44: GET /activities standalone */}
+          {activities.length > 0 && (
             <View style={[styles.timelineCard, Shadow]}>
               <Text style={styles.sectionH}>Lịch sử hoạt động</Text>
-              <ActivityTimeline activities={ticket.activities!} />
+              <ActivityTimeline activities={activities} />
             </View>
           )}
         </ScrollView>
@@ -536,10 +552,13 @@ export default function TicketDetailScreen() {
             style={styles.chatScroll}
             contentContainerStyle={styles.chatContent}
             showsVerticalScrollIndicator={false}
-            onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: false })}
             keyboardShouldPersistTaps="handled"
           >
-            {comments.length === 0 ? (
+            {commentsQuery.isLoading ? (
+              <View style={styles.chatEmpty}>
+                <ActivityIndicator color="#FF5E13" />
+              </View>
+            ) : comments.length === 0 ? (
               <View style={styles.chatEmpty}>
                 <Ionicons name="chatbubbles-outline" size={36} color={Colors.textFaint} />
                 <Text style={styles.chatEmptyText}>Chưa có trao đổi nào.</Text>
@@ -554,9 +573,28 @@ export default function TicketDetailScreen() {
                     onImagePress={setViewingImage}
                   />
                 ))}
+                {/* GH-44: DESC newest-first ⇒ comment cũ hơn nằm cuối, tải thêm ở đây */}
+                {commentsQuery.hasNextPage && (
+                  <Pressable
+                    style={styles.loadMoreBtn}
+                    onPress={() => commentsQuery.fetchNextPage()}
+                    disabled={commentsQuery.isFetchingNextPage}
+                  >
+                    {commentsQuery.isFetchingNextPage
+                      ? <ActivityIndicator size="small" color={Colors.textMute} />
+                      : <Text style={styles.loadMoreText}>Tải thêm bình luận cũ hơn</Text>}
+                  </Pressable>
+                )}
               </View>
             )}
           </ScrollView>
+
+          {/* Typing indicator (realtime) */}
+          {typingUsers.length > 0 && (
+            <Text style={styles.typingText}>
+              {typingUsers.map((u) => u.displayName).join(', ')} đang nhập…
+            </Text>
+          )}
 
           {/* Attachment chips */}
           {attachments.length > 0 && (
@@ -589,7 +627,7 @@ export default function TicketDetailScreen() {
             <TextInput
               style={styles.composerInput}
               value={commentText}
-              onChangeText={(t) => { setCommentText(t); setCommentError(''); }}
+              onChangeText={(t) => { setCommentText(t); setCommentError(''); notifyTyping(); }}
               placeholder="Nhập tin nhắn..."
               placeholderTextColor={Colors.textFaint}
               multiline
@@ -908,6 +946,9 @@ const styles = StyleSheet.create({
 
   commentsCard:   { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, gap: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
   chatList:       { gap: 10 },
+  loadMoreBtn:    { alignItems: 'center', paddingVertical: 10 },
+  loadMoreText:   { color: Colors.textMute, fontSize: 13, fontWeight: '600' },
+  typingText:     { color: Colors.textMute, fontSize: 12, fontStyle: 'italic', paddingHorizontal: 18, paddingBottom: 4 },
   emptyText:      { color: Colors.textFaint, fontSize: 13, textAlign: 'center', paddingVertical: 8 },
 
   systemMsg:      { alignItems: 'center', paddingVertical: 4 },
