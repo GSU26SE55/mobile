@@ -1,5 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -35,16 +35,22 @@ import { useResolveTicket } from '../../../src/features/staff/hooks/useResolveTi
 import { useEscalateTicket } from '../../../src/features/staff/hooks/useEscalateTicket';
 import { useStaffAddComment } from '../../../src/features/staff/hooks/useStaffAddComment';
 import { useAddMaintenanceLog } from '../../../src/features/staff/hooks/useAddMaintenanceLog';
+import { useUpdateMaintenanceLog } from '../../../src/features/staff/hooks/useUpdateMaintenanceLog';
 import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/useUploadCommentAttachment';
+import { useTicketComments } from '../../../src/features/tickets/hooks/useTicketComments';
+import { useTicketActivities } from '../../../src/features/tickets/hooks/useTicketActivities';
+import { useTicketCommentsRealtime } from '../../../src/features/tickets/hooks/useTicketCommentsRealtime';
 import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
 import { AttachmentForm } from '../../../src/features/tickets/schemas/comment.schema';
-import { MaintenanceLogPayload } from '../../../src/features/staff/types/staff.types';
-import { EscalationReasonEnum, PauseReasonEnum, TicketStatusEnum, TicketCommentDTO } from '../../../src/features/tickets/types/ticket.types';
+import { MaintenanceLogPayload, UpdateMaintenanceLogPayload } from '../../../src/features/staff/types/staff.types';
+import { EscalationReasonEnum, PauseReasonEnum, TicketStatusEnum, TicketCommentDTO, MaintenanceLogDTO } from '../../../src/features/tickets/types/ticket.types';
 import { AttachmentPicker, UploadedAttachment } from '../../../src/features/file-storage/components/AttachmentPicker';
 import { AttachmentThumbnails } from '../../../src/features/file-storage/components/AttachmentThumbnails';
 import { FilePurposeEnum } from '../../../src/features/file-storage/enums/file-storage.enum';
 import { useSessionStore } from '../../../src/stores/sessionStore';
 import { useTicketKbRefs } from '../../../src/features/kb/hooks/useTicketKbRefs';
+import { useRemoveKbRef } from '../../../src/features/kb/hooks/useRemoveKbRef';
+import { KbReferencePicker } from '../../../src/features/staff/components/KbReferencePicker';
 
 type TabKey = 'comments' | 'activities' | 'logs' | 'kb';
 
@@ -136,8 +142,15 @@ export default function StaffTicketDetailScreen() {
   const { mutate: escalateTicket, isPending: isEscalating } = useEscalateTicket(ticketId);
   const { mutate: addComment, isPending: isSending } = useStaffAddComment(ticketId);
   const { mutate: addLog, isPending: isAddingLog } = useAddMaintenanceLog(ticketId);
+  const { mutate: updateLog, isPending: isUpdatingLog } = useUpdateMaintenanceLog(ticketId);
   const { mutateAsync: uploadAttachment, isPending: isUploading } = useUploadCommentAttachment();
   const { data: kbRefs, isLoading: kbRefsLoading } = useTicketKbRefs(ticketId || undefined);
+  const { mutate: removeKbRef } = useRemoveKbRef(ticketId);
+
+  // GH-44 — comments/activities qua GET riêng + realtime (Staff thấy cả comment internal).
+  const commentsQuery = useTicketComments(ticketId || undefined);
+  const activitiesQuery = useTicketActivities(ticketId || undefined);
+  const { isConnected, typingUsers, notifyTyping } = useTicketCommentsRealtime(ticketId || undefined);
 
   const [activeTab, setActiveTab] = useState<TabKey>('comments');
   const [commentText, setCommentText] = useState('');
@@ -150,14 +163,25 @@ export default function StaffTicketDetailScreen() {
   const [showResolve, setShowResolve] = useState(false);
   const [showEscalate, setShowEscalate] = useState(false);
   const [showLogForm, setShowLogForm] = useState(false);
-  const scrollRef = useRef<ScrollView>(null);
-
-  useEffect(() => {
-    if (activeTab === 'comments') {
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 50);
-    }
-  }, [activeTab, ticket?.comments?.length]);
+  const [editingLog, setEditingLog] = useState<MaintenanceLogDTO | null>(null);
+  const [showKbPicker, setShowKbPicker] = useState(false);
+  // GH-44: bỏ auto scrollToEnd — comments giờ DESC (newest-first).
   const isActioning = isStarting || isHolding || isResuming || isResolving || isEscalating;
+
+  // Staff thấy cả comment internal — flatten các page (DESC newest-first), KHÔNG filter internal.
+  // Dedup theo id: offset-pagination + realtime prepend có thể trả trùng 1 comment ở ranh giới trang.
+  const seenCommentIds = new Set<string>();
+  const comments = (commentsQuery.data?.pages ?? [])
+    .flatMap((p) => p?.items ?? [])
+    .filter((c) => {
+      if (seenCommentIds.has(c.id)) return false;
+      seenCommentIds.add(c.id);
+      return true;
+    });
+  const activities = activitiesQuery.data ?? [];
+  // Chỉ cho sửa log khi: là chủ log + ticket chưa đóng (BE cũng chặn 403 các case này).
+  const ticketClosed = ['Resolved', 'ClosedPendingRate', 'Closed', 'ClosedRejected'].includes(ticket?.status ?? '');
+  const canEditLog = (log: MaintenanceLogDTO) => !ticketClosed && !!accountId && log.staffId === accountId;
 
   const handlePickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -199,9 +223,25 @@ export default function StaffTicketDetailScreen() {
         onSuccess: () => {
           setCommentText('');
           setCommentAttachments([]);
+          // Realtime đẩy CommentAdded về (cả người gửi) → setQueryData. Chỉ fallback khi mất kết nối.
+          if (!isConnected) commentsQuery.refetch();
         },
       },
     );
+  };
+
+  // GH-44 #4 — sửa maintenance log (PATCH). Form trả MaintenanceLogPayload (gán được vào UpdateMaintenanceLogPayload).
+  const handleUpdateLog = (data: UpdateMaintenanceLogPayload) => {
+    if (!editingLog) return;
+    updateLog({ logId: editingLog.id, data }, { onSuccess: () => setEditingLog(null) });
+  };
+
+  // GH-44 #6 — gỡ KB reference (có xác nhận).
+  const handleRemoveRef = (referenceId: string) => {
+    Alert.alert('Gỡ bài KB', 'Gỡ tham chiếu bài viết này khỏi ticket?', [
+      { text: 'Hủy', style: 'cancel' },
+      { text: 'Gỡ', style: 'destructive', onPress: () => removeKbRef(referenceId) },
+    ]);
   };
 
   const handleStart = () => { startTicket(undefined); };
@@ -251,13 +291,9 @@ export default function StaffTicketDetailScreen() {
       </View>
 
       <ScrollView
-        ref={scrollRef}
         style={styles.scrollBody}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        onContentSizeChange={() => {
-          if (activeTab === 'comments') scrollRef.current?.scrollToEnd({ animated: true });
-        }}
       >
         {/* Title + Priority + SLA */}
         <View style={[styles.card, Shadow]}>
@@ -344,25 +380,40 @@ export default function StaffTicketDetailScreen() {
         {/* Tab Content */}
         {activeTab === 'comments' && (
           <View style={styles.chatSection}>
-            {(ticket.comments ?? []).length === 0 ? (
+            {commentsQuery.isLoading ? (
+              <ActivityIndicator color={Colors.primary} style={{ marginTop: 24 }} />
+            ) : comments.length === 0 ? (
               <Text style={styles.emptyTab}>Chưa có trao đổi nào</Text>
             ) : (
-              (ticket.comments ?? []).filter((c) => !c.isInternal).map((c, i) => (
-                <ChatBubble
-                  key={c.id ?? `comment-${i}`}
-                  comment={c}
-                  isMe={!!accountId && c.authorUserId === accountId}
-                  imageHeaders={imageHeaders}
-                  onImagePress={setViewingImage}
-                />
-              ))
+              <>
+                {comments.map((c, i) => (
+                  <ChatBubble
+                    key={c.id ?? `comment-${i}`}
+                    comment={c}
+                    isMe={!!accountId && c.authorUserId === accountId}
+                    imageHeaders={imageHeaders}
+                    onImagePress={setViewingImage}
+                  />
+                ))}
+                {commentsQuery.hasNextPage && (
+                  <Pressable
+                    style={styles.loadMoreBtn}
+                    onPress={() => commentsQuery.fetchNextPage()}
+                    disabled={commentsQuery.isFetchingNextPage}
+                  >
+                    {commentsQuery.isFetchingNextPage
+                      ? <ActivityIndicator size="small" color={Colors.textMute} />
+                      : <Text style={styles.loadMoreText}>Tải thêm bình luận cũ hơn</Text>}
+                  </Pressable>
+                )}
+              </>
             )}
           </View>
         )}
 
         {activeTab === 'activities' && (
           <View style={styles.tabContent}>
-            <ActivityTimeline activities={ticket.activities ?? []} />
+            <ActivityTimeline activities={activities} />
           </View>
         )}
 
@@ -391,6 +442,12 @@ export default function StaffTicketDetailScreen() {
                     </>
                   )}
                   <Text style={styles.logTime}>{new Date(log.createdAt).toLocaleString('vi-VN')}</Text>
+                  {canEditLog(log) && (
+                    <Pressable style={styles.logEditBtn} onPress={() => setEditingLog(log)}>
+                      <Ionicons name="create-outline" size={14} color={Colors.primary} />
+                      <Text style={styles.logEditText}>Sửa</Text>
+                    </Pressable>
+                  )}
                 </View>
               ))
             )}
@@ -399,6 +456,13 @@ export default function StaffTicketDetailScreen() {
 
         {activeTab === 'kb' && (
           <View style={styles.tabContent}>
+            {/* Gán bài KB — chỉ Staff được phân công + ticket chưa đóng (BE chặn 403 nếu vi phạm) */}
+            {!ticketClosed && !!accountId && ticket.assignedStaffId === accountId && (
+              <Pressable style={styles.kbAssignBtn} onPress={() => setShowKbPicker(true)}>
+                <Ionicons name="add-circle-outline" size={18} color="#FFF" />
+                <Text style={styles.kbAssignText}>Gán bài viết KB</Text>
+              </Pressable>
+            )}
             {kbRefsLoading ? (
               <ActivityIndicator color={Colors.primary} style={{ marginTop: 24 }} />
             ) : !kbRefs || kbRefs.length === 0 ? (
@@ -418,7 +482,17 @@ export default function StaffTicketDetailScreen() {
                   <View style={styles.kbRefTop}>
                     <Ionicons name="book-outline" size={16} color={Colors.primary} />
                     <Text style={styles.kbRefCode}>{ref.kbArticleCode}</Text>
-                    <Ionicons name="chevron-forward" size={14} color={Colors.textFaint} style={{ marginLeft: 'auto' }} />
+                    {!ticketClosed && !!accountId && ticket.assignedStaffId === accountId ? (
+                      <Pressable
+                        style={styles.kbRefDeleteBtn}
+                        onPress={() => handleRemoveRef(ref.id)}
+                        hitSlop={8}
+                      >
+                        <Ionicons name="trash-outline" size={15} color={Colors.danger} />
+                      </Pressable>
+                    ) : (
+                      <Ionicons name="chevron-forward" size={14} color={Colors.textFaint} style={{ marginLeft: 'auto' }} />
+                    )}
                   </View>
                   {ref.kbArticleTitle ? (
                     <Text style={styles.kbRefTitle}>{ref.kbArticleTitle}</Text>
@@ -435,6 +509,13 @@ export default function StaffTicketDetailScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Typing indicator (realtime) */}
+      {activeTab === 'comments' && typingUsers.length > 0 && (
+        <Text style={styles.typingText}>
+          {typingUsers.map((u) => u.displayName).join(', ')} đang nhập…
+        </Text>
+      )}
 
       {/* Comment Composer — only for comments tab */}
       {activeTab === 'comments' && (
@@ -461,7 +542,7 @@ export default function StaffTicketDetailScreen() {
               placeholder="Nhập tin nhắn..."
               placeholderTextColor={Colors.textFaint}
               value={commentText}
-              onChangeText={setCommentText}
+              onChangeText={(t) => { setCommentText(t); notifyTyping(); }}
               multiline
             />
             <Pressable
@@ -483,6 +564,33 @@ export default function StaffTicketDetailScreen() {
       <HoldModal visible={showHold} onClose={() => setShowHold(false)} onSubmit={handleHold} isLoading={isHolding} />
       <ResolveModal visible={showResolve} onClose={() => setShowResolve(false)} onSubmit={handleResolve} isLoading={isResolving} />
       <EscalateModal visible={showEscalate} onClose={() => setShowEscalate(false)} onSubmit={handleEscalate} isLoading={isEscalating} />
+
+      {/* GH-44 #4 — sửa maintenance log (PATCH) */}
+      <Modal visible={editingLog !== null} transparent animationType="slide" onRequestClose={() => setEditingLog(null)}>
+        <View style={styles.editOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setEditingLog(null)} />
+          <View style={[styles.editSheet, { paddingBottom: insets.bottom + 16 }]}>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              {editingLog && (
+                <MaintenanceLogForm
+                  isLoading={isUpdatingLog}
+                  onSubmit={handleUpdateLog}
+                  initialValues={{
+                    summary: editingLog.summary ?? '',
+                    actionsTaken: editingLog.actionsTaken ?? undefined,
+                    durationMinutes: editingLog.durationMinutes || undefined,
+                  }}
+                  title="Sửa nhật ký bảo trì"
+                  submitLabel="Cập nhật"
+                />
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* GH-44 #5/#7 — gán bài KB từ gợi ý */}
+      <KbReferencePicker visible={showKbPicker} ticketId={ticketId} onClose={() => setShowKbPicker(false)} />
 
       {/* Fullscreen image viewer */}
       {viewingImage !== null && (
@@ -569,6 +677,16 @@ const styles = StyleSheet.create({
   chatSection: { gap: 8 },
   tabContent: { gap: 10 },
   emptyTab: { textAlign: 'center', fontSize: 13, color: Colors.textFaint, fontWeight: '600', paddingVertical: 24 },
+  loadMoreBtn: { alignItems: 'center', paddingVertical: 10 },
+  loadMoreText: { color: Colors.textMute, fontSize: 13, fontWeight: '600' },
+  typingText: { color: Colors.textMute, fontSize: 12, fontStyle: 'italic', paddingHorizontal: 16, paddingBottom: 4 },
+  logEditBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', marginTop: 6, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999, backgroundColor: Colors.primaryLight },
+  logEditText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
+  kbAssignBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11, borderRadius: 14, backgroundColor: Colors.primary, marginBottom: 12 },
+  kbAssignText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
+  kbRefDeleteBtn: { padding: 4, marginLeft: 'auto' },
+  editOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  editSheet: { backgroundColor: Colors.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16, paddingTop: 12, maxHeight: '88%' },
 
   bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   bubbleRowMe: { flexDirection: 'row-reverse' },

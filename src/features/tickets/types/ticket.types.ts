@@ -185,3 +185,9 @@ export interface TicketListParams {
   PageNumber?: number;
   PageSize?: number;
 }
+
+// GH-44 #1 — GET /tickets/{id}/comments. Controller nhận param `page`/`pageSize` (lowercase).
+export interface CommentListParams {
+  page?: number;
+  pageSize?: number;
+}

@@ -1,0 +1,129 @@
+import { useEffect, useRef, useState } from 'react';
+import { useQueryClient, type InfiniteData } from '@tanstack/react-query';
+import * as signalR from '@microsoft/signalr';
+import { BASE_URL } from '../../../lib/axios';
+import { getAccessToken } from '../../../lib/secureStore';
+import { QUERY_KEY } from '../../../lib/queryKeys';
+import { PaginationResponse } from '../../../types/api.types';
+import { TicketCommentDTO } from '../types/ticket.types';
+
+const HUB_PATH = '/hubs/ticket-comments';
+const TYPING_TIMEOUT = 3000;
+const TYPING_THROTTLE = 1500; // tối đa 1 lần invoke Typing mỗi 1.5s (tránh spam hub mỗi keystroke)
+
+type CommentsPage = PaginationResponse<TicketCommentDTO> | null;
+
+export interface TypingUser {
+  userId: string;
+  displayName: string;
+}
+
+// Prepend comment mới vào page đầu (BE sort DESC ⇒ mới nhất lên đầu), dedup theo id.
+// Idempotent: nếu id đã tồn tại ở bất kỳ page nào → giữ nguyên (chống trùng khi POST + realtime cùng về).
+function prependComment(
+  data: InfiniteData<CommentsPage> | undefined,
+  dto: TicketCommentDTO,
+): InfiniteData<CommentsPage> | undefined {
+  if (!data) return data;
+  const exists = data.pages.some((p) => p?.items?.some((c) => c.id === dto.id));
+  if (exists) return data;
+  const [first, ...rest] = data.pages;
+  if (!first) return data;
+  const updatedFirst: CommentsPage = {
+    ...first,
+    items: [dto, ...first.items],
+    totalItems: first.totalItems + 1,
+  };
+  return { ...data, pages: [updatedFirst, ...rest] };
+}
+
+// GH-44 #8 — realtime comment cho ticket detail. Realtime là NGUỒN CẬP NHẬT CHÍNH:
+// CommentAdded (full DTO, server gửi cả người gửi) → setQueryData prepend, KHÔNG refetch.
+// Lỗi connect chỉ swallow — UI fallback hoàn toàn về REST (useTicketComments).
+export function useTicketCommentsRealtime(ticketId: string | undefined) {
+  const queryClient = useQueryClient();
+  const [isConnected, setIsConnected] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
+  const connectionRef = useRef<signalR.HubConnection | null>(null);
+  const typingTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const lastTypingSentRef = useRef(0);
+
+  useEffect(() => {
+    if (!ticketId) return;
+
+    // BASE_URL không có /api (axios.ts) ⇒ ghép thẳng; .replace chỉ phòng trường hợp env có đuôi /api.
+    const hubUrl = `${BASE_URL.replace(/\/api$/, '')}${HUB_PATH}`;
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl(hubUrl, {
+        accessTokenFactory: async () => (await getAccessToken()) ?? '',
+      })
+      .withAutomaticReconnect()
+      .build();
+    connectionRef.current = connection;
+
+    connection.on('CommentAdded', (dto: TicketCommentDTO) => {
+      queryClient.setQueryData<InfiniteData<CommentsPage>>(
+        QUERY_KEY.tickets.comments(ticketId),
+        (data) => prependComment(data, dto),
+      );
+    });
+
+    connection.on('UserTyping', (_ticketId: string, userId: string, displayName: string) => {
+      setTypingUsers((prev) =>
+        prev.some((u) => u.userId === userId) ? prev : [...prev, { userId, displayName }],
+      );
+      if (typingTimers.current[userId]) clearTimeout(typingTimers.current[userId]);
+      typingTimers.current[userId] = setTimeout(() => {
+        setTypingUsers((prev) => prev.filter((u) => u.userId !== userId));
+        delete typingTimers.current[userId];
+      }, TYPING_TIMEOUT);
+    });
+
+    connection.onreconnected(() => {
+      setIsConnected(true);
+      connection.invoke('JoinTicket', ticketId).catch(() => {});
+    });
+    connection.onclose(() => setIsConnected(false));
+
+    let cancelled = false;
+    connection
+      .start()
+      .then(() => {
+        if (cancelled) return undefined;
+        setIsConnected(true);
+        return connection.invoke('JoinTicket', ticketId);
+      })
+      .catch(() => {
+        // swallow — fallback REST
+      });
+
+    return () => {
+      cancelled = true;
+      Object.values(typingTimers.current).forEach(clearTimeout);
+      typingTimers.current = {};
+      const conn = connectionRef.current;
+      connectionRef.current = null;
+      if (conn) {
+        conn
+          .invoke('LeaveTicket', ticketId)
+          .catch(() => {})
+          .finally(() => conn.stop().catch(() => {}));
+      }
+      setIsConnected(false);
+      setTypingUsers([]);
+    };
+  }, [ticketId, queryClient]);
+
+  // Broadcast typing indicator (server dùng OthersInGroup ⇒ người gửi không tự nhận lại).
+  // Throttle: tối đa 1 invoke mỗi TYPING_THROTTLE để không gọi hub mỗi keystroke.
+  const notifyTyping = () => {
+    const conn = connectionRef.current;
+    if (!ticketId || !conn || conn.state !== signalR.HubConnectionState.Connected) return;
+    const now = Date.now();
+    if (now - lastTypingSentRef.current < TYPING_THROTTLE) return;
+    lastTypingSentRef.current = now;
+    conn.invoke('Typing', ticketId).catch(() => {});
+  };
+
+  return { isConnected, typingUsers, notifyTyping };
+}

@@ -2,7 +2,7 @@ import { axiosInstance } from '../../../lib/axios';
 import { ENDPOINTS } from '../../../lib/endpoints';
 import { CommonResponse, PaginationResponse } from '../../../types/api.types';
 import { TicketActionResponse, TicketDetailDTO, TicketDTO } from '../../tickets/types/ticket.types';
-import { EscalatePayload, HoldPayload, MaintenanceLogPayload, ResolvePayload, StaffAddCommentPayload, StaffTicketListParams } from '../types/staff.types';
+import { EscalatePayload, HoldPayload, MaintenanceLogPayload, ResolvePayload, StaffAddCommentPayload, StaffMaintenanceLogGroupDTO, StaffTicketListParams, UpdateMaintenanceLogPayload } from '../types/staff.types';
 
 const { STAFF_TICKETS, TICKETS } = ENDPOINTS;
 
@@ -33,4 +33,10 @@ export const staffTicketService = {
 
   addMaintenanceLog: (ticketId: string, data: MaintenanceLogPayload) =>
     axiosInstance.post<TicketActionResponse>(STAFF_TICKETS.MAINTENANCE_LOG(ticketId), data),
+
+  getMyMaintenanceLogs: () =>
+    axiosInstance.get<CommonResponse<StaffMaintenanceLogGroupDTO[]>>(STAFF_TICKETS.MY_MAINTENANCE_LOGS),
+
+  updateMaintenanceLog: (ticketId: string, logId: string, data: UpdateMaintenanceLogPayload) =>
+    axiosInstance.patch<TicketActionResponse>(STAFF_TICKETS.MAINTENANCE_LOG_ITEM(ticketId, logId), data),
 };

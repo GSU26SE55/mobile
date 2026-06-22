@@ -42,8 +42,10 @@ export const QUERY_KEY = {
     detail: (id: string) => [...KEY.alerts, 'detail', id] as const,
   },
   tickets: {
-    list:   (params?: Record<string, unknown>) => [...KEY.tickets, 'list', params] as const,
-    detail: (id: string) => [...KEY.tickets, 'detail', id] as const,
+    list:       (params?: Record<string, unknown>) => [...KEY.tickets, 'list', params] as const,
+    detail:     (id: string) => [...KEY.tickets, 'detail', id] as const,
+    comments:   (id: string) => [...KEY.tickets, 'comments', id] as const,   // GH-44 — infinite
+    activities: (id: string) => [...KEY.tickets, 'activities', id] as const, // GH-44
   },
   staffProfile: {
     me: () => [...KEY.staffProfile, 'me'] as const,
@@ -51,6 +53,7 @@ export const QUERY_KEY = {
   staffTickets: {
     list:   (params?: Record<string, unknown>) => [...KEY.staffTickets, 'list', params] as const,
     detail: (id: string) => [...KEY.staffTickets, 'detail', id] as const,
+    myLogs: () => [...KEY.staffTickets, 'my-logs'] as const, // GH-44 #3
   },
   notifications: {
     list: (params?: Record<string, unknown>) => [...KEY.notifications, 'list', params] as const,
@@ -67,5 +70,6 @@ export const QUERY_KEY = {
     infinite: (params?: Record<string, unknown>) => [...KEY.kb, 'infinite', params] as const,
     detail:   (id: string) => [...KEY.kb, 'detail', id] as const,
     related:  (ticketId: string) => [...KEY.kb, 'related', ticketId] as const,
+    suggest:  (ticketId: string) => [...KEY.kb, 'suggest', ticketId] as const, // GH-44 #7
   },
 } as const;
