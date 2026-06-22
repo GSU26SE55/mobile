@@ -1,10 +1,8 @@
-# API Documentation — AuthService (FE)
+# API Documentation — AuthService
 
 > Base URL: `http://localhost:{port}/api`
 > Content-Type mặc định: `application/json`
 > Response wrapper chuẩn: `CommonResponse<T>` — xem phần [Cấu trúc Response chung](#cấu-trúc-response-chung)
->
-> **Nguồn:** Đồng bộ từ `backend/docs/api-auth.md` (đã verify với codebase AuthService). Bản FE giữ đầy đủ Nhóm 1–9 + Enums + DTOs + JWT claim + bảng errorCode; lược bỏ Appendix internal-only của BE (A–Q), chỉ giữ phần middleware behaviors ảnh hưởng FE ở cuối file.
 
 ---
 
@@ -2574,6 +2572,159 @@ Header: `Authorization: Bearer {accessToken}`
 
 ---
 
+### `GET /api/auth/me/permissions`
+
+**Mục đích:** Lấy toàn bộ permission của **role mà tài khoản hiện tại đang được gán**. Endpoint này được thiết kế để FE build feature-gate (ẩn/hiện button, route, menu) sau khi login mà không cần phải decode JWT thủ công.
+
+**Tác dụng & khi nào dùng:**
+
+- Sau khi login thành công → FE gọi 1 lần để cache `Permissions` vào client state (Zustand/TanStack Query) → dùng cho mọi check `checkPermission(user, P.X)` toàn app.
+- Khi cần verify FE migration: đảm bảo `P.*` constants trong code khớp với DB.
+- Khi admin vừa thay đổi permission của role → FE re-fetch endpoint này (thay vì đợi refresh token) để áp permission mới ngay lập tức.
+- Khác với catalog endpoints — `GET /api/permissions` (public, mọi role) và `GET /api/admin/permissions` (Admin-only) đều trả **catalog** tất cả permission trong hệ thống; endpoint này trả **subset** thuộc về role của user hiện tại.
+
+**Auth:** Bắt buộc (mọi role — Admin / Manager / Staff / Customer đều gọi được, chỉ cần JWT hợp lệ)
+
+**Headers:**
+
+```
+Authorization: Bearer {accessToken}
+```
+
+**Request:** Không có body, không có query param. `AccountId` được server tự đọc từ claim `NameIdentifier` trong JWT (client không thể override).
+
+**Ghi chú implementation (quan trọng):**
+
+- Server **resolve qua DB** (`Account → Role → RolePermission → Permission`), **KHÔNG đọc** mảng `perm[]` đã embed trong JWT. Lý do: trả về snapshot mới nhất, phản ánh ngay khi admin sửa role/permission mà không cần đợi user refresh token.
+- Filter `!IsDeleted` ở cả 4 bảng (Account, Role, RolePermission, Permission).
+- Distinct theo `Permission.Id`, sort theo `Module` rồi `Code`.
+- Không cache phía server (latency 1 query JOIN nhỏ, FE đã cache phía client).
+
+**Response thành công `200`:** `data` là `MyPermissionsDto`.
+
+**Chi tiết `MyPermissionsDto`:**
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `roleId` | `Guid` | Không | Guid role mà account đang được gán |
+| `roleName` | `string` | Không | Tên role (`"Admin"` / `"Manager"` / `"Staff"` / `"Customer"`) |
+| `permissions` | `PermissionDto[]` | Không (có thể rỗng) | Flat list permission, sort theo `module` → `code`. Rỗng nếu role không active hoặc chưa được gán permission |
+
+**Chi tiết `PermissionDto`** (cùng shape với `GET /api/admin/permissions`):
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `id` | `Guid` | Không | Guid identifier |
+| `code` | `string` | Không | Dot-separated key (vd `"ticket.view"`, `"alert.acknowledge"`) — match với `P.*` constant ở FE |
+| `module` | `string` | Không | Namespace logic (`"Ticket"` / `"Alert"` / `"Battery"` / `"Account"` / `"Admin"`) — FE có thể group accordion theo field này |
+| `description` | `string?` | Có thể null | Mô tả tiếng Việt dùng cho UI admin gán permission |
+| `isSystemPermission` | `bool` | Không | `true` = permission hệ thống tạo (không cho admin xóa) |
+| `createdAt` | `DateTime` | Không | Thời điểm permission được seed/tạo |
+
+**Ví dụ JSON response (happy path — role `Staff` có 5 permission):**
+
+```json
+{
+  "isSuccess": true,
+  "statusCode": 200,
+  "message": "",
+  "data": {
+    "roleId": "3e3a9c8f-2b1a-4d5e-8c7f-9b0a1d2e3f40",
+    "roleName": "Staff",
+    "permissions": [
+      {
+        "id": "11111111-1111-1111-1111-111111111111",
+        "code": "alert.acknowledge",
+        "module": "Alert",
+        "description": "Acknowledge cảnh báo từ pin",
+        "isSystemPermission": true,
+        "createdAt": "2026-05-11T14:05:53.000Z"
+      },
+      {
+        "id": "22222222-2222-2222-2222-222222222222",
+        "code": "battery.view",
+        "module": "Battery",
+        "description": "Xem chi tiết pin và sensor reading",
+        "isSystemPermission": true,
+        "createdAt": "2026-05-11T14:05:53.000Z"
+      },
+      {
+        "id": "33333333-3333-3333-3333-333333333333",
+        "code": "ticket.view",
+        "module": "Ticket",
+        "description": "Xem danh sách ticket được assign",
+        "isSystemPermission": true,
+        "createdAt": "2026-05-11T14:05:53.000Z"
+      },
+      {
+        "id": "44444444-4444-4444-4444-444444444444",
+        "code": "ticket.update",
+        "module": "Ticket",
+        "description": "Cập nhật trạng thái ticket trong scope assigned",
+        "isSystemPermission": true,
+        "createdAt": "2026-05-11T14:05:53.000Z"
+      },
+      {
+        "id": "55555555-5555-5555-5555-555555555555",
+        "code": "ticket.comment",
+        "module": "Ticket",
+        "description": "Bình luận/log maintenance trên ticket",
+        "isSystemPermission": true,
+        "createdAt": "2026-05-11T14:05:53.000Z"
+      }
+    ],
+    "listErrors": []
+  }
+}
+```
+
+**Ví dụ JSON response (role không active — `200` nhưng `permissions = []`):**
+
+```json
+{
+  "isSuccess": true,
+  "statusCode": 200,
+  "message": "Role hiện không hoạt động — không có permission nào được áp dụng.",
+  "data": {
+    "roleId": "3e3a9c8f-2b1a-4d5e-8c7f-9b0a1d2e3f40",
+    "roleName": "Staff",
+    "permissions": []
+  },
+  "listErrors": []
+}
+```
+
+**Lỗi thường gặp:**
+
+| HTTP | `message` | Tình huống |
+|------|-----------|-----------|
+| `401` | `"Chưa đăng nhập."` | Header `Authorization` thiếu / sai format / không decode được claim `NameIdentifier` |
+| `401` | `"Token không chứa AccountId hợp lệ."` | Defensive — JWT thiếu/sai format `AccountId` (không xảy ra với token do AuthService issue) |
+| `401` | `"Tài khoản không tồn tại hoặc đã bị xóa."` | Account đã bị admin xóa nhưng JWT chưa hết hạn |
+| `403` | `"Tài khoản chưa được gán role."` | Account tồn tại nhưng `RoleId` orphan (role đã bị xóa) hoặc chưa từng gán role nào |
+
+**Ví dụ JSON response (`403`):**
+
+```json
+{
+  "isSuccess": false,
+  "statusCode": 403,
+  "message": "Tài khoản chưa được gán role.",
+  "data": null,
+  "listErrors": []
+}
+```
+
+**Khác biệt với các endpoint permission khác:**
+
+| Endpoint | Auth | Scope | Use case |
+|----------|------|-------|----------|
+| `GET /api/auth/me/permissions` | Mọi role có JWT | Permission của role **user hiện tại** | FE feature-gate sau login |
+| `GET /api/admin/permissions` | Admin only | **Catalog** toàn bộ permission trong hệ thống (có `?module=` filter) | Admin dashboard render dropdown khi tạo/edit role |
+| `GET /api/admin/roles/{roleId}/permissions` | Admin only | Permission của 1 role bất kỳ (`roleId` truyền từ URL) | Admin edit role — load list current permissions để pre-check checkbox |
+
+---
+
 ### `GET /api/staff`
 
 **Mục đích:** Admin/Manager lấy danh sách staff phục vụ màn hình phân công ticket.
@@ -3412,7 +3563,73 @@ Base route: `/api/admin/roles`
 
 ---
 
-## Nhóm 8 — Admin: Permissions
+## Nhóm 8 — Permissions
+
+Module này có **2 lớp endpoint** chia sẻ cùng DTO `PermissionDto` nhưng khác nhau ở quyền truy cập:
+
+| Endpoint | Controller | Auth | Mục đích |
+|---|---|---|---|
+| `GET /api/permissions` | `PermissionsController` | `[Authorize]` — **mọi role** | FE/Mobile load catalog đầy đủ để build picker / đối chiếu `P.*` constant, **không cần quyền admin** |
+| `GET /api/admin/permissions` | `AdminPermissionsController` | `[Authorize(Roles = "Admin")]` | Catalog + thao tác gán role↔permission (admin panel) |
+| `GET /api/admin/roles/{roleId}/permissions` | `AdminPermissionsController` | `[Authorize(Roles = "Admin")]` | Permission đang gán cho 1 role |
+| `PUT /api/admin/roles/{roleId}/permissions` | `AdminPermissionsController` | `[Authorize(Roles = "Admin")]` | Set toàn bộ permission cho role (replace) |
+
+> **Phân biệt 3 endpoint trả permission** (dễ nhầm):
+> - `GET /api/permissions` — **catalog public** (mọi role), trả TẤT CẢ permission trong hệ thống.
+> - `GET /api/admin/permissions` — **catalog admin-only**, cùng data nhưng yêu cầu role Admin (dùng cho admin gán permission).
+> - `GET /api/auth/me/permissions` ([Nhóm 3](#get-apiauthmepermissions)) — trả **subset** permission của role mà user hiện tại đang được gán (dùng build feature-gate).
+
+---
+
+### `GET /api/permissions`
+
+**Mục đích:** Lấy **catalog toàn bộ permission** trong hệ thống. Endpoint dùng chung — chỉ cần access token hợp lệ, **KHÔNG phân quyền theo role** (không có slug/role `admin`).
+
+**Tác dụng & khi nào dùng:**
+
+- FE/Mobile cần load danh mục permission đầy đủ (build picker, đối chiếu `P.*` constant, hiển thị mô tả) mà **không cần quyền admin**.
+- Khác với `GET /api/admin/permissions` ở chỗ **không yêu cầu role Admin** — Manager/Staff/Customer đã đăng nhập đều gọi được.
+- Khác với `GET /api/auth/me/permissions` ở chỗ trả **toàn bộ catalog** (không phải subset theo role của user).
+
+**Auth:** Bắt buộc (mọi role — Admin / Manager / Staff / Customer đều gọi được, chỉ cần JWT hợp lệ)
+
+**Headers:**
+
+```
+Authorization: Bearer {accessToken}
+```
+
+**Query params:**
+
+| Param | Type | Mô tả |
+|---|---|---|
+| `module` | `string?` | Lọc theo module (e.g., `Battery`, `Ticket`). Để trống = trả tất cả |
+
+**Response:** `PermissionListResponse` — flat list `PermissionDto`, sort theo `Module` rồi `Code`.
+
+**Chi tiết `PermissionDto`** (cùng shape với `GET /api/admin/permissions`):
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `id` | `Guid` | Không | ID permission |
+| `code` | `string` | Không | Code dạng `module.action` (e.g., `battery.view`) — match với `P.*` constant ở FE |
+| `module` | `string` | Không | Module thuộc về |
+| `description` | `string?` | Null nếu không có | Mô tả tiếng Việt |
+| `isSystemPermission` | `bool` | Không | `true` = không cho admin xóa |
+| `createdAt` | `DateTime` | Không | Thời điểm tạo |
+
+**Response codes:**
+
+| Status | Trường hợp |
+|---|---|
+| 200 | Lấy danh sách permission thành công |
+| 401 | Chưa đăng nhập / token hết hạn |
+
+> **Lưu ý:** Endpoint này **KHÔNG** trả `403` — vì chỉ gắn `[Authorize]` (không filter role). Mọi user đã đăng nhập đều truy cập được. Catalog system permissions (43 permission) xem bảng đầy đủ ở [`GET /api/admin/permissions`](#get-apiadminpermissions) bên dưới.
+
+---
+
+## Nhóm 8b — Admin: Permissions
 
 Base route: `/api/admin/permissions`
 **Auth:** Admin
@@ -3662,16 +3879,252 @@ Handler tự truncate các text field trước khi persist DB để tránh quá 
 
 **Response:** `PaginationResponse<AuditLogDto>` — cùng shape với `GET /api/admin/audit-logs`.
 
+---
+
+## Appendix A — Configuration toggles
+
+Các tham số sau **ảnh hưởng trực tiếp** đến hành vi API. Ops/DevOps cần biết khi tune; FE/QA cần biết khi setup test environment khác production.
+
+### `JwtSettings:*` (#AUTH-32, #AUTH-66)
+
+| Key | Type | Default | Mô tả |
+|---|---|---|---|
+| `SecretKey` | `string` (≥32 chars) | **required, app startup fail nếu thiếu** | HMAC secret cho HS256 sign JWT |
+| `Issuer` | `string` | required | `iss` claim — phải match validation |
+| `Audience` | `string` | required | `aud` claim — phải match validation |
+| `AccessTokenExpirationMinutes` | `int` (1–1440) | `60` | TTL access token. Ảnh hưởng tới `exp` claim. |
+| `RefreshTokenExpirationDays` | `int` (1–90) | `7` | TTL refresh token. **Anchor vào `OriginalIssuedAt`** (#AUTH-28) — không reset mỗi rotate |
+| `SigningKeyId` | `string` | `"v1"` | (#AUTH-59) Key ID hiện tại đi vào header `kid` |
+| `PreviousSecretKey` | `string?` | `null` | (#AUTH-59) Key cũ — set khi rotate để token đang lưu hành vẫn pass cho đến hết hạn |
+| `PreviousSigningKeyId` | `string` | `"v0"` | (#AUTH-59) `kid` của previous key |
+
+### `Session:*`
+
+| Key | Type | Default | Mô tả |
+|---|---|---|---|
+| `MaxConcurrentSessions` | `int` | `5` | Số session active tối đa/account. Vượt → revoke session cũ nhất FIFO + audit `SessionLimitExceededOldestRevoked`. **Đặt 0 hoặc âm = tắt limit**. |
+
+### `AuthSecurity:*`
+
+| Key | Type | Default | Mô tả |
+|---|---|---|---|
+| `EnforceDeviceBinding` | `bool` | `false` | (#AUTH-12) Bật → refresh token chỉ chấp nhận khi IP + UA match lúc issue. Mặc định tắt để mobile chuyển 4G/wifi không bị break. |
+
+### `PasswordPolicy:*` (#AUTH-53)
+
+| Key | Type | Default | Mô tả |
+|---|---|---|---|
+| `MinLength` | `int` | `8` | Độ dài tối thiểu password |
+| `MaxLength` | `int` | `100` | Độ dài tối đa |
+| `RequireUppercase` | `bool` | `true` | Bắt buộc 1 chữ hoa |
+| `RequireLowercase` | `bool` | `true` | Bắt buộc 1 chữ thường |
+| `RequireDigit` | `bool` | `true` | Bắt buộc 1 chữ số |
+| `RequireSpecialChar` | `bool` | `true` | Bắt buộc 1 ký tự đặc biệt |
+
+> **Lưu ý**: Đổi `PasswordPolicy` không re-validate password cũ đã hash; chỉ ảnh hưởng password mới được set qua `/register`, `/reset-password`, `/me/password`, `/admin/accounts`, `/accept-invite`.
+
+### `GoogleOAuth:*`
+
+| Key | Type | Default | Mô tả |
+|---|---|---|---|
+| `RedirectUri` | `string` | required cho Google flow | Redirect URI cố định, phải match đã đăng ký với Google. Có thể override qua env `GOOGLE_REDIRECT_URI`. |
+
+### `AdminInvite:*` / `Frontend:*`
+
+| Key | Type | Default | Mô tả |
+|---|---|---|---|
+| `AdminInvite:AcceptUrlBase` hoặc `Frontend:AcceptInviteUrl` | `string` | seeded từ Helm (`https://{global.domain}/auth/accept-invite`) | Base URL email invite. Server append `?token={invitationToken}` |
+| `Frontend:WebBaseUrl` | `string` | seeded từ Helm (`https://{global.domain}`), fallback hard-code `"https://app.local"` nếu config rỗng | **(#AUTH-51, 2026-06-19)** Base URL FE web app. Dùng ở `RequestCrossDevice2FAConfirmCommandHandler` để build email confirm URL: `{webBaseUrl}/2fa/cross-device-confirm?token={confirmToken}`. **KHÔNG được có trailing slash** (handler tự `TrimEnd('/')`). Setup env: `Frontend__WebBaseUrl=http://localhost:5173` (dev `.env` + `.env.Docker`), `https://app.example.com` (template `.env.Docker.example`), `https://{global.domain}` (Helm `solar-config` ConfigMap). Có thể mở rộng thêm cho future flow (vd password reset link nếu chuyển sang send-link thay vì OTP) |
+
+### `Outbox:*`
+
+| Key | Type | Default | Mô tả |
+|---|---|---|---|
+| `PollIntervalSeconds` | `int` | `2` | Tần suất `OutboxRelay` quét outbox table. Ảnh hưởng độ trễ event publish (RabbitMQ) sau khi handler success. |
+| `BatchSize` | `int` | depends config | Số row publish mỗi tick |
+| `MaxRetries` | `int` | depends config | Số lần retry khi RabbitMQ fail |
 
 ---
 
-## Appendix (FE-relevant) — Global middleware behaviors
+## Appendix B — Background services
 
-> Đây là phần tóm tắt các hành vi middleware **ảnh hưởng trực tiếp đến FE**. Toàn bộ chi tiết internal BE (config toggles, background services, TokenRevocationMiddleware, Redis catalog, integration events, DB constraints, security helper specs…) nằm trong `backend/docs/api-auth.md` Appendix A–Q — FE không cần.
+5 `BackgroundService` chạy trong AuthService process. FE/QA cần biết để hiểu timing behaviors.
+
+| Service | Poll interval | Behavior | User-visible impact |
+|---|---|---|---|
+| `LockoutReconcileBackgroundService` | 5 phút | Quét `Account` với `LockoutEndAt <= now` AND `Status = Locked` → reset `Status = Active`, `LockoutEndAt = null`, `FailedLoginAttempts = 0`. | Sau lockout 15 phút, **không cần user thử login** — status tự về Active sau ≤ 5 phút (LoginCommandHandler cũng tự reconcile khi user retry login). |
+| `OutboxRelayBackgroundService` | 2 giây (config `Outbox:PollIntervalSeconds`) | Quét bảng `outbox_messages` với `processed_at IS NULL` → publish lên RabbitMQ → mark processed. | Email/notification có **độ trễ tối đa ~2s** sau khi handler success (vd `/forgot-password` trả 200 → user nhận email sau 0–2s). |
+| `ExpiredOtpCleanupBackgroundService` | 24 giờ (chạy lúc 02:00 UTC) | Quét `Account` với `OtpExpiredAt + 24h < now` → clear `OtpCode`, `OtpExpiredAt`, `OtpPurpose`. Grace period 24h. | Transparent với FE — chỉ để giảm noise trong DB. |
+| `PendingEmailCleanupBackgroundService` | 24 giờ (chạy lúc 02:00 UTC) | Quét `Account` với `PendingEmail != null` AND `OtpExpiredAt + 24h < now` (OTP `EmailChange` đã hết hạn lâu) → clear `PendingEmail`. | **Quan trọng**: User request `/me/change-email` nhưng không confirm OTP trong **24h** sau khi OTP hết hạn → PendingEmail bị xóa → phải gọi lại `/me/change-email` để khởi tạo flow mới. |
+| `AccountHardDeleteBackgroundService` | 24 giờ (chạy lúc 02:00 UTC) | Quét `Account` với `IsDeleted = true` AND `DeletedAt + 90 ngày < now` → **HARD DELETE** row + cascade delete refresh tokens, profiles, backup codes, audit log entries của account. | **Quan trọng**: Sau 90 ngày soft-delete, account bị xóa hoàn toàn → `POST /api/auth/reactivate-request` không tìm thấy → user phải đăng ký mới với email khác. Window 90 ngày được tính từ `DeletedAt`, không phải `CreatedAt`. |
+
+> **Initial delay**: 3 service cleanup (`ExpiredOtpCleanup`, `PendingEmailCleanup`, `AccountHardDelete`) tính `ComputeInitialDelay` để chạy lúc **02:00 UTC** kế tiếp (giờ ít traffic), sau đó tick 24h. Có nghĩa nếu app restart lúc 03:00 UTC, service đợi ~23h trước tick đầu tiên.
+
+---
+
+## Appendix C — `TokenRevocationMiddleware` + `RedisTokenRevocationStore` (#AUTH-54)
+
+Mọi request `[Authorize]` đi qua middleware này SAU JWT bearer validation. 2 cơ chế blacklist độc lập:
+
+### Cơ chế 1 — Per-`jti` blacklist (token-level)
+
+| Field | Mô tả |
+|---|---|
+| Redis key | `revoked_jti:{jti}` |
+| Value | reason string (default `"revoked"`) |
+| TTL | thời gian còn lại của token (`token.ValidTo - UtcNow`); skip nếu TTL ≤ 0 (token đã expired tự nhiên) |
+| Set bởi | `POST /api/auth/revoke` (`RevokeTokenCommandHandler`) — single user-facing revoke |
+| Check bởi | `TokenRevocationMiddleware.IsRevokedAsync(jti)` — key exists → 401 |
+
+### Cơ chế 2 — Bulk per-account cutoff (account-level)
+
+| Field | Mô tả |
+|---|---|
+| Redis key | `account_revoke_cutoff:{accountIdNoHyphen}` (Guid `N` format, không có dash) |
+| Value | Unix timestamp (UTC seconds) lúc bulk revoke được trigger |
+| TTL | 1 giờ (= max access token life) |
+| Set bởi | `POST /api/auth/logout` (`LogoutCommandHandler`), `PATCH /me/password` (`ChangePasswordCommandHandler`), `POST /reset-password` (`ResetPasswordCommandHandler`), `POST /admin/accounts/{id}/sessions/revoke-all` (`AdminRevokeAccountSessionsCommandHandler`) |
+| Check bởi | `TokenRevocationMiddleware.IsAccountFullyRevokedAsync(accountId, tokenIat)` — `tokenIat < cutoff` → 401 |
+
+**Quan trọng — bulk revoke semantic:**
+
+Cutoff lưu **timestamp lúc revoke**, không phải "revoke all forever". Cơ chế so sánh: `token.iat < cutoff` thì token bị revoked. **Token issued SAU thời điểm revoke vẫn valid** — đây là intentional design:
+
+- User đổi password lúc `t=100`: cutoff được set = 100, TTL = 1h.
+- Access token issued lúc `t=50` (trước) → `iat=50 < cutoff=100` → blacklist → 401 với `errorCode: TOKEN_REVOKED_ACCOUNT`.
+- User login lại lúc `t=200` (sau): access token mới có `iat=200 > cutoff=100` → pass middleware → OK.
+- Sau `t=100 + 3600s = 3700`, cutoff key tự expire (TTL 1h). Token mới hoàn toàn không bị check nữa.
+
+**Skip check khi nào:**
+- Anonymous endpoint (`context.User.Identity?.IsAuthenticated != true`) → skip cả 2 cơ chế.
+- Token không có claim `jti` → skip cơ chế 1.
+- Token không có claim `iat` HOẶC không có claim `AccountId`/`nameid` → skip cơ chế 2.
+
+**Hậu quả nếu Redis down:**
+
+`IsRevokedAsync` và `IsAccountFullyRevokedAsync` sẽ throw `RedisException`. Middleware không catch → 500 lan đến client. **Fail-secure**: nếu Redis down, request authenticated đều fail, không có fallback "treat as not-revoked" (chống tình huống Redis down → bypass blacklist).
+
+### `RevokeAllByAccountAsync` không revoke tokens issued sau cutoff
+
+Pattern thường gặp gây confused:
+1. User login từ Device A và Device B (2 access tokens active, 2 refresh tokens active).
+2. User đổi password ở Device A → handler revoke 2 refresh tokens + set cutoff (#AUTH-54).
+3. User refresh ở Device B → **refresh token đã revoked → 401 từ `/refresh-token`** (không phải từ middleware, mà từ handler).
+4. User login lại ở Device B với password mới → access token mới có `iat > cutoff` → pass middleware → OK.
+
+Tóm lại: cutoff chỉ tác động access token đã issued **trước** thời điểm cutoff. Refresh chain mới (sau login lại) không bị ảnh hưởng.
+
+---
+
+## Appendix D — `LoginAttemptNotificationHandler` (persist `LoginAttempt` rows)
+
+Tương tự `AuditTrailNotificationHandler`:
+
+| Field | Behavior |
+|---|---|
+| `AttemptedEmail` | Truncate 256 chars |
+| `UserAgent` | Truncate 500 chars (resolve từ `HttpContext` headers) |
+| `Note` | Truncate 500 chars |
+| `IpAddress`, `DeviceId` | Resolve từ `ClientInfoHelper` (HttpContext) |
+| `SaveChanges` | **KHÔNG** — relies on outer command handler |
+| Throw on fail | **KHÔNG** — log error qua `ILogger`, business flow tiếp tục |
+
+**Publish bởi**: `LoginCommandHandler` (mọi result: Success, WrongPassword, AccountLocked, AccountSuspended, AccountBanned, AccountInactive, AccountNotVerified, AccountNotFound) + `Verify2FALoginCommandHandler` (Success only).
+
+**KHÔNG publish bởi**: `GoogleAuthCommandHandler`, `AcceptInviteCommandHandler`, `RefreshTokenCommandHandler`, `LogoutCommandHandler`, `ReactivateVerifyCommandHandler`. Nên `GET /me/login-history` không có entry cho các flow này — design decision (xem chi tiết ở section [`LoginAttemptDto.method`](#chi-tiết-loginattemptdto)).
+
+---
+
+## Appendix E — `AuthDataSeeder` (seed data ở startup)
+
+`AuthDataSeeder` chạy **mỗi lần app startup** (sau khi migrate DB). Idempotent — không tạo trùng, chỉ update metadata + restore soft-deleted entries của seed data. Quan trọng cho devs hiểu account/role nào auto-tồn tại trong mọi environment.
+
+### 1. **4 System Roles** (idempotent — restore nếu bị soft-deleted)
+
+| Role | NormalizedName | ID (production via EF migration) | Description |
+|---|---|---|---|
+| Admin | `ADMIN` | `11111111-1111-1111-1111-111111111111` | Quản trị viên hệ thống, có toàn quyền |
+| Manager | `MANAGER` | `22222222-2222-2222-2222-222222222222` | Quản lý vận hành và điều phối nhân sự |
+| Staff | `STAFF` | `33333333-3333-3333-3333-333333333333` | Nhân viên vận hành hệ thống |
+| Customer | `CUSTOMER` | `44444444-4444-4444-4444-444444444444` | Khách hàng sử dụng dịch vụ |
+
+> **Quan trọng — ID stability**: ID của 4 system role được **hardcode trong EF migrations** (`HasData` seed). `AuthDataSeeder` ở startup chỉ **update metadata** (Name, Description, Status, IsSystemRole = true) nhưng giữ nguyên ID từ migrations. `RegisterCommandHandler`, `VerifyOtpCommandHandler`, `GoogleAuthCommandHandler` đều hardcode `CustomerRoleId = 44444444-...` để gán role mặc định cho self-register/Google flow — chỉ work khi migrations đã apply (production). Dev environment chỉ chạy seeder mà không apply migrations → role có Guid random → register fail.
+
+### 2. **Legacy `TECHNICIAN` role migration** (#AUTH-staff-rename)
+
+Nếu DB có role với `NormalizedName = "TECHNICIAN"` (legacy trước rename Staff):
+- Nếu chưa có "STAFF" role → rename Technician → Staff (giữ ID, đổi name/normalizedName/description/status).
+- Nếu đã có "STAFF" → soft-delete Technician (`IsDeleted = true`, `Status = Deprecated`).
+
+### 3. **43 System Permissions** (idempotent)
+
+43 entries từ `PermissionSeed.All` — xem [GET /api/admin/permissions](#get-apiadminpermissions) catalog. Mỗi entry có `IsSystemPermission = true` → admin không xóa được.
+
+Seeder update existing entries' `Module` + `Description` mỗi startup (cho phép admin/devops update description qua source code).
+
+### 4. **RolePermissions** (idempotent)
+
+Map từ `PermissionSeed.RoleDefaults` (xem catalog) — Admin: all 43; Manager: 22; Staff: 6; Customer: 4.
+
+Nếu role-permission row bị soft-deleted → restore. Nếu chưa tồn tại → add mới.
+
+### 5. **Admin account** (idempotent, config-driven)
+
+| Field | Default | Override env / config |
+|---|---|---|
+| Email | `admin@gmail.com` | `ADMIN_EMAIL` env var HOẶC `AdminSeed:Email` config |
+| Password | `Admin123@` | `ADMIN_PASSWORD` env var HOẶC `AdminSeed:Password` config |
+| FullName | `"System Admin"` | (không override) |
+| EmailConfirmed | `true` | — |
+| Status | `Active` | — |
+| RoleId | (Admin role ID) | — |
+
+> ⚠️ **SECURITY**: Default credentials phải được đổi ngay sau first deploy production. Trong staging/dev acceptable. Build script CI nên check + warn nếu default password còn ở production env.
+
+Nếu admin account đã tồn tại theo email:
+- Re-set `EmailConfirmed = true`, `Status = Active`, `IsDeleted = false`, `DeletedAt = null` (chống admin tự xóa nhầm).
+- Force `RoleId = Admin role ID` (chống admin tự đổi role thành Customer rồi locked-out).
+- **KHÔNG** reset password — đã set ban đầu là final.
+
+### 6. **5 Sample accounts** (`@solarbattery.local`, password `Password123@`)
+
+| Email | FullName | Role |
+|---|---|---|
+| `manager.demo@solarbattery.local` | "Demo Manager" | Manager |
+| `staff.tier1@solarbattery.local` | "Staff Tier1 Generalist" | Staff (Generalist tier) |
+| `staff.tier2@solarbattery.local` | "Staff Tier2 Specialist" | Staff (ModuleSpecialist tier) |
+| `staff.tier3@solarbattery.local` | "Staff Tier3 Senior" | Staff (SeniorSpecialist tier) |
+| `customer.demo@solarbattery.local` | "Demo Customer" | Customer |
+
+> Sample accounts giúp FE/QA test các role flow mà không cần register thủ công. **KHÔNG** seed lên production — chỉ seed nếu config flag enable hoặc env `Development`.
+
+### 7. **Sample LoginAttempts** (dev fixture)
+
+Seed 1 lần (nếu bảng rỗng): 3 attempts cho admin (2 success + 1 wrong password) + 3 attempts/sample account (Password success + Google success + wrong password) + 1 AccountNotFound cho email lạ.
+
+Giúp FE test `/me/login-history` UI ngay sau deploy mà không cần thực sự login nhiều lần.
+
+### 8. **Staff profiles + Account profiles**
+
+Auto-tạo profile rows cho admin + sample accounts. Staff sample được set:
+- `tier1` → `StaffSkillTierEnum.Generalist`
+- `tier2` → `ModuleSpecialist`
+- `tier3` → `SeniorSpecialist`
+
+---
+
+## Appendix F — Misc patterns FE cần biết
+
+### `OutboxRelayBackgroundService` retry policy
+
+- Poll interval: 2s (config `Outbox:PollIntervalSeconds`).
+- Batch size: configurable (`Outbox:BatchSize`).
+- Max retries: configurable (`Outbox:MaxRetries`). Sau khi vượt → mark row `last_error` + skip (admin can investigate).
+- Shutdown flush timeout: 5s — đảm bảo pending outbox messages publish trước khi app shutdown.
 
 ### `GlobalExceptionMiddleware` — 500 response shape
 
-Mọi unhandled exception → response cố định:
+Mọi unhandled exception đi qua `GlobalExceptionMiddleware` (từ `SharedInfrastructure`) → trả response:
 
 ```json
 {
@@ -3683,24 +4136,205 @@ Mọi unhandled exception → response cố định:
 }
 ```
 
-Stack trace KHÔNG leak ra client. FE chỉ cần show toast generic + (optional) đọc header `X-Correlation-Id` để báo support.
+Stack trace KHÔNG leak ra client (production). Log đầy đủ ở server với `correlationId` để truy ngược. FE có thể request `correlationId` header để báo support.
 
 ### `correlationId` propagation
 
-Mọi request gắn header `X-Correlation-Id` (server tự gen Guid nếu FE không gửi). FE có thể chủ động gửi header này để debug end-to-end qua nhiều service; giá trị được persist vào mọi `AuditLog` row + structured log.
+Mọi request gắn `X-Correlation-Id` header (hoặc tự gen Guid nếu thiếu). CorrelationId được:
+- Persist vào mọi `AuditLog` row (field `correlationId`).
+- Include trong structured log entries.
+- Propagate qua outbox messages (FE → AuthService → RabbitMQ → consumer services).
 
-### `Idempotency-Key` middleware (chống duplicate writes)
+FE có thể gửi header này để debug end-to-end qua nhiều service.
 
-**Áp dụng GLOBAL** cho mọi endpoint `POST` / `PUT` / `PATCH`.
+---
+
+## Appendix G — Security helper specs
+
+Implementation chi tiết của các helper crypto/normalize. Quan trọng cho **FE input handling**, **security review**, và **timing analysis**.
+
+### `PasswordHasher` (BCrypt)
+
+| Property | Value |
+|---|---|
+| Algorithm | **BCrypt** (`BCrypt.Net.BCrypt` library) |
+| Work factor (cost) | **12** (2^12 = 4096 iterations) |
+| Salt | Tự động sinh per-hash (BCrypt embedded) |
+| Verify time | ~100-200ms trên CPU server tier (tham chiếu cho enumeration delay #AUTH-17) |
+| Empty input | `Hash` throws `ArgumentException`; `Verify` returns `false` (catch-all) |
+
+> Cost 12 là **mức security tier** cho production 2024-2026 (recommended OWASP). Nâng lên 13/14 sẽ tăng exponentially verify time → trade-off với UX (login latency).
+
+### `BackupCodeGenerator`
+
+| Property | Value |
+|---|---|
+| Alphabet | `abcdefghjkmnpqrstuvwxyz23456789` — 31 chars |
+| Excluded chars | `0`, `o`, `O`, `1`, `l`, `L`, `i`, `I` (confusable, gây typo) |
+| Format | `xxxx-xxxx` (8 alphanum chars + 1 dash ở vị trí 4) = 9 chars hiển thị |
+| Entropy | log2(31^8) ≈ **39.6 bits** per code — đủ chống brute-force kết hợp với 5-attempts/15min rate limit (#AUTH-45) |
+| RNG | `RandomNumberGenerator.GetInt32()` (cryptographic) |
+| Hash algorithm | BCrypt cost 12 (align với `PasswordHasher`) |
+| Normalize rule | Lowercase + strip `-` + strip whitespace **trước khi** hash/verify |
+| Count per regen | 8 codes (`BackupCodeCount`) |
+
+**Quan trọng cho FE input UX:**
+- User nhập `XXXX-XXXX` hoặc `xxxxxxxx` hoặc `xxxx xxxx` (space) hoặc `XxXx-XxXx` đều verify được — server normalize trước verify.
+- FE hiển thị với **monospace font** + nhóm `xxxx-xxxx` để giảm typo.
+- Hint message: *"8 ký tự không phân biệt hoa thường, dấu gạch ngang tùy chọn"*.
+
+### `TotpService` (RFC 6238)
+
+| Property | Value |
+|---|---|
+| Algorithm | HMAC-SHA1 (chuẩn Google Authenticator/Authy compat) |
+| Secret length | **20 bytes** (160 bits) — Base32 encoded → ~32 chars |
+| Digits | 6 |
+| Period | 30 seconds |
+| Clock drift tolerance | **±1 step** (default `allowedDriftSteps = 1`) → cửa sổ valid = ±30s mỗi bên thực ra ±60s effective |
+| Verification window | OtpNet `VerificationWindow(previous: 1, future: 1)` |
+| OtpAuth URI format | `otpauth://totp/{URI-encoded issuer}:{URI-encoded label}?secret={base32}&issuer={URI-encoded issuer}&algorithm=SHA1&digits=6&period=30` |
+| Library | `Otp.NET` |
+
+**Quan trọng cho FE UX:**
+- ±1 step = user có thể nhập code valid trong khoảng ±30s từ current step. Nếu device clock skew > 30s, vẫn fail.
+- Message *"Hãy kiểm tra thời gian thiết bị"* ở `/2fa/confirm` 422 fail message — đúng vì khả năng cao là clock skew.
+- KHÔNG render Issuer + Label thẳng vào QR — phải URI-encode (handler đã làm — FE chỉ render URI).
+
+### `EmailNormalizer` (#AUTH-39)
+
+| Step | Rule |
+|---|---|
+| Input null/whitespace | Trả empty string |
+| Step 1 | `Trim()` whitespace 2 đầu |
+| Step 2 | `ToLowerInvariant()` (PostgreSQL mặc định case-sensitive — lowercase trước query để khớp index) |
+| Validation | **KHÔNG** validate format ở normalize — chỉ chuẩn hóa. Format validation tách riêng ở command validator. |
+
+> FE **KHÔNG cần** lowercase email trước submit — server tự normalize. Nhưng FE NÊN trim() để UX (tránh user copy-paste với trailing space, thấy submit fail).
+
+### `PhoneNormalizer` (#AUTH-39, VN-specific)
+
+| Pattern | Normalize result |
+|---|---|
+| `null` / `""` / whitespace | `""` (empty) |
+| `0901234567` | `+84901234567` (VN assumption) |
+| `84901234567` (không `+`) | `+84901234567` |
+| `+84901234567` | `+84901234567` (unchanged) |
+| `+1234567890` (foreign) | `+1234567890` (unchanged) |
+| `1234567890` (foreign, không `+`) | `1234567890` (unchanged, caller validate) |
+| `0 901 234 567` | `+84901234567` (strip whitespace) |
+| `0-901-234-567` | `+84901234567` (strip `-`) |
+| `0.901.234.567` | `+84901234567` (strip `.`) |
+| `(090) 1234-567` | `+84901234567` (strip `()`, `-`) |
+
+**Pre-cleanup regex**: `[\s\-\.\(\)]` (whitespace + `-` + `.` + `(` + `)`).
+
+> FE **có thể** hiển thị raw input format (`0901234567`) nhưng nên lưu storage qua DB là `+84901234567` (server tự normalize trước AnyAsync check). Tránh duplicate phone do format khác nhau (`0901234567` vs `+84901234567`).
+
+### `OtpHelper`
+
+| Property | Value |
+|---|---|
+| RNG | `RandomNumberGenerator.Fill()` (cryptographic, KHÔNG phải `Random` class) |
+| Length | 6 chars default (configurable, min 1) |
+| Charset | `'0'`-`'9'` (chỉ chữ số) |
+| Bias | Modulo bias minimal vì `byte % 10` (256 / 10 = 25.6 → ~3% bias) — acceptable cho OTP 6-digit (entropy ~20 bits) |
+
+> Modulo bias là **known minor issue** nhưng với entropy 6-digit OTP (1/10^6 = 1/1,000,000) và rate limit 5 attempts/lockout, bias không phải attack vector trong context này.
+
+---
+
+## Appendix H — System endpoints (k8s probes + metrics)
+
+AuthService expose **4 endpoint không có prefix `/api`** dành cho ops/k8s/Prometheus — KHÔNG yêu cầu auth, KHÔNG có rate limit. **Quan trọng cho FE/DevOps:**
+
+### `GET /live` — Liveness probe (#AUTH-60)
 
 | Aspect | Mô tả |
 |---|---|
-| Header | `Idempotency-Key: <UUID v4>` (FE tự gen, gửi kèm request) |
-| Cache | Response cache trong Redis, TTL default **24 giờ** |
-| Behavior khi duplicate | Request thứ 2 cùng key → trả response cũ NGAY (status + body identical), KHÔNG re-execute handler |
-| Conflict khi đang xử lý | Request 2 trong khi request 1 chưa response → **409 Conflict** body raw `{"isSuccess":false,"message":"Request đang được xử lý với cùng Idempotency-Key."}` (lưu ý: body này KHÔNG có `statusCode`/`data`/`listErrors`) |
-| Áp dụng | Optional — không gửi header vẫn work, chỉ mất idempotency guarantee |
-| Recommended endpoints | `/register`, `/forgot-password`, `/resend-otp`, `/resend-reset-otp`, `/admin/accounts`, `/admin/accounts/invite` |
+| Mục đích | k8s liveness probe — check app process còn alive không |
+| Dependencies | KHÔNG check (`Predicate = _ => false`) — chỉ verify app responding HTTP |
+| Response | Plain text `"Healthy"` HTTP 200 — KHÔNG phải JSON `CommonResponse` |
+| Auth | Không yêu cầu |
+| Use case | k8s `livenessProbe`: nếu fail nhiều lần → k8s restart pod |
+
+### `GET /ready` — Readiness probe (#AUTH-60)
+
+| Aspect | Mô tả |
+|---|---|
+| Mục đích | k8s readiness probe — check app **sẵn sàng nhận traffic** không |
+| Dependencies | Check 3 deps tag `"ready"`: **PostgreSQL** + **Redis** + **RabbitMQ** (MassTransit) |
+| Response thành công | Plain text `"Healthy"` HTTP 200 |
+| Response fail | Plain text `"Unhealthy"` HTTP 503 (1 trong 3 deps không reachable) |
+| Auth | Không yêu cầu |
+| Use case | k8s `readinessProbe`: nếu fail → k8s loại pod khỏi load balancer rotation |
+
+**Probe implementation (`PostgresHealthCheck`/`RedisHealthCheck`/`RabbitMqHealthCheck`):**
+- **Postgres**: `DatabaseFacade.CanConnectAsync()` (= `SELECT 1`, không load EF metadata)
+- **Redis**: `IConnectionMultiplexer.IsConnected` + `PING` command
+- **RabbitMQ**: `IBus.GetProbeResult()` qua MassTransit
+
+### `GET /health` — Full health report
+
+| Aspect | Mô tả |
+|---|---|
+| Mục đích | Detailed status report — alias của `/ready` nhưng response chi tiết hơn |
+| Response | JSON với từng check + duration + error details |
+| Auth | Không yêu cầu — **CẢNH BÁO**: response có thể leak deps info (PostgreSQL version, Redis ping ms, RabbitMQ host) → DevOps nên k8s NetworkPolicy cấm public expose. |
+
+### `GET /metrics` — Prometheus metrics
+
+| Aspect | Mô tả |
+|---|---|
+| Mục đích | Expose Prometheus-format metrics cho scrape |
+| Format | Prometheus text exposition format |
+| Auth | Không yêu cầu — **CẢNH BÁO**: cùng issue privacy như `/health`. |
+| Metric prefixes | `auth_login_total{result="..."}`, `auth_2fa_challenge_total{result="..."}`, `auth_refresh_token_total{result="..."}`, `auth_otp_usage_total{purpose="...",result="..."}`, `idempotency_replay_hits_total`, `idempotency_reservations_total`, `idempotency_conflicts_total` (#AUTH-78) |
+
+**Metric label values (catalog):**
+
+| Metric | Label | Values |
+|---|---|---|
+| `auth_login_total` | `result` | `success`, `success_2fa`, `invalid_credentials` |
+| `auth_2fa_challenge_total` | `result` | `totp_success`, `totp_wrong`, `backup_success`, `backup_wrong`, `sms_success`, `sms_wrong` |
+| `auth_refresh_token_total` | `result` | `success`, `reuse_detected` |
+| `auth_otp_usage_total` | `purpose` | `register`, `password_reset` |
+| `auth_otp_usage_total` | `result` | `verified`, `wrong` |
+| `idempotency_*_total` | (no label) | counter only |
+
+> **DevOps note**: Trong production k8s setup, `/health`, `/metrics`, `/ready` đều dùng probe internal traffic; KHÔNG nên route public qua Ingress. Idiomatic: dùng `serviceMonitor` (Prometheus operator) hoặc sidecar pull thay vì expose public.
+
+---
+
+## Appendix I — Global middleware behaviors
+
+Pipeline (`Program.cs` line 130-148):
+
+```
+HTTPS redirection (skip nếu env=Docker)
+  → CORS "AllowAll"
+  → Rate limiter (per-endpoint policies)
+  → JwtBearer Authentication
+  → TokenRevocationMiddleware (#AUTH-54)
+  → Authorization
+  → IdempotencyKey middleware
+  → MapControllers
+```
+
+### `Idempotency-Key` middleware (chống duplicate writes)
+
+**Áp dụng GLOBAL** cho mọi endpoint `POST` / `PUT` / `PATCH` — không chỉ /register như docs sớm hơn ghi.
+
+| Aspect | Mô tả |
+|---|---|
+| Header | `Idempotency-Key: <UUID v4 hoặc string>` (FE tự gen, gửi kèm request) |
+| Cache | Response cache trong Redis qua `RedisIdempotencyKeyStore`, TTL = `Idempotency:TtlHours` config (default **24 giờ**) |
+| Behavior khi duplicate | Request thứ 2 với cùng `Idempotency-Key` → trả response cũ NGAY (status + headers + body identical), KHÔNG re-execute handler. Metric `IdempotencyReplayHits` increment. |
+| Conflict khi processing | Request 2 trong khi request 1 chưa response (reserve fail) → trả **409 Conflict** với body **chính xác**: `{"isSuccess":false,"message":"Request đang được xử lý với cùng Idempotency-Key."}`. Metric `IdempotencyConflicts` increment. **Lưu ý**: Body 409 này KHÔNG có `statusCode`/`data`/`listErrors` fields (raw string format, không qua `CommonResponseWriter`). |
+| Áp dụng | Optional — endpoint không cần header này vẫn work (just no idempotency guarantee). |
+| Config disable | `Idempotency:Enabled = false` (default `true`) — tắt toàn bộ middleware. Useful cho integration test environment. |
+| Recommended endpoints | `/register`, `/forgot-password`, `/resend-otp`, `/resend-reset-otp`, `/admin/accounts`, `/admin/accounts/invite` — các endpoint create new resource |
+| Race protection | Sau khi reserve fail, middleware **retry check cached response 1 lần** (cover race khi request 1 vừa save xong giữa 2 lần đọc). Nếu vẫn fail → 409. |
 
 **FE pattern:**
 ```js
@@ -3709,5 +4343,406 @@ const idempotencyKey = uuidv4(); // Gen 1 lần ở client
 await api.post('/api/auth/register', payload, {
   headers: { 'Idempotency-Key': idempotencyKey }
 });
-// User click submit lại (mạng chậm) → retry cùng key → server không tạo trùng account.
+// Nếu user click submit lại (vd mạng chậm), retry với cùng key → server không tạo trùng account.
 ```
+
+### `AuditableEntityInterceptor` (soft delete + audit timestamps)
+
+Mọi entity extend `AuditableEntity` (Account, Role, Permission, RolePermission, RefreshToken, AccountProfile, StaffProfile, StaffSkill, BackupCode) đi qua interceptor này khi SaveChanges:
+
+| EntityState | Behavior |
+|---|---|
+| `Added` | Set `CreatedAt = UtcNow`. Set `CreatedBy = JWT.AccountId` nếu có, `Guid.Empty` nếu anonymous request. |
+| `Modified` | Set `UpdatedAt = UtcNow`. (Không track `LastModifiedBy` — commented out trong code) |
+| `Deleted` (default) | **Convert sang `Modified`** + set `IsDeleted = true`, `DeletedAt = UtcNow`. Đây là cơ chế soft delete chuẩn cho mọi entity. |
+| `Deleted` (entity implements `IHardDeleteEntity`) | Real DELETE — interceptor không can thiệp. Hiện tại **chưa có** entity nào implement interface này trong AuthService — mọi soft delete. |
+
+**Hậu quả cho code/docs đã viết:**
+- `_unitOfWork.X.DeleteAsync(entity)` → KHÔNG xóa row, chỉ set `IsDeleted = true`. Đây là lý do các handler không cần explicit set `IsDeleted` (interceptor handle).
+- Repository `GetAllAsync()` mặc định KHÔNG filter `IsDeleted` (project không dùng global query filter, xem `CLAUDE.md`) → handler PHẢI explicit `.Where(x => !x.IsDeleted)`.
+- Reactivate flow (`/reactivate-request`/`/reactivate-verify`) dùng `IgnoreQueryFilters()` để bypass — nhưng project không có global query filter nên `IgnoreQueryFilters()` ở reactivate handler thực ra **no-op**. Vẫn safe vì code logic check `IsDeleted = true` explicit.
+
+### CORS policy `"AllowAll"`
+
+Hiện tại config CORS = **AllowAll** — permissive cho mọi origin/method/header. **Production lock down** qua config:
+- Whitelist origins (vd `https://app.solarbattery.com`, `https://admin.solarbattery.com`)
+- Allow methods: `GET, POST, PUT, PATCH, DELETE`
+- Allow headers: `Authorization, Content-Type, Idempotency-Key, X-Challenge-Token, X-Correlation-Id`
+- Allow credentials: `true` (cho cookie-based auth nếu có)
+
+> **SECURITY review checkpoint**: AllowAll cho mọi cross-origin browser request bypass được CORS, nhưng KHÔNG bypass được auth (vẫn cần `Authorization` header). Tuy vậy enable cross-origin malicious sites đọc response 401/403 → có thể infer user state.
+
+### Debug console output trong production code
+
+`AuditableEntityInterceptor.cs:42, 47` có `Console.WriteLine` debug output (`"[AuditableEntityInterceptor] User found: {uid}..."`) — sẽ flood stdout trong production. **Recommendation**: thay bằng `ILogger.LogDebug` hoặc remove.
+
+---
+
+## Appendix J — Domain entity field details
+
+DTOs exposed qua API đã document đầy đủ trong `DTOs dùng chung` section, nhưng **DB-level entity fields** có thêm thông tin không exposed nhưng FE/QA cần biết khi đọc audit log / debug.
+
+### `RefreshToken` entity (DB schema vs `SessionDto`)
+
+| Field | Type | Trong `SessionDto`? | Mô tả |
+|---|---|---|---|
+| `Id` | `Guid` | ✅ | Session ID |
+| `AccountId` | `Guid` | ❌ | Owner account |
+| `Token` | `string` | ❌ | **Hash** của plaintext refresh token (#AUTH-01) — KHÔNG bao giờ expose qua API |
+| `JwtId` | `string?` | ❌ | Link tới access token JWT's `jti` claim (cho audit/correlation). Có thể null cho row legacy. |
+| `IssuedAt` | `DateTime` | ✅ | Lúc cấp token UTC |
+| `OriginalIssuedAt` | `DateTime?` | ❌ | (#AUTH-28) Lúc issue chain rotation gốc. `ExpiredAt = OriginalIssuedAt + 7d`. Null cho row legacy → fallback `IssuedAt`. |
+| `ExpiredAt` | `DateTime` | ✅ | Lúc hết hạn UTC |
+| `Status` | `RefreshTokenStatus` | ✅ | Trạng thái |
+| `UsedAt` | `DateTime?` | ❌ | Thời điểm token được rotate (status chuyển `Active → Used`). Null nếu chưa rotate. |
+| `RevokedAt` | `DateTime?` | ✅ | Thời điểm revoke |
+| `RevokedReason` | `string?` | ✅ | Lý do revoke |
+| `ReplacedByToken` | `string?` | ❌ | **Hash** của token mới trong chain rotation. Cho phép trace rotation chain ngược lên. Null nếu là token cuối hoặc chưa rotate. |
+| `IpAddress` | `string?` | ✅ | IP lúc issue |
+| `UserAgent` | `string?` | ✅ | UA lúc issue |
+| `DeviceId` | `string?` | ✅ | Device ID |
+| `CreatedAt`/`UpdatedAt`/`IsDeleted`/`DeletedAt`/`CreatedBy` | inherit `AuditableEntity` | ❌ | Audit fields chung |
+
+**Computed properties** (không lưu DB, tính từ fields khác):
+- `IsExpired` = `UtcNow >= ExpiredAt`
+- `IsActive` = `Status == Active && !IsExpired`
+
+> FE muốn check session active không thay vì call `/sessions/me` rồi filter, dùng `data.status == 1 && data.expiredAt > now`.
+
+### `OutboxMessage` entity (DB schema cho outbox pattern)
+
+| Field | Type | Mô tả |
+|---|---|---|
+| `Id` | `Guid` | Message ID |
+| `EventType` | `string` | Tên event (vd `"SendOtpRegisterEvent"`, `"AccountActivatedEvent"`) |
+| `Payload` | `string` (JSON) | Serialized event data |
+| `OccurredAt` | `DateTime` | Lúc handler tạo message |
+| `ProcessedAt` | `DateTime?` | Lúc `OutboxRelay` publish thành công lên RabbitMQ. **Null = pending**. |
+| `RetryCount` | `int` | Số lần `OutboxRelay` retry. Tăng khi RabbitMQ publish fail. Vượt `Outbox:MaxRetries` → skip + log warning. |
+| `LastError` | `string?` | Exception message từ lần fail gần nhất. Null nếu chưa fail hoặc đã success. |
+| `CreatedAt`/`UpdatedAt`/`IsDeleted`/`DeletedAt`/`CreatedBy` | inherit `AuditableEntity` | Audit fields chung |
+
+> **Debug pattern**: Email không tới user → query `OutboxMessage WHERE EventType='SendOtpRegisterEvent' AND ProcessedAt IS NULL` → nếu có row → RabbitMQ down hoặc consumer not running. `WHERE LastError IS NOT NULL` → tìm exception cụ thể.
+
+> **OutboxRelay cleanup**: Code hiện tại **KHÔNG có** cleanup background job cho `OutboxMessage` đã processed. DB sẽ grow theo thời gian. **Recommendation**: thêm cleanup job xóa rows `WHERE ProcessedAt IS NOT NULL AND ProcessedAt < now - 30 days` (similar pattern với 5 background services hiện có).
+
+---
+
+## Appendix K — Database constraints (partial unique indexes)
+
+PostgreSQL **partial unique indexes** (qua EF `HasFilter()`) ảnh hưởng trực tiếp behavior API. **Quan trọng cho FE/QA test edge case.**
+
+### `accounts` table
+
+| Column | Unique? | Filter (partial) | Hậu quả nghiệp vụ |
+|---|---|---|---|
+| `email` | ✅ | `WHERE is_deleted = false` | **Email được "release" sau soft-delete** — user soft-deleted account, sau đó email đó có thể register lại bởi user khác hoặc reactivate. **Đây là gap với `/reactivate-request`**: nếu user A soft-delete email X lúc t=0, user B register email X lúc t=10, user A gọi `/reactivate-request` lúc t=20 → tìm thấy account A soft-deleted (90-day window) → reactivate sẽ **conflict với account B đang active** → `taken` check tại reactivate-verify sẽ fail. **FE UX**: hiện message *"Email đã được dùng bởi tài khoản khác trong lúc bạn chờ. Không thể khôi phục."* |
+| `phone_number` | ✅ | `WHERE phone_number IS NOT NULL` | Multi null phone OK. Phone đã set thì unique cross active+deleted accounts (different from email!). |
+| `google_id` | ✅ | `WHERE google_id IS NOT NULL` | Multi null OK. Google ID đã link thì 1 Google account = 1 Auth account globally (#AUTH-20). |
+| `invitation_token` | (non-unique index) | `WHERE invitation_token IS NOT NULL` | Index for invitation lookup performance. Token không enforce unique ở DB level — handler check before insert. |
+| `status`, `is_deleted`, `role_id` | (non-unique index) | — | Query performance cho admin filter. |
+| `(email, is_deleted)` | (non-unique composite) | — | Optimize lookup pattern `WHERE email = X AND !IsDeleted`. |
+
+### `refresh_tokens` table
+
+| Column | Unique? | Mô tả |
+|---|---|---|
+| `token` (= hash) | ✅ | Hash của refresh token. Collision rate ~0 với Guid `N` format + hash. |
+| `account_id` | (index) | Lookup pattern "all sessions of user". |
+| `jwt_id` | (index) | Audit correlation — find refresh token tương ứng với access token's jti. |
+| `status`, `expired_at` | (index) | Background cleanup + active session count. |
+| `(account_id, status)` | (composite) | Session limit check pattern. |
+
+### `permissions` table
+
+| Column | Unique? | Mô tả |
+|---|---|---|
+| `code` | ✅ | Permission code (vd `user.view`) globally unique. |
+| `module` | (index) | Filter by module (vd Battery, Ticket). |
+
+### `account_profiles` table
+
+| Column | Unique? | Mô tả |
+|---|---|---|
+| `account_id` | ✅ | **1-to-1** Account ↔ Profile relationship. Một account chỉ có 1 profile. Handler tự tạo profile mới nếu chưa có khi gọi `/me/profile` hoặc `/me/avatar`. |
+| `avatar_file_id` | (index) | `WHERE avatar_file_id IS NOT NULL` — partial. Multi null OK (chưa upload avatar). |
+
+### `audit_logs` table
+
+| Column | Index | Mô tả |
+|---|---|---|
+| `target_account_id`, `actor_account_id`, `action`, `created_at` | individual | Filter pattern. |
+| `(target_account_id, created_at)` | composite | Optimize `GET /admin/audit-logs/by-account/{id}` (sort desc). |
+
+### `login_attempts` table
+
+| Column | Index | Mô tả |
+|---|---|---|
+| `account_id`, `attempted_email`, `ip_address` | individual | Forensic lookup. |
+| `(account_id, created_at)` | composite | Optimize `GET /me/login-history` (sort desc). |
+
+### `backup_codes` table
+
+| Column | Index | Mô tả |
+|---|---|---|
+| `(account_id, redeemed_at)` | composite | Pattern "find unredeemed codes for account". |
+| `is_deleted` | individual | Cleanup pattern. |
+
+---
+
+## Appendix L — MediatR ValidationBehavior (pipeline)
+
+`ValidationBehavior<TRequest, TResponse>` chạy **trước mọi command/query handler** trong MediatR pipeline.
+
+### Generic constraints
+
+```csharp
+where TResponse : CommonResponseBase
+where TRequest : IRequest<TResponse>
+```
+
+→ Chỉ áp dụng cho command/query có response inherit `CommonResponseBase`. Notification handlers (`AuditTrail`, `LoginAttempt`, `SessionCreated`) **không** đi qua behavior này.
+
+### Flow
+
+```
+Request → ValidationBehavior:
+  ├─ Request implements IValidatable<TResponse>?
+  │   ├─ Yes: call ValidateAsync() → 
+  │   │     ├─ result.IsSuccess = false → SHORT-CIRCUIT, return result. Handler không chạy.
+  │   │     └─ result.IsSuccess = true → tiếp tục pipeline.
+  │   └─ No: skip validation, tiếp tục pipeline.
+  └─ → next() (handler hoặc next behavior)
+```
+
+> **Important**: Validation pipeline short-circuit return chính `result` (`CommonResponseBase` subclass). Status code đã set trong `ValidateAsync()` (vd 400 hoặc 422) sẽ là HTTP status final. Controller chỉ wrap `StatusCode(result.StatusCode, result)`.
+
+### Commands implement `IValidatable<TResponse>` (verified):
+
+`RegisterCommand`, `LoginCommand`, `Verify2FALoginCommand`, `Disable2FACommand`, `Confirm2FACommand`, `RegenerateBackupCodesCommand`, `AcceptInviteCommand`, `VerifyResetOtpCommand`, `ResetPasswordCommand`, `LogoutCommand`, `Init2FACommand` (nhưng chỉ check AccountId), `ChangePasswordCommand`, `UpdateMyProfileCommand`, `UpdateAccountCommand`, `UpdateStaffProfileCommand`, `AddStaffSkillCommand`, `SetMyAvatarCommand`, `ChangeEmailCommand`, `ConfirmEmailChangeCommand`, `ChangeAccountStatusCommand`, `ChangeAccountRoleCommand`, `ChangeRoleStatusCommand`, `UpdateRoleCommand`, `CreateRoleCommand`, `InviteAccountCommand`, `SetRolePermissionsCommand`, `AdminRevokeAccountSessionsCommand`, …
+
+### Commands KHÔNG implement (handler tự validate):
+
+`RefreshTokenCommand` (chỉ kiểm tra string empty trong handler), `GoogleAuthCommand`, `GoogleCallbackCommand`, `LinkGoogleCommand` (chỉ check Guid.Empty), `UnlinkGoogleCommand`, `Request2FASmsCommand`, `RevokeTokenCommand`, `IntrospectTokenCommand`, `ReactivateRequestCommand`, `ReactivateVerifyCommand`, `Enable2FACommand` (deprecated), `DeactivateMeCommand`, `DeleteMeCommand`, `DeleteAccountCommand`, `UnlockAccountCommand`, `DeleteRoleCommand`, `DeleteStaffSkillCommand`, `RevokeSessionCommand`, `RevokeAllSessionsCommand`, `ForgotPasswordCommand`, `ResendOtpCommand`, `ResendResetOtpCommand`, `SendPhoneOtpCommand`, `VerifyPhoneOtpCommand`, `VerifyOtpCommand`.
+
+> **Hậu quả**: với command **không có** `IValidatable`, field-level errors **KHÔNG có** `listErrors` array — handler tự set message-only. FE check `data?.listErrors` thấy `null` thì biết là handler-level error.
+
+---
+
+## Appendix M — `CommonResponseWriter` (middleware response writer)
+
+Helper static method dùng bởi `JwtBearer`, `TokenRevocation` và bất kỳ middleware nào cần ghi error response:
+
+### Signature
+
+```csharp
+public static async Task WriteAsync(
+    HttpResponse response,
+    int statusCode,
+    string message,
+    IEnumerable<Errors>? errors = null,
+    object? data = null)
+```
+
+### Hành vi
+
+| Property | Value |
+|---|---|
+| JSON serialization | `JsonNamingPolicy.CamelCase` (`isSuccess` không phải `IsSuccess`) |
+| `DefaultIgnoreCondition` | `Never` → **mọi field xuất hiện trong JSON kể cả null** (vd `data: null, listErrors: null` luôn xuất hiện) |
+| `ContentType` | `application/json; charset=utf-8` |
+| `IsSuccess` | Luôn `false` (helper chỉ dùng cho error response) |
+| Idempotent | Skip write nếu `response.HasStarted` (tránh "Response already started" exception) |
+| `ListErrors` shape | `errors?.ToList() ?? new List<Errors>()` → **empty list** nếu null, KHÔNG phải `null`. `ErrorsListJsonConverter` sau đó convert empty list → JSON `null`. |
+
+### Response shape cố định (cho 401/403 từ middleware)
+
+```json
+{
+  "isSuccess": false,
+  "statusCode": 401,
+  "message": "<message>",
+  "data": <object|null>,
+  "listErrors": null
+}
+```
+
+> **Lưu ý FE**: `data` có thể là `null` HOẶC `{errorCode: "..."}` (như `JwtBearerEvents` truyền `data: new { errorCode }`) → FE parse `response.data?.errorCode` an toàn với `?.` optional chaining.
+
+---
+
+## Appendix N — `ICurrentUserService` (actor resolution)
+
+Interface duy nhất:
+
+```csharp
+public interface ICurrentUserService
+{
+    string? UserId { get; }
+}
+```
+
+### Implementation
+
+```csharp
+public string? UserId => _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+```
+
+→ Đọc claim `nameid` (từ JWT). **Lưu ý**: JWT có cả `nameid` (`ClaimTypes.NameIdentifier`) và custom `AccountId` claim — cả 2 đều cùng giá trị `accountId.ToString()` (xem JWT structure section).
+
+### Dùng bởi
+
+1. **`AuditableEntityInterceptor`**: set `CreatedBy` khi entity Added. Nếu null → `Guid.Empty`.
+2. **`AuditTrailNotificationHandler`**: fallback actor resolution khi `ActorAccountIdOverride` null.
+3. **`ChangeAccountRoleCommandHandler`**: set `RoleAssignedBy` field (đọc trực tiếp claim `AccountId` thay vì qua `ICurrentUserService` — minor inconsistency).
+4. **`RevokeSessionCommandHandler`** + **`RevokeAllSessionsCommandHandler`**: get current user để check ownership.
+
+### Edge case
+
+| Scenario | UserId value | Hậu quả |
+|---|---|---|
+| HttpContext null (vd background service, MediatR call ngoài request scope) | `null` | `AuditableEntityInterceptor` set `CreatedBy = Guid.Empty` |
+| JWT có claim `nameid` valid | `<accountId guid string>` | Resolve correctly |
+| Anonymous request (no JWT, vd `/register`, `/login`) | `null` | Tương tự HttpContext null case |
+| JWT bị tampered nhưng pass signature (chỉ test scenario) | `<tampered guid>` | Resolver trust JWT — đây là expected, sau JWT validation thì claim được trust |
+
+---
+
+## Appendix O — Redis state catalog + security primitives
+
+Mọi Redis key được dùng bởi AuthService, với TTL và purpose. **Quan trọng cho DevOps debug + security review.**
+
+### Redis key namespace
+
+| Key pattern | Type | TTL | Set bởi | Mô tả |
+|---|---|---|---|---|
+| `revoked_jti:{jti}` | String | Remaining token life | `/auth/revoke` handler | (#AUTH-54) Per-token blacklist. Value = reason string. |
+| `account_revoke_cutoff:{accountIdNoHyphen}` | String | 1 giờ | `/auth/logout`, `/me/password`, `/reset-password`, admin force-logout | (#AUTH-54) Account-level bulk cutoff. Value = Unix timestamp giây. |
+| `2fa:challenge:{token}` | **Hash** với fields `data` (JSON) + `attempts` (int) | 5 phút | `LoginCommandHandler` khi 2FA on | (#AUTH-58) Challenge state cho login step 2. Token = Guid `N` format (32 hex). |
+| `2fa:account:{accountIdNoHyphen}:challenges` | **Set** chứa challenge tokens | challenge TTL + 1 phút buffer | Cùng challenge creation | Secondary index cho `InvalidateByAccountAsync` (logout invalidate flow). |
+| `2fa:pending:{accountId}` | String (JSON `{Secret, PendingToken, CreatedAtUtc}`) | 10 phút | `/2fa/init` handler | Pending state enrollment 2FA. Dùng `IDistributedCache` (đơn giản, không cần atomic counter). |
+| `2fa:sms_otp:{challengeToken}` | String | 3 phút | `/login/2fa/sms` handler | OTP SMS cho 2FA fallback. Plain OTP string (không hash — chống bypass via timing). |
+| `pwd_reset_used:{jti}` | String | Remaining reset token life | `/reset-password` handler | (#AUTH-06) Single-use enforcement cho reset token. SET NX guarantee atomic. |
+| `idempotency:{header_value}` | String (response cached) | 24 giờ (config) | `IdempotencyKeyMiddleware` | Cache response cho duplicate detect. |
+| `email_reserve:{sha256(email)[..16]}` | String | 10 phút | `/me/change-email` handler | (#AUTH-24) Owner-aware email reservation. Value = `accountIdNoHyphen`. |
+| `backup_code_attempts:{accountIdNoHyphen}` | String (counter) | 15 phút | `Verify2FALoginCommandHandler` | (#AUTH-45) Per-account backup code rate limit. INCR. |
+
+> **DevOps debug pattern**: `redis-cli KEYS "2fa:challenge:*"` để list active challenges. `redis-cli HGETALL "2fa:challenge:{token}"` để inspect attempts counter + payload JSON.
+
+### `RefreshTokenHasher` (#AUTH-01)
+
+| Property | Value |
+|---|---|
+| Algorithm | **SHA-256** (no salt) |
+| Output | Hex lowercase, 64 chars |
+| Justification no-salt | Plaintext refresh token = Guid `N` format = **128 bit entropy** unguessable. Không có user input → không cần defense against rainbow tables. |
+| Implementation | `Convert.ToHexString(SHA256.HashData(UTF8.GetBytes(plainToken))).ToLowerInvariant()` |
+
+> **Security review**: SHA-256 no-salt là **acceptable** cho high-entropy random tokens, KHÔNG dùng cho password. PenTester có thể flag → docs này là defense.
+
+### `TwoFactorSecretProtector` (ASP.NET Data Protection wrapper)
+
+| Property | Value |
+|---|---|
+| Backend | `IDataProtector` từ ASP.NET Core Data Protection |
+| Purpose string | `"AuthService.Account.TwoFactorSecret.v1"` (DataProtection scopes keys by purpose) |
+| Format | `enc:v1:{base64(ciphertext)}` |
+| Key rotation | Hỗ trợ via prefix versioning. Future `enc:v2:` dùng key mới, `Unprotect` detect prefix → routing. |
+| Lazy plaintext handling | Nếu không có prefix `enc:v1:` → `Unprotect` return as-is (legacy plaintext) → caller (`Verify2FALoginCommandHandler`) tự re-encrypt sau verify thành công (#AUTH-22). |
+| `IsProtected(value)` | `value.StartsWith("enc:v1:")` |
+
+> ⚠️ **DataProtection key store**: ASP.NET DataProtection mặc định dùng filesystem (ephemeral trong container) → app restart có thể mất key → existing 2FA secrets không decrypt được → users phải reset 2FA. **Production**: persist keys qua Redis/file mount với `services.AddDataProtection().PersistKeysToXXX(...)`. Hiện code chưa thấy explicit persist config → cần verify deployment setup. **DevOps check**: nếu thấy users báo "2FA TOTP code luôn fail sau deploy" → check DataProtection key store config.
+
+### Store implementations summary
+
+| Store | Library | Underlying primitive | Atomic operations |
+|---|---|---|---|
+| `TokenRevocationStore` | StackExchange.Redis | `StringSetAsync` + `KeyExistsAsync` | SET (no NX), GET |
+| `TwoFactorChallengeStore` | StackExchange.Redis | `HashSetAsync`, `HashGetAllAsync`, `HashIncrementAsync` (atomic INCR for attempts) | HINCRBY |
+| `TwoFactorPendingStore` | `IDistributedCache` (abstraction over Redis) | `SetStringAsync`, `GetStringAsync`, `RemoveAsync` | None (overwrite OK — init lần 2 = invalidate token cũ) |
+| `RedisTwoFactorSmsOtpStore` | StackExchange.Redis | `StringSetAsync`, `StringGetAsync`, `KeyDeleteAsync` | None |
+| `RedisIdempotencyKeyStore` | StackExchange.Redis | SET NX (reserve), then SET (save response) | SETNX |
+
+---
+
+## Appendix P — Deployment health checklist
+
+Items DevOps PHẢI verify ở mỗi production deploy (consolidate từ findings 21 round):
+
+1. **`JwtSettings:SecretKey`** ≥ 32 chars (app startup fail nếu thiếu).
+2. **`JwtSettings:Issuer`** + **`Audience`** set.
+3. **`ADMIN_EMAIL`** + **`ADMIN_PASSWORD`** env vars set **khác default** (`admin@gmail.com`/`Admin123@`) cho production.
+4. **`GoogleOAuth:RedirectUri`** + (optional) **`AllowedRedirectUris`** array set + match Google Console config.
+5. **`GoogleOAuth:ClientId`** + **`ClientSecret`** set.
+6. **`Redis:ConnectionString`** reachable từ pod — verify qua `/ready` probe.
+7. **`RabbitMQ:*`** config + reachable — verify qua `/ready`.
+8. **`Outbox:PollIntervalSeconds`** = 2 (production), có thể tăng cho dev.
+9. **CORS** policy không phải `AllowAll` cho production — whitelist origins cụ thể.
+10. **DataProtection key store** persist (Redis/file mount) — TRÁNH user bị mất 2FA sau restart.
+11. **`Idempotency:Enabled`** = true cho production.
+12. **`Session:MaxConcurrentSessions`** = 5 (default) hoặc theo policy.
+13. **`AuthSecurity:EnforceDeviceBinding`** — quyết định bật/tắt theo mobile UX requirement.
+14. **`PasswordPolicy:*`** — verify match security policy.
+15. **Migrations** đã apply (Customer role ID `44444444-...` phải tồn tại — register sẽ fail nếu không).
+16. **Health probes** k8s: `livenessProbe` → `/live`, `readinessProbe` → `/ready`.
+17. **Prometheus scrape** `/metrics` qua serviceMonitor (KHÔNG public expose).
+18. **Console.WriteLine debug** trong `AuditableEntityInterceptor` — flag để clean up (flood stdout).
+
+---
+
+## Appendix Q — Integration events catalog (RabbitMQ outbox + consumers)
+
+### Events PUBLISHED bởi AuthService → RabbitMQ outbox
+
+| Event | Payload fields | Published bởi handler | Consumed bởi (downstream) |
+|---|---|---|---|
+| `SendOtpRegisterEvent` | `ToEmail`, `Otp` | `RegisterCommandHandler`, `ResendOtpCommandHandler` | NotificationService (gửi email) |
+| `SendPasswordResetOtpEvent` | `ToEmail`, `Otp` | `ForgotPasswordCommandHandler`, `ResendResetOtpCommandHandler`, **`ReactivateRequestCommandHandler`** (re-use enum) | NotificationService |
+| `SendEmailChangeOtpEvent` | `ToNewEmail`, `Otp` | `ChangeEmailCommandHandler` | NotificationService → gửi tới email **mới** |
+| `SendSmsCommand` | `PhoneNumber`, `Message`, `SourceService`, `CorrelationId`, `Category` | `Request2FASmsCommandHandler` (`category="2fa_sms"`), `SendPhoneOtpCommandHandler` (`category="phone_verify"`) | SmsService |
+| `SendAdminInviteEvent` | (admin invite details + token) | `InviteAccountCommandHandler` | NotificationService → gửi email invite |
+| `AccountActivatedEvent` | `AccountId`, `Email`, `FullName`, `PhoneNumber`, `Role`, `CreationSource` | `VerifyOtpCommandHandler` (`SelfRegister`), `AcceptInviteCommandHandler` (`AdminInvite`), `GoogleAuthCommandHandler` (`GoogleOAuth`) | NotificationService (welcome email), UserDirectory sync |
+| `AccountDeletedEvent` | `AccountId`, `Email`, `DeletionSource` | `DeleteMeCommandHandler` (`SelfDelete`), `DeleteAccountCommandHandler` (`AdminDelete`) | NotificationService (confirm email), UserDirectory unsync |
+| `RefreshTokenReuseDetectedEvent` | `AccountId`, `ReusedTokenId`, `IpAddress`, `UserAgent`, `DetectedAt`, `RevokedFamilyCount` | `RefreshTokenCommandHandler` (#AUTH-79) | NotificationService (security alert email), Grafana |
+| `SuspiciousLoginDetectedEvent` | `AccountId`, `Email`, `IpAddress`, `UserAgent`, `Reason`, `DetectedAt` | `AuthTokenIssuer` (#AUTH-52, từ `LoginCommandHandler` + `Verify2FALoginCommandHandler`) | NotificationService (security alert) |
+| `StaffProfileUpdatedEvent` | (staff profile fields) | `UpdateStaffProfileCommandHandler` | TicketService (sync staff routing config), ManagerDashboard |
+
+### Events CONSUMED bởi AuthService ← RabbitMQ
+
+| Event | Consumer | Behavior |
+|---|---|---|
+| `PermissionsChangedEvent` | `PermissionsChangedConsumer` (#AUTH-15) | Invalidate `PermissionResolver` in-memory cache. **Per-instance**: mỗi BE replica consume riêng → mỗi replica invalidate cache local. Nếu `RoleCode` rỗng → `InvalidateAll()`; có RoleCode → `InvalidateRole(roleId)` (lookup theo NormalizedName). Nếu RoleCode không tồn tại → fallback `InvalidateAll()` as safety net. |
+
+> ⚠️ **GAP nghiêm trọng — `PermissionsChangedEvent` consumer exists nhưng KHÔNG handler nào trong AuthService publish event này.**
+>
+> Round 9 docs claim đúng: cache chỉ invalidate qua 5-min TTL (không qua push event) — vì `SetRolePermissionsCommandHandler` không publish.
+>
+> Architectural intent (#AUTH-15) là: `SetRolePermissions` publish event → RabbitMQ broadcast → mỗi BE replica consumer invalidate cache → instant sync across replicas. **Implementation incomplete** — publish side missing.
+>
+> **Production impact**: Multi-replica deploy → mỗi replica cache **độc lập**, sync chỉ qua 5-min TTL từng replica. Admin đổi permission → user trên replica A có thể thấy permission mới sau 1 phút, user trên replica B sau 4 phút (cache age khác nhau).
+>
+> **Fix**: thêm `_messageProducer.PublishAsync(new PermissionsChangedEvent(...))` vào `SetRolePermissionsCommandHandler` và `ChangeAccountRoleCommandHandler`.
+
+### Events tồn tại trong SharedContracts nhưng **KHÔNG được publish/consume** trong AuthService
+
+| Event | Status | Note |
+|---|---|---|
+| `AccountStatusChangedEvent` | Defined nhưng unused | `ChangeAccountStatusCommandHandler` chỉ publish `AuditTrailNotification`, không publish event ra outbox. Downstream services muốn react tới status change phải poll DB hoặc dùng audit log subscription. |
+| `SendPhoneOtpEvent` | **Deprecated** | Code comment trong `SendPhoneOtpCommandHandler.cs:66` xác nhận: *"SendPhoneOtpEvent đã được xoá khỏi flow này — backward-compat"*. Hiện publish `SendSmsCommand` thay thế. |
+| `StaffSkillsUpdatedEvent` | Defined, không publish trong handler nào của AuthService hiện tại | Reserved cho future `AddStaffSkillCommandHandler` integration (chưa wire up). |
+| `SmsDeliveryReportEvent`, `SmsFailedEvent` | Defined trong SharedContracts | AuthService **không consume** — đây là events SmsService publish cho ManagerDashboard/CustomerNotification consumer. AuthService chỉ publish `SendSmsCommand` request. |
+
+### Outbox publish pattern (TRƯỚC vs SAU SaveChanges)
+
+Phần lớn handlers publish event **TRƯỚC `SaveChangesAsync()`** để event row được commit cùng transaction với business data (idiomatic Outbox pattern). Examples:
+- `RegisterCommandHandler.cs:119` (publish SendOtpRegisterEvent trước SaveChanges line 123)
+- `VerifyOtpCommandHandler.cs:101` (publish AccountActivatedEvent trước SaveChanges line 109)
+- `AcceptInviteCommandHandler.cs:105` (publish AccountActivatedEvent trước SaveChanges line 118)
+- `ChangeEmailCommandHandler.cs:95` (publish SendEmailChangeOtpEvent trước SaveChanges line 97)
+- `InviteAccountCommandHandler.cs:115` (publish SendAdminInviteEvent)
+- `GoogleAuthCommandHandler.cs:169` (publish AccountActivatedEvent trước SaveChanges)
+
+**Vài exception publish SAU SaveChanges:**
+- `RefreshTokenCommandHandler.cs:84` (publish RefreshTokenReuseDetectedEvent SAU rollback transaction trong reuse case — vì revoke action đã commit ngay)
+
+> **Hậu quả nếu handler throw giữa publish và SaveChanges**: Outbox row được Add vào DbContext nhưng chưa commit → exception rollback → outbox row KHÔNG persist → event không được publish (consistent with business state, đúng pattern).

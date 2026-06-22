@@ -93,6 +93,9 @@ export const ENDPOINTS = {
   DEVICE_TOKENS: {
     BASE: '/api/device-tokens',
   },
+  NOTIFICATION_PREFERENCES: {
+    BASE: '/api/notification-preferences',
+  },
   KNOWLEDGE_BASE: {
     LIST:    '/api/knowledge-base',
     DETAIL:  (id: string) => `/api/knowledge-base/${id}`,
