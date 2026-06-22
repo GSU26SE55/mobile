@@ -14,6 +14,7 @@ export const ENDPOINTS = {
     RESET_PASSWORD:    '/api/auth/reset-password',
     REFRESH_TOKEN:     '/api/auth/refresh-token',
     LOGOUT:            '/api/auth/logout',
+    ME_PERMISSIONS:    '/api/auth/me/permissions', // GH-47 — permission tươi của role hiện tại
   },
   PROFILE: {
     ME:     '/api/auth/me',

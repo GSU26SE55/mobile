@@ -19,6 +19,8 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { HttpError } from '../../../src/lib/errors';
+import { P } from '../../../src/lib/authz';
+import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
 import { ActivityTimeline } from '../../../src/features/tickets/components/ActivityTimeline';
 import { RateModal } from '../../../src/features/tickets/components/RateModal';
 import { ReopenModal } from '../../../src/features/tickets/components/ReopenModal';
@@ -189,6 +191,14 @@ function HorizontalStepper({ status }: { status: TicketStatusEnum }) {
 }
 
 export default function TicketDetailScreen() {
+  return (
+    <PermissionGuard permission={P.TICKET_VIEW}>
+      <TicketDetailScreenInner />
+    </PermissionGuard>
+  );
+}
+
+function TicketDetailScreenInner() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: ticket, isLoading, isError, refetch } = useTicketDetail(id ?? '');

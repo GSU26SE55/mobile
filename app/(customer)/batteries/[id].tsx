@@ -12,8 +12,18 @@ import { BatteryInfoCard } from '../../../src/features/batteries/components/Batt
 import { BatteryRealtimeCard } from '../../../src/features/batteries/components/BatteryRealtimeCard';
 import { SensorChart } from '../../../src/features/batteries/components/SensorChart';
 import { AssetAlertList } from '../../../src/features/batteries/components/AssetAlertList';
+import { P } from '../../../src/lib/authz';
+import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
 
 export default function BatteryDetailScreen() {
+  return (
+    <PermissionGuard permission={P.BATTERY_VIEW}>
+      <BatteryDetailScreenInner />
+    </PermissionGuard>
+  );
+}
+
+function BatteryDetailScreenInner() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const assetId = id ?? '';

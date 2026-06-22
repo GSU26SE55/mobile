@@ -12,9 +12,10 @@ interface Props {
   onResolve?: () => void;
   onEscalate?: () => void;
   isLoading?: boolean;
+  canResolve?: boolean; // GH-47 — gate nút Resolve theo ticket.resolve
 }
 
-export function TicketActionBar({ status, onStart, onHold, onResume, onResolve, onEscalate, isLoading }: Props) {
+export function TicketActionBar({ status, onStart, onHold, onResume, onResolve, onEscalate, isLoading, canResolve = true }: Props) {
   if (isLoading) {
     return (
       <View style={[styles.bar, Shadow]}>
@@ -41,10 +42,12 @@ export function TicketActionBar({ status, onStart, onHold, onResume, onResolve, 
           <Ionicons name="pause-outline" size={16} color={Colors.warning} />
           <Text style={[styles.btnOutlineText, { color: Colors.warning }]}>Tạm dừng</Text>
         </Pressable>
-        <Pressable style={[styles.btnPrimary, ShadowPrimary, { flex: 1 }]} onPress={onResolve}>
-          <Ionicons name="checkmark-circle" size={16} color="#fff" />
-          <Text style={styles.btnPrimaryText}>Hoàn thành</Text>
-        </Pressable>
+        {canResolve && (
+          <Pressable style={[styles.btnPrimary, ShadowPrimary, { flex: 1 }]} onPress={onResolve}>
+            <Ionicons name="checkmark-circle" size={16} color="#fff" />
+            <Text style={styles.btnPrimaryText}>Hoàn thành</Text>
+          </Pressable>
+        )}
         <Pressable style={styles.btnDanger} onPress={onEscalate}>
           <Ionicons name="arrow-up-circle-outline" size={16} color={Colors.danger} />
           <Text style={[styles.btnOutlineText, { color: Colors.danger }]}>Escalate</Text>

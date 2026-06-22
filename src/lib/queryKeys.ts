@@ -13,6 +13,7 @@ export const KEY = {
   notificationPreferences: ['notificationPreferences'] as const,
   files:         ['files'] as const,
   kb:            ['kb'] as const,
+  permissions:   ['permissions'] as const, // GH-47
 } as const;
 
 export const QUERY_KEY = {
@@ -71,5 +72,8 @@ export const QUERY_KEY = {
     detail:   (id: string) => [...KEY.kb, 'detail', id] as const,
     related:  (ticketId: string) => [...KEY.kb, 'related', ticketId] as const,
     suggest:  (ticketId: string) => [...KEY.kb, 'suggest', ticketId] as const, // GH-44 #7
+  },
+  permissions: {
+    me: () => [...KEY.permissions, 'me'] as const, // GH-47
   },
 } as const;
