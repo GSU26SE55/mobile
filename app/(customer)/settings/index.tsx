@@ -9,6 +9,7 @@ const ITEMS = [
   { label: 'Xác thực 2 yếu tố (2FA)', route: '/(customer)/settings/two-fa' as const },
   { label: 'Phiên đăng nhập', route: '/(customer)/settings/sessions' as const },
   { label: 'Thiết bị tin cậy', route: '/(customer)/settings/trusted-devices' as const },
+  { label: 'Thông báo', route: '/(customer)/settings/notification-list' as const },
   { label: 'Cài đặt thông báo', route: '/(customer)/settings/notifications' as const },
   { label: 'Vùng nguy hiểm', route: '/(customer)/settings/danger-zone' as const },
 ];

@@ -58,6 +58,7 @@ export const QUERY_KEY = {
   },
   notifications: {
     list: (params?: Record<string, unknown>) => [...KEY.notifications, 'list', params] as const,
+    unreadCount: () => [...KEY.notifications, 'unread-count'] as const,
   },
   notificationPreferences: {
     detail: () => [...KEY.notificationPreferences, 'detail'] as const,
