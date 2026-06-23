@@ -160,6 +160,32 @@ Switch "Bật giờ im lặng"
 
 > **Lưu ý implement:** route mới làm expo-router typed routes lag → đã regenerate `.expo/types/router.d.ts` (chạy `expo start --port 8090` rồi dừng). Cần làm lại nếu fresh checkout chạy tsc trước khi start dev server.
 
+## Follow-up (2026-06-23) — Notification read-state + list UI
+BE `NotificationService` đã bổ sung read-state (mark-as-read trước đây tách issue #588, nay đã có). Verify trực tiếp `NotificationsController.cs` — doc `api-notification.md` **stale** (chưa ghi 3 endpoint dưới):
+
+| Method | Route | Response |
+|--------|-------|----------|
+| PATCH | `/api/notifications/{id}/read` | `CommonResponse<string>` (idempotent 200; 404 nếu ko thuộc user) |
+| POST | `/api/notifications/read-all` | `CommonResponse<number>` (số đã mark) |
+| GET | `/api/notifications/unread-count` | `CommonResponse<number>` (badge) |
+
+**SignalR — KHÔNG cần.** `NotificationService` không có hub (toàn BE chỉ `TicketCommentHub` + `SmsGatewayHub`). Notification dùng polling — `useUnreadCount` `refetchInterval` 30s.
+
+**Files (follow-up):**
+| File | Action | Ghi chú |
+|------|--------|---------|
+| `src/lib/endpoints.ts` | modify | `NOTIFICATIONS.MARK_READ(id)` · `MARK_ALL_READ` · `UNREAD_COUNT` |
+| `src/lib/queryKeys.ts` | modify | `notifications.unreadCount()` |
+| `src/features/notifications/services/notification.service.ts` | modify | `markRead`, `markAllRead`, `getUnreadCount` |
+| `src/features/notifications/hooks/useNotifications.ts` | modify | `useUnreadCount` (poll 30s) + `useMarkNotificationRead` + `useMarkAllRead` (onError `handleErrorApi`) |
+| `src/features/notifications/components/NotificationList.tsx` | create | Shared list: action row "N chưa đọc" + "đánh dấu tất cả đã đọc", FlatList + loading/empty/error, tap → markRead + deep-link qua prop `ticketHref` |
+| `app/(staff)/(tabs)/notifications.tsx` | modify | **Bỏ MOCK_NOTIFICATIONS**, render `<NotificationList>` (deep-link staff) |
+| `app/(customer)/settings/notification-list.tsx` | create | Màn list cho Customer (deep-link customer) |
+| `app/(customer)/settings/_layout.tsx` + `index.tsx` | modify | `<Stack.Screen name="notification-list">` + item "Thông báo" |
+| `app/(staff)/(tabs)/_layout.tsx` | modify | Badge unread trên tab "Thông báo" (`useUnreadCount`) |
+
+**Acceptance:** bỏ mock, tap→mark read + deep-link, mark-all-read, badge staff tab, customer list từ settings; `tsc --noEmit` + `npm run lint` PASS.
+
 ## Câu hỏi đã giải đáp
 - **Device list (M1)?** → Bỏ khỏi scope (cả customer & staff không cần; bảo mật thiết bị thuộc Sessions/Trusted-Devices).
 - **Scope role?** → Customer + Staff.

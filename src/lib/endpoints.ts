@@ -94,6 +94,9 @@ export const ENDPOINTS = {
   },
   NOTIFICATIONS: {
     LIST: '/api/notifications',
+    MARK_READ: (id: string) => `/api/notifications/${id}/read`, // PATCH — idempotent
+    MARK_ALL_READ: '/api/notifications/read-all', // POST — body rỗng
+    UNREAD_COUNT: '/api/notifications/unread-count', // GET — badge
   },
   DEVICE_TOKENS: {
     BASE: '/api/device-tokens',
