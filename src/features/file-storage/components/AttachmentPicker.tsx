@@ -17,7 +17,7 @@ import { Colors } from '../../../lib/theme';
 import { BASE_URL } from '../../../lib/axios';
 import { ENDPOINTS } from '../../../lib/endpoints';
 import { useUploadFile } from '../hooks/useUploadFile';
-import { useAuthImageHeaders } from '../hooks/useAuthImageHeaders';
+import { AuthImage } from './AuthImage';
 import { FilePurposeEnum } from '../enums/file-storage.enum';
 
 // Khớp shape CommentAttachmentPayload (tickets) — required fields từ FileUploadResponse.
@@ -63,7 +63,6 @@ export function AttachmentPicker({
   label,
 }: Props) {
   const { mutateAsync } = useUploadFile();
-  const headers = useAuthImageHeaders();
   const [uploading, setUploading] = useState(false);
 
   const items = value ?? [];
@@ -163,10 +162,7 @@ export function AttachmentPicker({
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
         {items.map((att) => (
           <View key={att.fileId} style={styles.thumb}>
-            <Image
-              source={{ uri: `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(att.fileId)}`, headers }}
-              style={styles.img}
-            />
+            <AuthImage fileId={att.fileId} style={styles.img} />
             <Pressable style={styles.removeBtn} onPress={() => handleRemove(att.fileId)} hitSlop={6}>
               <Ionicons name="close" size={12} color="#fff" />
             </Pressable>

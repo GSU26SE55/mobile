@@ -40,7 +40,7 @@ import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/
 import { useTicketComments } from '../../../src/features/tickets/hooks/useTicketComments';
 import { useTicketActivities } from '../../../src/features/tickets/hooks/useTicketActivities';
 import { useTicketCommentsRealtime } from '../../../src/features/tickets/hooks/useTicketCommentsRealtime';
-import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
+import { AuthImage } from '../../../src/features/file-storage/components/AuthImage';
 import { AttachmentForm } from '../../../src/features/tickets/schemas/comment.schema';
 import { MaintenanceLogPayload, UpdateMaintenanceLogPayload } from '../../../src/features/staff/types/staff.types';
 import { EscalationReasonEnum, PauseReasonEnum, TicketStatusEnum, TicketCommentDTO, MaintenanceLogDTO } from '../../../src/features/tickets/types/ticket.types';
@@ -85,13 +85,9 @@ const ROLE_AVATAR: Record<string, { icon: keyof typeof Ionicons.glyphMap; iconCo
 function ChatBubble({
   comment,
   isMe,
-  imageHeaders,
-  onImagePress,
 }: {
   comment: TicketCommentDTO;
   isMe: boolean;
-  imageHeaders?: { Authorization: string };
-  onImagePress?: (uri: string) => void;
 }) {
   const avatar = ROLE_AVATAR[comment.authorRole] ?? ROLE_AVATAR.Staff;
   const displayName =
@@ -100,8 +96,6 @@ function ChatBubble({
     (comment.authorRole === 'System' ? 'Hệ thống' :
      comment.authorRole === 'Customer' ? 'Khách hàng' :
      comment.authorRole === 'Manager' ? 'Manager' : 'Nhân viên');
-
-  const fileIds = comment.attachmentFileIds ?? [];
 
   if (comment.authorRole === 'System') {
     return (
@@ -146,7 +140,6 @@ function StaffTicketDetailScreenInner() {
   const user = useSessionStore((s) => s.user);
   const canResolve = checkPermission(user, P.TICKET_RESOLVE); // GH-47
   const { data: ticket, isLoading, isError, refetch } = useStaffTicketDetail(ticketId);
-  const imageHeaders = useAuthImageHeaders();
   const { mutate: startTicket, isPending: isStarting } = useStartTicket(ticketId);
   const { mutate: holdTicket, isPending: isHolding } = useHoldTicket(ticketId);
   const { mutate: resumeTicket, isPending: isResuming } = useResumeTicket(ticketId);
@@ -331,7 +324,7 @@ function StaffTicketDetailScreenInner() {
         {(ticket.attachmentFileIds?.length ?? 0) > 0 && (
           <View style={[styles.card, Shadow]}>
             <Text style={styles.sectionLabel}>Ảnh đính kèm</Text>
-            <AttachmentThumbnails fileIds={ticket.attachmentFileIds} size={72} />
+            <AttachmentThumbnails fileIds={ticket.attachmentFileIds} size={72} onPressImage={setViewingImage} />
           </View>
         )}
 
@@ -404,8 +397,6 @@ function StaffTicketDetailScreenInner() {
                     key={c.id ?? `comment-${i}`}
                     comment={c}
                     isMe={!!accountId && c.authorUserId === accountId}
-                    imageHeaders={imageHeaders}
-                    onImagePress={setViewingImage}
                   />
                 ))}
                 {commentsQuery.hasNextPage && (
@@ -616,11 +607,7 @@ function StaffTicketDetailScreenInner() {
         >
           <View style={styles.imgOverlay}>
             <Pressable style={StyleSheet.absoluteFill} onPress={() => setViewingImage(null)} />
-            <Image
-              source={{ uri: viewingImage, headers: imageHeaders ?? undefined }}
-              style={styles.imgFull}
-              resizeMode="contain"
-            />
+            <AuthImage fileId={viewingImage} style={styles.imgFull} resizeMode="contain" />
             <Pressable
               style={[styles.imgCloseBtn, { top: insets.top + 12 }]}
               onPress={() => setViewingImage(null)}

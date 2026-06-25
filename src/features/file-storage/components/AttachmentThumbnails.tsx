@@ -1,22 +1,20 @@
-import { Image, ScrollView, StyleSheet } from 'react-native';
-import { useAuthImageHeaders } from '../hooks/useAuthImageHeaders';
-import { BASE_URL } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
+import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { AuthImage } from './AuthImage';
 
 interface Props {
   // BE trả mảng FileId (string[]) — không kèm metadata.
   fileIds?: string[] | null;
   size?: number;
+  // Optional — bấm vào thumbnail để mở viewer full-screen (truyền fileId).
+  onPressImage?: (fileId: string) => void;
 }
 
 /**
  * Hiển thị ảnh đính kèm (ticket attachment / comment / maintenance) theo fileId.
- * Ảnh tải qua GET /api/files/{id}/download — endpoint CẦN auth, nên gắn Bearer thủ công
- * qua `useAuthImageHeaders` (RN <Image> không tự gửi token).
+ * Tải qua AuthImage (axios + base64) — KHÔNG dùng <Image headers> vì iOS/New Arch
+ * bỏ qua request khi có custom Authorization header.
  */
-export function AttachmentThumbnails({ fileIds, size = 72 }: Props) {
-  const headers = useAuthImageHeaders();
-
+export function AttachmentThumbnails({ fileIds, size = 72, onPressImage }: Props) {
   if (!fileIds || fileIds.length === 0) return null;
 
   return (
@@ -26,11 +24,12 @@ export function AttachmentThumbnails({ fileIds, size = 72 }: Props) {
       contentContainerStyle={styles.row}
     >
       {fileIds.map((fileId) => (
-        <Image
-          key={fileId}
-          source={{ uri: `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(fileId)}`, headers }}
-          style={[styles.img, { width: size, height: size }]}
-        />
+        <Pressable key={fileId} onPress={onPressImage ? () => onPressImage(fileId) : undefined}>
+          <AuthImage
+            fileId={fileId}
+            style={[styles.img, { width: size, height: size }]}
+          />
+        </Pressable>
       ))}
     </ScrollView>
   );
