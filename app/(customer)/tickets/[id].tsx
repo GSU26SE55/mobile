@@ -34,8 +34,8 @@ import { useTicketDetail } from '../../../src/features/tickets/hooks/useTicketDe
 import { useTicketComments } from '../../../src/features/tickets/hooks/useTicketComments';
 import { useTicketActivities } from '../../../src/features/tickets/hooks/useTicketActivities';
 import { useTicketCommentsRealtime } from '../../../src/features/tickets/hooks/useTicketCommentsRealtime';
-import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
 import { AttachmentThumbnails } from '../../../src/features/file-storage/components/AttachmentThumbnails';
+import { AuthImage } from '../../../src/features/file-storage/components/AuthImage';
 import { AttachmentForm, commentSchema } from '../../../src/features/tickets/schemas/comment.schema';
 import { RatePayload, ReopenPayload, TicketDetailDTO, TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
 import { BASE_URL } from '../../../src/lib/axios';
@@ -76,12 +76,10 @@ function PriorityBadge({ priority }: { priority: string | null }) {
 
 function ChatBubble({
   comment,
-  imageHeaders,
   onImagePress,
 }: {
   comment: NonNullable<TicketDetailDTO['comments']>[number];
-  imageHeaders?: { Authorization: string };
-  onImagePress?: (uri: string) => void;
+  onImagePress?: (fileId: string) => void;
 }) {
   const isCustomer = comment.authorRole === 'Customer';
   const isSystem = comment.authorRole === 'System';
@@ -110,18 +108,11 @@ function ChatBubble({
       )}
       {fileIds.length > 0 && (
         <View style={styles.bubbleImages}>
-          {fileIds.map((fid, i) => {
-            const uri = `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(fid)}`;
-            return (
-              <Pressable key={fid ?? `img-${i}`} onPress={() => onImagePress?.(uri)}>
-                <Image
-                  source={{ uri, headers: imageHeaders }}
-                  style={styles.bubbleImageThumb}
-                  resizeMode="cover"
-                />
-              </Pressable>
-            );
-          })}
+          {fileIds.map((fid, i) => (
+            <Pressable key={fid ?? `img-${i}`} onPress={() => onImagePress?.(fid)}>
+              <AuthImage fileId={fid} style={styles.bubbleImageThumb} resizeMode="cover" />
+            </Pressable>
+          ))}
         </View>
       )}
     </View>
@@ -202,7 +193,6 @@ function TicketDetailScreenInner() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: ticket, isLoading, isError, refetch } = useTicketDetail(id ?? '');
-  const imageHeaders = useAuthImageHeaders();
 
   const { data: batteries = [] } = useMyBatteryAssets();
   const { mutateAsync: addComment,      isPending: isCommenting  } = useAddComment(id ?? '');
@@ -486,17 +476,11 @@ function TicketDetailScreenInner() {
                 <>
                   <Text style={[styles.sectionH, { marginTop: 14, marginBottom: 8 }]}>Ảnh đính kèm</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.attachRow}>
-                    {ticket.attachmentFileIds!.map((fileId, i) => {
-                      const uri = `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(fileId)}`;
-                      return (
-                        <Pressable key={fileId ?? `att-${i}`} style={styles.attachCard} onPress={() => setViewingImage(uri)}>
-                          <Image
-                            source={{ uri, headers: imageHeaders }}
-                            style={styles.attachImage}
-                          />
-                        </Pressable>
-                      );
-                    })}
+                    {ticket.attachmentFileIds!.map((fileId, i) => (
+                      <Pressable key={fileId ?? `att-${i}`} style={styles.attachCard} onPress={() => setViewingImage(fileId)}>
+                        <AuthImage fileId={fileId} style={styles.attachImage} />
+                      </Pressable>
+                    ))}
                   </ScrollView>
                 </>
               )}
@@ -579,7 +563,6 @@ function TicketDetailScreenInner() {
                   <ChatBubble
                     key={c.id ?? `comment-${i}`}
                     comment={c}
-                    imageHeaders={imageHeaders}
                     onImagePress={setViewingImage}
                   />
                 ))}
@@ -670,11 +653,7 @@ function TicketDetailScreenInner() {
         >
           <View style={styles.imgOverlay}>
             <Pressable style={StyleSheet.absoluteFill} onPress={() => setViewingImage(null)} />
-            <Image
-              source={{ uri: viewingImage, headers: imageHeaders ?? undefined }}
-              style={styles.imgFull}
-              resizeMode="contain"
-            />
+            <AuthImage fileId={viewingImage} style={styles.imgFull} resizeMode="contain" />
             <Pressable
               style={[styles.imgCloseBtn, { top: insets.top + 12 }]}
               onPress={() => setViewingImage(null)}
