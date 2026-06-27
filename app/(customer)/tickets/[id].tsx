@@ -432,17 +432,11 @@ function TicketDetailScreenInner() {
                 <>
                   <Text style={[styles.sectionH, { marginTop: 14, marginBottom: 8 }]}>Ảnh đính kèm</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.attachRow}>
-                    {ticket.attachmentFileIds!.map((fileId, i) => {
-                      const uri = `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(fileId)}`;
-                      return (
-                        <Pressable key={fileId ?? `att-${i}`} style={styles.attachCard} onPress={() => setViewingImage(uri)}>
-                          <Image
-                            source={{ uri, headers: imageHeaders }}
-                            style={styles.attachImage}
-                          />
-                        </Pressable>
-                      );
-                    })}
+                    {ticket.attachmentFileIds!.map((fileId, i) => (
+                      <Pressable key={fileId ?? `att-${i}`} style={styles.attachCard} onPress={() => setViewingImage(fileId)}>
+                        <AuthImage fileId={fileId} style={styles.attachImage} />
+                      </Pressable>
+                    ))}
                   </ScrollView>
                 </>
               )}
@@ -586,11 +580,7 @@ function TicketDetailScreenInner() {
         >
           <View style={styles.imgOverlay}>
             <Pressable style={StyleSheet.absoluteFill} onPress={() => setViewingImage(null)} />
-            <Image
-              source={{ uri: viewingImage, headers: imageHeaders ?? undefined }}
-              style={styles.imgFull}
-              resizeMode="contain"
-            />
+            <AuthImage fileId={viewingImage} style={styles.imgFull} resizeMode="contain" />
             <Pressable
               style={[styles.imgCloseBtn, { top: insets.top + 12 }]}
               onPress={() => setViewingImage(null)}

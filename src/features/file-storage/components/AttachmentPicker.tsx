@@ -17,7 +17,7 @@ import { Colors } from '../../../lib/theme';
 import { BASE_URL } from '../../../lib/axios';
 import { ENDPOINTS } from '../../../lib/endpoints';
 import { useUploadFile } from '../hooks/useUploadFile';
-import { useAuthImageHeaders } from '../hooks/useAuthImageHeaders';
+import { AuthImage } from './AuthImage';
 import { FilePurposeEnum } from '../enums/file-storage.enum';
 
 // Khớp shape CommentAttachmentPayload (tickets) — required fields từ FileUploadResponse.
@@ -69,7 +69,6 @@ export function AttachmentPicker({
   hideThumbnails = false,
 }: Props) {
   const { mutateAsync } = useUploadFile();
-  const headers = useAuthImageHeaders();
   const [uploading, setUploading] = useState(false);
 
   const items = value ?? [];
