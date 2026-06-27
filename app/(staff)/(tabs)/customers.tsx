@@ -10,12 +10,12 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStaffTickets } from '../../../src/features/staff/hooks/useStaffTickets';
 import { TicketDTO, TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
 import { Colors } from '../../../src/lib/theme';
 import { P } from '../../../src/lib/authz';
 import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
+import { StaffHeader } from '../../../src/features/staff/components/StaffHeader';
 
 const PALETTE = [
   '#FF6B6B', '#F7A440', '#4ECDC4', '#45B7D1',
@@ -92,18 +92,15 @@ export default function CustomersScreen() {
 }
 
 function CustomersScreenInner() {
-  const insets = useSafeAreaInsets();
   const { data, isLoading, isError, isRefetching, refetch } = useStaffTickets({ PageSize: 100 });
   const groups = useMemo(() => groupByCustomer(data?.items ?? []), [data]);
 
   return (
     <View style={styles.root}>
-      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <Text style={styles.title}>Khách hàng</Text>
-        {!isLoading && !isError && (
-          <Text style={styles.subtitle}>{groups.length} cuộc trò chuyện</Text>
-        )}
-      </View>
+      <StaffHeader
+        title="Khách hàng"
+        subtitle={!isLoading && !isError ? `${groups.length} cuộc trò chuyện` : undefined}
+      />
 
       {isLoading ? (
         <View style={styles.center}>
@@ -191,10 +188,6 @@ function CustomerRow({ group }: { group: CustomerGroup }) {
 
 const styles = StyleSheet.create({
   root:    { flex: 1, backgroundColor: Colors.bg },
-  header:  { paddingHorizontal: 20, paddingBottom: 14 },
-  title:   { fontSize: 22, fontWeight: '800', color: Colors.text, letterSpacing: -0.5 },
-  subtitle:{ fontSize: 12, color: Colors.textMute, marginTop: 2 },
-
   center:  { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingBottom: 80 },
   errMsg:  { color: Colors.textMute, fontSize: 13 },
   retryBtn:{ backgroundColor: Colors.primary, borderRadius: 14, paddingHorizontal: 24, paddingVertical: 10, marginTop: 4 },
