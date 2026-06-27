@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Colors, Shadow, ShadowPrimary } from '../../../src/lib/theme';
+import { StaffHeader } from '../../../src/features/staff/components/StaffHeader';
 import { useStaffProfile } from '../../../src/features/staff/hooks/useStaffProfile';
 import { useSessionStore } from '../../../src/stores/sessionStore';
 import { StaffProfileDTO, StaffSkillTierEnum } from '../../../src/features/staff/types/staff.types';
@@ -44,7 +44,6 @@ function InfoRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap;
 }
 
 export default function StaffProfileScreen() {
-  const insets = useSafeAreaInsets();
   const { data: apiProfile, isLoading, isError } = useStaffProfile();
   const clearSession = useSessionStore((s) => s.clearSession);
 
@@ -58,16 +57,19 @@ export default function StaffProfileScreen() {
 
   if (isLoading && !apiProfile) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={Colors.primary} size="large" />
+      <View style={styles.root}>
+        <StaffHeader title="Cá nhân" />
+        <View style={styles.center}>
+          <ActivityIndicator color={Colors.primary} size="large" />
+        </View>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={[styles.content, { paddingTop: insets.top + 8 }]}>
-      <Text style={styles.screenTitle}>Cá nhân</Text>
-
+    <View style={styles.root}>
+      <StaffHeader title="Cá nhân" />
+      <ScrollView contentContainerStyle={styles.content}>
       {isError && (
         <View style={styles.warnBanner}>
           <Ionicons name="cloud-offline-outline" size={14} color="#92400e" />
@@ -149,17 +151,17 @@ export default function StaffProfileScreen() {
         <Ionicons name="log-out-outline" size={18} color={Colors.danger} />
         <Text style={styles.logoutText}>Đăng xuất</Text>
       </Pressable>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bg },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   warnBanner: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fef3c7', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
   warnText: { fontSize: 12, color: '#92400e', flex: 1 },
   content: { paddingHorizontal: 20, paddingBottom: 120, gap: 14 },
-  screenTitle: { fontSize: 22, fontWeight: '800', color: Colors.text, marginBottom: 4 },
 
   profileCard: {
     backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24,

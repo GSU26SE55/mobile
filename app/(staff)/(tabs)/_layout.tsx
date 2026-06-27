@@ -4,7 +4,6 @@ import { Tabs } from 'expo-router';
 import { Platform, StyleSheet, Text, View, Pressable } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming, FadeIn, FadeOut, useSharedValue, interpolateColor } from 'react-native-reanimated';
 import { Colors, ShadowLg } from '../../../src/lib/theme';
-import { useUnreadCount } from '../../../src/features/notifications/hooks/useNotifications';
 
 function AnimatedTabIcon({ focused, activeIcon, inactiveIcon, label }: { focused: boolean; activeIcon: any; inactiveIcon: any; label: string }) {
   const isFocusedSV = useSharedValue(focused ? 1 : 0);
@@ -45,8 +44,6 @@ function AnimatedTabIcon({ focused, activeIcon, inactiveIcon, label }: { focused
 }
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
-  const { data: unreadCount = 0 } = useUnreadCount();
-
   return (
     <View style={styles.tabBarContainer}>
       {state.routes.map((route: any, index: number) => {
@@ -62,22 +59,14 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         };
 
         let activeIcon, inactiveIcon, label;
-        if (route.name === 'dashboard')          { activeIcon = 'clipboard'; inactiveIcon = 'clipboard-outline'; label = 'Công việc'; }
-        else if (route.name === 'customers')     { activeIcon = 'chatbubbles'; inactiveIcon = 'chatbubbles-outline'; label = 'Khách hàng'; }
-        else if (route.name === 'notifications') { activeIcon = 'notifications'; inactiveIcon = 'notifications-outline'; label = 'Thông báo'; }
-        else if (route.name === 'profile')       { activeIcon = 'person-circle'; inactiveIcon = 'person-circle-outline'; label = 'Cá nhân'; }
+        if (route.name === 'dashboard')      { activeIcon = 'clipboard'; inactiveIcon = 'clipboard-outline'; label = 'Công việc'; }
+        else if (route.name === 'customers') { activeIcon = 'chatbubbles'; inactiveIcon = 'chatbubbles-outline'; label = 'Khách hàng'; }
+        else if (route.name === 'profile')   { activeIcon = 'person-circle'; inactiveIcon = 'person-circle-outline'; label = 'Cá nhân'; }
         else return null;
-
-        const showBadge = route.name === 'notifications' && unreadCount > 0;
 
         return (
           <Pressable key={route.key} onPress={onPress} style={styles.tabButton}>
             <AnimatedTabIcon focused={isFocused} activeIcon={activeIcon} inactiveIcon={inactiveIcon} label={label} />
-            {showBadge && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-              </View>
-            )}
           </Pressable>
         );
       })}
@@ -104,7 +93,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 30 : 20,
     alignSelf: 'center',
-    width: 300,
+    width: 260,
     backgroundColor: '#FFFFFF',
     borderRadius: 28,
     height: 56,
@@ -120,24 +109,6 @@ const styles = StyleSheet.create({
   tabButton: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  badge: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    minWidth: 16,
-    height: 16,
-    paddingHorizontal: 4,
-    borderRadius: 8,
-    backgroundColor: Colors.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '800',
-    lineHeight: 12,
   },
   tabItemBase: {
     flexDirection: 'row',
