@@ -1,13 +1,22 @@
 import { axiosInstance } from '../../../lib/axios';
 import { ENDPOINTS } from '../../../lib/endpoints';
 import { CommonResponse, PaginationResponse } from '../../../types/api.types';
-import { NotificationDTO, NotificationListParams } from '../types/notification.types';
+import {
+  NotificationChannelEnum,
+  NotificationDTO,
+  NotificationListParams,
+} from '../types/notification.types';
 
 const { NOTIFICATIONS } = ENDPOINTS;
 
 export const notificationService = {
+  // Mặc định chỉ lấy channel InApp. BE ghi 1 record/channel (InApp + Push) cho mỗi
+  // sự kiện ⇒ nếu không lọc, list hiện trùng 2 dòng (record Push chỉ để đẩy Expo,
+  // không thuộc danh sách in-app). Caller vẫn override channel được nếu cần.
   getList: (params?: NotificationListParams) =>
-    axiosInstance.get<CommonResponse<PaginationResponse<NotificationDTO>>>(NOTIFICATIONS.LIST, { params }),
+    axiosInstance.get<CommonResponse<PaginationResponse<NotificationDTO>>>(NOTIFICATIONS.LIST, {
+      params: { channel: NotificationChannelEnum.InApp, ...params },
+    }),
 
   // PATCH body rỗng — data = id notification vừa mark (idempotent).
   markRead: (id: string) =>

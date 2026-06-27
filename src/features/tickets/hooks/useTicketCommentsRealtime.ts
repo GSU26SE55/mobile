@@ -86,7 +86,10 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
     connection.onclose(() => setIsConnected(false));
 
     let cancelled = false;
-    connection
+    // Giữ promise start() để cleanup CHỜ nó settle trước khi stop(). Gọi stop() khi
+    // start() còn pending → SignalR ném "Failed to start the HttpConnection before
+    // stop() was called" (lỗi thấy khi Fast Refresh / remount nhanh).
+    const startPromise = connection
       .start()
       .then(() => {
         if (cancelled) return undefined;
@@ -104,10 +107,21 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
       const conn = connectionRef.current;
       connectionRef.current = null;
       if (conn) {
-        conn
-          .invoke('LeaveTicket', ticketId)
-          .catch(() => {})
-          .finally(() => conn.stop().catch(() => {}));
+        // Gỡ handler TRƯỚC khi stop — chống event treo bắn vào connection đang
+        // teardown (Fast Refresh remount) gây xử lý CommentAdded / UserTyping 2 lần.
+        conn.off('CommentAdded');
+        conn.off('UserTyping');
+        // CHỜ start() xong rồi mới leave + stop — tránh stop-trước-start.
+        void startPromise.finally(() => {
+          if (conn.state === signalR.HubConnectionState.Connected) {
+            conn
+              .invoke('LeaveTicket', ticketId)
+              .catch(() => {})
+              .finally(() => conn.stop().catch(() => {}));
+          } else {
+            conn.stop().catch(() => {});
+          }
+        });
       }
       setIsConnected(false);
       setTypingUsers([]);

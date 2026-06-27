@@ -41,6 +41,7 @@ import { useTicketComments } from '../../../src/features/tickets/hooks/useTicket
 import { useTicketActivities } from '../../../src/features/tickets/hooks/useTicketActivities';
 import { useTicketCommentsRealtime } from '../../../src/features/tickets/hooks/useTicketCommentsRealtime';
 import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
+import { AuthImage } from '../../../src/features/file-storage/components/AuthImage';
 import { CommentThread } from '../../../src/features/tickets/components/CommentThread';
 import { AttachmentForm } from '../../../src/features/tickets/schemas/comment.schema';
 import { MaintenanceLogPayload, UpdateMaintenanceLogPayload } from '../../../src/features/staff/types/staff.types';
@@ -107,6 +108,7 @@ function StaffTicketDetailScreenInner() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const ticketId = id ?? '';
   const accountId = useSessionStore((s) => s.user?.accountId);
+  const imageHeaders = useAuthImageHeaders();
   const user = useSessionStore((s) => s.user);
   const canResolve = checkPermission(user, P.TICKET_RESOLVE); // GH-47
   const { data: ticket, isLoading, isError, refetch } = useStaffTicketDetail(ticketId);
