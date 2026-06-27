@@ -3,7 +3,6 @@ import {
   ActionSheetIOS,
   ActivityIndicator,
   Alert,
-  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -14,8 +13,6 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../lib/theme';
-import { BASE_URL } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
 import { useUploadFile } from '../hooks/useUploadFile';
 import { AuthImage } from './AuthImage';
 import { FilePurposeEnum } from '../enums/file-storage.enum';
@@ -185,10 +182,7 @@ export function AttachmentPicker({
         {!hideThumbnails &&
           items.map((att) => (
             <View key={att.fileId} style={styles.thumb}>
-              <Image
-                source={{ uri: `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(att.fileId)}`, headers }}
-                style={styles.img}
-              />
+              <AuthImage fileId={att.fileId} style={styles.img} />
               <Pressable style={styles.removeBtn} onPress={() => handleRemove(att.fileId)} hitSlop={6}>
                 <Ionicons name="close" size={12} color="#fff" />
               </Pressable>
