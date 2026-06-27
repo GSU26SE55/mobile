@@ -36,6 +36,10 @@ interface Props {
   onUploadingChange?: (uploading: boolean) => void;
   max?: number;
   label?: string;
+  /** Trigger icon tròn nhỏ (cho thanh chat) thay vì khung dashed 64x64. */
+  compact?: boolean;
+  /** Ẩn thumbnail trong component này — dùng khi consumer tự hiển thị preview ở nơi khác. */
+  hideThumbnails?: boolean;
 }
 
 // Mirror getAssetUploadFile của CreateTicketStepper: dựng { uri, name, type, size }.
@@ -61,6 +65,8 @@ export function AttachmentPicker({
   onUploadingChange,
   max = 5,
   label,
+  compact = false,
+  hideThumbnails = false,
 }: Props) {
   const { mutateAsync } = useUploadFile();
   const headers = useAuthImageHeaders();
@@ -157,21 +163,38 @@ export function AttachmentPicker({
   const handleRemove = (fileId: string) =>
     onChange(items.filter((a) => a.fileId !== fileId));
 
+  if (compact) {
+    return (
+      <Pressable
+        style={styles.addBtnCompact}
+        onPress={handleAdd}
+        disabled={uploading || remaining <= 0}
+      >
+        {uploading ? (
+          <ActivityIndicator size="small" color={Colors.textMute} />
+        ) : (
+          <Ionicons name="camera-outline" size={18} color={Colors.textMute} />
+        )}
+      </Pressable>
+    );
+  }
+
   return (
     <View style={styles.wrap}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-        {items.map((att) => (
-          <View key={att.fileId} style={styles.thumb}>
-            <Image
-              source={{ uri: `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(att.fileId)}`, headers }}
-              style={styles.img}
-            />
-            <Pressable style={styles.removeBtn} onPress={() => handleRemove(att.fileId)} hitSlop={6}>
-              <Ionicons name="close" size={12} color="#fff" />
-            </Pressable>
-          </View>
-        ))}
+        {!hideThumbnails &&
+          items.map((att) => (
+            <View key={att.fileId} style={styles.thumb}>
+              <Image
+                source={{ uri: `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(att.fileId)}`, headers }}
+                style={styles.img}
+              />
+              <Pressable style={styles.removeBtn} onPress={() => handleRemove(att.fileId)} hitSlop={6}>
+                <Ionicons name="close" size={12} color="#fff" />
+              </Pressable>
+            </View>
+          ))}
 
         {remaining > 0 && (
           <Pressable style={styles.addBtn} onPress={handleAdd} disabled={uploading}>
@@ -208,6 +231,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBtnCompact: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },

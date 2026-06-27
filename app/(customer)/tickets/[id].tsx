@@ -1,5 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -22,6 +22,7 @@ import { HttpError } from '../../../src/lib/errors';
 import { P } from '../../../src/lib/authz';
 import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
 import { ActivityTimeline } from '../../../src/features/tickets/components/ActivityTimeline';
+import { CommentThread } from '../../../src/features/tickets/components/CommentThread';
 import { RateModal } from '../../../src/features/tickets/components/RateModal';
 import { ReopenModal } from '../../../src/features/tickets/components/ReopenModal';
 import { SlaCountdown } from '../../../src/features/tickets/components/SlaCountdown';
@@ -35,15 +36,15 @@ import { useTicketComments } from '../../../src/features/tickets/hooks/useTicket
 import { useTicketActivities } from '../../../src/features/tickets/hooks/useTicketActivities';
 import { useTicketCommentsRealtime } from '../../../src/features/tickets/hooks/useTicketCommentsRealtime';
 import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
-import { AttachmentThumbnails } from '../../../src/features/file-storage/components/AttachmentThumbnails';
 import { AttachmentForm, commentSchema } from '../../../src/features/tickets/schemas/comment.schema';
-import { RatePayload, ReopenPayload, TicketDetailDTO, TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
+import { RatePayload, ReopenPayload, TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
 import { BASE_URL } from '../../../src/lib/axios';
 import { ENDPOINTS } from '../../../src/lib/endpoints';
 import { BadgeColors, Colors, Shadow, ShadowPrimary } from '../../../src/lib/theme';
 import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
 import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
 import { KbRelatedSection } from '../../../src/features/kb/components/KbRelatedSection';
+import { useSessionStore } from '../../../src/stores/sessionStore';
 
 const PRIORITY_MAP: Record<string, { label: string; badge: keyof typeof BadgeColors }> = {
   P1Critical: { label: 'P1 Critical', badge: 'p1' },
@@ -70,60 +71,6 @@ function PriorityBadge({ priority }: { priority: string | null }) {
     <View style={[styles.badge, { backgroundColor: bc.bg }]}>
       <View style={[styles.badgeDot, { backgroundColor: bc.text }]} />
       <Text style={[styles.badgeLabel, { color: bc.text }]}>{cfg.label}</Text>
-    </View>
-  );
-}
-
-function ChatBubble({
-  comment,
-  imageHeaders,
-  onImagePress,
-}: {
-  comment: NonNullable<TicketDetailDTO['comments']>[number];
-  imageHeaders?: { Authorization: string };
-  onImagePress?: (uri: string) => void;
-}) {
-  const isCustomer = comment.authorRole === 'Customer';
-  const isSystem = comment.authorRole === 'System';
-  const fileIds = comment.attachmentFileIds ?? [];
-
-  if (isSystem) {
-    return (
-      <View style={styles.systemMsg}>
-        <Text style={styles.systemMsgText}>{comment.body}</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={[styles.bubble, isCustomer ? styles.bubbleUser : styles.bubbleStaff, Shadow]}>
-      <View style={styles.bubbleHeader}>
-        <Text style={[styles.bubbleAuthor, isCustomer && { color: '#fff' }]}>
-          {comment.authorDisplayName ?? comment.authorRole}
-        </Text>
-        <Text style={[styles.bubbleTime, isCustomer && { color: 'rgba(255,255,255,0.7)' }]}>
-          {new Date(comment.createdAt).toLocaleString('vi-VN')}
-        </Text>
-      </View>
-      {!!comment.body && (
-        <Text style={[styles.bubbleBody, isCustomer && { color: '#fff' }]}>{comment.body}</Text>
-      )}
-      {fileIds.length > 0 && (
-        <View style={styles.bubbleImages}>
-          {fileIds.map((fid, i) => {
-            const uri = `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(fid)}`;
-            return (
-              <Pressable key={fid ?? `img-${i}`} onPress={() => onImagePress?.(uri)}>
-                <Image
-                  source={{ uri, headers: imageHeaders }}
-                  style={styles.bubbleImageThumb}
-                  resizeMode="cover"
-                />
-              </Pressable>
-            );
-          })}
-        </View>
-      )}
     </View>
   );
 }
@@ -203,6 +150,7 @@ function TicketDetailScreenInner() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: ticket, isLoading, isError, refetch } = useTicketDetail(id ?? '');
   const imageHeaders = useAuthImageHeaders();
+  const accountId = useSessionStore((s) => s.user?.accountId);
 
   const { data: batteries = [] } = useMyBatteryAssets();
   const { mutateAsync: addComment,      isPending: isCommenting  } = useAddComment(id ?? '');
@@ -222,8 +170,6 @@ function TicketDetailScreenInner() {
   const [showReopenModal, setShowReopenModal] = useState(false);
   const [activeTab,       setActiveTab]       = useState<'info' | 'chat'>('info');
   const [viewingImage,    setViewingImage]    = useState<string | null>(null);
-  const chatScrollRef = useRef<ScrollView>(null);
-  // GH-44: bỏ auto scrollToEnd — comments giờ DESC (newest-first), comment mới hiện ở đầu danh sách.
 
   if (isLoading) {
     return (
@@ -554,50 +500,20 @@ function TicketDetailScreenInner() {
         </ScrollView>
       )}
 
-      {/* Chat tab — messenger style */}
+      {/* Chat tab — messenger style, FlatList inverted: mới nhất neo xuống đáy */}
       {activeTab === 'chat' && (
         <View style={styles.chatContainer}>
-          <ScrollView
-            ref={chatScrollRef}
-            style={styles.chatScroll}
-            contentContainerStyle={styles.chatContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            {commentsQuery.isLoading ? (
-              <View style={styles.chatEmpty}>
-                <ActivityIndicator color="#FF5E13" />
-              </View>
-            ) : comments.length === 0 ? (
-              <View style={styles.chatEmpty}>
-                <Ionicons name="chatbubbles-outline" size={36} color={Colors.textFaint} />
-                <Text style={styles.chatEmptyText}>Chưa có trao đổi nào.</Text>
-              </View>
-            ) : (
-              <View style={styles.chatList}>
-                {comments.map((c, i) => (
-                  <ChatBubble
-                    key={c.id ?? `comment-${i}`}
-                    comment={c}
-                    imageHeaders={imageHeaders}
-                    onImagePress={setViewingImage}
-                  />
-                ))}
-                {/* GH-44: DESC newest-first ⇒ comment cũ hơn nằm cuối, tải thêm ở đây */}
-                {commentsQuery.hasNextPage && (
-                  <Pressable
-                    style={styles.loadMoreBtn}
-                    onPress={() => commentsQuery.fetchNextPage()}
-                    disabled={commentsQuery.isFetchingNextPage}
-                  >
-                    {commentsQuery.isFetchingNextPage
-                      ? <ActivityIndicator size="small" color={Colors.textMute} />
-                      : <Text style={styles.loadMoreText}>Tải thêm bình luận cũ hơn</Text>}
-                  </Pressable>
-                )}
-              </View>
-            )}
-          </ScrollView>
+          <CommentThread
+            comments={comments}
+            currentUserId={accountId}
+            imageHeaders={imageHeaders}
+            onImagePress={setViewingImage}
+            isLoading={commentsQuery.isLoading}
+            hasNextPage={commentsQuery.hasNextPage}
+            isFetchingNextPage={commentsQuery.isFetchingNextPage}
+            onLoadMore={() => commentsQuery.fetchNextPage()}
+            accentColor="#FF5E13"
+          />
 
           {/* Typing indicator (realtime) */}
           {typingUsers.length > 0 && (
@@ -762,26 +678,6 @@ const styles = StyleSheet.create({
   chatContainer: {
     flex: 1,
     backgroundColor: Colors.bg,
-  },
-  chatScroll: {
-    flex: 1,
-  },
-  chatContent: {
-    padding: 16,
-    gap: 8,
-    paddingBottom: 8,
-  },
-  chatEmpty: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    gap: 10,
-  },
-  chatEmptyText: {
-    color: Colors.textFaint,
-    fontSize: 14,
-    fontWeight: '500',
   },
 
   scroll:         { padding: 20, gap: 14, paddingBottom: 40 },
@@ -954,23 +850,7 @@ const styles = StyleSheet.create({
 
   timelineCard:   { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, gap: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
 
-  commentsCard:   { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, gap: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
-  chatList:       { gap: 10 },
-  loadMoreBtn:    { alignItems: 'center', paddingVertical: 10 },
-  loadMoreText:   { color: Colors.textMute, fontSize: 13, fontWeight: '600' },
   typingText:     { color: Colors.textMute, fontSize: 12, fontStyle: 'italic', paddingHorizontal: 18, paddingBottom: 4 },
-  emptyText:      { color: Colors.textFaint, fontSize: 13, textAlign: 'center', paddingVertical: 8 },
-
-  systemMsg:      { alignItems: 'center', paddingVertical: 4 },
-  systemMsgText:  { fontSize: 11, color: Colors.textMute, fontStyle: 'italic', fontWeight: '600' },
-
-  bubble:         { borderRadius: 20, padding: 14, maxWidth: '85%' },
-  bubbleUser:     { backgroundColor: '#FF5E13', alignSelf: 'flex-end', borderBottomRightRadius: 4 },
-  bubbleStaff:    { backgroundColor: Colors.card2, alignSelf: 'flex-start', borderBottomLeftRadius: 4 },
-  bubbleHeader:   { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginBottom: 4 },
-  bubbleAuthor:   { fontSize: 11, fontWeight: '800', color: Colors.text },
-  bubbleTime:     { fontSize: 10, color: Colors.textMute },
-  bubbleBody:     { fontSize: 13, color: Colors.text, lineHeight: 20, fontWeight: '500' },
 
   composer:       {
     flexDirection: 'row', alignItems: 'flex-end', gap: 8,
@@ -1000,9 +880,6 @@ const styles = StyleSheet.create({
   attachmentChipIcon: { fontSize: 12 },
   attachmentName:     { flex: 1, fontSize: 12, color: Colors.text, fontWeight: '500' },
   attachmentRemove:   { fontSize: 12, color: Colors.textMute, fontWeight: '700', marginLeft: 2 },
-
-  bubbleImages:     { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 },
-  bubbleImageThumb: { width: 150, height: 110, borderRadius: 10 },
 
   imgOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.93)', alignItems: 'center', justifyContent: 'center' },
   imgFull:     { width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.78 },

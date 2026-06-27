@@ -41,10 +41,12 @@ import { useTicketComments } from '../../../src/features/tickets/hooks/useTicket
 import { useTicketActivities } from '../../../src/features/tickets/hooks/useTicketActivities';
 import { useTicketCommentsRealtime } from '../../../src/features/tickets/hooks/useTicketCommentsRealtime';
 import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
+import { CommentThread } from '../../../src/features/tickets/components/CommentThread';
 import { AttachmentForm } from '../../../src/features/tickets/schemas/comment.schema';
 import { MaintenanceLogPayload, UpdateMaintenanceLogPayload } from '../../../src/features/staff/types/staff.types';
-import { EscalationReasonEnum, PauseReasonEnum, TicketStatusEnum, TicketCommentDTO, MaintenanceLogDTO } from '../../../src/features/tickets/types/ticket.types';
+import { EscalationReasonEnum, PauseReasonEnum, TicketStatusEnum, MaintenanceLogDTO } from '../../../src/features/tickets/types/ticket.types';
 import { AttachmentPicker, UploadedAttachment } from '../../../src/features/file-storage/components/AttachmentPicker';
+import { AttachmentPreviewStrip } from '../../../src/features/file-storage/components/AttachmentPreviewStrip';
 import { AttachmentThumbnails } from '../../../src/features/file-storage/components/AttachmentThumbnails';
 import { FilePurposeEnum } from '../../../src/features/file-storage/enums/file-storage.enum';
 import { useSessionStore } from '../../../src/stores/sessionStore';
@@ -75,57 +77,19 @@ const PRIORITY_LABELS: Record<string, string> = {
   P3Normal:   'P3 Normal',
 };
 
-const ROLE_AVATAR: Record<string, { icon: keyof typeof Ionicons.glyphMap; iconColor: string; bg: string }> = {
-  System:   { icon: 'server-outline',  iconColor: Colors.info,        bg: Colors.infoLight },
-  Customer: { icon: 'person-outline',  iconColor: Colors.warningDark, bg: Colors.warningLight },
-  Manager:  { icon: 'briefcase-outline', iconColor: Colors.primaryDark, bg: Colors.primaryLight },
-  Staff:    { icon: 'shield-outline',  iconColor: Colors.primaryDark, bg: Colors.primaryLight },
-};
-
-function ChatBubble({
-  comment,
-  isMe,
-  imageHeaders,
-  onImagePress,
-}: {
-  comment: TicketCommentDTO;
-  isMe: boolean;
-  imageHeaders?: { Authorization: string };
-  onImagePress?: (uri: string) => void;
-}) {
-  const avatar = ROLE_AVATAR[comment.authorRole] ?? ROLE_AVATAR.Staff;
-  const displayName =
-    isMe ? 'Bạn' :
-    comment.authorDisplayName ??
-    (comment.authorRole === 'System' ? 'Hệ thống' :
-     comment.authorRole === 'Customer' ? 'Khách hàng' :
-     comment.authorRole === 'Manager' ? 'Manager' : 'Nhân viên');
-
-  const fileIds = comment.attachmentFileIds ?? [];
-
-  if (comment.authorRole === 'System') {
-    return (
-      <View style={styles.systemMsg}>
-        <Text style={styles.systemMsgText}>{comment.body}</Text>
-      </View>
-    );
-  }
-
+function TabsRow({ activeTab, onChange }: { activeTab: TabKey; onChange: (key: TabKey) => void }) {
   return (
-    <View style={[styles.bubbleRow, isMe && styles.bubbleRowMe]}>
-      {!isMe && (
-        <View style={[styles.avatar, { backgroundColor: avatar.bg }]}>
-          <Ionicons name={avatar.icon} size={14} color={avatar.iconColor} />
-        </View>
-      )}
-      <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleOther]}>
-        {!isMe && <Text style={styles.bubbleName}>{displayName}</Text>}
-        <Text style={[styles.bubbleText, isMe && styles.bubbleTextMe]}>{comment.body}</Text>
-        <AttachmentThumbnails fileIds={comment.attachmentFileIds} size={64} />
-        <Text style={[styles.bubbleTime, isMe && styles.bubbleTimeMe]}>
-          {new Date(comment.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-        </Text>
-      </View>
+    <View style={styles.tabRow}>
+      {TABS.map((tab) => (
+        <Pressable
+          key={tab.key}
+          style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+          onPress={() => onChange(tab.key)}
+        >
+          <Ionicons name={tab.icon} size={16} color={activeTab === tab.key ? Colors.primary : Colors.textMute} />
+          <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>{tab.label}</Text>
+        </Pressable>
+      ))}
     </View>
   );
 }
@@ -302,6 +266,80 @@ function StaffTicketDetailScreenInner() {
         <View style={{ width: 36 }} />
       </View>
 
+      {activeTab === 'comments' ? (
+        <View style={styles.chatScreen}>
+          <View style={styles.chatTabRowWrap}>
+            <TabsRow activeTab={activeTab} onChange={setActiveTab} />
+          </View>
+
+          <CommentThread
+            comments={comments}
+            currentUserId={accountId}
+            imageHeaders={imageHeaders}
+            onImagePress={setViewingImage}
+            isLoading={commentsQuery.isLoading}
+            hasNextPage={commentsQuery.hasNextPage}
+            isFetchingNextPage={commentsQuery.isFetchingNextPage}
+            onLoadMore={() => commentsQuery.fetchNextPage()}
+          />
+
+          {typingUsers.length > 0 && (
+            <Text style={styles.typingText}>
+              {typingUsers.map((u) => u.displayName).join(', ')} đang nhập…
+            </Text>
+          )}
+
+          <View style={[styles.composer, { paddingBottom: insets.bottom + 8 }]}>
+            <AttachmentPreviewStrip
+              items={commentAttachments}
+              imageHeaders={imageHeaders}
+              disabled={uploadingComment}
+              onRemove={(fileId) =>
+                setCommentAttachments((prev) => prev.filter((a) => a.fileId !== fileId))
+              }
+            />
+            <View style={styles.composerRow}>
+              <AttachmentPicker
+                compact
+                hideThumbnails
+                purpose={FilePurposeEnum.TicketAttachment}
+                value={commentAttachments}
+                onChange={setCommentAttachments}
+                onUploadingChange={setUploadingComment}
+              />
+              <Pressable
+                style={[styles.internalToggle, isInternalComment && styles.internalToggleOn]}
+                onPress={() => setIsInternalComment((v) => !v)}
+              >
+                <Ionicons
+                  name={isInternalComment ? 'lock-closed' : 'lock-open-outline'}
+                  size={15}
+                  color={isInternalComment ? Colors.warningDark : Colors.textMute}
+                />
+              </Pressable>
+              <TextInput
+                style={styles.composerInput}
+                placeholder="Nhập tin nhắn..."
+                placeholderTextColor={Colors.textFaint}
+                value={commentText}
+                onChangeText={(t) => { setCommentText(t); notifyTyping(); }}
+                multiline
+              />
+              <Pressable
+                style={[styles.sendBtn, (!commentText.trim() || isSending || uploadingComment) && styles.sendBtnDisabled]}
+                onPress={handleSendComment}
+                disabled={!commentText.trim() || isSending || uploadingComment}
+              >
+                {isSending ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Ionicons name="send" size={18} color="#FFF" />
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      ) : (
       <ScrollView
         style={styles.scrollBody}
         contentContainerStyle={styles.scrollContent}
@@ -376,53 +414,7 @@ function StaffTicketDetailScreenInner() {
           <MaintenanceLogForm onSubmit={handleAddLog} isLoading={isAddingLog} />
         )}
 
-        {/* Tabs */}
-        <View style={styles.tabRow}>
-          {TABS.map((tab) => (
-            <Pressable
-              key={tab.key}
-              style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-              onPress={() => setActiveTab(tab.key)}
-            >
-              <Ionicons name={tab.icon} size={16} color={activeTab === tab.key ? Colors.primary : Colors.textMute} />
-              <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>{tab.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Tab Content */}
-        {activeTab === 'comments' && (
-          <View style={styles.chatSection}>
-            {commentsQuery.isLoading ? (
-              <ActivityIndicator color={Colors.primary} style={{ marginTop: 24 }} />
-            ) : comments.length === 0 ? (
-              <Text style={styles.emptyTab}>Chưa có trao đổi nào</Text>
-            ) : (
-              <>
-                {comments.map((c, i) => (
-                  <ChatBubble
-                    key={c.id ?? `comment-${i}`}
-                    comment={c}
-                    isMe={!!accountId && c.authorUserId === accountId}
-                    imageHeaders={imageHeaders}
-                    onImagePress={setViewingImage}
-                  />
-                ))}
-                {commentsQuery.hasNextPage && (
-                  <Pressable
-                    style={styles.loadMoreBtn}
-                    onPress={() => commentsQuery.fetchNextPage()}
-                    disabled={commentsQuery.isFetchingNextPage}
-                  >
-                    {commentsQuery.isFetchingNextPage
-                      ? <ActivityIndicator size="small" color={Colors.textMute} />
-                      : <Text style={styles.loadMoreText}>Tải thêm bình luận cũ hơn</Text>}
-                  </Pressable>
-                )}
-              </>
-            )}
-          </View>
-        )}
+        <TabsRow activeTab={activeTab} onChange={setActiveTab} />
 
         {activeTab === 'activities' && (
           <View style={styles.tabContent}>
@@ -522,55 +514,6 @@ function StaffTicketDetailScreenInner() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
-
-      {/* Typing indicator (realtime) */}
-      {activeTab === 'comments' && typingUsers.length > 0 && (
-        <Text style={styles.typingText}>
-          {typingUsers.map((u) => u.displayName).join(', ')} đang nhập…
-        </Text>
-      )}
-
-      {/* Comment Composer — only for comments tab */}
-      {activeTab === 'comments' && (
-        <View style={[styles.composer, { paddingBottom: insets.bottom + 8 }]}>
-          <AttachmentPicker
-            purpose={FilePurposeEnum.TicketAttachment}
-            value={commentAttachments}
-            onChange={setCommentAttachments}
-            onUploadingChange={setUploadingComment}
-          />
-          <View style={styles.composerRow}>
-            <Pressable
-              style={[styles.internalToggle, isInternalComment && styles.internalToggleOn]}
-              onPress={() => setIsInternalComment((v) => !v)}
-            >
-              <Ionicons
-                name={isInternalComment ? 'lock-closed' : 'lock-open-outline'}
-                size={16}
-                color={isInternalComment ? Colors.warningDark : Colors.textMute}
-              />
-            </Pressable>
-            <TextInput
-              style={styles.composerInput}
-              placeholder="Nhập tin nhắn..."
-              placeholderTextColor={Colors.textFaint}
-              value={commentText}
-              onChangeText={(t) => { setCommentText(t); notifyTyping(); }}
-              multiline
-            />
-            <Pressable
-              style={[styles.sendBtn, (!commentText.trim() || isSending || uploadingComment) && styles.sendBtnDisabled]}
-              onPress={handleSendComment}
-              disabled={!commentText.trim() || isSending || uploadingComment}
-            >
-              {isSending ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <Ionicons name="send" size={18} color="#FFF" />
-              )}
-            </Pressable>
-          </View>
-        </View>
       )}
 
       {/* Modals */}
@@ -687,11 +630,10 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 12, fontWeight: '700', color: Colors.textMute },
   tabTextActive: { color: Colors.primaryDark },
 
-  chatSection: { gap: 8 },
+  chatScreen: { flex: 1, backgroundColor: Colors.bg },
+  chatTabRowWrap: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
   tabContent: { gap: 10 },
   emptyTab: { textAlign: 'center', fontSize: 13, color: Colors.textFaint, fontWeight: '600', paddingVertical: 24 },
-  loadMoreBtn: { alignItems: 'center', paddingVertical: 10 },
-  loadMoreText: { color: Colors.textMute, fontSize: 13, fontWeight: '600' },
   typingText: { color: Colors.textMute, fontSize: 12, fontStyle: 'italic', paddingHorizontal: 16, paddingBottom: 4 },
   logEditBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', marginTop: 6, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999, backgroundColor: Colors.primaryLight },
   logEditText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
@@ -700,18 +642,6 @@ const styles = StyleSheet.create({
   kbRefDeleteBtn: { padding: 4, marginLeft: 'auto' },
   editOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   editSheet: { backgroundColor: Colors.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16, paddingTop: 12, maxHeight: '88%' },
-
-  bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
-  bubbleRowMe: { flexDirection: 'row-reverse' },
-  avatar: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  bubble: { maxWidth: '75%', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 },
-  bubbleOther: { backgroundColor: '#FFFFFF', borderBottomLeftRadius: 4 },
-  bubbleMe: { backgroundColor: Colors.primary, borderBottomRightRadius: 4 },
-  bubbleName: { fontSize: 11, fontWeight: '700', color: Colors.primary, marginBottom: 3 },
-  bubbleText: { fontSize: 13, fontWeight: '500', color: Colors.text, lineHeight: 19 },
-  bubbleTextMe: { color: '#FFFFFF' },
-  bubbleTime: { fontSize: 10, color: Colors.textFaint, marginTop: 4, textAlign: 'right' },
-  bubbleTimeMe: { color: 'rgba(255,255,255,0.6)' },
 
   logCard: {
     backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, gap: 4,
@@ -735,38 +665,34 @@ const styles = StyleSheet.create({
   },
   attachmentName: { flex: 1, fontSize: 12, color: Colors.text, fontWeight: '500' },
   composer: {
-    gap: 8,
-    paddingHorizontal: 16, paddingTop: 10,
+    gap: 6,
+    paddingHorizontal: 12, paddingTop: 8,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1, borderTopColor: Colors.border,
   },
   composerRow: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
   },
   composerInput: {
-    flex: 1, minHeight: 40, maxHeight: 100,
-    backgroundColor: Colors.card2, borderRadius: 20,
-    paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10,
+    flex: 1, minHeight: 36, maxHeight: 100,
+    backgroundColor: Colors.card2, borderRadius: 18,
+    paddingHorizontal: 14, paddingTop: 8, paddingBottom: 8,
     fontSize: 14, color: Colors.text, fontWeight: '500',
   },
   sendBtn: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 36, height: 36, borderRadius: 18,
     backgroundColor: Colors.primary,
     alignItems: 'center', justifyContent: 'center',
     ...ShadowPrimary,
   },
   sendBtnDisabled: { backgroundColor: Colors.textFaint, shadowOpacity: 0 },
 
-  systemMsg: { alignItems: 'center', paddingVertical: 4 },
-  systemMsgText: { fontSize: 11, color: Colors.textMute, fontStyle: 'italic', fontWeight: '600' },
-
-  bubbleImages: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 },
-  bubbleImage: { width: 160, height: 120, borderRadius: 10 },
-
   imgOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.93)', alignItems: 'center', justifyContent: 'center' },
   imgFull:     { width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.78 },
   imgCloseBtn: { position: 'absolute', right: 16 },
 
   internalToggle: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 36, height: 36, borderRadius: 18,
     backgroundColor: Colors.card2,
     alignItems: 'center', justifyContent: 'center',
   },
