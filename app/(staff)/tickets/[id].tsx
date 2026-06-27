@@ -1,10 +1,11 @@
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -142,6 +143,23 @@ function StaffTicketDetailScreenInner() {
   const [showLogForm, setShowLogForm] = useState(false);
   const [editingLog, setEditingLog] = useState<MaintenanceLogDTO | null>(null);
   const [showKbPicker, setShowKbPicker] = useState(false);
+
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow',
+      (e) => setKeyboardHeight(e.endCoordinates.height)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide',
+      () => setKeyboardHeight(0)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
   // GH-44: bỏ auto scrollToEnd — comments giờ DESC (newest-first).
   const isActioning = isStarting || isHolding || isResuming || isResolving || isEscalating;
 
@@ -254,7 +272,11 @@ function StaffTicketDetailScreenInner() {
   const pColor = ticket.priority ? (PRIORITY_COLORS[ticket.priority] ?? PRIORITY_COLORS.P3Normal) : PRIORITY_COLORS.P3Normal;
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior="padding"
+      enabled={Platform.OS === 'ios'}
+    >
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
@@ -290,7 +312,16 @@ function StaffTicketDetailScreenInner() {
             </Text>
           )}
 
-          <View style={[styles.composer, { paddingBottom: insets.bottom + 8 }]}>
+          <View
+            style={[
+              styles.composer,
+              {
+                paddingBottom: keyboardHeight > 0
+                  ? keyboardHeight + 12
+                  : (insets.bottom > 0 ? insets.bottom + 8 : 12)
+              }
+            ]}
+          >
             <AttachmentPreviewStrip
               items={commentAttachments}
               imageHeaders={imageHeaders}
@@ -665,19 +696,19 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12, paddingTop: 8,
     backgroundColor: '#FFFFFF',
-    borderTopWidth: 1, borderTopColor: Colors.border,
+    borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.08)',
   },
   composerRow: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
   },
   composerInput: {
-    flex: 1, minHeight: 36, maxHeight: 100,
-    backgroundColor: Colors.card2, borderRadius: 18,
-    paddingHorizontal: 14, paddingTop: 8, paddingBottom: 8,
-    fontSize: 14, color: Colors.text, fontWeight: '500',
+    flex: 1, minHeight: 40, maxHeight: 120,
+    backgroundColor: Colors.card2, borderRadius: 22,
+    paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10,
+    fontSize: 15, color: Colors.text, fontWeight: '500',
   },
   sendBtn: {
-    width: 36, height: 36, borderRadius: 18,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: Colors.primary,
     alignItems: 'center', justifyContent: 'center',
     ...ShadowPrimary,
@@ -689,7 +720,7 @@ const styles = StyleSheet.create({
   imgCloseBtn: { position: 'absolute', right: 16 },
 
   internalToggle: {
-    width: 36, height: 36, borderRadius: 18,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: Colors.card2,
     alignItems: 'center', justifyContent: 'center',
   },

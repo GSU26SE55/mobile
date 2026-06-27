@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TextInput, Pressable, View } from 'react-native';
 import { useVerifyResetOtp } from '../hooks/useVerifyResetOtp';
 import { useResendResetOtp } from '../hooks/useResendResetOtp';
 import { otpSchema } from '../schemas/otp.schema';
 import { HttpError, EntityError } from '../../../lib/errors';
+import { Colors } from '../../../lib/theme';
 
 interface Props {
   email: string;
@@ -19,6 +20,8 @@ export function ForgotPasswordStep2({ email, onSuccess }: Props) {
   const [otpError, setOtpError] = useState('');
   const [generalError, setGeneralError] = useState('');
   const [countdown, setCountdown] = useState(RESEND_COOLDOWN);
+  
+  const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -60,35 +63,143 @@ export function ForgotPasswordStep2({ email, onSuccess }: Props) {
     resendMutation.mutate({ email });
   };
 
+  const focusInput = () => {
+    inputRef.current?.focus();
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.hint}>Nhập mã OTP đã gửi đến {email}</Text>
-      <TextInput style={[styles.input, otpError && styles.inputError]} placeholder="Mã OTP (6 chữ số)" keyboardType="number-pad" maxLength={6} value={otp} onChangeText={setOtp} />
+
+      {/* Hidden input to receive key presses */}
+      <TextInput
+        ref={inputRef}
+        style={styles.hiddenInput}
+        keyboardType="number-pad"
+        maxLength={6}
+        value={otp}
+        onChangeText={setOtp}
+        autoFocus
+      />
+
+      {/* Visual OTP Slots */}
+      <Pressable style={styles.otpContainer} onPress={focusInput}>
+        {Array(6).fill(0).map((_, index) => {
+          const char = otp[index] || '';
+          const isFocused = index === otp.length;
+          return (
+            <View
+              key={index}
+              style={[
+                styles.otpSlot,
+                isFocused && styles.otpSlotFocused,
+                otpError ? styles.otpSlotError : null,
+              ]}
+            >
+              <Text style={styles.otpText}>
+                {char || (isFocused ? '|' : '-')}
+              </Text>
+            </View>
+          );
+        })}
+      </Pressable>
+
       {otpError ? <Text style={styles.errorText}>{otpError}</Text> : null}
-      {generalError ? <Text style={styles.generalError}>{generalError}</Text> : null}
-      <TouchableOpacity style={[styles.button, verifying && styles.buttonDisabled]} onPress={handleVerify} disabled={verifying}>
+      
+      {generalError ? (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{generalError}</Text>
+        </View>
+      ) : null}
+
+      <Pressable
+        onPress={handleResend}
+        disabled={countdown > 0 || resendMutation.isPending}
+        style={styles.resendBtn}
+      >
+        {countdown > 0 ? (
+          <Text style={styles.resendDisabled}>
+            Gửi lại mã sau <Text style={{ fontWeight: '700' }}>{countdown}s</Text>
+          </Text>
+        ) : (
+          <Text style={styles.resendText}>
+            Không nhận được OTP? <Text style={styles.resendLink}>Gửi lại mã</Text>
+          </Text>
+        )}
+      </Pressable>
+
+      <Pressable
+        style={[styles.button, verifying && styles.buttonDisabled]}
+        onPress={handleVerify}
+        disabled={verifying}
+      >
         {verifying ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Xác thực</Text>}
-      </TouchableOpacity>
-      <TouchableOpacity onPress={handleResend} disabled={countdown > 0 || resendMutation.isPending} style={styles.resendBtn}>
-        <Text style={[styles.resendText, countdown > 0 && styles.resendDisabled]}>
-          {countdown > 0 ? `Gửi lại sau ${countdown}s` : 'Gửi lại OTP'}
-        </Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 12 },
-  hint: { color: '#555', fontSize: 14, textAlign: 'center' },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 20, textAlign: 'center', letterSpacing: 4 },
-  inputError: { borderColor: '#e53e3e' },
-  errorText: { color: '#e53e3e', fontSize: 13 },
-  generalError: { color: '#e53e3e', fontSize: 14, backgroundColor: '#fff5f5', borderRadius: 8, padding: 10, textAlign: 'center', borderWidth: 1, borderColor: '#fed7d7' },
-  button: { backgroundColor: '#2563eb', borderRadius: 8, padding: 14, alignItems: 'center' },
+  container: { gap: 16 },
+  hint: { color: '#7A7872', fontSize: 14, textAlign: 'center', lineHeight: 22 },
+  emailHighlight: { color: '#1A1A1C', fontWeight: '700' },
+  hiddenInput: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    opacity: 0,
+  },
+  otpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  otpSlot: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    backgroundColor: '#F9F9F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 5,
+  },
+  otpSlotFocused: {
+    borderColor: '#34C759',
+    backgroundColor: '#FFFFFF',
+  },
+  otpSlotError: {
+    borderColor: Colors.danger,
+    backgroundColor: '#FFF5F5',
+  },
+  otpText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1C',
+  },
+  errorText: { color: Colors.danger, fontSize: 12, textAlign: 'center', marginTop: -8 },
+  button: {
+    backgroundColor: '#34C759', borderRadius: 28,
+    height: 54, alignItems: 'center', justifyContent: 'center', marginTop: 12,
+  },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  buttonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   resendBtn: { alignItems: 'center', paddingVertical: 8 },
-  resendText: { color: '#2563eb', fontSize: 14 },
-  resendDisabled: { color: '#999' },
+  resendText: { color: '#7A7872', fontSize: 14 },
+  resendLink: { color: '#E0533C', fontWeight: '700', textDecorationLine: 'underline' },
+  resendDisabled: { color: '#B0AEA6', fontSize: 14 },
+  errorBanner: {
+    backgroundColor: Colors.dangerLight,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  errorBannerText: {
+    color: Colors.dangerDark,
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
 });

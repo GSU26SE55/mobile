@@ -1,8 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useResetPassword } from '../hooks/useResetPassword';
 import { resetPasswordSchema } from '../schemas/resetPassword.schema';
 import { HttpError, EntityError } from '../../../lib/errors';
+import { Colors } from '../../../lib/theme';
 
 interface Props {
   resetToken: string;
@@ -14,9 +16,12 @@ export function ForgotPasswordStep3({ resetToken, expiresInSeconds, onExpired }:
   const { mutateAsync, isPending } = useResetPassword();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState('');
   const [timeLeft, setTimeLeft] = useState(expiresInSeconds);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   useEffect(() => {
     if (timeLeft <= 0) {
@@ -65,29 +70,130 @@ export function ForgotPasswordStep3({ resetToken, expiresInSeconds, onExpired }:
 
   return (
     <View style={styles.container}>
-      <Text style={styles.timer}>
-        Thời gian còn lại: {minutes}:{String(seconds).padStart(2, '0')}
-      </Text>
-      <TextInput style={[styles.input, getError('newPassword') && styles.inputError]} placeholder="Mật khẩu mới" secureTextEntry value={newPassword} onChangeText={setNewPassword} />
-      {getError('newPassword') ? <Text style={styles.errorText}>{getError('newPassword')}</Text> : null}
-      <TextInput style={[styles.input, getError('confirmPassword') && styles.inputError]} placeholder="Xác nhận mật khẩu mới" secureTextEntry value={confirmPassword} onChangeText={setConfirmPassword} />
-      {getError('confirmPassword') ? <Text style={styles.errorText}>{getError('confirmPassword')}</Text> : null}
-      {generalError ? <Text style={styles.generalError}>{generalError}</Text> : null}
-      <TouchableOpacity style={[styles.button, (isPending || timeLeft <= 0) && styles.buttonDisabled]} onPress={handleSubmit} disabled={isPending || timeLeft <= 0}>
+      {/* Session Timer Banner */}
+      <View style={styles.timerBanner}>
+        <Ionicons name="time-outline" size={16} color="#E0533C" />
+        <Text style={styles.timerText}>
+          Thời gian còn lại: <Text style={{ fontWeight: '700' }}>{minutes}:{String(seconds).padStart(2, '0')}</Text>
+        </Text>
+      </View>
+
+      {/* New Password */}
+      <View>
+        <Text style={styles.label}>Mật khẩu mới</Text>
+        <View style={[
+          styles.inputWrap,
+          focusedField === 'newPassword' && styles.inputFocused,
+          getError('newPassword') ? styles.inputError : null
+        ]}>
+          <TextInput
+            style={styles.input}
+            placeholder="Tối thiểu 8 ký tự"
+            placeholderTextColor={Colors.textFaint}
+            secureTextEntry={!showPassword}
+            value={newPassword}
+            onChangeText={setNewPassword}
+            onFocus={() => setFocusedField('newPassword')}
+            onBlur={() => setFocusedField(null)}
+          />
+          <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
+            <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textFaint} />
+          </Pressable>
+        </View>
+        {getError('newPassword') ? <Text style={styles.errorText}>{getError('newPassword')}</Text> : null}
+      </View>
+
+      {/* Confirm Password */}
+      <View>
+        <Text style={styles.label}>Xác nhận mật khẩu mới</Text>
+        <View style={[
+          styles.inputWrap,
+          focusedField === 'confirmPassword' && styles.inputFocused,
+          getError('confirmPassword') ? styles.inputError : null
+        ]}>
+          <TextInput
+            style={styles.input}
+            placeholder="Nhập lại mật khẩu mới"
+            placeholderTextColor={Colors.textFaint}
+            secureTextEntry={!showConfirmPassword}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            onFocus={() => setFocusedField('confirmPassword')}
+            onBlur={() => setFocusedField(null)}
+          />
+          <Pressable onPress={() => setShowConfirmPassword(!showConfirmPassword)} hitSlop={8}>
+            <Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textFaint} />
+          </Pressable>
+        </View>
+        {getError('confirmPassword') ? <Text style={styles.errorText}>{getError('confirmPassword')}</Text> : null}
+      </View>
+
+      {generalError ? (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{generalError}</Text>
+        </View>
+      ) : null}
+
+      <Pressable
+        style={[styles.button, (isPending || timeLeft <= 0) && styles.buttonDisabled]}
+        onPress={handleSubmit}
+        disabled={isPending || timeLeft <= 0}
+      >
         {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Đặt lại mật khẩu</Text>}
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 12 },
-  timer: { color: '#e53e3e', fontSize: 14, textAlign: 'center', fontWeight: '500' },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 16 },
-  inputError: { borderColor: '#e53e3e' },
-  errorText: { color: '#e53e3e', fontSize: 13 },
-  generalError: { color: '#e53e3e', fontSize: 14, backgroundColor: '#fff5f5', borderRadius: 8, padding: 10, textAlign: 'center', borderWidth: 1, borderColor: '#fed7d7' },
-  button: { backgroundColor: '#2563eb', borderRadius: 8, padding: 14, alignItems: 'center' },
+  container: { gap: 14 },
+  timerBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FFF2F0',
+    borderRadius: 14,
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
+  timerText: {
+    color: '#E0533C',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  label: { fontSize: 14, fontWeight: '700', color: '#1A1A1C', marginBottom: 8, marginLeft: 16 },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    height: 54,
+  },
+  input: { flex: 1, fontSize: 15, color: '#1A1A1C', paddingVertical: 0 },
+  inputFocused: { borderColor: '#34C759' },
+  inputError: { borderColor: Colors.danger, backgroundColor: '#FFF5F5' },
+  errorText: { color: Colors.danger, fontSize: 12, marginTop: 4, marginLeft: 16 },
+  button: {
+    backgroundColor: '#34C759', borderRadius: 28,
+    height: 54, alignItems: 'center', justifyContent: 'center', marginTop: 12,
+  },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  buttonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  errorBanner: {
+    backgroundColor: Colors.dangerLight,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  errorBannerText: {
+    color: Colors.dangerDark,
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
 });
