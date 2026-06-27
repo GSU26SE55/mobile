@@ -33,21 +33,15 @@ function formatDateLabel(iso: string) {
 function buildThreadItems(comments: TicketCommentDTO[]): ThreadItem[] {
   const items: ThreadItem[] = [];
   let lastDay: string | null = null;
-  let lastIso: string | null = null;
 
   comments.forEach((c, i) => {
     const day = dayKey(c.createdAt);
-    if (lastDay !== null && day !== lastDay && lastIso) {
-      items.push({ kind: 'date', key: `date-${lastDay}`, label: formatDateLabel(lastIso) });
+    if (day !== lastDay) {
+      items.push({ kind: 'date', key: `date-${day}`, label: formatDateLabel(c.createdAt) });
+      lastDay = day;
     }
     items.push({ kind: 'comment', key: c.id ?? `comment-${i}`, comment: c });
-    lastDay = day;
-    lastIso = c.createdAt;
   });
-
-  if (lastDay !== null && lastIso) {
-    items.push({ kind: 'date', key: `date-${lastDay}-end`, label: formatDateLabel(lastIso) });
-  }
 
   return items;
 }
@@ -65,7 +59,7 @@ interface CommentThreadProps {
   accentColor?: string;
 }
 
-/** Danh sách chat dùng chung customer + staff — FlatList inverted, tự tải thêm lịch sử cũ khi kéo lên đầu. */
+/** Danh sách chat dùng chung customer + staff — từ trên xuống dưới, kéo để tải thêm lịch sử cũ. */
 export function CommentThread({
   comments,
   currentUserId,
@@ -78,7 +72,10 @@ export function CommentThread({
   emptyText = 'Chưa có trao đổi nào.',
   accentColor,
 }: CommentThreadProps) {
-  const items = useMemo(() => buildThreadItems(comments), [comments]);
+  const items = useMemo(() => {
+    const ascComments = [...comments].reverse();
+    return buildThreadItems(ascComments);
+  }, [comments]);
 
   if (isLoading) {
     return (
@@ -101,7 +98,6 @@ export function CommentThread({
     <FlatList
       style={styles.list}
       data={items}
-      inverted
       keyExtractor={(item) => item.key}
       renderItem={({ item }) =>
         item.kind === 'date' ? (
@@ -123,17 +119,17 @@ export function CommentThread({
       contentContainerStyle={styles.listContent}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
-      onEndReachedThreshold={0.4}
-      onEndReached={() => {
-        if (hasNextPage && !isFetchingNextPage) onLoadMore?.();
-      }}
-      ListFooterComponent={
+      ListHeaderComponent={
         isFetchingNextPage ? (
           <View style={styles.loadingMore}>
             <ActivityIndicator size="small" color={Colors.textMute} />
           </View>
         ) : null
       }
+      refreshing={isFetchingNextPage}
+      onRefresh={() => {
+        if (hasNextPage && !isFetchingNextPage) onLoadMore?.();
+      }}
     />
   );
 }

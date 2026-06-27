@@ -10,12 +10,6 @@ import { Colors, Spacing } from '../../src/lib/theme';
 
 type Step = 1 | 2 | 3;
 
-const STEP_ICONS: Record<Step, keyof typeof Ionicons.glyphMap> = {
-  1: 'mail-outline',
-  2: 'keypad-outline',
-  3: 'lock-closed-outline',
-};
-
 export default function ForgotPasswordScreen() {
   const [step, setStep] = useState<Step>(1);
   const [email, setEmail] = useState('');
@@ -49,33 +43,33 @@ export default function ForgotPasswordScreen() {
   };
 
   const stepHints: Record<Step, string> = {
-    1: 'Nhập email để nhận mã xác thực',
+    1: 'Nhập email để nhận mã xác thực đặt lại mật khẩu',
     2: 'Kiểm tra hộp thư email của bạn',
-    3: 'Tạo mật khẩu mới cho tài khoản',
+    3: 'Tạo mật khẩu mới cho tài khoản của bạn',
   };
 
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      {/* Back button */}
+      <Pressable onPress={() => router.back()} style={[styles.backBtn, { top: insets.top + 16 }]}>
+        <Ionicons name="chevron-back" size={20} color="#1A1A1C" />
+      </Pressable>
+
       <ScrollView
-        contentContainerStyle={[styles.container, { paddingTop: insets.top + 16 }]}
+        contentContainerStyle={[styles.container, { paddingTop: insets.top + 76, paddingBottom: insets.bottom + 24 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={Colors.primary} />
-          <Text style={styles.backText}>Quay lại</Text>
-        </Pressable>
-
         {/* Step indicator */}
         <View style={styles.stepRow}>
           {([1, 2, 3] as Step[]).map((s) => (
             <View key={s} style={styles.stepItem}>
               <View style={[styles.stepDot, s <= step && styles.stepDotActive]}>
                 {s < step ? (
-                  <Ionicons name="checkmark" size={14} color={Colors.white} />
+                  <Ionicons name="checkmark" size={14} color="#FFFFFF" />
                 ) : (
                   <Text style={[styles.stepNum, s <= step && styles.stepNumActive]}>{s}</Text>
                 )}
@@ -86,14 +80,19 @@ export default function ForgotPasswordScreen() {
         </View>
 
         <View style={styles.header}>
-          <View style={styles.iconCircle}>
-            <Ionicons name={STEP_ICONS[step]} size={28} color={Colors.primary} />
-          </View>
           <Text style={styles.title}>{stepTitles[step]}</Text>
-          <Text style={styles.subtitle}>{stepHints[step]}</Text>
+          <Text style={styles.subtitle}>
+            {step === 2 ? (
+              <>
+                Mã OTP đã gửi đến <Text style={styles.emailHighlight}>{email}</Text>
+              </>
+            ) : (
+              stepHints[step]
+            )}
+          </Text>
         </View>
 
-        <View style={styles.formCard}>
+        <View style={styles.formSection}>
           {step === 1 && <ForgotPasswordStep1 onSuccess={handleStep1Success} />}
           {step === 2 && (
             <ForgotPasswordStep2 email={email} onSuccess={handleStep2Success} />
@@ -112,33 +111,85 @@ export default function ForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex:           { flex: 1, backgroundColor: Colors.bg },
-  container:      { flexGrow: 1, paddingHorizontal: Spacing.xxl, paddingBottom: 40 },
-  backBtn:        { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: Spacing.xl, paddingVertical: 4 },
-  backText:       { color: Colors.primary, fontSize: 15, fontWeight: '500' },
-  stepRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.xxl },
-  stepItem:       { flexDirection: 'row', alignItems: 'center' },
-  stepDot:        {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: Colors.border,
-    alignItems: 'center', justifyContent: 'center',
+  flex: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
-  stepDotActive:  { backgroundColor: Colors.primary },
-  stepNum:        { fontSize: 13, fontWeight: '600', color: Colors.textTertiary },
-  stepNumActive:  { color: Colors.white },
-  stepLine:       { width: 40, height: 2, backgroundColor: Colors.border, marginHorizontal: 4 },
-  stepLineActive: { backgroundColor: Colors.primary },
-  header:         { alignItems: 'center', marginBottom: Spacing.xxl },
-  iconCircle:     {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: Colors.primaryLight,
-    alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md,
+  container: {
+    flexGrow: 1,
+    paddingHorizontal: 28,
   },
-  title:          { fontSize: 22, fontWeight: '700', color: Colors.text },
-  subtitle:       { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', marginTop: 4 },
-  formCard:       {
-    backgroundColor: Colors.white, borderRadius: 16, padding: Spacing.xxl,
-    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 }, elevation: 3,
+  backBtn: {
+    position: 'absolute',
+    left: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 28,
+  },
+  stepItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stepDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#EBEBEB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepDotActive: {
+    backgroundColor: '#34C759',
+  },
+  stepNum: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#7A7872',
+  },
+  stepNumActive: {
+    color: '#FFFFFF',
+  },
+  stepLine: {
+    width: 40,
+    height: 2,
+    backgroundColor: '#EBEBEB',
+    marginHorizontal: 4,
+  },
+  stepLineActive: {
+    backgroundColor: '#34C759',
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1A1A1C',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#7A7872',
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 20,
+  },
+  emailHighlight: {
+    color: '#1A1A1C',
+    fontWeight: '700',
+  },
+  formSection: {
+    width: '100%',
   },
 });

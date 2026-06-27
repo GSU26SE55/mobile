@@ -1,10 +1,11 @@
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -172,6 +173,23 @@ function TicketDetailScreenInner() {
   const [activeTab,       setActiveTab]       = useState<'info' | 'chat'>('info');
   const [viewingImage,    setViewingImage]    = useState<string | null>(null);
 
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow',
+      (e) => setKeyboardHeight(e.endCoordinates.height)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide',
+      () => setKeyboardHeight(0)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   if (isLoading) {
     return (
       <View style={styles.center}>
@@ -304,7 +322,8 @@ function TicketDetailScreenInner() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior="padding"
+      enabled={Platform.OS === 'ios'}
     >
       {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
@@ -312,9 +331,7 @@ function TicketDetailScreenInner() {
           <Ionicons name="chevron-back" size={18} color={Colors.text} />
         </Pressable>
         <Text style={styles.topCode} numberOfLines={1}>{ticket.code}</Text>
-        <Pressable style={[styles.moreBtn, Shadow]}>
-          <Ionicons name="ellipsis-horizontal" size={16} color={Colors.text} />
-        </Pressable>
+        <View style={{ width: 42 }} />
       </View>
 
       {/* Tab bar */}
@@ -539,11 +556,20 @@ function TicketDetailScreenInner() {
           ) : null}
 
           {/* Composer bar */}
-          <View style={[styles.composer, { paddingBottom: insets.bottom + 8 }]}>
+          <View
+            style={[
+              styles.composer,
+              {
+                paddingBottom: keyboardHeight > 0
+                  ? keyboardHeight + 12
+                  : (insets.bottom > 0 ? insets.bottom + 8 : 12)
+              }
+            ]}
+          >
             <Pressable style={styles.composerIcon} onPress={handlePickAttachment} disabled={isUploading}>
               {isUploading
                 ? <ActivityIndicator size="small" color={Colors.textMute} />
-                : <Ionicons name="camera-outline" size={20} color={Colors.textMute} />}
+                : <Ionicons name="camera-outline" size={24} color={Colors.textMute} />}
             </Pressable>
             <TextInput
               style={styles.composerInput}
@@ -561,7 +587,7 @@ function TicketDetailScreenInner() {
             >
               {isCommenting
                 ? <ActivityIndicator color="#fff" size="small" />
-                : <Ionicons name="send" size={16} color="#fff" />}
+                : <Ionicons name="send" size={18} color="#fff" />}
             </Pressable>
           </View>
         </View>
@@ -844,23 +870,22 @@ const styles = StyleSheet.create({
   typingText:     { color: Colors.textMute, fontSize: 12, fontStyle: 'italic', paddingHorizontal: 18, paddingBottom: 4 },
 
   composer:       {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 14, paddingTop: 10,
     backgroundColor: '#FFFFFF',
-    borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.02)',
+    borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.08)',
   },
-  composerIcon:   { padding: 8, paddingBottom: 10 },
+  composerIcon:   { padding: 8 },
   composerInput:  {
-    flex: 1, backgroundColor: Colors.card2, borderRadius: 18,
-    paddingHorizontal: 14, paddingVertical: 9,
-    fontSize: 13, color: Colors.text,
-    maxHeight: 100,
+    flex: 1, backgroundColor: Colors.card2, borderRadius: 22,
+    paddingHorizontal: 16, paddingVertical: 10,
+    fontSize: 15, color: Colors.text,
+    maxHeight: 120,
   },
   sendBtn:        {
-    width: 36, height: 36, borderRadius: 18,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: '#FF5E13',
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: 2,
   },
   btnDisabled:    { opacity: 0.35 },
   composerError:  { backgroundColor: '#FFFFFF', paddingHorizontal: 18 },

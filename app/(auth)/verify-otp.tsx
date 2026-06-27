@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { OtpVerifyForm } from '../../src/features/auth/components/OtpVerifyForm';
 import { Colors, Spacing } from '../../src/lib/theme';
@@ -20,20 +20,22 @@ export default function VerifyOtpScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={[styles.container, { paddingTop: insets.top + 60 }]}>
+      {/* Back button */}
+      <Pressable onPress={() => router.back()} style={[styles.backBtn, { top: insets.top + 16 }]}>
+        <Ionicons name="chevron-back" size={20} color="#1A1A1C" />
+      </Pressable>
+
+      <View style={[styles.container, { paddingTop: insets.top + 76 }]}>
         <View style={styles.header}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="mail-open" size={32} color={Colors.primary} />
-          </View>
-          <Text style={styles.title}>Xác thực email</Text>
+          <Text style={styles.title}>Xác thực mã OTP</Text>
           <Text style={styles.subtitle}>
-            Chúng tôi đã gửi mã OTP đến email của bạn
+            Mã OTP đã gửi đến <Text style={styles.emailHighlight}>{email}</Text>
           </Text>
         </View>
 
-        <View style={styles.formCard}>
+        <View style={styles.formSection}>
           <OtpVerifyForm email={email} />
         </View>
       </View>
@@ -42,19 +44,48 @@ export default function VerifyOtpScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex:       { flex: 1, backgroundColor: Colors.bg },
-  container:  { flex: 1, paddingHorizontal: Spacing.xxl },
-  header:     { alignItems: 'center', marginBottom: Spacing.xxxl },
-  iconCircle: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: Colors.primaryLight,
-    alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.lg,
+  flex: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
-  title:      { fontSize: 24, fontWeight: '700', color: Colors.text },
-  subtitle:   { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', marginTop: 6, lineHeight: 20 },
-  formCard:   {
-    backgroundColor: Colors.white, borderRadius: 16, padding: Spacing.xxl,
-    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 }, elevation: 3,
+  container: {
+    flex: 1,
+    paddingHorizontal: 28,
+  },
+  backBtn: {
+    position: 'absolute',
+    left: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1A1A1C',
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#7A7872',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  emailHighlight: {
+    color: '#1A1A1C',
+    fontWeight: '700',
+  },
+  formSection: {
+    width: '100%',
   },
 });
