@@ -110,7 +110,6 @@ function StaffTicketDetailScreenInner() {
   const user = useSessionStore((s) => s.user);
   const canResolve = checkPermission(user, P.TICKET_RESOLVE); // GH-47
   const { data: ticket, isLoading, isError, refetch } = useStaffTicketDetail(ticketId);
-  const imageHeaders = useAuthImageHeaders();
   const { mutate: startTicket, isPending: isStarting } = useStartTicket(ticketId);
   const { mutate: holdTicket, isPending: isHolding } = useHoldTicket(ticketId);
   const { mutate: resumeTicket, isPending: isResuming } = useResumeTicket(ticketId);
@@ -369,7 +368,7 @@ function StaffTicketDetailScreenInner() {
         {(ticket.attachmentFileIds?.length ?? 0) > 0 && (
           <View style={[styles.card, Shadow]}>
             <Text style={styles.sectionLabel}>Ảnh đính kèm</Text>
-            <AttachmentThumbnails fileIds={ticket.attachmentFileIds} size={72} />
+            <AttachmentThumbnails fileIds={ticket.attachmentFileIds} size={72} onPressImage={setViewingImage} />
           </View>
         )}
 
@@ -559,11 +558,7 @@ function StaffTicketDetailScreenInner() {
         >
           <View style={styles.imgOverlay}>
             <Pressable style={StyleSheet.absoluteFill} onPress={() => setViewingImage(null)} />
-            <Image
-              source={{ uri: viewingImage, headers: imageHeaders ?? undefined }}
-              style={styles.imgFull}
-              resizeMode="contain"
-            />
+            <AuthImage fileId={viewingImage} style={styles.imgFull} resizeMode="contain" />
             <Pressable
               style={[styles.imgCloseBtn, { top: insets.top + 12 }]}
               onPress={() => setViewingImage(null)}
