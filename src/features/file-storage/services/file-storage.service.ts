@@ -9,9 +9,12 @@ import type {
 } from '../types/file-storage.types';
 
 export const fileStorageService = {
-  // RN: append { uri, name, type } as Blob. Content-Type = undefined để axios tự đặt
-  // 'multipart/form-data; boundary=...' khi body là FormData (ghi đè default 'application/json'
-  // của axiosInstance). Set cứng 'multipart/form-data' (thiếu boundary) sẽ làm BE không parse được.
+  // RN: append { uri, name, type } as Blob.
+  // Content-Type PHẢI set cứng 'multipart/form-data' (không boundary) — để 'undefined' (trông cậy
+  // axios tự suy ra) làm request không bao giờ được gửi đi trên Android (RN XHR bridge bắn 'onerror'
+  // ngay, axios báo "Network Error", 0 traffic tới server). RN native module tự sinh boundary đúng
+  // khi thấy Content-Type bắt đầu bằng 'multipart/form-data' + body là FormData. Bug nổi tiếng:
+  // axios/axios#4800, #2875, #1567, #3540 — chỉ xảy ra Android, iOS không bị.
   uploadFile: (payload: UploadFilePayload) => {
     const form = new FormData();
     form.append('file', {
@@ -24,7 +27,7 @@ export const fileStorageService = {
     return axiosInstance.post<CommonResponse<FileUploadResponse>>(
       ENDPOINTS.FILES.UPLOAD,
       form,
-      { headers: { 'Content-Type': undefined } },
+      { headers: { 'Content-Type': 'multipart/form-data' } },
     );
   },
 
