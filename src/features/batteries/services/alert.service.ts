@@ -14,4 +14,7 @@ export const alertService = {
   // Customer được ack alert của mình (Open → Acknowledged). 409 nếu Resolved/Merged.
   acknowledge: (id: string) =>
     axiosInstance.patch<CommonResponse<null>>(ENDPOINTS.ALERTS.ACKNOWLEDGE(id)),
+  // GH-55 — Staff-only: PATCH, Open/Acknowledged → Resolved. 409 nếu Merged.
+  resolve: (id: string) =>
+    axiosInstance.patch<CommonResponse<null>>(ENDPOINTS.ALERTS.RESOLVE(id)),
 };

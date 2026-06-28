@@ -67,6 +67,13 @@ export const ENDPOINTS = {
     LIST:        '/api/alerts',
     DETAIL:      (id: string) => `/api/alerts/${id}`,
     ACKNOWLEDGE: (id: string) => `/api/alerts/${id}/acknowledge`,
+    RESOLVE:     (id: string) => `/api/alerts/${id}/resolve`, // GH-55 — PATCH, Staff-only
+  },
+  ENVIRONMENTAL_INCIDENTS: {
+    LIST:        '/api/environmental-incidents',                                   // GET ?siteId&status&incidentType&from&to&pageSize
+    DETAIL:      (id: string) => `/api/environmental-incidents/${id}`,
+    ACKNOWLEDGE: (id: string) => `/api/environmental-incidents/${id}/acknowledge`, // POST, Staff-only
+    RESOLVE:     (id: string) => `/api/environmental-incidents/${id}/resolve`,     // POST { resolutionNote }, Staff-only
   },
   TICKETS: {
     CUSTOMER_LIST:   '/api/customer/tickets/me',

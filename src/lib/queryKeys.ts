@@ -6,6 +6,7 @@ export const KEY = {
   batteryAssets: ['batteryAssets'] as const,
   sensorReadings:['sensorReadings'] as const,
   alerts:        ['alerts'] as const,
+  incidents:     ['incidents'] as const, // GH-55 — environmental incidents
   tickets:       ['tickets'] as const,
   staffProfile:  ['staffProfile'] as const,
   staffTickets:  ['staffTickets'] as const,
@@ -41,6 +42,10 @@ export const QUERY_KEY = {
   alerts: {
     list:   (params?: Record<string, unknown>) => [...KEY.alerts, 'list', params] as const,
     detail: (id: string) => [...KEY.alerts, 'detail', id] as const,
+  },
+  incidents: { // GH-55 — environmental incidents
+    list:   (params?: Record<string, unknown>) => [...KEY.incidents, 'list', params] as const,
+    detail: (id: string) => [...KEY.incidents, 'detail', id] as const,
   },
   tickets: {
     list:       (params?: Record<string, unknown>) => [...KEY.tickets, 'list', params] as const,
