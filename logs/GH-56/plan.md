@@ -1,7 +1,7 @@
 # Plan — GH-56: [Mobile] Staff Technical Tools — battery types + IoT calibration
 
 ## Metadata
-- **Status:** PLANNING | **Role:** Mobile (FE) | **Ngày:** 2026-06-28
+- **Status:** REVIEWING | **Role:** Mobile (FE) | **Ngày:** 2026-06-28
 - **Issue:** #56 — https://github.com/GSU26SE55/mobile/issues/56
 - **Sprint:** Sprint 1 (due 2026-05-30)
 - **Dev:** Trần Minh Trí
@@ -27,7 +27,7 @@ Customer **không** thấy các màn này (gate bằng route group `(staff)` đ�
 - Admin IoT device management (§11C).
 
 ## Endpoints
-> Nguồn contract: `backend/docs/api-battery.md` §Nhóm 3 (Battery Types) + §11B/§by-code (Calibration). ⚠️ Endpoint `by-code` **chưa sync** sang `mobile/docs/api-battery.md`.
+> Nguồn contract: `mobile/docs/api-battery.md` §Nhóm 3 (Battery Types) + §11B/§by-code (Calibration). Endpoint `by-code` đã sync sang mobile docs ✅.
 
 | Method | Path | Auth | Mục đích / Response |
 |--------|------|------|---------------------|
@@ -36,7 +36,7 @@ Customer **không** thấy các màn này (gate bằng route group `(staff)` đ�
 | GET | `/api/iot-devices/by-code/{deviceCode}` | Admin/Manager/Staff | `CommonResponse<IotDeviceDto>` (lấy `id` GUID). `404` nếu không khớp |
 | GET | `/api/iot-devices/{deviceId}/calibrations?channel&includeExpired` | Admin/Manager/Staff | `CommonResponse<IotDeviceCalibrationDto[]>` (flat, no pagination, sort `calibratedAt DESC`) |
 | POST | `/api/iot-devices/{deviceId}/calibrations` | Admin/Staff | `CommonResponse<IotDeviceCalibrationDto>` (`201`) |
-| DELETE | `/api/iot-devices/{deviceId}/calibrations/{calibrationId}` | Admin/Staff | `CommonResponse<object>` |
+| DELETE | `/api/iot-devices/{deviceId}/calibrations/{calibrationId}` | Admin/Staff | **HTTP 200** (không phải 204) + `CommonResponse<object>` → service check `isSuccess`, KHÔNG check status 204 |
 
 ## Files
 | File | Action | Ghi chú |
@@ -61,8 +61,8 @@ Customer **không** thấy các màn này (gate bằng route group `(staff)` đ�
 | `app/(staff)/tools/index.tsx` | create | Hub: 2 entry (Battery Types, Calibration) |
 | `app/(staff)/tools/battery-types/index.tsx` | create | List + search |
 | `app/(staff)/tools/battery-types/[id].tsx` | create | Detail |
-| `app/(staff)/tools/calibration/index.tsx` | create | Nhập deviceCode → list calibration + xoá |
-| `app/(staff)/tools/calibration/create.tsx` | create | Form tạo calibration |
+| `app/(staff)/tools/calibration/index.tsx` | create | Nhập deviceCode → list calibration + filter (channel chip + includeExpired switch) + xoá |
+| `app/(staff)/tools/calibration/create.tsx` | create | Form tạo calibration — **prefill `scale=1`, `offset=0`** (L1) |
 | `app/(staff)/_layout.tsx` | modify | Đăng ký Stack.Screen cho các route `tools/*` |
 | `app/(staff)/(tabs)/profile.tsx` | modify | Thêm row "Công cụ kỹ thuật" → `router.push('/(staff)/tools')` |
 
@@ -70,7 +70,7 @@ Customer **không** thấy các màn này (gate bằng route group `(staff)` đ�
 | Enum | File nguồn | Giá trị |
 |------|-----------|---------|
 | `BatteryChemistryEnum` | `features/battery-types/enums/battery-type.enum.ts` | LiFePO4=1, Nmc=2, Nca=3, Lco=4, Other=99 |
-| `IotDeviceStatusEnum` | `features/iot-devices/enums/iot-device.enum.ts` | Lấy int từ `docs/api-battery.md §IotDeviceStatusEnum` khi implement |
+| `IotDeviceStatusEnum` | `features/iot-devices/enums/iot-device.enum.ts` | Pending=1, Active=2, Offline=3, Disabled=4, Decommissioned=5 (doc dòng 182–188) |
 | `CalibrationChannel` (UI const) | `features/iot-devices/enums/iot-device.enum.ts` | `voltage`/`current`/`temperature`/`soc` — dropdown form (BE nhận string tự do) |
 
 > Pattern `as const` object + type alias — KHÔNG dùng TypeScript `enum`.
@@ -85,7 +85,8 @@ interface BatteryTypeDto {
 }
 interface BatteryTypeListParams { pageNumber?: number; pageSize?: number; keyword?: string; includeDeleted?: boolean; }
 
-interface IotDeviceDto { id: string; deviceCode: string; displayName: string; status: IotDeviceStatusEnum; siteName: string | null; }
+// L2: thêm siteId (doc dòng 2161: string, Không nullable) cho đúng contract — chi phí 0, phòng khi cần điều hướng theo site
+interface IotDeviceDto { id: string; deviceCode: string; displayName: string; status: IotDeviceStatusEnum; siteId: string; siteName: string | null; }
 
 interface IotDeviceCalibrationDto {
   id: string; iotDeviceId: string; channel: string; batteryAssetId: string | null;
@@ -103,18 +104,29 @@ interface CalibrationListParams { channel?: string; includeExpired?: boolean; }
 > Không dùng React Hook Form — parse thủ công bằng `schema.safeParse()` (nhất quán mobile rules).
 ```ts
 // deviceCodeSchema — input tra device
-deviceCode: z.string().trim().min(3).max(64).regex(/^[A-Z0-9-]+$/i)
+// L3: BE tự Trim().ToUpperInvariant() match trên unique index → client cũng .trim().toUpperCase()
+//     trước khi gửi/transform để hiển thị nhất quán (tránh nhầm lẫn UI), không phải bug.
+deviceCode: z.string().trim().toUpperCase().min(3).max(64).regex(/^[A-Z0-9-]+$/)
 
 // createCalibrationSchema
-channel:      z.string().trim().min(1).max(32)        // lowercase trước khi gửi
+channel:      z.string().trim().toLowerCase().min(1).max(32)  // BE: lowercase
 unit:         z.string().trim().min(1).max(16)
-scale:        z.number().refine(v => v !== 0, 'scale != 0')
+scale:        z.number().refine(v => v !== 0, 'scale != 0')   // doc: "khác 0"
 offset:       z.number()
-calibratedAt: z.string().min(1)                       // ISO UTC
-expiresAt:    z.string().optional()                    // nếu có: > calibratedAt
+calibratedAt: z.string().min(1)                       // ISO UTC — N2: KHÔNG chặn tương lai (doc chỉ != default, có chủ ý)
+expiresAt:    z.string().optional()                    // nếu có: > calibratedAt (enforce ở superRefine bên dưới)
 batteryAssetId: z.string().uuid().optional().nullable()
 notes:        z.string().max(500).optional()
+
+// N1: cross-field rule PHẢI đặt ở cấp object (field-level Zod không so 2 field được)
+// → đảm bảo cam kết "chặn client expiresAt <= calibratedAt", không phải chờ BE 400
+.superRefine((v, ctx) => {
+  if (v.expiresAt && new Date(v.expiresAt) <= new Date(v.calibratedAt)) {
+    ctx.addIssue({ code: 'custom', path: ['expiresAt'], message: 'expiresAt phải sau calibratedAt' });
+  }
+})
 ```
+> **L1 — Prefill default (quan trọng):** doc dòng 2106–2107 ghi `scale` mặc định `1`, `offset` mặc định `0` (BE-side default, vẫn là field "Có"). Form create **PHẢI prefill `scale=1`, `offset=0`** làm initial state — KHÔNG để trống bắt Staff tự nhập, tránh lệch ý đồ contract + UX kém. `.refine(scale !== 0)` giữ nguyên (đúng doc "khác 0").
 
 ## Approach
 - **deviceId source:** Staff nhập `deviceCode` (mã in trên thiết bị) → `useDeviceByCode` gọi `by-code` → lấy `id` (GUID) → các hook calibration dùng `id` đó. Giải quyết việc Staff không có GUID (xem `logs/GH-56/blocker-deviceId.md`).
@@ -135,8 +147,10 @@ Mở tab Cá nhân → "Công cụ kỹ thuật" → "Loại pin"
 "Công cụ kỹ thuật" → "Calibration"
   → nhập deviceCode → submit
   → useDeviceByCode(code):
-       OK   → có deviceId → useCalibrations(deviceId) → list
+       OK   → có deviceId → useCalibrations(deviceId, { channel?, includeExpired }) → list
        404  → toast "Không tìm thấy thiết bị"
+  → G2: trên màn list có filter — chip chọn channel (voltage/current/temperature/soc, mặc định "tất cả")
+        + switch "Hiện cả đã hết hạn" (includeExpired, mặc định false). Đổi filter → refetch.
   → "Thêm calibration" → create.tsx → safeParse → useCreateCalibration → 201 → back + invalidate
   → mỗi row có nút Xoá → useDeleteCalibration → invalidate
   → lỗi: handleErrorApi({ error }) → toast (non-form); form thì map listErrors xuống field
@@ -147,7 +161,8 @@ Mở tab Cá nhân → "Công cụ kỹ thuật" → "Loại pin"
 - `deviceId` đúng nhưng chưa có calibration → BE trả `[]` → hiện EmptyState (không phải lỗi).
 - POST validation `400` → map `listErrors` xuống đúng field trên form create.
 - `scale = 0` → chặn client (Zod) trước khi gọi API.
-- `expiresAt <= calibratedAt` → chặn client + BE cũng chặn.
+- `expiresAt <= calibratedAt` → chặn client bằng `.superRefine` (N1) + BE cũng chặn (doc 2110).
+- `calibratedAt` tương lai → **KHÔNG chặn** (N2): doc chỉ yêu cầu `!= default`, không cấm tương lai — có chủ ý, khớp contract.
 - Battery Types list rỗng / keyword không ra kết quả → EmptyState.
 - Offline / network error → toast, cho retry.
 
@@ -156,19 +171,21 @@ Mở tab Cá nhân → "Công cụ kỹ thuật" → "Loại pin"
 - [ ] Battery Types: list hiển thị name/manufacturer/capacity/voltage/chemistry; search theo keyword; mở được chi tiết.
 - [ ] Calibration: nhập `deviceCode` hợp lệ → ra danh sách calibration của đúng device.
 - [ ] `deviceCode` sai → báo "không tìm thấy", không crash.
+- [ ] Form tạo calibration **prefill sẵn `scale=1`, `offset=0`** (L1) — Staff không phải tự gõ.
+- [ ] Màn calibration có filter `channel` + toggle `includeExpired`; đổi filter → list refetch (G2).
 - [ ] Tạo calibration mới → list tự refresh, item mới xuất hiện.
-- [ ] Xoá calibration → biến mất khỏi list.
+- [ ] Xoá calibration (DELETE trả HTTP 200) → service check `isSuccess` → biến mất khỏi list (G1).
 - [ ] Validation client chặn `scale=0`, `expiresAt<=calibratedAt`, field vượt max length.
 - [ ] `npx tsc --noEmit` PASS (đã regenerate `.expo/types` cho route mới).
 
 ## Steps
-- [ ] Bước 1: Thêm `endpoints.ts` + `queryKeys.ts` (BATTERY_TYPES, IOT_DEVICES)
-- [ ] Bước 2: Enums + Types (battery-types + iot-devices) + Zod schemas
-- [ ] Bước 3: Services (battery-type.service, iot-device.service)
-- [ ] Bước 4: Hooks (useBatteryTypes, useBatteryTypeDetail, useDeviceByCode, useCalibrations, useCreate/useDeleteCalibration)
-- [ ] Bước 5: Components (BatteryTypeCard, CalibrationCard)
-- [ ] Bước 6: Screens `app/(staff)/tools/*` + đăng ký `(staff)/_layout.tsx` + thêm row vào `profile.tsx`
-- [ ] Bước 7: Regenerate `.expo/types` (chạy `expo start` cho free port rồi dừng) → `npx tsc --noEmit` PASS
+- [x] Bước 1: Thêm `endpoints.ts` + `queryKeys.ts` (BATTERY_TYPES, IOT_DEVICES) — 2026-06-28
+- [x] Bước 2: Enums + Types (battery-types + iot-devices) + Zod schemas — 2026-06-28
+- [x] Bước 3: Services (battery-type.service, iot-device.service) — 2026-06-28
+- [x] Bước 4: Hooks (useBatteryTypes, useBatteryTypeDetail, useDeviceByCode, useCalibrations, useCreate/useDeleteCalibration) — 2026-06-28
+- [x] Bước 5: Components (BatteryTypeCard, CalibrationCard) — 2026-06-28
+- [x] Bước 6: Screens `app/(staff)/tools/*` + đăng ký `(staff)/_layout.tsx` + thêm row vào `profile.tsx` — 2026-06-28
+- [x] Bước 7: Regenerate `.expo/types` (expo start port 8099 rồi dừng) → `npx tsc --noEmit` PASS — 2026-06-28
 
 ## Câu hỏi đã giải đáp
 1. **Staff lấy `deviceId` ở đâu?** → BE thêm `GET /api/iot-devices/by-code/{deviceCode}` (commit `37765eb`, auth Admin/Manager/Staff) làm cầu nối `deviceCode → deviceId`. Staff nhập `deviceCode` (mã in trên thiết bị). Chi tiết + lịch sử blocker: `logs/GH-56/blocker-deviceId.md`.
@@ -178,4 +195,4 @@ Mở tab Cá nhân → "Công cụ kỹ thuật" → "Loại pin"
 
 ## Lưu ý kỹ thuật
 - ⚠️ Route mới trong Expo Router làm `tsc`/check-build FAIL tới khi regenerate `.expo/types` (xem memory `expo-router-typed-routes-pitfall`).
-- ⚠️ `by-code` chưa có trong `mobile/docs/api-battery.md` — nên đề nghị sync doc, hoặc bám `backend/docs/api-battery.md` dòng 2051.
+- `by-code` đã có trong `mobile/docs/api-battery.md` ✅ — bám contract ở đây.

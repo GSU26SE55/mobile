@@ -17,6 +17,8 @@ export const KEY = {
   files:         ['files'] as const,
   kb:            ['kb'] as const,
   permissions:   ['permissions'] as const, // GH-47
+  batteryTypes:  ['batteryTypes'] as const, // GH-56
+  iotDevices:    ['iotDevices'] as const,   // GH-56
 } as const;
 
 export const QUERY_KEY = {
@@ -94,5 +96,14 @@ export const QUERY_KEY = {
   },
   permissions: {
     me: () => [...KEY.permissions, 'me'] as const, // GH-47
+  },
+  batteryTypes: {
+    list:   (params?: Record<string, unknown>) => [...KEY.batteryTypes, 'list', params] as const, // GH-56
+    detail: (id: string) => [...KEY.batteryTypes, 'detail', id] as const,
+  },
+  iotDevices: {
+    byCode:       (deviceCode: string) => [...KEY.iotDevices, 'by-code', deviceCode] as const, // GH-56
+    calibrations: (deviceId: string, params?: Record<string, unknown>) =>
+      [...KEY.iotDevices, 'calibrations', deviceId, params] as const,
   },
 } as const;

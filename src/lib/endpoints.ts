@@ -138,4 +138,15 @@ export const ENDPOINTS = {
     LIST: '/api/knowledge-base/references',                          // GET ?ticketId= + POST
     ITEM: (refId: string) => `/api/knowledge-base/references/${refId}`, // GH-44 #6 — DELETE
   },
+  BATTERY_TYPES: {
+    LIST:   '/api/battery-types',                              // GET ?pageNumber&pageSize&keyword&includeDeleted
+    DETAIL: (id: string) => `/api/battery-types/${id}`,        // GH-56 — read-only cho Staff
+  },
+  IOT_DEVICES: {
+    // GH-56 — cầu nối deviceCode (mã in trên thiết bị) → id (GUID) cho Staff/Manager
+    BY_CODE:          (deviceCode: string) => `/api/iot-devices/by-code/${deviceCode}`,
+    CALIBRATIONS:     (deviceId: string) => `/api/iot-devices/${deviceId}/calibrations`,           // GET ?channel&includeExpired + POST
+    CALIBRATION_ITEM: (deviceId: string, calibrationId: string) =>
+      `/api/iot-devices/${deviceId}/calibrations/${calibrationId}`,                                // DELETE
+  },
 } as const;
