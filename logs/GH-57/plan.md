@@ -1,7 +1,7 @@
 # Plan — GH-57: [Mobile] Battery & Site Monitoring (M-1)
 
 ## Metadata
-- **Status:** IN_PROGRESS | **Role:** Mobile | **Ngày:** 2026-06-28
+- **Status:** REVIEWING | **Role:** Mobile | **Ngày:** 2026-06-28
 - **Issue:** #57 — https://github.com/GSU26SE55/mobile/issues/57
 - **Sprint:** Sprint 4 (due 2026-07-11) | **Priority:** P2
 - **Dev:** Trần Minh Trí (@Shu1237)
@@ -112,13 +112,13 @@ Hoàn thiện luồng giám sát pin/site/môi trường trên Mobile (Customer 
 - [ ] `npx tsc --noEmit` + `npx eslint . --max-warnings=0` PASS (sau khi regenerate expo types).
 
 ## Steps
-- [ ] Bước 1: `endpoints.ts` + `queryKeys.ts` — thêm path & key cho sites/ambient/cascade/stream
-- [ ] Bước 2: Enums + Types (site, ambient, cascade, live-reading)
-- [ ] Bước 3: Services (site.service, ambient.service, battery.service.getCascadeRisk)
-- [ ] Bước 4: Hooks (sites, ambient, cascade, `useBatterySensorStream` SSE) — `npm install react-native-sse`
-- [ ] Bước 5: Components (SiteCard, SiteHealthBadge, AmbientTile, AmbientTrendChart, CascadeRiskBadge)
-- [ ] Bước 6: Screens — Site detail (customer+staff), wire Sites section vào dashboard, cascade badge + SSE + site link vào battery detail
-- [ ] Bước 7: Regenerate expo types → `npx tsc --noEmit` + `npx eslint . --max-warnings=0` PASS
+- [x] Bước 1: `endpoints.ts` + `queryKeys.ts` — thêm path & key cho sites/ambient/cascade/stream — 2026-06-28
+- [x] Bước 2: Enums + Types (site, ambient, cascade, live-reading) — 2026-06-28
+- [x] Bước 3: Services (site.service, ambient.service, battery.service.getCascadeRisk) — 2026-06-28
+- [x] Bước 4: Hooks (sites, ambient, cascade, `useBatterySensorStream` SSE) — `react-native-sse` cài xong — 2026-06-28
+- [x] Bước 5: Components (SiteCard, SiteHealthBadge, AmbientTile, AmbientTrendChart, CascadeRiskBadge) — AmbientTrendChart dùng react-native-svg thay Victory (nhất quán SensorChart, ko thêm package) — 2026-06-28
+- [x] Bước 6: Screens — Site detail (customer+staff), Sites section vào dashboard, cascade badge + SSE + site link vào battery detail — 2026-06-28
+- [x] Bước 7: Regenerate expo types → `tsc --noEmit` PASS (0 errors); `expo lint` 0 errors (chỉ warning enum-pattern chuẩn sẵn có) — 2026-06-28
 
 ## Câu hỏi đã giải đáp
 1. **Scope (4 sub-feature):** làm cả 4 trong 1 branch, commit theo từng sub-feature.

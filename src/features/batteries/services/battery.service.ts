@@ -6,6 +6,7 @@ import {
   BatteryAssetRealtimeDto,
   BatteryAssetListParams,
 } from '../types/battery.types';
+import { CascadeRiskDto } from '../types/cascade.types';
 
 export const batteryService = {
   getMyAssets: (params?: BatteryAssetListParams) =>
@@ -20,5 +21,9 @@ export const batteryService = {
   getRealtime: (id: string) =>
     axiosInstance.get<CommonResponse<BatteryAssetRealtimeDto>>(
       ENDPOINTS.BATTERY_ASSETS.REALTIME(id),
+    ),
+  getCascadeRisk: (id: string) =>
+    axiosInstance.get<CommonResponse<CascadeRiskDto>>(
+      ENDPOINTS.BATTERY_ASSETS.CASCADE_RISK(id),
     ),
 };

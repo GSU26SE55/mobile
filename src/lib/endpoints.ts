@@ -54,14 +54,31 @@ export const ENDPOINTS = {
     DELETE:        (id: string) => `/api/files/${id}`,
   },
   BATTERY_ASSETS: {
-    MY:       '/api/battery-assets/me',
-    DETAIL:   (id: string) => `/api/battery-assets/${id}`,
-    REALTIME: (id: string) => `/api/battery-assets/${id}/realtime`,
+    MY:           '/api/battery-assets/me',
+    DETAIL:       (id: string) => `/api/battery-assets/${id}`,
+    REALTIME:     (id: string) => `/api/battery-assets/${id}/realtime`,
+    CASCADE_RISK: (id: string) => `/api/battery-assets/${id}/cascade-risk`, // GH-57 (Sprint 7 B4)
   },
   SENSOR_READINGS: {
     LATEST:    (assetId: string) => `/api/sensor-readings/${assetId}/latest`,
     HISTORY:   (assetId: string) => `/api/sensor-readings/${assetId}/history`,
     AGGREGATE: (assetId: string) => `/api/sensor-readings/${assetId}/aggregate`,
+    // GH-57 — SSE telemetry live stream (docs/battery-realtime-description.md §3).
+    // Path tĩnh; hook tự ghép BASE_URL + ?scope=&access_token=. KHÔNG gọi qua axios.
+    STREAM:    '/api/sensor-readings/stream',
+  },
+  SITES: {
+    MY:        '/api/sites/me',
+    DETAIL:    (id: string) => `/api/sites/${id}`,
+    DASHBOARD: (id: string) => `/api/sites/${id}/dashboard`,
+    ASSETS:    (id: string) => `/api/sites/${id}/assets`,
+  },
+  AMBIENT: {
+    LATEST:  '/api/ambient/readings/latest',  // ?siteId=
+    HISTORY: '/api/ambient/readings/history', // ?siteId=&from=&to=&pageNumber=&pageSize=
+  },
+  REPORTS: {
+    AMBIENT_TREND: '/api/reports/ambient-trend', // ?siteId=&from=&to=&granularity=
   },
   ALERTS: {
     LIST:        '/api/alerts',

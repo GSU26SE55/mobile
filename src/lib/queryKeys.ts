@@ -5,6 +5,8 @@ export const KEY = {
   trustedDevices:['trustedDevices'] as const,
   batteryAssets: ['batteryAssets'] as const,
   sensorReadings:['sensorReadings'] as const,
+  sites:         ['sites'] as const,   // GH-57
+  ambient:       ['ambient'] as const, // GH-57
   alerts:        ['alerts'] as const,
   incidents:     ['incidents'] as const, // GH-55 — environmental incidents
   tickets:       ['tickets'] as const,
@@ -28,9 +30,20 @@ export const QUERY_KEY = {
     list: () => [...KEY.trustedDevices, 'list'] as const,
   },
   batteryAssets: {
-    me:       (params?: Record<string, unknown>) => [...KEY.batteryAssets, 'me', params] as const,
-    detail:   (id: string) => [...KEY.batteryAssets, 'detail', id] as const,
-    realtime: (id: string) => [...KEY.batteryAssets, 'realtime', id] as const,
+    me:          (params?: Record<string, unknown>) => [...KEY.batteryAssets, 'me', params] as const,
+    detail:      (id: string) => [...KEY.batteryAssets, 'detail', id] as const,
+    realtime:    (id: string) => [...KEY.batteryAssets, 'realtime', id] as const,
+    cascadeRisk: (id: string) => [...KEY.batteryAssets, 'cascade-risk', id] as const, // GH-57
+  },
+  sites: {
+    me:        (params?: Record<string, unknown>) => [...KEY.sites, 'me', params] as const,
+    detail:    (id: string) => [...KEY.sites, 'detail', id] as const,
+    dashboard: (id: string) => [...KEY.sites, 'dashboard', id] as const,
+    assets:    (id: string, params?: Record<string, unknown>) => [...KEY.sites, 'assets', id, params] as const,
+  },
+  ambient: {
+    latest: (siteId: string) => [...KEY.ambient, 'latest', siteId] as const,
+    trend:  (siteId: string, params?: Record<string, unknown>) => [...KEY.ambient, 'trend', siteId, params] as const,
   },
   sensorReadings: {
     latest:    (assetId: string) => [...KEY.sensorReadings, 'latest', assetId] as const,

@@ -9,6 +9,8 @@ import { useProfile } from '../../../src/features/profile/hooks/useProfile';
 import { useTickets } from '../../../src/features/tickets/hooks/useTickets';
 import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
 import { useMyAlerts } from '../../../src/features/batteries/hooks/useMyAlerts';
+import { useMySites } from '../../../src/features/sites/hooks/useMySites';
+import { SiteCard } from '../../../src/features/sites/components/SiteCard';
 import { AlertStatusEnum } from '../../../src/shared/enums/alert.enum';
 import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
 import { PopularKbSection } from '../../../src/features/kb/components/PopularKbSection';
@@ -177,6 +179,7 @@ export default function DashboardScreen() {
   const { data: ticketsData, isLoading: ticketsLoading } = useTickets({ PageSize: 100 });
   const { data: batteries = [], isLoading: batteriesLoading } = useMyBatteryAssets();
   const { data: alerts = [] } = useMyAlerts();
+  const { data: sites = [] } = useMySites();
 
   const openAlertsCount = alerts.filter((a) => a.status === AlertStatusEnum.Open).length;
 
@@ -238,6 +241,23 @@ export default function DashboardScreen() {
                 <Text style={styles.statLabel}>Alerts</Text>
               </View>
             </View>
+
+            {/* Sites overview — ẩn nếu customer chưa có site nào */}
+            {sites.length > 0 && (
+              <>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>My Sites</Text>
+                  <Text style={styles.sectionCount}>Total {sites.length}</Text>
+                </View>
+                {sites.map((site) => (
+                  <SiteCard
+                    key={site.id}
+                    item={site}
+                    onPress={() => router.push({ pathname: '/(customer)/sites/[id]', params: { id: site.id } })}
+                  />
+                ))}
+              </>
+            )}
 
             {/* Section Title */}
             <View style={styles.sectionHeader}>

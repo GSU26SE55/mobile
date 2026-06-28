@@ -6,10 +6,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Shadow } from '../../../src/lib/theme';
 import { useBatteryAsset } from '../../../src/features/batteries/hooks/useBatteryAsset';
 import { useBatteryAssetRealtime } from '../../../src/features/batteries/hooks/useBatteryAssetRealtime';
+import { useBatterySensorStream } from '../../../src/features/batteries/hooks/useBatterySensorStream';
 import { useSensorReadingAggregate } from '../../../src/features/batteries/hooks/useSensorReadingAggregate';
 import { useAssetAlerts } from '../../../src/features/batteries/hooks/useAssetAlerts';
+import { useCascadeRisk } from '../../../src/features/batteries/hooks/useCascadeRisk';
 import { BatteryInfoCard } from '../../../src/features/batteries/components/BatteryInfoCard';
 import { BatteryRealtimeCard } from '../../../src/features/batteries/components/BatteryRealtimeCard';
+import { CascadeRiskBadge } from '../../../src/features/batteries/components/CascadeRiskBadge';
 import { SensorChart } from '../../../src/features/batteries/components/SensorChart';
 import { AssetAlertList } from '../../../src/features/batteries/components/AssetAlertList';
 import { P } from '../../../src/lib/authz';
@@ -30,6 +33,9 @@ function BatteryDetailScreenInner() {
 
   const { data: battery, isLoading, isError } = useBatteryAsset(assetId);
   const { data: realtime } = useBatteryAssetRealtime(assetId);
+  // SSE realtime — merge vào cache realtime(assetId); polling là seed + fallback.
+  useBatterySensorStream(assetId);
+  const { data: cascade } = useCascadeRisk(assetId);
 
   // Aggregate 24h gần nhất, bucket 1h cho chart.
   const aggregateParams = useMemo(() => {
@@ -76,6 +82,23 @@ function BatteryDetailScreenInner() {
         <Text style={styles.typeName}>{battery.batteryTypeName}</Text>
 
         {realtime ? <BatteryRealtimeCard data={realtime} /> : null}
+
+        <CascadeRiskBadge data={cascade} />
+
+        {battery.siteId ? (
+          <Pressable
+            style={[styles.ctaCard, Shadow]}
+            onPress={() =>
+              router.push({ pathname: '/(customer)/sites/[id]', params: { id: battery.siteId! } })
+            }
+          >
+            <Ionicons name="business-outline" size={20} color={Colors.primary} />
+            <Text style={styles.ctaText}>
+              {battery.siteName ? `Xem site: ${battery.siteName}` : 'Xem site lắp đặt'}
+            </Text>
+            <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
+          </Pressable>
+        ) : null}
 
         <Text style={styles.sectionTitle}>Biểu đồ</Text>
         <SensorChart data={aggregate} />
