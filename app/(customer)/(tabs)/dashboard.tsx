@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -9,10 +9,14 @@ import { useProfile } from '../../../src/features/profile/hooks/useProfile';
 import { useTickets } from '../../../src/features/tickets/hooks/useTickets';
 import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
 import { useMyAlerts } from '../../../src/features/batteries/hooks/useMyAlerts';
+import { useBatteryFleetStream } from '../../../src/features/batteries/hooks/useBatteryFleetStream';
+import { buildFleetScope } from '../../../src/features/batteries/utils/buildFleetScope';
 import { useMySites } from '../../../src/features/sites/hooks/useMySites';
 import { SiteCard } from '../../../src/features/sites/components/SiteCard';
 import { AlertStatusEnum } from '../../../src/shared/enums/alert.enum';
 import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
+import { LiveReadingDto } from '../../../src/features/batteries/types/live-reading.types';
+import { useSessionStore } from '../../../src/stores/sessionStore';
 import { PopularKbSection } from '../../../src/features/kb/components/PopularKbSection';
 import { Colors, Shadow } from '../../../src/lib/theme';
 
@@ -24,7 +28,15 @@ const BATTERY_STATUS_MAP: Record<number, { label: string; color: string }> = {
   3: { label: 'Ngừng sử dụng', color: Colors.danger },
 };
 
-function BatteryCard({ item, onPress }: { item: BatteryAssetDto; onPress: () => void }) {
+function BatteryCard({
+  item,
+  live,
+  onPress,
+}: {
+  item: BatteryAssetDto;
+  live?: LiveReadingDto;
+  onPress: () => void;
+}) {
   const statusInfo = BATTERY_STATUS_MAP[item.status] ?? { label: 'Unknown', color: Colors.gray };
 
   return (
@@ -36,6 +48,17 @@ function BatteryCard({ item, onPress }: { item: BatteryAssetDto; onPress: () => 
         <Text style={styles.batteryName}>{item.batteryTypeName}</Text>
         <Text style={styles.batterySub}>{item.serialNumber}</Text>
         {item.siteName && <Text style={styles.batterySite}>{item.siteName}</Text>}
+        {/* Live telemetry (SSE summary) — chỉ hiện khi có reading; field non-null luôn có mặt cho primary. */}
+        {live && (
+          <View style={styles.liveRow}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveMetric}>{live.socPercent.toFixed(0)}%</Text>
+            <Text style={styles.liveSep}>·</Text>
+            <Text style={styles.liveMetric}>{live.voltage.toFixed(1)}V</Text>
+            <Text style={styles.liveSep}>·</Text>
+            <Text style={styles.liveMetric}>{live.temperature.toFixed(1)}°C</Text>
+          </View>
+        )}
       </View>
       <View style={styles.batteryStatusWrap}>
         <Text style={[styles.batteryStatus, { color: statusInfo.color }]}>{statusInfo.label}</Text>
@@ -181,6 +204,14 @@ export default function DashboardScreen() {
   const { data: alerts = [] } = useMyAlerts();
   const { data: sites = [] } = useMySites();
 
+  // GH-58 — realtime nhiều pin qua SSE summary scope `customer:{accountId}`.
+  const user = useSessionStore((s) => s.user);
+  const fleetScope = useMemo(
+    () => (user ? buildFleetScope(user.role, { accountId: user.accountId }) : null),
+    [user],
+  );
+  const { liveByAsset } = useBatteryFleetStream(fleetScope);
+
   const openAlertsCount = alerts.filter((a) => a.status === AlertStatusEnum.Open).length;
 
   const isLoading = profileLoading || ticketsLoading;
@@ -273,6 +304,7 @@ export default function DashboardScreen() {
         renderItem={({ item }) => (
           <BatteryCard
             item={item}
+            live={liveByAsset.get(item.id)}
             onPress={() => router.push({ pathname: '/(customer)/batteries/[id]', params: { id: item.id } })}
           />
         )}
@@ -366,6 +398,10 @@ const styles = StyleSheet.create({
   batteryName: { fontSize: 14, fontWeight: '800', color: Colors.accent },
   batterySub: { fontSize: 11, color: Colors.gray, fontWeight: '600', marginTop: 2 },
   batterySite: { fontSize: 11, color: Colors.gray, fontWeight: '500', marginTop: 2 },
+  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
+  liveMetric: { fontSize: 11, fontWeight: '700', color: Colors.accent },
+  liveSep: { fontSize: 11, color: Colors.gray },
   batteryStatusWrap: { alignItems: 'flex-end', gap: 4 },
   batteryStatus: { fontSize: 11, fontWeight: '800' },
 

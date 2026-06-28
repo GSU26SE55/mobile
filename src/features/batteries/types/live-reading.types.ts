@@ -22,3 +22,12 @@ export interface LiveReadingDto {
   sourceDeviceId?: string | null;
   sensorSourceCode?: string | null; // 'primary' | 'redundant' | 'external-temp'
 }
+
+// GH-58 — SSE payload event `summary` (scope nhiều pin) — mirror §5.2.
+// Mỗi item là 1 LiveReadingDto ĐẦY ĐỦ (parity với event `reading`).
+// `scopeType` ('asset'|'customer'|'site'|'type'|'all'|'site:none') → KHÔNG dùng để route;
+// route bằng `batteryAssetId` của từng item.
+export interface BatterySummaryDto {
+  scopeType: string;
+  items: LiveReadingDto[];
+}
