@@ -622,11 +622,9 @@ Nếu bước FileStorage delete thất bại sau khi domain reference đã clea
 
 ## Changelog
 
-### 2026-06-17 — Đối chiếu FE GH-36 ↔ doc ↔ source backend
+### 2026-06-20 — Sync TypeScript Types block với doc FE
 
-- **Block TypeScript Types dùng `enum`** — sửa lại sang `as const` object + type alias để khớp rule FE ("KHÔNG dùng TypeScript `enum`") và code thực tế. Backend là enum C# (`FilePurposeEnum` 0–5, `FileStatusEnum` 0–4) — xác nhận khớp giá trị, FE chỉ đổi cách khai báo.
-- **`DELETE /{id}` trả 204 body rỗng** — xác nhận từ `FilesController.DeleteById`: success → `StatusCode(204)` không body (chỉ fail mới trả `CommonResponse<string>`). FE đổi type service `deleteFile` từ `CommonResponse<null>` → `void` cho đúng.
-- **FE fix kèm theo (không đổi contract BE):** `useFileBlobUrl` bỏ cache object URL (tránh trả URL đã revoke sau remount); `usePresignedUrl` thêm `expiresInMinutes` vào query key (BE tạo URL khác theo expiry — `GetPresignedUrlById`).
+- **Block TypeScript Types dùng `enum`** — sửa sang `as const` object + type alias để khớp rule FE ("KHÔNG dùng TypeScript `enum`") và đồng bộ với `frontend/docs/api-filestorage.md`. Giá trị enum không đổi (`FilePurposeEnum` 0–5, `FileStatusEnum` 0–4) — chỉ đổi cách khai báo. Lời dẫn ở section TypeScript Types đã yêu cầu dùng `as const`, nay code khớp với lời dẫn.
 
 ### 2026-06-15 — Verify lần 2 vs source code
 
@@ -664,3 +662,51 @@ Nếu bước FileStorage delete thất bại sau khi domain reference đã clea
 | M1 | Fixed + deprecated | `DELETE ?objectKey=` hiện soft-delete metadata để tránh orphan record, nhưng vẫn deprecated cho FE mới. |
 | M2 | Done | Cả hai endpoint presigned-url validate `expiresInMinutes` trong khoảng `1-1440`. |
 | M3 | Done | Đã document thứ tự clear domain reference trước, rồi FileStorage cleanup; lỗi cleanup cần retry/job bù trừ. |
+
+---
+
+## Nhóm — Audit Logs nội bộ (Option C — Sprint audit)
+
+> Endpoint **dự phòng (fallback resilience)**: query trực tiếp bảng nguồn `file_audit_logs` ngay tại FileStorageService, dùng được kể cả khi `AuditAggregatorService` gặp sự cố. Enum `Severity`/`ActionCategory` dùng chung — xem [docs/api-audit.md](api-audit.md#enums--tập-giá-trị-cố-định).
+>
+> **Auth:** chỉ role `Admin` (`401` thiếu token / `403` sai role).
+
+### `GET /api/admin/files/audit-logs`
+
+**Mục đích:** Tra cứu audit log thao tác trên FILE, có phân trang + lọc — phục vụ điều tra GDPR/compliance truy cập dữ liệu.
+
+**Tác dụng:** Trả lời "ai upload/download/xoá file nào, khi nào, có bị từ chối quyền không"; điều tra truy cập trái phép (data leak).
+
+**Auth:** Admin.
+
+**Query params (đều optional):**
+
+| Param | Type | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `action` | `string?` | Không | Mã action (vd `FileDownloaded`). Bỏ trống = tất cả |
+| `fileId` | `string?` (UUID) | Không | Lọc theo file cụ thể (target) |
+| `from` | `DateTime?` | Không | Mốc đầu (UTC) |
+| `to` | `DateTime?` | Không | Mốc cuối (UTC) |
+| `pageNumber` | `int` | Không (mặc định 1) | Số trang |
+| `pageSize` | `int` | Không (mặc định 50, trần 100) | Số item/trang |
+
+**Action codes (file, 6):** `FileUploaded` · `FileDownloaded` · `FileDeleted` · `AccessDenied` · `PresignedUrlGenerated` · `PresignedUrlRevoked`
+
+**Response thành công `200`:** `CommonResponse<PaginationResponse<FileAuditLogDto>>` (mới nhất trước).
+
+**`DTO FileAuditLogDto`:**
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `id` | `string` | Không | ID bản ghi audit |
+| `eventId` | `string` | Không | Idempotency key |
+| `actionCode` | `string` | Không | Mã hành động |
+| `severity` | `string` | Không | Mức độ (`Info`/`Warning`/`Critical`/`Security`) |
+| `targetId` | `string?` | Null nếu không gắn | ID file (target) |
+| `targetDisplay` | `string?` | Null / `[REDACTED]` sau GDPR | Tên hiển thị file |
+| `actorAccountId` | `string?` | Null nếu hệ thống | Account thực hiện |
+| `isSuccess` | `bool` | Không | Thành công/thất bại (vd `AccessDenied` → `false`) |
+| `reason` | `string?` | Null nếu không có | Lý do (vd lý do từ chối quyền) |
+| `occurredAt` | `DateTime` | Không | Thời điểm xảy ra (UTC) |
+
+**Lỗi:** `401` / `403`.
