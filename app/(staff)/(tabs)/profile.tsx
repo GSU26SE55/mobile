@@ -131,6 +131,15 @@ export default function StaffProfileScreen() {
 
       <Pressable
         style={[styles.settingsBtn, Shadow]}
+        onPress={() => router.push('/(staff)/tools')}
+      >
+        <Ionicons name="build-outline" size={18} color={Colors.text} />
+        <Text style={styles.settingsText}>Công cụ kỹ thuật</Text>
+        <Ionicons name="chevron-forward" size={18} color={Colors.textMute} />
+      </Pressable>
+
+      <Pressable
+        style={[styles.settingsBtn, Shadow]}
         onPress={() => router.push('/(staff)/maintenance-history')}
       >
         <Ionicons name="construct-outline" size={18} color={Colors.text} />
