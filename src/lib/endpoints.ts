@@ -54,19 +54,43 @@ export const ENDPOINTS = {
     DELETE:        (id: string) => `/api/files/${id}`,
   },
   BATTERY_ASSETS: {
-    MY:       '/api/battery-assets/me',
-    DETAIL:   (id: string) => `/api/battery-assets/${id}`,
-    REALTIME: (id: string) => `/api/battery-assets/${id}/realtime`,
+    MY:           '/api/battery-assets/me',
+    DETAIL:       (id: string) => `/api/battery-assets/${id}`,
+    REALTIME:     (id: string) => `/api/battery-assets/${id}/realtime`,
+    CASCADE_RISK: (id: string) => `/api/battery-assets/${id}/cascade-risk`, // GH-57 (Sprint 7 B4)
   },
   SENSOR_READINGS: {
     LATEST:    (assetId: string) => `/api/sensor-readings/${assetId}/latest`,
     HISTORY:   (assetId: string) => `/api/sensor-readings/${assetId}/history`,
     AGGREGATE: (assetId: string) => `/api/sensor-readings/${assetId}/aggregate`,
+    // GH-57 — SSE telemetry live stream (docs/battery-realtime-description.md §3).
+    // Path tĩnh; hook tự ghép BASE_URL + ?scope=&access_token=. KHÔNG gọi qua axios.
+    STREAM:    '/api/sensor-readings/stream',
+  },
+  SITES: {
+    MY:        '/api/sites/me',
+    DETAIL:    (id: string) => `/api/sites/${id}`,
+    DASHBOARD: (id: string) => `/api/sites/${id}/dashboard`,
+    ASSETS:    (id: string) => `/api/sites/${id}/assets`,
+  },
+  AMBIENT: {
+    LATEST:  '/api/ambient/readings/latest',  // ?siteId=
+    HISTORY: '/api/ambient/readings/history', // ?siteId=&from=&to=&pageNumber=&pageSize=
+  },
+  REPORTS: {
+    AMBIENT_TREND: '/api/reports/ambient-trend', // ?siteId=&from=&to=&granularity=
   },
   ALERTS: {
     LIST:        '/api/alerts',
     DETAIL:      (id: string) => `/api/alerts/${id}`,
     ACKNOWLEDGE: (id: string) => `/api/alerts/${id}/acknowledge`,
+    RESOLVE:     (id: string) => `/api/alerts/${id}/resolve`, // GH-55 — PATCH, Staff-only
+  },
+  ENVIRONMENTAL_INCIDENTS: {
+    LIST:        '/api/environmental-incidents',                                   // GET ?siteId&status&incidentType&from&to&pageSize
+    DETAIL:      (id: string) => `/api/environmental-incidents/${id}`,
+    ACKNOWLEDGE: (id: string) => `/api/environmental-incidents/${id}/acknowledge`, // POST, Staff-only
+    RESOLVE:     (id: string) => `/api/environmental-incidents/${id}/resolve`,     // POST { resolutionNote }, Staff-only
   },
   TICKETS: {
     CUSTOMER_LIST:   '/api/customer/tickets/me',

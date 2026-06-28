@@ -1913,6 +1913,149 @@ Gán bài viết Knowledge Base vào Ticket làm tài liệu tham khảo (lưu v
 
 ---
 
+## Nhóm 12 — Reports (Sprint 7 #114 · §5.2)
+
+**Quy ước chung mọi report:**
+- **Export:** thêm query `?format=csv` hoặc `?format=xlsx` → trả **file download** (XLSX dùng ClosedXML; CSV có UTF-8 BOM). Không truyền `format` → trả **JSON** `CommonResponse<List<...>>` (riêng `csat` trả `CommonResponse<CsatDto>`).
+- **Thời gian:** `from`/`to` UTC, tùy chọn. Report time-series mặc định **30 ngày gần nhất** nếu bỏ trống. `granularity`: `day` (mặc định) · `week` · `month`.
+- **SLA:** "met"/"breached" lấy từ `SlaTimerStatusEnum` (Met/Breached). "resolved" = Status ∈ {Resolved, ClosedPendingRate, Closed}.
+- Route phẳng `api/reports/...`. Tất cả là `GET`.
+- **Auth:** mặc định **Admin/Manager** (riêng `saga-failed-rate` chỉ **Admin**).
+
+### `GET /api/reports/sla-by-staff`
+
+**Mục đích:** SLA compliance theo từng staff — tổng assigned, met, breached, tỷ lệ tuân thủ.
+**Auth:** Admin/Manager · **Query:** `from?`, `to?`, `format?`.
+**Response `200`:** `CommonResponse<List<SlaByStaffRow>>`
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `staffId` | `string` | Không | ID staff (AssignedStaffId) |
+| `name` | `string?` | **Null nếu không map được tên** | Tên staff (từ `StaffAccount`) |
+| `totalAssigned` | `int` | Không | Tổng ticket được giao trong khoảng |
+| `met` | `int` | Không | Số ticket SLA Met |
+| `breached` | `int` | Không | Số ticket SLA Breached |
+| `complianceRate` | `decimal` | Không | `% = met / (met + breached)` (chỉ tính ticket đã chốt SLA) |
+
+### `GET /api/reports/sla-by-priority`
+
+**Mục đích:** SLA compliance theo priority (luôn trả đủ 3 dòng P1/P2/P3).
+**Auth:** Admin/Manager · **Query:** `from?`, `to?`, `format?`.
+**Response `200`:** `CommonResponse<List<SlaByPriorityRow>>`
+
+```json
+{
+  "isSuccess": true, "statusCode": 200, "message": "",
+  "data": [
+    { "priority": "P1Critical", "met": 2, "breached": 1, "total": 3, "complianceRate": 66.67 },
+    { "priority": "P2High", "met": 5, "breached": 0, "total": 5, "complianceRate": 100 },
+    { "priority": "P3Normal", "met": 0, "breached": 0, "total": 0, "complianceRate": 0 }
+  ],
+  "listErrors": null
+}
+```
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `priority` | `string` | Không | Tên `TicketPriorityEnum` (P1Critical/P2High/P3Normal) |
+| `met` | `int` | Không | Số SLA timer Met |
+| `breached` | `int` | Không | Số SLA timer Breached |
+| `total` | `int` | Không | Tổng SLA timer của priority đó |
+| `complianceRate` | `decimal` | Không | `% = met / (met + breached)` |
+
+### `GET /api/reports/ticket-volume`
+
+**Mục đích:** Số lượng ticket tạo mới theo thời gian (time-series).
+**Auth:** Admin/Manager · **Query:** `from?`, `to?`, `granularity?` (mặc định 30 ngày/day), `format?`.
+**Response `200`:** `CommonResponse<List<TicketTimeSeriesPoint>>` — `{ date: DateTime, count: int }` (cả 2 không null).
+
+### `GET /api/reports/top-reopen-issues`
+
+**Mục đích:** Top category bị reopen nhiều (chỉ tính ticket `ReopenCount > 0`).
+**Auth:** Admin/Manager · **Query:** `limit?` (mặc định 10, tối đa 100), `format?`.
+**Response `200`:** `CommonResponse<List<ReopenIssueRow>>`
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `category` | `string` | Không | Tên `TicketCategoryEnum` |
+| `count` | `int` | Không | Số ticket bị reopen của category |
+| `avgReopenCount` | `decimal` | Không | Số lần reopen trung bình |
+
+### `GET /api/reports/staff-performance`
+
+**Mục đích:** Hiệu suất staff — số ticket resolved, giờ xử lý TB, rating TB, % SLA compliance.
+**Auth:** Admin/Manager · **Query:** `from?`, `to?`, `format?`.
+**Response `200`:** `CommonResponse<List<StaffPerformanceRow>>`
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `staffId` | `string` | Không | ID staff |
+| `name` | `string?` | **Null nếu không map được tên** | Tên staff |
+| `ticketsResolved` | `int` | Không | Số ticket đã resolve |
+| `avgResolveHours` | `decimal` | Không | Giờ xử lý trung bình (ResolvedAt − CreatedAt) |
+| `avgRating` | `decimal?` | **Null nếu chưa có ticket nào được rate** | Điểm đánh giá trung bình (1–5) |
+| `slaCompliance` | `decimal` | Không | `% = met / (met + breached)` |
+
+### `GET /api/reports/csat`
+
+**Mục đích:** Chỉ số hài lòng khách hàng — rating trung bình, tổng số rated, phân bố 1..5 sao.
+**Auth:** Admin/Manager · **Query:** `from?`, `to?` (lọc theo `RatedAt`), `format?`.
+**Response `200`:** `CommonResponse<CsatDto>` (**object**, không phải list)
+
+```json
+{
+  "isSuccess": true, "statusCode": 200, "message": "",
+  "data": {
+    "avgRating": 4.33,
+    "totalRated": 3,
+    "ratingDistribution": { "1": 0, "2": 0, "3": 1, "4": 0, "5": 2 }
+  },
+  "listErrors": null
+}
+```
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `avgRating` | `decimal` | Không | Điểm trung bình (0 nếu chưa có rating) |
+| `totalRated` | `int` | Không | Số ticket đã được đánh giá |
+| `ratingDistribution` | `object<int,int>` | Không (luôn có key 1..5) | Phân bố số sao: key = 1..5, value = số lượng |
+
+### `GET /api/reports/resolution-time-histogram`
+
+**Mục đích:** Histogram thời gian resolution (chỉ tính ticket đã có `ResolvedAt`).
+**Auth:** Admin/Manager · **Query:** `from?`, `to?`, `format?`.
+**Response `200`:** `CommonResponse<List<HistogramBucketRow>>`
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `bucket` | `string` | Không | Khoảng thời gian: `0-1h` · `1-4h` · `4-24h` · `1-3d` · `>3d` |
+| `count` | `int` | Không | Số ticket rơi vào bucket |
+
+### `GET /api/reports/category-breakdown`
+
+**Mục đích:** Phân bố ticket theo category (sort giảm dần).
+**Auth:** Admin/Manager · **Query:** `from?`, `to?`, `format?`.
+**Response `200`:** `CommonResponse<List<CategoryBreakdownRow>>` — `{ category: string (tên TicketCategoryEnum), count: int }`.
+
+### `GET /api/reports/saga-failed-rate`
+
+**Mục đích:** Tỷ lệ thất bại của Alert-Ticket Saga theo thời gian — phục vụ demo SRE/SLO. Đọc từ `AlertTicketSagaState`.
+**Auth:** **Chỉ Admin** · **Query:** `from?`, `to?`, `granularity?` (mặc định 30 ngày/day), `format?`.
+**Response `200`:** `CommonResponse<List<SagaFailedRatePoint>>`
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `date` | `DateTime` | Không | Mốc bucket (UTC) |
+| `started` | `int` | Không | Số saga bắt đầu trong bucket |
+| `completed` | `int` | Không | Số saga hoàn tất |
+| `failed` | `int` | Không | Số saga thất bại |
+| `failedRate` | `decimal` | Không | `% = failed / started` |
+| `p95DurationSec` | `decimal` | Không | p95 thời gian chạy saga hoàn tất (giây) |
+
+**Lỗi thường gặp (mọi report):** `401` chưa đăng nhập · `403` không đủ role (vd non-Admin gọi `saga-failed-rate`).
+
+---
+
 ## Knowledge Base DTOs
 
 > Enum của domain Knowledge Base (`KbArticleStatusEnum`, `KbVersionStatusEnum`, `KbReferenceTypeEnum`) xem ở mục **Enums** đầu tài liệu — không lặp lại ở đây.
@@ -2036,6 +2179,11 @@ Payload nhẹ dùng cho các hành động chuyển trạng thái.
 
 ## Changelog
 
+### 2026-06-24 — Sprint 7 #114: bổ sung Nhóm 12 — Reports (9 endpoint)
+- Thêm 9 endpoint `GET /api/reports/*`: `sla-by-staff`, `sla-by-priority`, `ticket-volume`, `top-reopen-issues`, `staff-performance`, `csat`, `resolution-time-histogram`, `category-breakdown`, `saga-failed-rate`.
+- Tất cả hỗ trợ `?format=csv|xlsx` (export ClosedXML/CSV) hoặc trả JSON. Auth Admin/Manager; `saga-failed-rate` chỉ Admin.
+- Tài liệu hóa đầy đủ DTO response (field/type/nullable) + query params + JSON mẫu, đối chiếu trực tiếp code (`TicketReportDtos`, `ReportsController`).
+
 ### 2026-06-22 — Đối chiếu DTO/request với code thực tế (6 fix)
 
 Verify toàn bộ doc với codebase TicketService. Enums (16/16) và SignalR Hub khớp 100%. Sửa 6 sai lệch:
@@ -2058,3 +2206,57 @@ Verify toàn bộ doc với codebase TicketService. Enums (16/16) và SignalR Hu
 - Bổ sung endpoint `GET /api/knowledge-base/{id}/usage-stats` (Nhóm 8) — đã có trong code (Manager/Admin only) nhưng thiếu trong doc.
 - Gom 3 enum của domain Knowledge Base (`KbArticleStatusEnum`, `KbVersionStatusEnum`, `KbReferenceTypeEnum`) vào mục **Enums** chung đầu tài liệu — bỏ bản liệt kê dạng bullet trùng lặp ở cuối file.
 - Đổi tên các DTO trong doc từ hậu tố `Dto` sang `DTO` (khớp tên class C# thật, ví dụ `KbArticleDTO`, `TicketActionDTO`, `AlertTicketSagaDTO`) — áp dụng cho toàn bộ file, không chỉ phần Knowledge Base.
+
+---
+
+## Nhóm — Audit Logs nội bộ (Option C — Sprint audit)
+
+> Endpoint **dự phòng (fallback resilience)**: query trực tiếp bảng nguồn `ticket_audit_logs` ngay tại TicketService, dùng được kể cả khi `AuditAggregatorService` gặp sự cố. Enum `Severity`/`ActionCategory` dùng chung — xem [docs/api-audit.md](api-audit.md#enums--tập-giá-trị-cố-định).
+>
+> **Lưu ý:** đây là `ticket_audit_logs` (audit forensic), **TÁCH BIỆT** với `TicketActivity` (dòng thời gian hiển thị cho user trên UI).
+>
+> **Auth:** chỉ role `Admin` (`401` thiếu token / `403` sai role).
+
+### `GET /api/admin/ticket/audit-logs`
+
+**Mục đích:** Tra cứu audit log thao tác trên TICKET, có phân trang + lọc.
+
+**Tác dụng:** Điều tra SLA breach / escalation (ai làm gì với ticket, khi nào), compliance, truy trách nhiệm.
+
+**Auth:** Admin.
+
+**Query params (đều optional):**
+
+| Param | Type | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `action` | `string?` | Không | Mã action (vd `StateTransitioned`). Bỏ trống = tất cả |
+| `ticketId` | `string?` (UUID) | Không | Lọc theo ticket cụ thể (target) |
+| `from` | `DateTime?` | Không | Mốc đầu (UTC) |
+| `to` | `DateTime?` | Không | Mốc cuối (UTC) |
+| `pageNumber` | `int` | Không (mặc định 1) | Số trang |
+| `pageSize` | `int` | Không (mặc định 50, trần 100) | Số item/trang |
+
+**Action codes (ticket, 21):** `TicketCreated` · `StateTransitioned` · `PriorityChanged` · `AssignedToStaff` · `UnassignedFromStaff` · `SlaPaused` · `SlaResumed` · `SlaBreached` · `EscalatedToManager` · `EscalatedToAdmin` · `MaintenanceLogAdded` · `CommentAdded` · `AttachmentUploaded` · `AttachmentDeleted` · `ResolutionAdded` · `ClosedByUser` · `ReopenedByAdmin` · `RejectedByManager` · `FalseAlarmMarked` · `CustomerRated` · `AutoCreatedFromAnomaly`
+
+> `AutoCreatedFromAnomaly` có `causationId = OriginAlertId` (chuỗi nhân-quả anomaly → ticket).
+
+**Response thành công `200`:** `CommonResponse<PaginationResponse<TicketAuditLogDto>>` (mới nhất trước).
+
+**`DTO TicketAuditLogDto`:**
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `id` | `string` | Không | ID bản ghi audit |
+| `eventId` | `string` | Không | Idempotency key |
+| `actionCode` | `string` | Không | Mã hành động |
+| `actionCategory` | `string` | Không | Category |
+| `severity` | `string` | Không | Mức độ |
+| `targetId` | `string?` | Null nếu không gắn | ID ticket (target) |
+| `actorAccountId` | `string?` | Null nếu hệ thống | Account thực hiện |
+| `correlationId` | `string?` | Null nếu không gắn luồng | Id luồng nghiệp vụ |
+| `causationId` | `string?` | Null nếu không có | Id event gây ra (vd OriginAlertId) |
+| `isSuccess` | `bool` | Không | Thành công/thất bại |
+| `reason` | `string?` | Null nếu không có | Lý do/ghi chú |
+| `occurredAt` | `DateTime` | Không | Thời điểm xảy ra (UTC) |
+
+**Lỗi:** `401` / `403`.

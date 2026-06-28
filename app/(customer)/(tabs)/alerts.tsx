@@ -11,8 +11,11 @@ import {
   AlertStatusEnum,
 } from '../../../src/shared/enums/alert.enum';
 import { ANOMALY_LABEL } from '../../../src/features/batteries/components/AssetAlertList';
+import { useMyIncidents } from '../../../src/features/incidents/hooks/useMyIncidents';
+import { IncidentList } from '../../../src/features/incidents/components/IncidentList';
 
 type FilterKey = 'all' | AlertSeverityEnum;
+type Segment = 'alerts' | 'incidents';
 
 const SEVERITY_COLORS: Record<AlertSeverityEnum, { label: string; bg: string; iconColor: string; badgeBg: string; badgeText: string }> = {
   [AlertSeverityEnum.Critical]: { label: 'CRITICAL', bg: '#FFEBEA', iconColor: '#DC4F3D', badgeBg: '#FFE5E3', badgeText: '#B73221' },
@@ -37,6 +40,12 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 export default function AlertsScreen() {
   const insets = useSafeAreaInsets();
   const { data: alerts = [], isLoading } = useMyAlerts();
+  const {
+    data: incidents = [],
+    isLoading: incidentsLoading,
+    siteNameMap,
+  } = useMyIncidents();
+  const [segment, setSegment] = useState<Segment>('alerts');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
 
   const openCount = alerts.filter((a) => a.status === AlertStatusEnum.Open).length;
@@ -96,47 +105,80 @@ export default function AlertsScreen() {
         </View>
       </View>
 
-      {/* Filter Horizontal Row */}
-      <View style={styles.filterContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScroll}
+      {/* Segment: Cảnh báo | Sự cố */}
+      <View style={styles.segmentRow}>
+        <Pressable
+          style={[styles.segmentTab, segment === 'alerts' && styles.segmentTabActive]}
+          onPress={() => setSegment('alerts')}
         >
-          {FILTERS.map((f) => (
-            <Pressable
-              key={String(f.key)}
-              style={[styles.filterTab, activeFilter === f.key && styles.filterTabActive]}
-              onPress={() => setActiveFilter(f.key)}
-            >
-              <Text style={[styles.filterText, activeFilter === f.key && styles.filterTextActive]}>
-                {f.label}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+          <Text style={[styles.segmentText, segment === 'alerts' && styles.segmentTextActive]}>
+            Cảnh báo
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.segmentTab, segment === 'incidents' && styles.segmentTabActive]}
+          onPress={() => setSegment('incidents')}
+        >
+          <Text style={[styles.segmentText, segment === 'incidents' && styles.segmentTextActive]}>
+            Sự cố
+          </Text>
+        </Pressable>
       </View>
 
-      {/* Alerts List */}
-      <FlatList
-        data={filteredAlerts}
-        keyExtractor={(item) => item.id}
-        renderItem={renderAlertItem}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons
-              name={isLoading ? 'hourglass-outline' : 'notifications-off-outline'}
-              size={48}
-              color={Colors.textFaint}
-            />
-            <Text style={styles.emptyText}>
-              {isLoading ? 'Đang tải…' : 'Không có cảnh báo nào'}
-            </Text>
+      {segment === 'alerts' ? (
+        <>
+          {/* Filter Horizontal Row */}
+          <View style={styles.filterContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterScroll}
+            >
+              {FILTERS.map((f) => (
+                <Pressable
+                  key={String(f.key)}
+                  style={[styles.filterTab, activeFilter === f.key && styles.filterTabActive]}
+                  onPress={() => setActiveFilter(f.key)}
+                >
+                  <Text style={[styles.filterText, activeFilter === f.key && styles.filterTextActive]}>
+                    {f.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
           </View>
-        }
-      />
+
+          {/* Alerts List */}
+          <FlatList
+            data={filteredAlerts}
+            keyExtractor={(item) => item.id}
+            renderItem={renderAlertItem}
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Ionicons
+                  name={isLoading ? 'hourglass-outline' : 'notifications-off-outline'}
+                  size={48}
+                  color={Colors.textFaint}
+                />
+                <Text style={styles.emptyText}>
+                  {isLoading ? 'Đang tải…' : 'Không có cảnh báo nào'}
+                </Text>
+              </View>
+            }
+          />
+        </>
+      ) : (
+        <IncidentList
+          data={incidents}
+          isLoading={incidentsLoading}
+          siteNameMap={siteNameMap}
+          onPressItem={(id) =>
+            router.push({ pathname: '/(customer)/incidents/[id]', params: { id } })
+          }
+        />
+      )}
     </View>
   );
 }
@@ -153,6 +195,21 @@ const styles = StyleSheet.create({
   headerLeft: { flex: 1 },
   title: { fontSize: 22, fontWeight: '800', color: Colors.text, letterSpacing: -0.5 },
   subtitle: { fontSize: 12, color: Colors.textMute, marginTop: 2 },
+  segmentRow: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginBottom: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 4,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
+  },
+  segmentTab: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center' },
+  segmentTabActive: { backgroundColor: '#34C759' },
+  segmentText: { fontSize: 13, fontWeight: '700', color: Colors.textMute },
+  segmentTextActive: { color: '#FFFFFF' },
   filterContainer: { marginBottom: 14 },
   filterScroll: { paddingHorizontal: 20, gap: 8 },
   filterTab: {

@@ -1,0 +1,13 @@
+import { useQuery } from '@tanstack/react-query';
+import { QUERY_KEY } from '../../../lib/queryKeys';
+import { ambientService } from '../services/ambient.service';
+
+// 404 = site chưa có ambient reading → coi là "chưa có dữ liệu", KHÔNG retry.
+export function useAmbientLatest(siteId: string) {
+  return useQuery({
+    queryKey: QUERY_KEY.ambient.latest(siteId),
+    queryFn: () => ambientService.getLatest(siteId).then((r) => r.data.data),
+    enabled: !!siteId,
+    retry: false,
+  });
+}
