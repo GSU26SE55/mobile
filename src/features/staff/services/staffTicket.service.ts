@@ -29,7 +29,7 @@ export const staffTicketService = {
     axiosInstance.post<TicketActionResponse>(STAFF_TICKETS.ESCALATE_REQUEST(id), data),
 
   addComment: (ticketId: string, data: StaffAddCommentPayload) =>
-    axiosInstance.post<TicketActionResponse>(TICKETS.COMMENT(ticketId), data),
+    axiosInstance.post<TicketActionResponse>(TICKETS.CHATS(ticketId), data),
 
   addMaintenanceLog: (ticketId: string, data: MaintenanceLogPayload) =>
     axiosInstance.post<TicketActionResponse>(STAFF_TICKETS.MAINTENANCE_LOG(ticketId), data),

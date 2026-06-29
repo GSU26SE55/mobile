@@ -15,6 +15,9 @@ import {
   Sms2faPayload,
   VerifyResetOtpData,
   VerifyResetOtpPayload,
+  CrossDevice2faRequestPayload,
+  CrossDevice2faRequestResponse,
+  CrossDevice2faConfirmPayload,
 } from '../types/auth.types';
 
 const { AUTH } = ENDPOINTS;
@@ -65,4 +68,15 @@ export const authService = {
 
   logout: (refreshToken: string) =>
     axiosInstance.post<CommonResponse<null>>(AUTH.LOGOUT, { refreshToken }),
+
+  // #AUTH-51: Device A gửi cross-device 2FA request (challengeToken từ login), nhận requestId.
+  requestCrossDevice2fa: (data: CrossDevice2faRequestPayload) =>
+    axiosInstance.post<CommonResponse<CrossDevice2faRequestResponse>>(
+      AUTH.TWO_FA_CROSS_DEVICE_REQUEST,
+      data,
+    ),
+
+  // #AUTH-51: Device B confirm request bằng TOTP (requestId + totpCode).
+  confirmCrossDevice2fa: (data: CrossDevice2faConfirmPayload) =>
+    axiosInstance.post<CommonResponse<null>>(AUTH.TWO_FA_CROSS_DEVICE_CONFIRM, data),
 };

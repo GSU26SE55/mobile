@@ -7,7 +7,7 @@ import { QUERY_KEY } from '../../../lib/queryKeys';
 import { PaginationResponse } from '../../../types/api.types';
 import { TicketCommentDTO } from '../types/ticket.types';
 
-const HUB_PATH = '/hubs/ticket-comments';
+const HUB_PATH = '/hubs/ticket-chats';
 const TYPING_TIMEOUT = 3000;
 const TYPING_THROTTLE = 1500; // tối đa 1 lần invoke Typing mỗi 1.5s (tránh spam hub mỗi keystroke)
 
@@ -63,7 +63,7 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
 
     connection.on('CommentAdded', (dto: TicketCommentDTO) => {
       queryClient.setQueryData<InfiniteData<CommentsPage>>(
-        QUERY_KEY.tickets.comments(ticketId),
+        QUERY_KEY.tickets.chats(ticketId),
         (data) => prependComment(data, dto),
       );
     });

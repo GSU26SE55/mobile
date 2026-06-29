@@ -29,7 +29,7 @@ export const ticketService = {
 
   getComments: (ticketId: string, params?: CommentListParams) =>
     axiosInstance.get<CommonResponse<PaginationResponse<TicketCommentDTO>>>(
-      TICKETS.COMMENT(ticketId),
+      TICKETS.CHATS(ticketId),
       { params },
     ),
 
@@ -37,7 +37,7 @@ export const ticketService = {
     axiosInstance.get<CommonResponse<TicketActivityDTO[]>>(TICKETS.ACTIVITIES(ticketId)),
 
   addComment: (ticketId: string, data: AddCommentPayload) =>
-    axiosInstance.post<TicketActionResponse>(TICKETS.COMMENT(ticketId), data),
+    axiosInstance.post<TicketActionResponse>(TICKETS.CHATS(ticketId), data),
 
   reopen: (id: string, data: ReopenPayload) =>
     axiosInstance.post<TicketActionResponse>(TICKETS.REOPEN(id), data),
