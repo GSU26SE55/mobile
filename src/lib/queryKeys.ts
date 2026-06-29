@@ -19,6 +19,7 @@ export const KEY = {
   permissions:   ['permissions'] as const, // GH-47
   batteryTypes:  ['batteryTypes'] as const, // GH-56
   iotDevices:    ['iotDevices'] as const,   // GH-56
+  loginHistory:  ['loginHistory'] as const,
 } as const;
 
 export const QUERY_KEY = {
@@ -65,7 +66,7 @@ export const QUERY_KEY = {
   tickets: {
     list:       (params?: Record<string, unknown>) => [...KEY.tickets, 'list', params] as const,
     detail:     (id: string) => [...KEY.tickets, 'detail', id] as const,
-    comments:   (id: string) => [...KEY.tickets, 'comments', id] as const,   // GH-44 — infinite
+    chats:      (id: string) => [...KEY.tickets, 'chats', id] as const,   // GH-44 — infinite (renamed from comments, BE migration 20260622)
     activities: (id: string) => [...KEY.tickets, 'activities', id] as const, // GH-44
   },
   staffProfile: {
@@ -105,5 +106,8 @@ export const QUERY_KEY = {
     byCode:       (deviceCode: string) => [...KEY.iotDevices, 'by-code', deviceCode] as const, // GH-56
     calibrations: (deviceId: string, params?: Record<string, unknown>) =>
       [...KEY.iotDevices, 'calibrations', deviceId, params] as const,
+  },
+  loginHistory: {
+    list: (params?: Record<string, unknown>) => [...KEY.loginHistory, 'list', params] as const,
   },
 } as const;

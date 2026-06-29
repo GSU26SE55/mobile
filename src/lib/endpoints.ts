@@ -3,6 +3,8 @@ export const ENDPOINTS = {
     LOGIN:             '/api/auth/login',
     LOGIN_VERIFY_2FA:  '/api/auth/login/verify-2fa', // GH-295 — bước 2 của 2FA login
     LOGIN_2FA_SMS:     '/api/auth/login/2fa/sms',    // #AUTH-58 — gửi OTP qua SMS (fallback)
+    TWO_FA_CROSS_DEVICE_REQUEST: '/api/auth/2fa/cross-device-confirm/request', // #AUTH-51 — Device A gửi request
+    TWO_FA_CROSS_DEVICE_CONFIRM: '/api/auth/2fa/cross-device-confirm',         // #AUTH-51 — Device B xác nhận
     REACTIVATE_REQUEST:'/api/auth/reactivate-request', // #AUTH-50 — bước 1 khôi phục account
     REACTIVATE_VERIFY: '/api/auth/reactivate-verify',  // #AUTH-50 — bước 2 khôi phục account
     REGISTER:          '/api/auth/register',
@@ -36,6 +38,7 @@ export const ENDPOINTS = {
     UNLINK_GOOGLE:        '/api/accounts/me/unlink-google',
     DEACTIVATE:           '/api/accounts/me/deactivate',
     DELETE:               '/api/accounts/me',
+    LOGIN_HISTORY:        '/api/accounts/me/login-history', // #AUTH-62 — lịch sử đăng nhập
     // #AUTH-48 — trusted devices (GET list + DELETE all dùng chung path; DELETE 1 dùng TRUSTED_DEVICE)
     TRUSTED_DEVICES:      '/api/accounts/me/trusted-devices',
     TRUSTED_DEVICE:       (id: string) => `/api/accounts/me/trusted-devices/${id}`,
@@ -96,7 +99,7 @@ export const ENDPOINTS = {
     CUSTOMER_LIST:   '/api/customer/tickets/me',
     CUSTOMER_CREATE: '/api/customer/tickets',
     DETAIL:          (id: string) => `/api/tickets/${id}`,
-    COMMENT:         (id: string) => `/api/tickets/${id}/comments`,   // GET list (?page&pageSize) + POST
+    CHATS:           (id: string) => `/api/tickets/${id}/chats`,   // GET list (?page&pageSize) + POST (BE migration 20260622)
     ACTIVITIES:      (id: string) => `/api/tickets/${id}/activities`, // GH-44 — timeline
     REOPEN:          (id: string) => `/api/customer/tickets/${id}/reopen`,
     RATE:            (id: string) => `/api/customer/tickets/${id}/rate`,

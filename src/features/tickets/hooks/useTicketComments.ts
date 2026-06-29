@@ -8,7 +8,7 @@ const PAGE_SIZE = 10;
 // Scroll chạm đáy → fetchNextPage. Realtime (useTicketCommentsRealtime) prepend comment mới qua setQueryData.
 export function useTicketComments(ticketId: string | undefined) {
   return useInfiniteQuery({
-    queryKey: QUERY_KEY.tickets.comments(ticketId ?? ''),
+    queryKey: QUERY_KEY.tickets.chats(ticketId ?? ''),
     queryFn: async ({ pageParam = 1 }) => {
       const res = await ticketService.getComments(ticketId!, {
         page: pageParam as number,
