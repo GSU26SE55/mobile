@@ -61,7 +61,9 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
       .build();
     connectionRef.current = connection;
 
-    connection.on('CommentAdded', (dto: TicketCommentDTO) => {
+    // BE broadcast event tên "ChatAdded" (SignalRTicketChatNotifier) — KHÔNG phải
+    // "CommentAdded". Tên lệch → mobile không bao giờ nhận → chat không realtime.
+    connection.on('ChatAdded', (dto: TicketCommentDTO) => {
       queryClient.setQueryData<InfiniteData<CommentsPage>>(
         QUERY_KEY.tickets.chats(ticketId),
         (data) => prependComment(data, dto),
@@ -109,7 +111,7 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
       if (conn) {
         // Gỡ handler TRƯỚC khi stop — chống event treo bắn vào connection đang
         // teardown (Fast Refresh remount) gây xử lý CommentAdded / UserTyping 2 lần.
-        conn.off('CommentAdded');
+        conn.off('ChatAdded');
         conn.off('UserTyping');
         // CHỜ start() xong rồi mới leave + stop — tránh stop-trước-start.
         void startPromise.finally(() => {
