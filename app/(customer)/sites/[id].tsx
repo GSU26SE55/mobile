@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,7 +11,6 @@ import { useSiteDashboard } from '../../../src/features/sites/hooks/useSiteDashb
 import { useSiteAssets } from '../../../src/features/sites/hooks/useSiteAssets';
 import { SiteHealthBadge } from '../../../src/features/sites/components/SiteHealthBadge';
 import { useAmbientLatest } from '../../../src/features/ambient/hooks/useAmbientLatest';
-import { useAmbientTrend } from '../../../src/features/ambient/hooks/useAmbientTrend';
 import { AmbientTile } from '../../../src/features/ambient/components/AmbientTile';
 import { AmbientTrendChart } from '../../../src/features/ambient/components/AmbientTrendChart';
 import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
@@ -33,8 +32,6 @@ function SiteDetailInner() {
   const { data: dashboard } = useSiteDashboard(siteId);
   const { data: assets = [] } = useSiteAssets(siteId);
   const { data: ambient } = useAmbientLatest(siteId);
-  const trendParams = useMemo(() => ({ granularity: 'day' as const }), []);
-  const { data: trend = [] } = useAmbientTrend(siteId, trendParams);
 
   if (isLoading) {
     return (
@@ -87,7 +84,7 @@ function SiteDetailInner() {
         ) : null}
 
         <AmbientTile data={ambient} />
-        <AmbientTrendChart data={trend} />
+        <AmbientTrendChart siteId={siteId} />
 
         <Text style={styles.sectionTitle}>Danh sách pin ({assets.length})</Text>
         {assets.length === 0 ? (
