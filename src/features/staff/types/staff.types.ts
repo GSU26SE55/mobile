@@ -17,9 +17,10 @@ export interface StaffProfileDTO {
   email: string;
   phone: string | null;
   department: string | null;
-  skillTier: StaffSkillTierEnum;
+  // TODO(BE): getProfile() hiện chưa trả skillTier & currentTicketCount — để null, UI ẩn thay vì hiển thị giá trị giả.
+  skillTier: StaffSkillTierEnum | null;
   maxConcurrentTickets: number;
-  currentTicketCount: number;
+  currentTicketCount: number | null;
   isAvailable: boolean;
   notes: string | null;
   skills: string[];

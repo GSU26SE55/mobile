@@ -276,7 +276,7 @@ function TicketDetailScreenInner() {
       await addComment({ body: result.data.body, attachments: result.data.attachments });
       setCommentText('');
       setAttachments([]);
-      // Realtime là nguồn chính: hub đẩy CommentAdded (cả người gửi) → setQueryData prepend.
+      // Realtime là nguồn chính: hub đẩy ChatAdded (BE gửi tới cả người gửi) → setQueryData prepend.
       // Chỉ fallback refetch khi hub không kết nối (WS bị chặn / chưa connect).
       if (!isConnected) commentsQuery.refetch();
     } catch {

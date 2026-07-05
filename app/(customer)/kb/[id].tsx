@@ -28,7 +28,8 @@ export default function KbDetailScreen() {
   const handleMarkHelpful = () => {
     if (!id || markedHelpful || markingHelpful) return;
     setMarkedHelpful(true);
-    markHelpful(id);
+    // Fail → mở lại nút để user thử lại (không kẹt trạng thái "đã thích" giả).
+    markHelpful(id, { onError: () => setMarkedHelpful(false) });
   };
 
   if (isLoading) {

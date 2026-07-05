@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View, Modal, KeyboardAvoidingView } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View, Modal, KeyboardAvoidingView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,6 +57,13 @@ export default function ProfileScreen() {
 
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const handleLogout = () => {
+    Alert.alert('Đăng xuất', 'Bạn có chắc muốn đăng xuất?', [
+      { text: 'Hủy', style: 'cancel' },
+      { text: 'Đăng xuất', style: 'destructive', onPress: () => logout.mutate() },
+    ]);
+  };
 
   const handleUpdateProfile = async (data: any) => {
     setFieldErrors({});
@@ -231,9 +238,14 @@ export default function ProfileScreen() {
         </View>
 
         {/* Logout */}
-        <Pressable style={[styles.logoutBtn, Shadow]} onPress={() => logout.mutate()}>
-          <Ionicons name="log-out-outline" size={16} color="#DC4F3D" style={{ marginRight: 6 }} />
-          <Text style={styles.logoutText}>Log out</Text>
+        <Pressable
+          style={[styles.logoutBtn, Shadow]}
+          onPress={handleLogout}
+          accessibilityRole="button"
+          accessibilityLabel="Đăng xuất"
+        >
+          <Ionicons name="log-out-outline" size={16} color={Colors.danger} style={{ marginRight: 6 }} />
+          <Text style={styles.logoutText}>Đăng xuất</Text>
         </Pressable>
       </ScrollView>
 

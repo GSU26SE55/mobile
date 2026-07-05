@@ -1,34 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Colors, Shadow, ShadowPrimary } from '../../../src/lib/theme';
+import { Colors, Shadow } from '../../../src/lib/theme';
 import { StaffHeader } from '../../../src/features/staff/components/StaffHeader';
 import { useStaffProfile } from '../../../src/features/staff/hooks/useStaffProfile';
 import { useSessionStore } from '../../../src/stores/sessionStore';
-import { StaffProfileDTO, StaffSkillTierEnum } from '../../../src/features/staff/types/staff.types';
+import { StaffSkillTierEnum } from '../../../src/features/staff/types/staff.types';
 import { clearTokens } from '../../../src/lib/secureStore';
 
 const TIER_LABEL: Record<StaffSkillTierEnum, string> = {
   Tier1: 'Tier 1 — Junior',
   Tier2: 'Tier 2 — Senior',
   Tier3: 'Tier 3 — Expert',
-};
-
-const MOCK_PROFILE: StaffProfileDTO = {
-  accountId: 'me',
-  employeeCode: 'STF-001',
-  fullName: 'Trần Văn Kỹ thuật',
-  email: 'tranvan@company.com',
-  phone: '0901234567',
-  department: 'Bảo trì Solar',
-  skillTier: 'Tier2',
-  maxConcurrentTickets: 5,
-  currentTicketCount: 3,
-  isAvailable: true,
-  notes: null,
-  skills: ['Inverter', 'Pin lithium-ion', 'BMS firmware'],
-  avatarUrl: null,
 };
 
 function InfoRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
@@ -44,18 +28,23 @@ function InfoRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap;
 }
 
 export default function StaffProfileScreen() {
-  const { data: apiProfile, isLoading, isError } = useStaffProfile();
+  const { data: profile, isLoading, isError, refetch } = useStaffProfile();
   const clearSession = useSessionStore((s) => s.clearSession);
 
-  const profile = apiProfile ?? MOCK_PROFILE;
-
-  const handleLogout = async () => {
+  const doLogout = async () => {
     await clearTokens();
     clearSession();
     router.replace('/(auth)/login');
   };
 
-  if (isLoading && !apiProfile) {
+  const handleLogout = () => {
+    Alert.alert('Đăng xuất', 'Bạn có chắc muốn đăng xuất?', [
+      { text: 'Hủy', style: 'cancel' },
+      { text: 'Đăng xuất', style: 'destructive', onPress: doLogout },
+    ]);
+  };
+
+  if (isLoading) {
     return (
       <View style={styles.root}>
         <StaffHeader title="Cá nhân" />
@@ -66,17 +55,30 @@ export default function StaffProfileScreen() {
     );
   }
 
+  // Không fallback mock — API lỗi thì báo lỗi thật + cho retry + vẫn có nút đăng xuất.
+  if (isError || !profile) {
+    return (
+      <View style={styles.root}>
+        <StaffHeader title="Cá nhân" />
+        <View style={styles.center}>
+          <Ionicons name="cloud-offline-outline" size={48} color={Colors.textFaint} />
+          <Text style={styles.errText}>Không tải được thông tin cá nhân</Text>
+          <Pressable onPress={() => refetch()} style={styles.retryBtn}>
+            <Text style={styles.retryText}>Thử lại</Text>
+          </Pressable>
+          <Pressable style={styles.logoutBtn} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={18} color={Colors.danger} />
+            <Text style={styles.logoutText}>Đăng xuất</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
       <StaffHeader title="Cá nhân" />
       <ScrollView contentContainerStyle={styles.content}>
-      {isError && (
-        <View style={styles.warnBanner}>
-          <Ionicons name="cloud-offline-outline" size={14} color="#92400e" />
-          <Text style={styles.warnText}>Không tải được thông tin — đang hiển thị dữ liệu mẫu</Text>
-        </View>
-      )}
-
       <View style={[styles.profileCard, Shadow]}>
         <View style={styles.avatarCircle}>
           <Text style={styles.avatarText}>{profile.fullName.charAt(0)}</Text>
@@ -86,28 +88,38 @@ export default function StaffProfileScreen() {
         <View style={[styles.tierBadge, profile.isAvailable ? styles.tierAvailable : styles.tierUnavailable]}>
           <View style={[styles.availDot, { backgroundColor: profile.isAvailable ? Colors.success : Colors.textFaint }]} />
           <Text style={styles.tierText}>
-            {TIER_LABEL[profile.skillTier]} · {profile.isAvailable ? 'Sẵn sàng' : 'Bận'}
+            {profile.skillTier ? `${TIER_LABEL[profile.skillTier]} · ` : ''}
+            {profile.isAvailable ? 'Sẵn sàng' : 'Bận'}
           </Text>
         </View>
       </View>
 
+      {/* Đang xử lý / Còn trống chỉ hiện khi BE cấp currentTicketCount thật (tránh hiển thị 0 giả). */}
       <View style={[styles.statsCard, Shadow]}>
-        <View style={styles.statItem}>
-          <Text style={styles.statNum}>{profile.currentTicketCount}</Text>
-          <Text style={styles.statLabel}>Đang xử lý</Text>
-        </View>
-        <View style={styles.statDivider} />
+        {profile.currentTicketCount != null && (
+          <>
+            <View style={styles.statItem}>
+              <Text style={styles.statNum}>{profile.currentTicketCount}</Text>
+              <Text style={styles.statLabel}>Đang xử lý</Text>
+            </View>
+            <View style={styles.statDivider} />
+          </>
+        )}
         <View style={styles.statItem}>
           <Text style={styles.statNum}>{profile.maxConcurrentTickets}</Text>
           <Text style={styles.statLabel}>Tối đa</Text>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={[styles.statNum, { color: Colors.primary }]}>
-            {profile.maxConcurrentTickets - profile.currentTicketCount}
-          </Text>
-          <Text style={styles.statLabel}>Còn trống</Text>
-        </View>
+        {profile.currentTicketCount != null && (
+          <>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statNum, { color: Colors.primary }]}>
+                {profile.maxConcurrentTickets - profile.currentTicketCount}
+              </Text>
+              <Text style={styles.statLabel}>Còn trống</Text>
+            </View>
+          </>
+        )}
       </View>
 
       <View style={[styles.infoCard, Shadow]}>
@@ -167,9 +179,10 @@ export default function StaffProfileScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  warnBanner: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fef3c7', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
-  warnText: { fontSize: 12, color: '#92400e', flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 },
+  errText: { fontSize: 14, color: Colors.textFaint, fontWeight: '600' },
+  retryBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12, backgroundColor: Colors.primary },
+  retryText: { fontSize: 14, fontWeight: '700', color: '#fff' },
   content: { paddingHorizontal: 20, paddingBottom: 120, gap: 14 },
 
   profileCard: {

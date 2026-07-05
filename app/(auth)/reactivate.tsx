@@ -75,10 +75,26 @@ export default function ReactivateScreen() {
     otpInputRef.current?.focus();
   };
 
+  // Back nội bộ step: ở step 2 (nhập OTP) thì lùi về step 1 giữ email, chỉ thoát màn khi ở step 1.
+  const handleBack = () => {
+    if (step > 1) {
+      setStep(1);
+      setOtp('');
+      setError(null);
+    } else {
+      router.back();
+    }
+  };
+
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {/* Back button */}
-      <Pressable onPress={() => router.back()} style={[styles.backBtn, { top: insets.top + 16 }]}>
+      <Pressable
+        onPress={handleBack}
+        style={[styles.backBtn, { top: insets.top + 16 }]}
+        accessibilityRole="button"
+        accessibilityLabel="Quay lại"
+      >
         <Ionicons name="chevron-back" size={20} color="#1A1A1C" />
       </Pressable>
 
