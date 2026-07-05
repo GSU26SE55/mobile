@@ -1,6 +1,8 @@
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
-import { router } from 'expo-router';
+import { Colors } from '../../../src/lib/theme';
 
 const ITEMS = [
   { label: 'Đổi mật khẩu', route: '/(customer)/settings/change-password' as const },
@@ -20,7 +22,7 @@ export default function SettingsScreen() {
       {ITEMS.map((item) => (
         <Pressable key={item.route} style={styles.item} onPress={() => router.push(item.route)}>
           <Text style={styles.label}>{item.label}</Text>
-          <Text style={styles.arrow}>›</Text>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textFaint} />
         </Pressable>
       ))}
     </ScrollView>
@@ -32,8 +34,7 @@ const styles = StyleSheet.create({
   item:      {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: 16, paddingHorizontal: 4,
-    borderBottomWidth: 1, borderBottomColor: '#f3f4f6',
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  label:     { fontSize: 15, color: '#111827' },
-  arrow:     { fontSize: 20, color: '#9ca3af' },
+  label:     { fontSize: 15, color: Colors.text },
 });

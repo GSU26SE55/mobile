@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors, Shadow } from '../../../lib/theme';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Colors } from '../../../lib/theme';
+import { BottomSheet } from '../../../shared/components/BottomSheet';
 
 interface Props {
   visible: boolean;
@@ -29,61 +30,48 @@ export function ResolveModal({ visible, isLoading, onClose, onSubmit }: Props) {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <View style={styles.overlay}>
-        <View style={[styles.sheet, Shadow]}>
-          <Text style={styles.title}>Hoàn thành ticket</Text>
-          <Text style={styles.desc}>Mô tả kết quả xử lý để Manager duyệt.</Text>
+    <BottomSheet visible={visible} onClose={handleClose}>
+      <View style={styles.body}>
+        <Text style={styles.title}>Hoàn thành ticket</Text>
+        <Text style={styles.desc}>Mô tả kết quả xử lý để Manager duyệt.</Text>
 
-          <View>
-            <TextInput
-              style={[styles.input, error ? styles.inputError : null]}
-              value={summary}
-              onChangeText={(t) => { setSummary(t); setError(''); }}
-              placeholder="Mô tả công việc đã thực hiện, kết quả..."
-              placeholderTextColor={Colors.textFaint}
-              multiline
-              maxLength={2000}
-              textAlignVertical="top"
-            />
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          </View>
+        <View>
+          <TextInput
+            style={[styles.input, error ? styles.inputError : null]}
+            value={summary}
+            onChangeText={(t) => { setSummary(t); setError(''); }}
+            placeholder="Mô tả công việc đã thực hiện, kết quả..."
+            placeholderTextColor={Colors.textFaint}
+            multiline
+            maxLength={2000}
+            textAlignVertical="top"
+          />
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        </View>
 
-          <View style={styles.actions}>
-            <Pressable style={styles.cancelBtn} onPress={handleClose}>
-              <Text style={styles.cancelText}>Hủy</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.submitBtn, isLoading && styles.btnDisabled]}
-              onPress={handleSubmit}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.submitText}>Hoàn thành</Text>
-              )}
-            </Pressable>
-          </View>
+        <View style={styles.actions}>
+          <Pressable style={styles.cancelBtn} onPress={handleClose}>
+            <Text style={styles.cancelText}>Hủy</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.submitBtn, isLoading && styles.btnDisabled]}
+            onPress={handleSubmit}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.submitText}>Hoàn thành</Text>
+            )}
+          </Pressable>
         </View>
       </View>
-    </Modal>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: Colors.overlay,
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
-    gap: 16,
-  },
+  body: { gap: 16 },
   title: {
     fontSize: 18,
     fontWeight: '800',

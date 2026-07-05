@@ -23,7 +23,10 @@ const RESOLVED_STATUSES: TicketStatusEnum[] = ['Resolved', 'Escalated'];
 
 export default function StaffDashboardScreen() {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
-  const { data: apiTickets, isLoading, refetch } = useStaffTickets();
+  // BE default PageSize=10 (PaginationRequest) → phải truyền để đếm/list không bị cắt còn 10.
+  // BE clamp max=100; counts dưới tính client-side trên trang này. Nếu staff vượt 100 ticket
+  // cần đếm bằng totalItems + filter status server-side (BE chưa hỗ trợ multi-status filter).
+  const { data: apiTickets, isLoading, isError, isRefetching, refetch } = useStaffTickets({ PageSize: 100 });
 
   const allTickets = apiTickets?.items ?? [];
 
@@ -63,6 +66,14 @@ export default function StaffDashboardScreen() {
         <View style={styles.center}>
           <ActivityIndicator color={Colors.primary} size="large" />
         </View>
+      ) : isError ? (
+        <View style={styles.center}>
+          <Ionicons name="cloud-offline-outline" size={48} color={Colors.textFaint} />
+          <Text style={styles.emptyText}>Không tải được danh sách ticket</Text>
+          <Pressable onPress={() => refetch()} style={styles.retryBtn}>
+            <Text style={styles.retryText}>Thử lại</Text>
+          </Pressable>
+        </View>
       ) : (
         <FlatList
           data={filtered}
@@ -75,7 +86,7 @@ export default function StaffDashboardScreen() {
           )}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} tintColor={Colors.primary} />}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Ionicons name="checkmark-done-circle-outline" size={48} color={Colors.textFaint} />
@@ -129,5 +140,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textFaint,
     fontWeight: '600',
+  },
+  retryBtn: {
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: Colors.primary,
+  },
+  retryText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

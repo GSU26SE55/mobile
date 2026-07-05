@@ -14,7 +14,9 @@ const LEVEL_STYLE: Record<CascadeRiskLevel, { bg: string; text: string; label: s
 // null/undefined (404 / chưa tính) → render null (ẩn badge).
 export function CascadeRiskBadge({ data }: { data: CascadeRiskDto | null | undefined }) {
   if (!data) return null;
-  const s = LEVEL_STYLE[data.level] ?? LEVEL_STYLE[CascadeRiskLevel.Low];
+  // Domain an toàn cháy nổ: level lạ (BE thêm mức mới) → fallback mức thận trọng (Cao/đỏ),
+  // KHÔNG hiển thị "Thấp/an toàn" giả gây hiểu nhầm nguy hiểm.
+  const s = LEVEL_STYLE[data.level] ?? LEVEL_STYLE[CascadeRiskLevel.High];
 
   return (
     <View style={[styles.card, { backgroundColor: s.bg }]}>
