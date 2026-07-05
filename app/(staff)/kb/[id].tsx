@@ -28,7 +28,8 @@ export default function StaffKbDetailScreen() {
   const handleMarkHelpful = () => {
     if (!id || markedHelpful || markingHelpful) return;
     setMarkedHelpful(true);
-    markHelpful(id);
+    // Fail → mở lại nút để user thử lại.
+    markHelpful(id, { onError: () => setMarkedHelpful(false) });
   };
 
   if (isLoading) {

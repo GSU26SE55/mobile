@@ -36,6 +36,15 @@ export default function ForgotPasswordScreen() {
     setExpiresInSeconds(0);
   };
 
+  // Back nội bộ step: đang ở step 2/3 thì lùi step (giữ tiến trình), chỉ thoát màn khi ở step 1.
+  const handleBack = () => {
+    if (step > 1) {
+      setStep((s) => (s - 1) as Step);
+    } else {
+      router.back();
+    }
+  };
+
   const stepTitles: Record<Step, string> = {
     1: 'Quên mật khẩu',
     2: 'Nhập mã OTP',
@@ -54,7 +63,12 @@ export default function ForgotPasswordScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* Back button */}
-      <Pressable onPress={() => router.back()} style={[styles.backBtn, { top: insets.top + 16 }]}>
+      <Pressable
+        onPress={handleBack}
+        style={[styles.backBtn, { top: insets.top + 16 }]}
+        accessibilityRole="button"
+        accessibilityLabel="Quay lại"
+      >
         <Ionicons name="chevron-back" size={20} color="#1A1A1C" />
       </Pressable>
 

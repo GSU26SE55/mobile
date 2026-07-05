@@ -14,6 +14,9 @@ export const P = {
   NOTIFICATION_VIEW: 'notification.view',
   KNOWLEDGE_BASE_VIEW: 'knowledge_base.view',
   USER_VIEW: 'user.view',
+  /** Sửa/xoá tin nhắn của người khác kèm lý do — chỉ Manager/Admin có trong JWT, Staff/Customer luôn false. */
+  CHAT_EDIT_ANY: 'chat.edit.any',
+  CHAT_DELETE_ANY: 'chat.delete.any',
 } as const;
 
 export type Permission = (typeof P)[keyof typeof P];

@@ -34,7 +34,7 @@ export default function EditProfileScreen() {
     setFieldErrors({});
     try {
       await updateProfile.mutateAsync(data);
-      Alert.alert('Thanh cong', 'Thong tin da duoc cap nhat.');
+      Alert.alert('Thành công', 'Thông tin đã được cập nhật.');
       router.back();
     } catch (error) {
       handleErrorApi({ error, setFieldError });
@@ -53,7 +53,7 @@ export default function EditProfileScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={18} color={Colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Chinh sua ho so</Text>
+        <Text style={styles.headerTitle}>Chỉnh sửa hồ sơ</Text>
         <View style={{ width: 36 }} />
       </View>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

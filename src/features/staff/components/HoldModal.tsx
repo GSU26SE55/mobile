@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors, Shadow } from '../../../lib/theme';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Colors } from '../../../lib/theme';
+import { BottomSheet } from '../../../shared/components/BottomSheet';
 import { PauseReasonEnum } from '../../tickets/types/ticket.types';
 
 const HOLD_OPTIONS: { value: PauseReasonEnum; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -32,75 +33,62 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <View style={styles.overlay}>
-        <View style={[styles.sheet, Shadow]}>
-          <Text style={styles.title}>Tạm dừng ticket</Text>
-          <Text style={styles.desc}>Chọn lý do tạm dừng. SLA sẽ được pause.</Text>
+    <BottomSheet visible={visible} onClose={handleClose}>
+      <View style={styles.body}>
+        <Text style={styles.title}>Tạm dừng ticket</Text>
+        <Text style={styles.desc}>Chọn lý do tạm dừng. SLA sẽ được pause.</Text>
 
-          <View style={styles.options}>
-            {HOLD_OPTIONS.map((opt) => {
-              const active = selected === opt.value;
-              return (
-                <Pressable
-                  key={opt.value}
-                  style={[styles.option, active && styles.optionActive]}
-                  onPress={() => setSelected(opt.value)}
-                >
-                  <Ionicons name={opt.icon} size={20} color={active ? Colors.primary : Colors.textMute} />
-                  <Text style={[styles.optionLabel, active && styles.optionLabelActive]}>{opt.label}</Text>
-                  {active && <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />}
-                </Pressable>
-              );
-            })}
-          </View>
+        <View style={styles.options}>
+          {HOLD_OPTIONS.map((opt) => {
+            const active = selected === opt.value;
+            return (
+              <Pressable
+                key={opt.value}
+                style={[styles.option, active && styles.optionActive]}
+                onPress={() => setSelected(opt.value)}
+              >
+                <Ionicons name={opt.icon} size={20} color={active ? Colors.primary : Colors.textMute} />
+                <Text style={[styles.optionLabel, active && styles.optionLabelActive]}>{opt.label}</Text>
+                {active && <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />}
+              </Pressable>
+            );
+          })}
+        </View>
 
-          <TextInput
-            style={styles.noteInput}
-            value={note}
-            onChangeText={setNote}
-            placeholder="Ghi chú (tuỳ chọn)..."
-            placeholderTextColor={Colors.textFaint}
-            multiline
-            textAlignVertical="top"
-            maxLength={500}
-          />
+        <TextInput
+          style={styles.noteInput}
+          value={note}
+          onChangeText={setNote}
+          placeholder="Ghi chú (tuỳ chọn)..."
+          placeholderTextColor={Colors.textFaint}
+          multiline
+          textAlignVertical="top"
+          maxLength={500}
+        />
 
-          <View style={styles.actions}>
-            <Pressable style={styles.cancelBtn} onPress={handleClose}>
-              <Text style={styles.cancelText}>Hủy</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.submitBtn, !selected && styles.btnDisabled]}
-              onPress={handleSubmit}
-              disabled={!selected || isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.submitText}>Xác nhận</Text>
-              )}
-            </Pressable>
-          </View>
+        <View style={styles.actions}>
+          <Pressable style={styles.cancelBtn} onPress={handleClose}>
+            <Text style={styles.cancelText}>Hủy</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.submitBtn, !selected && styles.btnDisabled]}
+            onPress={handleSubmit}
+            disabled={!selected || isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.submitText}>Xác nhận</Text>
+            )}
+          </Pressable>
         </View>
       </View>
-    </Modal>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: Colors.overlay,
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
-    gap: 16,
-  },
+  body: { gap: 16 },
   title: {
     fontSize: 18,
     fontWeight: '800',

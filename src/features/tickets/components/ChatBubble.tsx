@@ -1,9 +1,21 @@
 import { useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Dimensions,
+  Image,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type GestureResponderEvent,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BASE_URL } from '../../../lib/axios';
 import { ENDPOINTS } from '../../../lib/endpoints';
-import { Colors } from '../../../lib/theme';
+import { Colors, Shadow } from '../../../lib/theme';
+import { BottomSheet } from '../../../shared/components/BottomSheet';
 import { TicketCommentDTO } from '../types/ticket.types';
 
 const ROLE_AVATAR: Record<string, { icon: keyof typeof Ionicons.glyphMap; iconColor: string; bg: string }> = {
@@ -19,6 +31,18 @@ const ROLE_FALLBACK_NAME: Record<string, string> = {
   Manager: 'Manager',
   Staff: 'Nhân viên',
 };
+
+const LANGUAGE_OPTIONS = [
+  { code: 'vi', label: 'Tiếng Việt' },
+  { code: 'en', label: 'English' },
+  { code: 'fr', label: 'Français' },
+  { code: 'zh', label: '中文' },
+  { code: 'ja', label: '日本語' },
+  { code: 'ko', label: '한국어' },
+] as const;
+const LANGUAGE_LABEL: Record<string, string> = Object.fromEntries(
+  LANGUAGE_OPTIONS.map((l) => [l.code, l.label]),
+);
 
 // Kích thước mosaic ảnh trong bubble — khớp với marginHorizontal âm để ảnh tràn sát viền bubble.
 const GRID_W = 220;
@@ -141,6 +165,118 @@ function ChatImageGrid({ fileIds, imageHeaders, onImagePress }: ChatImageGridPro
   );
 }
 
+interface MenuAnchor {
+  x: number;
+  y: number;
+}
+
+interface ChatActionMenuProps {
+  visible: boolean;
+  anchor: MenuAnchor | null;
+  onClose: () => void;
+  canEdit: boolean;
+  canDelete: boolean;
+  canTranslate: boolean;
+  translating: boolean;
+  onEdit: () => void;
+  onDeleteRequest: () => void;
+  onTranslate: (lang: string) => void;
+}
+
+const POPUP_WIDTH = 190;
+const MENU_ROW_HEIGHT = 42;
+const SCREEN_MARGIN = 10;
+
+/**
+ * Menu Sửa/Dịch/Xóa mở khi long-press bubble — popup nổi neo tại vị trí nhấn
+ * (kiểu Messenger/Zalo) thay vì bottom sheet trượt từ đáy màn hình lên.
+ */
+function ChatActionMenu({
+  visible,
+  anchor,
+  onClose,
+  canEdit,
+  canDelete,
+  canTranslate,
+  translating,
+  onEdit,
+  onDeleteRequest,
+  onTranslate,
+}: ChatActionMenuProps) {
+  const [showLangs, setShowLangs] = useState(false);
+
+  const handleClose = () => {
+    onClose();
+    setShowLangs(false);
+  };
+
+  if (!anchor) return null;
+
+  const rowCount = showLangs
+    ? LANGUAGE_OPTIONS.length + 1
+    : Number(canEdit) + Number(canTranslate) + Number(canDelete);
+  const popupHeight = rowCount * MENU_ROW_HEIGHT + 12;
+  const { width: screenW, height: screenH } = Dimensions.get('window');
+
+  // Ưu tiên hiện phía TRÊN điểm nhấn (giống Messenger); nếu không đủ chỗ thì hiện phía dưới.
+  const top =
+    anchor.y - popupHeight - 12 >= SCREEN_MARGIN
+      ? anchor.y - popupHeight - 12
+      : Math.min(anchor.y + 16, screenH - popupHeight - SCREEN_MARGIN);
+  const left = Math.min(
+    Math.max(anchor.x - POPUP_WIDTH / 2, SCREEN_MARGIN),
+    screenW - POPUP_WIDTH - SCREEN_MARGIN,
+  );
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
+      <Pressable style={StyleSheet.absoluteFill} onPress={handleClose}>
+        <View
+          style={[styles.popup, Shadow, { top, left, width: POPUP_WIDTH }]}
+          // Chặn tap bên trong popup lan ra Pressable nền (đóng menu) phía sau.
+          onStartShouldSetResponder={() => true}
+        >
+          {!showLangs ? (
+            <>
+              {canEdit && (
+                <Pressable style={styles.menuItem} onPress={() => { handleClose(); onEdit(); }}>
+                  <Ionicons name="create-outline" size={18} color={Colors.text} />
+                  <Text style={styles.menuItemText}>Sửa</Text>
+                </Pressable>
+              )}
+              {canTranslate && (
+                <Pressable style={styles.menuItem} onPress={() => setShowLangs(true)} disabled={translating}>
+                  <Ionicons name="language-outline" size={18} color={Colors.text} />
+                  <Text style={styles.menuItemText}>{translating ? 'Đang dịch...' : 'Dịch sang'}</Text>
+                  <Ionicons name="chevron-forward" size={14} color={Colors.textFaint} style={styles.menuItemChevron} />
+                </Pressable>
+              )}
+              {canDelete && (
+                <Pressable style={styles.menuItem} onPress={() => { handleClose(); onDeleteRequest(); }}>
+                  <Ionicons name="trash-outline" size={18} color={Colors.danger} />
+                  <Text style={[styles.menuItemText, { color: Colors.danger }]}>Xóa</Text>
+                </Pressable>
+              )}
+            </>
+          ) : (
+            <>
+              <Pressable style={styles.menuItem} onPress={() => setShowLangs(false)}>
+                <Ionicons name="chevron-back" size={18} color={Colors.text} />
+                <Text style={styles.menuItemText}>Quay lại</Text>
+              </Pressable>
+              {LANGUAGE_OPTIONS.map((l) => (
+                <Pressable key={l.code} style={styles.menuItem} onPress={() => { handleClose(); onTranslate(l.code); }}>
+                  <Text style={styles.menuItemText}>{l.label}</Text>
+                </Pressable>
+              ))}
+            </>
+          )}
+        </View>
+      </Pressable>
+    </Modal>
+  );
+}
+
 export interface ChatBubbleProps {
   comment: TicketCommentDTO;
   isMe: boolean;
@@ -148,6 +284,22 @@ export interface ChatBubbleProps {
   onImagePress?: (uri: string) => void;
   /** Màu nền bubble của mình — mỗi app (customer/staff) giữ màu thương hiệu riêng. */
   accentColor?: string;
+
+  // Sửa/Xóa/Dịch — mặc định tắt (Customer screen không truyền → giữ nguyên hành vi cũ).
+  canEdit?: boolean;
+  canDelete?: boolean;
+  editNeedsReason?: boolean;
+  deleteNeedsReason?: boolean;
+  editPending?: boolean;
+  deletePending?: boolean;
+  onEdit?: (body: string, editReason?: string) => void;
+  onDelete?: (reason?: string) => void;
+  canTranslate?: boolean;
+  translating?: boolean;
+  onTranslate?: (targetLanguage: string) => void;
+  translation?: { lang: string; text: string };
+  showingOriginal?: boolean;
+  onToggleOriginal?: () => void;
 }
 
 /** Bong bóng chat dùng chung customer + staff — tin của mình bên phải, người khác bên trái kèm avatar theo role. */
@@ -157,8 +309,28 @@ export function ChatBubble({
   imageHeaders,
   onImagePress,
   accentColor = Colors.primary,
+  canEdit = false,
+  canDelete = false,
+  editNeedsReason = false,
+  deleteNeedsReason = false,
+  editPending = false,
+  deletePending = false,
+  onEdit,
+  onDelete,
+  canTranslate = false,
+  translating = false,
+  onTranslate,
+  translation,
+  showingOriginal = true,
+  onToggleOriginal,
 }: ChatBubbleProps) {
   const [showTime, setShowTime] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editBody, setEditBody] = useState(comment.body);
+  const [editReason, setEditReason] = useState('');
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
 
   if (comment.authorRole === 'System') {
     return (
@@ -177,6 +349,9 @@ export function ChatBubble({
   // Tin trống (chỉ khoảng trắng) và không có ảnh — không render bubble rỗng gây dư khoảng trắng.
   if (!body && fileIds.length === 0) return null;
 
+  const canShowActions = canEdit || canDelete || canTranslate;
+  const displayBody = showingOriginal || !translation ? body : translation.text;
+
   const time = new Date(comment.createdAt).toLocaleTimeString('vi-VN', {
     hour: '2-digit',
     minute: '2-digit',
@@ -186,6 +361,26 @@ export function ChatBubble({
   const hasBody = !!body;
   const hasMedia = fileIds.length > 0;
   const bubbleColorStyle = isMe ? [styles.bubbleMe, { backgroundColor: accentColor }] : styles.bubbleOther;
+
+  const openMenu = (e: GestureResponderEvent) => {
+    if (!canShowActions) return;
+    setMenuAnchor({ x: e.nativeEvent.pageX, y: e.nativeEvent.pageY });
+  };
+  const startEdit = () => {
+    setEditBody(comment.body);
+    setEditReason('');
+    setEditing(true);
+  };
+  const saveEdit = () => {
+    if (!editBody.trim()) return;
+    onEdit?.(editBody.trim(), editNeedsReason ? editReason.trim() : undefined);
+    setEditing(false);
+  };
+  const confirmDelete = () => {
+    onDelete?.(deleteNeedsReason ? deleteReason.trim() : undefined);
+    setConfirmingDelete(false);
+    setDeleteReason('');
+  };
 
   const header = showHeader ? (
     <View style={styles.bubbleHeader}>
@@ -212,13 +407,53 @@ export function ChatBubble({
         )}
         <View style={[styles.bubbleStack, { alignItems: isMe ? 'flex-end' : 'flex-start' }]}>
           {hasBody && (
-            <Pressable style={[styles.bubble, bubbleColorStyle]} onPress={() => setShowTime((v) => !v)}>
-              {header}
-              <Text style={[styles.bubbleText, isMe && styles.bubbleTextMe]}>{body}</Text>
-            </Pressable>
+            editing ? (
+              <View style={[styles.bubble, styles.editBox]}>
+                <TextInput
+                  style={styles.editInput}
+                  value={editBody}
+                  onChangeText={setEditBody}
+                  multiline
+                  autoFocus
+                />
+                {editNeedsReason && (
+                  <TextInput
+                    style={styles.editReasonInput}
+                    value={editReason}
+                    onChangeText={setEditReason}
+                    placeholder="Lý do chỉnh sửa (bắt buộc)..."
+                    placeholderTextColor={Colors.textFaint}
+                  />
+                )}
+                <View style={styles.editActions}>
+                  <Pressable style={styles.editCancelBtn} onPress={() => setEditing(false)}>
+                    <Text style={styles.editCancelText}>Hủy</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.editSaveBtn, (editPending || !editBody.trim() || (editNeedsReason && !editReason.trim())) && styles.btnDisabled]}
+                    onPress={saveEdit}
+                    disabled={editPending || !editBody.trim() || (editNeedsReason && !editReason.trim())}
+                  >
+                    {editPending ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.editSaveText}>Lưu</Text>}
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <Pressable
+                style={[styles.bubble, bubbleColorStyle]}
+                onPress={() => setShowTime((v) => !v)}
+                onLongPress={openMenu}
+              >
+                {header}
+                <Text style={[styles.bubbleText, isMe && styles.bubbleTextMe]}>{displayBody}</Text>
+              </Pressable>
+            )
           )}
           {hasMedia && (
-            <View style={[styles.bubble, bubbleColorStyle]}>
+            <Pressable
+              style={[styles.bubble, bubbleColorStyle]}
+              onLongPress={!hasBody ? openMenu : undefined}
+            >
               {!hasBody && header}
               <View style={[styles.mediaWrap, styles.mediaWrapBleedBottom, { marginTop: !hasBody && showHeader ? 6 : -BUBBLE_PAD_Y }]}>
                 <ChatImageGrid fileIds={fileIds} imageHeaders={imageHeaders} onImagePress={onImagePress} />
@@ -226,10 +461,65 @@ export function ChatBubble({
                   <Text style={styles.mediaTimeOverlayText}>{time}</Text>
                 </View>
               </View>
-            </View>
+            </Pressable>
+          )}
+
+          {translation && !editing && (
+            <Pressable onPress={onToggleOriginal} hitSlop={6}>
+              <Text style={styles.translateToggle}>
+                {showingOriginal
+                  ? `Xem bản dịch (${LANGUAGE_LABEL[translation.lang] ?? translation.lang})`
+                  : 'Xem bản gốc'}
+              </Text>
+            </Pressable>
+          )}
+
+          {!!comment.editCount && comment.editCount > 0 && !editing && (
+            <Text style={styles.editedTag}>đã chỉnh sửa</Text>
           )}
         </View>
       </View>
+
+      <ChatActionMenu
+        visible={!!menuAnchor}
+        anchor={menuAnchor}
+        onClose={() => setMenuAnchor(null)}
+        canEdit={canEdit}
+        canDelete={canDelete}
+        canTranslate={canTranslate}
+        translating={translating}
+        onEdit={startEdit}
+        onDeleteRequest={() => setConfirmingDelete(true)}
+        onTranslate={(lang) => onTranslate?.(lang)}
+      />
+
+      <BottomSheet visible={confirmingDelete} onClose={() => setConfirmingDelete(false)} scroll={false}>
+        <View style={styles.menuBody}>
+          <Text style={styles.deleteTitle}>Xóa bình luận?</Text>
+          <Text style={styles.deleteDesc}>Hành động này không thể hoàn tác.</Text>
+          {deleteNeedsReason && (
+            <TextInput
+              style={styles.editReasonInput}
+              value={deleteReason}
+              onChangeText={setDeleteReason}
+              placeholder="Lý do xóa (bắt buộc)..."
+              placeholderTextColor={Colors.textFaint}
+            />
+          )}
+          <View style={styles.editActions}>
+            <Pressable style={styles.editCancelBtn} onPress={() => setConfirmingDelete(false)}>
+              <Text style={styles.editCancelText}>Hủy</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.editSaveBtn, styles.deleteBtn, (deletePending || (deleteNeedsReason && !deleteReason.trim())) && styles.btnDisabled]}
+              onPress={confirmDelete}
+              disabled={deletePending || (deleteNeedsReason && !deleteReason.trim())}
+            >
+              {deletePending ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.editSaveText}>Xóa</Text>}
+            </Pressable>
+          </View>
+        </View>
+      </BottomSheet>
     </View>
   );
 }
@@ -292,4 +582,44 @@ const styles = StyleSheet.create({
 
   systemMsg: { alignItems: 'center', paddingVertical: 4 },
   systemMsgText: { fontSize: 11, color: Colors.textMute, fontStyle: 'italic', fontWeight: '600' },
+
+  translateToggle: {
+    fontSize: 10.5, color: Colors.textMute, textDecorationLine: 'underline', paddingHorizontal: 4,
+  },
+  editedTag: { fontSize: 10, color: Colors.textFaint, paddingHorizontal: 4, fontStyle: 'italic' },
+
+  popup: {
+    position: 'absolute',
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  menuBody: { gap: 4, paddingBottom: 8 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, paddingHorizontal: 4 },
+  menuItemText: { fontSize: 14, fontWeight: '600', color: Colors.text },
+  menuItemChevron: { marginLeft: 'auto' },
+
+  deleteTitle: { fontSize: 16, fontWeight: '800', color: Colors.text },
+  deleteDesc: { fontSize: 13, color: Colors.textMute, marginTop: 2, marginBottom: 4 },
+
+  editBox: { backgroundColor: Colors.card2, width: 260, gap: 8 },
+  editInput: {
+    fontSize: 13.5, color: Colors.text, minHeight: 40, maxHeight: 120,
+    textAlignVertical: 'top',
+  },
+  editReasonInput: {
+    backgroundColor: Colors.card2, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9,
+    fontSize: 13, color: Colors.text,
+  },
+  editActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 4 },
+  editCancelBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10 },
+  editCancelText: { fontSize: 13, fontWeight: '700', color: Colors.textMute },
+  editSaveBtn: {
+    paddingVertical: 8, paddingHorizontal: 16, borderRadius: 10,
+    backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', minWidth: 60,
+  },
+  editSaveText: { fontSize: 13, fontWeight: '700', color: '#FFF' },
+  deleteBtn: { backgroundColor: Colors.danger },
+  btnDisabled: { opacity: 0.4 },
 });

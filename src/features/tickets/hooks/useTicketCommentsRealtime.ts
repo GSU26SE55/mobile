@@ -38,7 +38,9 @@ function prependComment(
 }
 
 // GH-44 #8 — realtime comment cho ticket detail. Realtime là NGUỒN CẬP NHẬT CHÍNH:
-// CommentAdded (full DTO, server gửi cả người gửi) → setQueryData prepend, KHÔNG refetch.
+// BE broadcast "ChatAdded" (SignalRTicketChatNotifier.cs:33) tới group của ticket —
+// gồm CẢ người gửi (SendAsync tới Group, không loại caller) → người gửi cũng nhận lại
+// → setQueryData prepend (dedup theo id), KHÔNG cần refetch.
 // Lỗi connect chỉ swallow — UI fallback hoàn toàn về REST (useTicketComments).
 export function useTicketCommentsRealtime(ticketId: string | undefined) {
   const queryClient = useQueryClient();
@@ -61,14 +63,22 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
       .build();
     connectionRef.current = connection;
 
-    // BE broadcast event tên "ChatAdded" (SignalRTicketChatNotifier) — KHÔNG phải
-    // "CommentAdded". Tên lệch → mobile không bao giờ nhận → chat không realtime.
+    // Event "ChatAdded" khớp BE (SignalRTicketChatNotifier.cs:33). Customer join được
+    // public group; comment public gửi lên → BE broadcast ChatAdded về group → prepend.
     connection.on('ChatAdded', (dto: TicketCommentDTO) => {
       queryClient.setQueryData<InfiniteData<CommentsPage>>(
         QUERY_KEY.tickets.chats(ticketId),
         (data) => prependComment(data, dto),
       );
     });
+
+    // Sửa/xóa tin nhắn (BE: "ChatEdited"/"ChatDeleted") — không có payload dùng được để
+    // splice trực tiếp vào InfiniteData nên invalidate cả list, đơn giản & đúng.
+    const invalidateChats = () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY.tickets.chats(ticketId) });
+    };
+    connection.on('ChatEdited', invalidateChats);
+    connection.on('ChatDeleted', invalidateChats);
 
     connection.on('UserTyping', (_ticketId: string, userId: string, displayName: string) => {
       setTypingUsers((prev) =>
@@ -112,6 +122,8 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
         // Gỡ handler TRƯỚC khi stop — chống event treo bắn vào connection đang
         // teardown (Fast Refresh remount) gây xử lý CommentAdded / UserTyping 2 lần.
         conn.off('ChatAdded');
+        conn.off('ChatEdited');
+        conn.off('ChatDeleted');
         conn.off('UserTyping');
         // CHỜ start() xong rồi mới leave + stop — tránh stop-trước-start.
         void startPromise.finally(() => {

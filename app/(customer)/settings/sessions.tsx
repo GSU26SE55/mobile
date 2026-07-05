@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSessions } from '../../../src/features/account/hooks/useSessions';
 import { SessionCard } from '../../../src/features/account/components/SessionCard';
 import { handleErrorApi } from '../../../src/lib/errors';
@@ -27,10 +27,15 @@ export default function SessionsScreen() {
           <SessionCard
             session={item}
             onRevoke={(id) => {
-              // non-form → onError trực tiếp
-              revokeSession.mutate(id, {
-                onError: (error) => handleErrorApi({ error }),
-              });
+              Alert.alert('Thu hồi phiên', 'Đăng xuất thiết bị này khỏi tài khoản của bạn?', [
+                { text: 'Hủy', style: 'cancel' },
+                {
+                  text: 'Thu hồi',
+                  style: 'destructive',
+                  // non-form → onError trực tiếp
+                  onPress: () => revokeSession.mutate(id, { onError: (error) => handleErrorApi({ error }) }),
+                },
+              ]);
             }}
             isRevoking={revokeSession.isPending}
           />
@@ -44,11 +49,15 @@ export default function SessionsScreen() {
       <Pressable
         style={[styles.revokeAllBtn, (revokeAll.isPending || data.filter((s) => !s.isCurrent).length === 0) && styles.disabledBtn]}
         onPress={() => {
-          // non-form → onError trực tiếp
-          revokeAll.mutate(undefined, {
-            onSuccess: () => {},
-            onError: (error) => handleErrorApi({ error }),
-          });
+          Alert.alert('Đăng xuất thiết bị khác', 'Đăng xuất tất cả phiên khác trừ thiết bị hiện tại?', [
+            { text: 'Hủy', style: 'cancel' },
+            {
+              text: 'Đăng xuất',
+              style: 'destructive',
+              // non-form → onError trực tiếp
+              onPress: () => revokeAll.mutate(undefined, { onError: (error) => handleErrorApi({ error }) }),
+            },
+          ]);
         }}
         disabled={revokeAll.isPending || data.filter((s) => !s.isCurrent).length === 0}
       >

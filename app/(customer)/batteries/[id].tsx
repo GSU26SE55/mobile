@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,7 +7,6 @@ import { Colors, Shadow } from '../../../src/lib/theme';
 import { useBatteryAsset } from '../../../src/features/batteries/hooks/useBatteryAsset';
 import { useBatteryAssetRealtime } from '../../../src/features/batteries/hooks/useBatteryAssetRealtime';
 import { useBatterySensorStream } from '../../../src/features/batteries/hooks/useBatterySensorStream';
-import { useSensorReadingAggregate } from '../../../src/features/batteries/hooks/useSensorReadingAggregate';
 import { useAssetAlerts } from '../../../src/features/batteries/hooks/useAssetAlerts';
 import { useCascadeRisk } from '../../../src/features/batteries/hooks/useCascadeRisk';
 import { BatteryInfoCard } from '../../../src/features/batteries/components/BatteryInfoCard';
@@ -36,14 +35,6 @@ function BatteryDetailScreenInner() {
   // SSE realtime — merge vào cache realtime(assetId); polling là seed + fallback.
   useBatterySensorStream(assetId);
   const { data: cascade } = useCascadeRisk(assetId);
-
-  // Aggregate 24h gần nhất, bucket 1h cho chart.
-  const aggregateParams = useMemo(() => {
-    const to = new Date();
-    const from = new Date(to.getTime() - 24 * 60 * 60 * 1000);
-    return { from: from.toISOString(), to: to.toISOString(), interval: '1h' as const };
-  }, []);
-  const { data: aggregate = [] } = useSensorReadingAggregate(assetId, aggregateParams);
   const { data: alerts = [] } = useAssetAlerts(assetId);
 
   if (isLoading) {
@@ -101,7 +92,7 @@ function BatteryDetailScreenInner() {
         ) : null}
 
         <Text style={styles.sectionTitle}>Biểu đồ</Text>
-        <SensorChart data={aggregate} />
+        <SensorChart assetId={assetId} />
 
         <Text style={styles.sectionTitle}>Thông tin</Text>
         <BatteryInfoCard battery={battery} />

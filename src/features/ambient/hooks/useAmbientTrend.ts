@@ -12,5 +12,7 @@ export function useAmbientTrend(siteId: string, params?: AmbientTrendParams) {
     queryFn: () =>
       ambientService.getTrend(siteId, params).then((r) => r.data.data ?? []),
     enabled: !!siteId,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
   });
 }
