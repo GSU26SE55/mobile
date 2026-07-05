@@ -41,9 +41,19 @@ import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/
 import { useTicketComments } from '../../../src/features/tickets/hooks/useTicketComments';
 import { useTicketActivities } from '../../../src/features/tickets/hooks/useTicketActivities';
 import { useTicketCommentsRealtime } from '../../../src/features/tickets/hooks/useTicketCommentsRealtime';
+import {
+  useUpdateTicketChat,
+  useDeleteTicketChat,
+  useMarkTicketChatsRead,
+  useTranslateTicketChat,
+  useTranscribeVoiceChat,
+} from '../../../src/features/tickets/hooks/useTicketChatActions';
+import { useVoiceRecorder } from '../../../src/features/tickets/hooks/useVoiceRecorder';
 import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
 import { AuthImage } from '../../../src/features/file-storage/components/AuthImage';
-import { CommentThread } from '../../../src/features/tickets/components/CommentThread';
+import { CommentThread, ChatTab } from '../../../src/features/tickets/components/CommentThread';
+import { VoiceRecordingModal } from '../../../src/features/tickets/components/VoiceRecordingModal';
+import { ProcessingDurationTimer } from '../../../src/features/staff/components/ProcessingDurationTimer';
 import { AttachmentForm } from '../../../src/features/tickets/schemas/comment.schema';
 import { MaintenanceLogPayload, UpdateMaintenanceLogPayload } from '../../../src/features/staff/types/staff.types';
 import { EscalationReasonEnum, PauseReasonEnum, TicketStatusEnum, MaintenanceLogDTO } from '../../../src/features/tickets/types/ticket.types';
@@ -129,12 +139,21 @@ function StaffTicketDetailScreenInner() {
   const commentsQuery = useTicketComments(ticketId || undefined);
   const activitiesQuery = useTicketActivities(ticketId || undefined);
   const { isConnected, typingUsers, notifyTyping } = useTicketCommentsRealtime(ticketId || undefined);
+  const { mutate: updateChat, isPending: editChatPending } = useUpdateTicketChat(ticketId);
+  const { mutate: deleteChat, isPending: deleteChatPending } = useDeleteTicketChat(ticketId);
+  const { mutate: markChatsRead } = useMarkTicketChatsRead(ticketId);
+  const { mutateAsync: translateChat } = useTranslateTicketChat(ticketId);
+  const { mutateAsync: transcribeVoice, isPending: transcribing } = useTranscribeVoiceChat(ticketId);
+  const voiceRecorder = useVoiceRecorder();
+  // Trung bình biên độ hiện tại — điều khiển quả cầu "thở" theo giọng nói trong VoiceRecordingModal.
+  const voiceLevel =
+    voiceRecorder.waveform.reduce((sum, v) => sum + v, 0) / voiceRecorder.waveform.length;
 
   const [activeTab, setActiveTab] = useState<TabKey>('comments');
+  const [chatTab, setChatTab] = useState<ChatTab>('public');
   const [commentText, setCommentText] = useState('');
   const [attachments, setAttachments] = useState<AttachmentForm[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
-  const [isInternalComment, setIsInternalComment] = useState(false);
   const [commentAttachments, setCommentAttachments] = useState<UploadedAttachment[]>([]);
   const [uploadingComment, setUploadingComment] = useState(false);
   const [showHold, setShowHold] = useState(false);
@@ -211,7 +230,7 @@ function StaffTicketDetailScreenInner() {
     addComment(
       {
         body: trimmed,
-        isInternal: isInternalComment,
+        isInternal: chatTab === 'internal',
         attachments: commentAttachments.length > 0 ? commentAttachments : undefined,
       },
       {
@@ -223,6 +242,28 @@ function StaffTicketDetailScreenInner() {
         },
       },
     );
+  };
+
+  const handleMarkRead = (chatIds: string[]) => markChatsRead(chatIds);
+  const handleTranslate = async (comment: { id: string }, targetLanguage: string) => {
+    const res = await translateChat({ chatId: comment.id, targetLanguage });
+    return res.data.data ?? undefined;
+  };
+  const handleStartRecording = async () => {
+    try {
+      await voiceRecorder.start();
+    } catch {
+      Alert.alert('Quyền truy cập', 'Cần quyền truy cập micro để ghi âm.');
+    }
+  };
+  const handleStopRecording = async () => {
+    const file = await voiceRecorder.stop();
+    if (!file) return;
+    try {
+      await transcribeVoice(file);
+    } catch {
+      // handleErrorApi trong hook đã Alert lỗi — không cần xử lý thêm ở đây.
+    }
   };
 
   // GH-44 #4 — sửa maintenance log (PATCH). Form trả MaintenanceLogPayload (gán được vào UpdateMaintenanceLogPayload).
@@ -304,6 +345,20 @@ function StaffTicketDetailScreenInner() {
             hasNextPage={commentsQuery.hasNextPage}
             isFetchingNextPage={commentsQuery.isFetchingNextPage}
             onLoadMore={() => commentsQuery.fetchNextPage()}
+            showTabs
+            activeTab={chatTab}
+            onTabChange={setChatTab}
+            canEditAny={checkPermission(user, P.CHAT_EDIT_ANY)}
+            canDeleteAny={checkPermission(user, P.CHAT_DELETE_ANY)}
+            ticketClosed={ticketClosed}
+            onEdit={(comment, body, editReason) =>
+              updateChat({ chatId: comment.id, payload: { body, editReason } })
+            }
+            onDelete={(comment, reason) => deleteChat({ chatId: comment.id, reason })}
+            editPending={editChatPending}
+            deletePending={deleteChatPending}
+            onMarkRead={handleMarkRead}
+            onTranslate={handleTranslate}
           />
 
           {typingUsers.length > 0 && (
@@ -339,28 +394,29 @@ function StaffTicketDetailScreenInner() {
                 onChange={setCommentAttachments}
                 onUploadingChange={setUploadingComment}
               />
-              <Pressable
-                style={[styles.internalToggle, isInternalComment && styles.internalToggleOn]}
-                onPress={() => setIsInternalComment((v) => !v)}
-              >
-                <Ionicons
-                  name={isInternalComment ? 'lock-closed' : 'lock-open-outline'}
-                  size={15}
-                  color={isInternalComment ? Colors.warningDark : Colors.textMute}
-                />
-              </Pressable>
               <TextInput
                 style={styles.composerInput}
-                placeholder="Nhập tin nhắn..."
+                placeholder={chatTab === 'internal' ? 'Ghi chú nội bộ (khách không thấy)...' : 'Nhập tin nhắn...'}
                 placeholderTextColor={Colors.textFaint}
                 value={commentText}
                 onChangeText={(t) => { setCommentText(t); notifyTyping(); }}
                 multiline
               />
               <Pressable
-                style={[styles.sendBtn, (!commentText.trim() || isSending || uploadingComment) && styles.sendBtnDisabled]}
+                style={styles.internalToggle}
+                onPress={handleStartRecording}
+                disabled={chatTab === 'internal' || uploadingComment || transcribing}
+              >
+                {transcribing ? (
+                  <ActivityIndicator size="small" color={Colors.textMute} />
+                ) : (
+                  <Ionicons name="mic-outline" size={17} color={chatTab === 'internal' ? Colors.textFaint : Colors.textMute} />
+                )}
+              </Pressable>
+              <Pressable
+                style={[styles.sendBtn, (!commentText.trim() || isSending || uploadingComment || voiceRecorder.isRecording) && styles.sendBtnDisabled]}
                 onPress={handleSendComment}
-                disabled={!commentText.trim() || isSending || uploadingComment}
+                disabled={!commentText.trim() || isSending || uploadingComment || voiceRecorder.isRecording}
               >
                 {isSending ? (
                   <ActivityIndicator size="small" color="#FFF" />
@@ -387,6 +443,10 @@ function StaffTicketDetailScreenInner() {
             <Text style={styles.metaCategory}>{ticket.category}</Text>
           </View>
           {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} />}
+          <View style={styles.durationRow}>
+            <Text style={styles.durationLabel}>Thời gian xử lý</Text>
+            <ProcessingDurationTimer activities={activities} status={ticket.status} />
+          </View>
         </View>
 
         {/* Description */}
@@ -549,6 +609,14 @@ function StaffTicketDetailScreenInner() {
       )}
 
       {/* Modals */}
+      <VoiceRecordingModal
+        visible={voiceRecorder.isRecording}
+        elapsedSeconds={voiceRecorder.elapsedSeconds}
+        level={voiceLevel}
+        transcribing={transcribing}
+        onStop={handleStopRecording}
+        onCancel={voiceRecorder.cancel}
+      />
       <HoldModal visible={showHold} onClose={() => setShowHold(false)} onSubmit={handleHold} isLoading={isHolding} />
       <ResolveModal visible={showResolve} onClose={() => setShowResolve(false)} onSubmit={handleResolve} isLoading={isResolving} />
       <EscalateModal visible={showEscalate} onClose={() => setShowEscalate(false)} onSubmit={handleEscalate} isLoading={isEscalating} />
@@ -635,6 +703,8 @@ const styles = StyleSheet.create({
   priorityBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   priorityText: { fontSize: 11, fontWeight: '800' },
   metaCategory: { fontSize: 12, fontWeight: '600', color: Colors.textMute },
+  durationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  durationLabel: { fontSize: 12, fontWeight: '600', color: Colors.textMute },
 
   sectionLabel: { fontSize: 13, fontWeight: '800', color: Colors.text },
   descText: { fontSize: 13, fontWeight: '500', color: Colors.textMute, lineHeight: 20 },
@@ -724,7 +794,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card2,
     alignItems: 'center', justifyContent: 'center',
   },
-  internalToggleOn: { backgroundColor: Colors.warningLight },
 
   kbRefCard: {
     backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, gap: 6,

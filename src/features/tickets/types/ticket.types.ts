@@ -63,6 +63,8 @@ export interface TicketCommentDTO {
   isInternal: boolean;
   attachmentFileIds: string[] | null;
   createdAt: string;
+  editCount?: number;
+  updatedAt?: string | null;
 }
 
 export interface TicketDTO {

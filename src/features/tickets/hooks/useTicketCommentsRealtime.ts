@@ -72,6 +72,14 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
       );
     });
 
+    // Sửa/xóa tin nhắn (BE: "ChatEdited"/"ChatDeleted") — không có payload dùng được để
+    // splice trực tiếp vào InfiniteData nên invalidate cả list, đơn giản & đúng.
+    const invalidateChats = () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY.tickets.chats(ticketId) });
+    };
+    connection.on('ChatEdited', invalidateChats);
+    connection.on('ChatDeleted', invalidateChats);
+
     connection.on('UserTyping', (_ticketId: string, userId: string, displayName: string) => {
       setTypingUsers((prev) =>
         prev.some((u) => u.userId === userId) ? prev : [...prev, { userId, displayName }],
@@ -114,6 +122,8 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
         // Gỡ handler TRƯỚC khi stop — chống event treo bắn vào connection đang
         // teardown (Fast Refresh remount) gây xử lý CommentAdded / UserTyping 2 lần.
         conn.off('ChatAdded');
+        conn.off('ChatEdited');
+        conn.off('ChatDeleted');
         conn.off('UserTyping');
         // CHỜ start() xong rồi mới leave + stop — tránh stop-trước-start.
         void startPromise.finally(() => {

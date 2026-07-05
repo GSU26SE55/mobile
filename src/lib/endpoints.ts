@@ -100,6 +100,10 @@ export const ENDPOINTS = {
     CUSTOMER_CREATE: '/api/customer/tickets',
     DETAIL:          (id: string) => `/api/tickets/${id}`,
     CHATS:           (id: string) => `/api/tickets/${id}/chats`,   // GET list (?page&pageSize) + POST (BE migration 20260622)
+    CHAT_DETAIL:     (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}`, // PUT (edit) / DELETE
+    CHAT_MARK_READ:  (tid: string) => `/api/tickets/${tid}/chats/mark-read`, // POST { chatIds }
+    CHAT_TRANSLATE:  (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}/translate`, // POST ?to=
+    CHAT_VOICE:      (tid: string) => `/api/tickets/${tid}/chats/voice`, // POST multipart — field "AudioFile"
     ACTIVITIES:      (id: string) => `/api/tickets/${id}/activities`, // GH-44 — timeline
     REOPEN:          (id: string) => `/api/customer/tickets/${id}/reopen`,
     RATE:            (id: string) => `/api/customer/tickets/${id}/rate`,

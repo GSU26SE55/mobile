@@ -36,6 +36,15 @@ import { useTicketDetail } from '../../../src/features/tickets/hooks/useTicketDe
 import { useTicketComments } from '../../../src/features/tickets/hooks/useTicketComments';
 import { useTicketActivities } from '../../../src/features/tickets/hooks/useTicketActivities';
 import { useTicketCommentsRealtime } from '../../../src/features/tickets/hooks/useTicketCommentsRealtime';
+import {
+  useUpdateTicketChat,
+  useDeleteTicketChat,
+  useMarkTicketChatsRead,
+  useTranslateTicketChat,
+  useTranscribeVoiceChat,
+} from '../../../src/features/tickets/hooks/useTicketChatActions';
+import { useVoiceRecorder } from '../../../src/features/tickets/hooks/useVoiceRecorder';
+import { VoiceRecordingModal } from '../../../src/features/tickets/components/VoiceRecordingModal';
 import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
 import { AuthImage } from '../../../src/features/file-storage/components/AuthImage';
 import { AttachmentForm, commentSchema } from '../../../src/features/tickets/schemas/comment.schema';
@@ -164,6 +173,15 @@ function TicketDetailScreenInner() {
   const commentsQuery = useTicketComments(id);
   const activitiesQuery = useTicketActivities(id);
   const { isConnected, typingUsers, notifyTyping } = useTicketCommentsRealtime(id);
+  const { mutate: updateChat, isPending: editChatPending } = useUpdateTicketChat(id ?? '');
+  const { mutate: deleteChat, isPending: deleteChatPending } = useDeleteTicketChat(id ?? '');
+  const { mutate: markChatsRead } = useMarkTicketChatsRead(id ?? '');
+  const { mutateAsync: translateChat } = useTranslateTicketChat(id ?? '');
+  const { mutateAsync: transcribeVoice, isPending: transcribing } = useTranscribeVoiceChat(id ?? '');
+  const voiceRecorder = useVoiceRecorder();
+  // Trung bình biên độ hiện tại — điều khiển quả cầu "thở" theo giọng nói trong VoiceRecordingModal.
+  const voiceLevel =
+    voiceRecorder.waveform.reduce((sum, v) => sum + v, 0) / voiceRecorder.waveform.length;
 
   const [commentText,     setCommentText]     = useState('');
   const [commentError,    setCommentError]    = useState('');
@@ -281,6 +299,28 @@ function TicketDetailScreenInner() {
       if (!isConnected) commentsQuery.refetch();
     } catch {
       Alert.alert('Lỗi', 'Không thể gửi bình luận. Vui lòng thử lại.');
+    }
+  };
+
+  const handleMarkRead = (chatIds: string[]) => markChatsRead(chatIds);
+  const handleTranslate = async (comment: { id: string }, targetLanguage: string) => {
+    const res = await translateChat({ chatId: comment.id, targetLanguage });
+    return res.data.data ?? undefined;
+  };
+  const handleStartRecording = async () => {
+    try {
+      await voiceRecorder.start();
+    } catch {
+      Alert.alert('Quyền truy cập', 'Cần quyền truy cập micro để ghi âm.');
+    }
+  };
+  const handleStopRecording = async () => {
+    const file = await voiceRecorder.stop();
+    if (!file) return;
+    try {
+      await transcribeVoice(file);
+    } catch {
+      // handleErrorApi trong hook đã Alert lỗi — không cần xử lý thêm ở đây.
     }
   };
 
@@ -525,6 +565,15 @@ function TicketDetailScreenInner() {
             isFetchingNextPage={commentsQuery.isFetchingNextPage}
             onLoadMore={() => commentsQuery.fetchNextPage()}
             accentColor="#FF5E13"
+            ticketClosed={isClosed}
+            onEdit={(comment, body, editReason) =>
+              updateChat({ chatId: comment.id, payload: { body, editReason } })
+            }
+            onDelete={(comment, reason) => deleteChat({ chatId: comment.id, reason })}
+            editPending={editChatPending}
+            deletePending={deleteChatPending}
+            onMarkRead={handleMarkRead}
+            onTranslate={handleTranslate}
           />
 
           {/* Typing indicator (realtime) */}
@@ -581,6 +630,15 @@ function TicketDetailScreenInner() {
               maxLength={1000}
             />
             <Pressable
+              style={styles.composerIcon}
+              onPress={handleStartRecording}
+              disabled={isUploading || transcribing}
+            >
+              {transcribing
+                ? <ActivityIndicator size="small" color={Colors.textMute} />
+                : <Ionicons name="mic-outline" size={22} color={Colors.textMute} />}
+            </Pressable>
+            <Pressable
               style={[styles.sendBtn, (!commentText.trim() || isCommenting) && styles.btnDisabled]}
               onPress={handleSendComment}
               disabled={!commentText.trim() || isCommenting}
@@ -592,6 +650,15 @@ function TicketDetailScreenInner() {
           </View>
         </View>
       )}
+
+      <VoiceRecordingModal
+        visible={voiceRecorder.isRecording}
+        elapsedSeconds={voiceRecorder.elapsedSeconds}
+        level={voiceLevel}
+        transcribing={transcribing}
+        onStop={handleStopRecording}
+        onCancel={voiceRecorder.cancel}
+      />
 
       <RateModal visible={showRateModal} isLoading={isRating} onClose={() => setShowRateModal(false)} onSubmit={handleRate} />
       <ReopenModal visible={showReopenModal} isLoading={isReopening} onClose={() => setShowReopenModal(false)} onSubmit={handleReopen} />

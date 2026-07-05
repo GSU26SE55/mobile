@@ -1,9 +1,15 @@
-import { useMemo } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../lib/theme';
 import { ChatBubble } from './ChatBubble';
 import { TicketCommentDTO } from '../types/ticket.types';
+
+export type ChatTab = 'public' | 'internal';
+
+// Mirror BE ChatOptions.EditWindowMinutes (15) — chỉ dùng để gợi ý UI, BE luôn
+// là nguồn xác thực cuối cùng.
+const EDIT_WINDOW_MS = 15 * 60 * 1000;
 
 type ThreadItem =
   | { kind: 'comment'; key: string; comment: TicketCommentDTO }
@@ -57,6 +63,27 @@ interface CommentThreadProps {
   onLoadMore?: () => void;
   emptyText?: string;
   accentColor?: string;
+
+  // Tab Công khai/Nội bộ — opt-in (Staff bật, Customer không truyền → 1 danh sách như cũ).
+  showTabs?: boolean;
+  activeTab?: ChatTab;
+  onTabChange?: (tab: ChatTab) => void;
+
+  // Sửa/Xóa/Dịch/Mark-read — opt-in tương tự, mặc định tắt hết.
+  canEditAny?: boolean;
+  canDeleteAny?: boolean;
+  ticketClosed?: boolean;
+  onEdit?: (comment: TicketCommentDTO, body: string, editReason?: string) => void;
+  onDelete?: (comment: TicketCommentDTO, reason?: string) => void;
+  editPending?: boolean;
+  deletePending?: boolean;
+  /** Housekeeping — báo đã đọc các chat đang hiển thị (không có unread badge để wire) */
+  onMarkRead?: (chatIds: string[]) => void;
+  /** Mọi role đều được dịch (BE không giới hạn quyền) — có prop này là hiện menu dịch */
+  onTranslate?: (
+    comment: TicketCommentDTO,
+    targetLanguage: string,
+  ) => Promise<{ translatedBody: string; targetLanguage: string } | undefined>;
 }
 
 /** Danh sách chat dùng chung customer + staff — từ trên xuống dưới, kéo để tải thêm lịch sử cũ. */
@@ -71,11 +98,88 @@ export function CommentThread({
   onLoadMore,
   emptyText = 'Chưa có trao đổi nào.',
   accentColor,
+  showTabs = false,
+  activeTab,
+  onTabChange,
+  canEditAny = false,
+  canDeleteAny = false,
+  ticketClosed = false,
+  onEdit,
+  onDelete,
+  editPending = false,
+  deletePending = false,
+  onMarkRead,
+  onTranslate,
 }: CommentThreadProps) {
+  const [internalTab, setInternalTab] = useState<ChatTab>('public');
+  const tab = activeTab ?? internalTab;
+  const setTab = (t: ChatTab) => {
+    setInternalTab(t);
+    onTabChange?.(t);
+  };
+
+  const publicCount = useMemo(() => comments.filter((c) => !c.isInternal).length, [comments]);
+  const internalCount = comments.length - publicCount;
+
+  const visible = useMemo(
+    () => (showTabs ? comments.filter((c) => (tab === 'internal' ? c.isInternal : !c.isInternal)) : comments),
+    [comments, showTabs, tab],
+  );
+
   const items = useMemo(() => {
-    const ascComments = [...comments].reverse();
+    const ascComments = [...visible].reverse();
     return buildThreadItems(ascComments);
-  }, [comments]);
+  }, [visible]);
+
+  // Housekeeping — đánh dấu đã đọc các comment đang hiển thị trong tab hiện tại, 1 lần/id.
+  const markedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!onMarkRead) return;
+    const unmarked = visible.map((c) => c.id).filter((id) => !markedRef.current.has(id));
+    if (unmarked.length === 0) return;
+    unmarked.forEach((id) => markedRef.current.add(id));
+    onMarkRead(unmarked);
+  }, [visible, onMarkRead]);
+
+  // "now" cập nhật định kỳ — tránh gọi Date.now() trực tiếp mỗi render khi tính edit window.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Bản dịch giữ cục bộ theo chatId — cho phép toggle gốc/dịch không cần gọi lại BE.
+  const [translations, setTranslations] = useState<Record<string, { lang: string; text: string }>>({});
+  const [showOriginalIds, setShowOriginalIds] = useState<Set<string>>(new Set());
+  const [translatingId, setTranslatingId] = useState<string | null>(null);
+
+  const handleTranslate = async (comment: TicketCommentDTO, lang: string) => {
+    if (!onTranslate) return;
+    setTranslatingId(comment.id);
+    try {
+      const result = await onTranslate(comment, lang);
+      if (result) {
+        setTranslations((prev) => ({ ...prev, [comment.id]: { lang: result.targetLanguage, text: result.translatedBody } }));
+        setShowOriginalIds((prev) => {
+          if (!prev.has(comment.id)) return prev;
+          const next = new Set(prev);
+          next.delete(comment.id);
+          return next;
+        });
+      }
+    } finally {
+      setTranslatingId(null);
+    }
+  };
+
+  const toggleShowOriginal = (chatId: string) => {
+    setShowOriginalIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(chatId)) next.delete(chatId);
+      else next.add(chatId);
+      return next;
+    });
+  };
 
   if (isLoading) {
     return (
@@ -85,56 +189,107 @@ export function CommentThread({
     );
   }
 
-  if (items.length === 0) {
-    return (
-      <View style={styles.center}>
-        <Ionicons name="chatbubbles-outline" size={36} color={Colors.textFaint} />
-        <Text style={styles.emptyText}>{emptyText}</Text>
-      </View>
-    );
-  }
-
   return (
-    <FlatList
-      style={styles.list}
-      data={items}
-      keyExtractor={(item) => item.key}
-      renderItem={({ item }) =>
-        item.kind === 'date' ? (
-          <View style={styles.dateRow}>
-            <View style={styles.dateLine} />
-            <Text style={styles.dateLabel}>{item.label}</Text>
-            <View style={styles.dateLine} />
-          </View>
-        ) : (
-          <ChatBubble
-            comment={item.comment}
-            isMe={!!currentUserId && item.comment.authorUserId === currentUserId}
-            imageHeaders={imageHeaders}
-            onImagePress={onImagePress}
-            accentColor={accentColor}
-          />
-        )
-      }
-      contentContainerStyle={styles.listContent}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-      ListHeaderComponent={
-        isFetchingNextPage ? (
-          <View style={styles.loadingMore}>
-            <ActivityIndicator size="small" color={Colors.textMute} />
-          </View>
-        ) : null
-      }
-      refreshing={isFetchingNextPage}
-      onRefresh={() => {
-        if (hasNextPage && !isFetchingNextPage) onLoadMore?.();
-      }}
-    />
+    <View style={styles.root}>
+      {showTabs && (
+        <View style={styles.tabBar}>
+          <Pressable
+            style={[styles.tabBtn, tab === 'public' && styles.tabBtnActivePublic]}
+            onPress={() => setTab('public')}
+          >
+            <Ionicons name="earth-outline" size={14} color={tab === 'public' ? Colors.primaryDark : Colors.textMute} />
+            <Text style={[styles.tabBtnText, tab === 'public' && styles.tabBtnTextActivePublic]}>
+              Công khai ({publicCount})
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.tabBtn, tab === 'internal' && styles.tabBtnActiveInternal]}
+            onPress={() => setTab('internal')}
+          >
+            <Ionicons name="lock-closed-outline" size={14} color={tab === 'internal' ? Colors.warningDark : Colors.textMute} />
+            <Text style={[styles.tabBtnText, tab === 'internal' && styles.tabBtnTextActiveInternal]}>
+              Nội bộ ({internalCount})
+            </Text>
+          </Pressable>
+        </View>
+      )}
+
+      {items.length === 0 ? (
+        <View style={styles.center}>
+          <Ionicons name="chatbubbles-outline" size={36} color={Colors.textFaint} />
+          <Text style={styles.emptyText}>
+            {showTabs ? (tab === 'public' ? 'Chưa có bình luận công khai.' : 'Chưa có bình luận nội bộ.') : emptyText}
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          style={styles.list}
+          data={items}
+          keyExtractor={(item) => item.key}
+          renderItem={({ item }) => {
+            if (item.kind === 'date') {
+              return (
+                <View style={styles.dateRow}>
+                  <View style={styles.dateLine} />
+                  <Text style={styles.dateLabel}>{item.label}</Text>
+                  <View style={styles.dateLine} />
+                </View>
+              );
+            }
+            const comment = item.comment;
+            const isOwn = !!currentUserId && comment.authorUserId === currentUserId;
+            const authorWindowOk = isOwn && now - new Date(comment.createdAt).getTime() <= EDIT_WINDOW_MS;
+            const canEdit = !ticketClosed && (authorWindowOk || canEditAny) && !!onEdit;
+            const canDelete = !ticketClosed && (isOwn || canDeleteAny) && !!onDelete;
+            const editNeedsReason = canEdit && !authorWindowOk;
+            const deleteNeedsReason = canDelete && !isOwn;
+
+            return (
+              <ChatBubble
+                comment={comment}
+                isMe={isOwn}
+                imageHeaders={imageHeaders}
+                onImagePress={onImagePress}
+                accentColor={accentColor}
+                canEdit={canEdit}
+                canDelete={canDelete}
+                editNeedsReason={editNeedsReason}
+                deleteNeedsReason={deleteNeedsReason}
+                editPending={editPending}
+                deletePending={deletePending}
+                onEdit={(body, reason) => onEdit?.(comment, body, reason)}
+                onDelete={(reason) => onDelete?.(comment, reason)}
+                canTranslate={!!onTranslate}
+                translating={translatingId === comment.id}
+                onTranslate={(lang) => handleTranslate(comment, lang)}
+                translation={translations[comment.id]}
+                showingOriginal={!translations[comment.id] || showOriginalIds.has(comment.id)}
+                onToggleOriginal={() => toggleShowOriginal(comment.id)}
+              />
+            );
+          }}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={
+            isFetchingNextPage ? (
+              <View style={styles.loadingMore}>
+                <ActivityIndicator size="small" color={Colors.textMute} />
+              </View>
+            ) : null
+          }
+          refreshing={isFetchingNextPage}
+          onRefresh={() => {
+            if (hasNextPage && !isFetchingNextPage) onLoadMore?.();
+          }}
+        />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 60 },
   emptyText: { color: Colors.textFaint, fontSize: 14, fontWeight: '500' },
   list: { flex: 1 },
@@ -145,4 +300,19 @@ const styles = StyleSheet.create({
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dateLine: { flex: 1, height: 1, backgroundColor: Colors.border },
   dateLabel: { fontSize: 11, fontWeight: '700', color: Colors.textMute },
+
+  tabBar: {
+    flexDirection: 'row', gap: 6,
+    paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6,
+  },
+  tabBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999,
+    backgroundColor: Colors.card2,
+  },
+  tabBtnActivePublic: { backgroundColor: Colors.primaryLight },
+  tabBtnActiveInternal: { backgroundColor: Colors.warningLight },
+  tabBtnText: { fontSize: 12, fontWeight: '600', color: Colors.textMute },
+  tabBtnTextActivePublic: { color: Colors.primaryDark },
+  tabBtnTextActiveInternal: { color: Colors.warningDark },
 });
