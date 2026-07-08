@@ -1,6 +1,6 @@
 import { axiosInstance } from '../../../lib/axios';
 import { ENDPOINTS } from '../../../lib/endpoints';
-import { CommonResponse } from '../../../types/api.types';
+import { CommonResponse, CursorPaginationResponse } from '../../../types/api.types';
 import {
   UpdateChatPayload,
   ChatMarkReadPayload,
@@ -11,7 +11,20 @@ import {
   ChatSentimentCheckDTO,
 } from '../types/chat-actions.types';
 import { ChatAiIntentEnum } from '../../../shared/enums/chat.enum';
-import { TicketActionResponse } from '../types/ticket.types';
+import {
+  TicketActionResponse,
+  TicketCommentDTO,
+  TicketChatReactionsAggregateDTO,
+  ReactionTypeEnum,
+} from '../types/ticket.types';
+
+export interface ChatCursorParams {
+  cursor?: string;
+  limit?: number;
+}
+export interface ChatUnreadCountDTO {
+  unreadCount: number;
+}
 
 // Edit/Delete/Mark-read/Translate/Voice cho ticket chat — cùng endpoint
 // /api/tickets/{id}/chats mà staff đã gọi để list/add comment.
@@ -83,4 +96,37 @@ export const ticketChatActionsService = {
     axiosInstance.get<ArrayBuffer>(ENDPOINTS.TICKETS.CHAT_EXPORT_PDF(ticketId), {
       responseType: 'arraybuffer',
     }),
+
+  // ── GH-68 — Mọi role ───────────────────────────────────────────────────
+  // Cursor pagination — thay page/pageSize. BE trả CursorPaginationResponse (items/nextCursor/hasMore).
+  listCursor: (ticketId: string, params?: ChatCursorParams) =>
+    axiosInstance.get<CommonResponse<CursorPaginationResponse<TicketCommentDTO>>>(
+      ENDPOINTS.TICKETS.CHATS_CURSOR(ticketId),
+      { params },
+    ),
+
+  getUnreadCount: (ticketId: string) =>
+    axiosInstance.get<CommonResponse<ChatUnreadCountDTO>>(
+      ENDPOINTS.TICKETS.CHAT_UNREAD_COUNT(ticketId),
+    ),
+
+  addReaction: (ticketId: string, chatId: string, reactionType: ReactionTypeEnum) =>
+    axiosInstance.post<CommonResponse<TicketChatReactionsAggregateDTO>>(
+      ENDPOINTS.TICKETS.CHAT_REACTIONS(ticketId, chatId),
+      { reactionType },
+    ),
+
+  removeReaction: (ticketId: string, chatId: string, type: ReactionTypeEnum) =>
+    axiosInstance.delete<CommonResponse<TicketChatReactionsAggregateDTO>>(
+      ENDPOINTS.TICKETS.CHAT_REACTIONS(ticketId, chatId),
+      { params: { type } },
+    ),
+
+  // {attachmentId} route = FileId. validateStatus:()=>true — 202/451 KHÔNG throw để hook
+  // branch theo status thủ công (KHÔNG dùng handleErrorApi vì 2 status này là "success-path").
+  downloadAttachment: (ticketId: string, chatId: string, fileId: string) =>
+    axiosInstance.get<CommonResponse<string>>(
+      ENDPOINTS.TICKETS.CHAT_ATTACHMENT_DOWNLOAD(ticketId, chatId, fileId),
+      { validateStatus: () => true },
+    ),
 };

@@ -11,6 +11,7 @@ export {
   MaintenanceLogTypeEnum,
   ActorRoleEnum,
   ActivityActionEnum,
+  ReactionTypeEnum,
 } from '../../../shared/enums/ticket.enum';
 
 import type {
@@ -53,6 +54,47 @@ export interface TicketActivityDTO {
   createdAt: string;
 }
 
+// GH-68 — reaction aggregate (BE TicketChatReactionsAggregateDTO). Mỗi nhóm gồm count + danh
+// sách user đã react (dùng để biết current user đã react loại nào → toggle).
+export interface ChatReactionUserDTO {
+  userId: string;
+  role: ActorRoleEnum;
+}
+export interface ChatReactionGroupDTO {
+  count: number;
+  users: ChatReactionUserDTO[];
+}
+export interface TicketChatReactionsAggregateDTO {
+  thumbsUp: ChatReactionGroupDTO;
+  acknowledged: ChatReactionGroupDTO;
+  resolved: ChatReactionGroupDTO;
+  needMoreInfo: ChatReactionGroupDTO;
+  disagree: ChatReactionGroupDTO;
+}
+
+// GH-68 — mention trong chat (BE TicketChatMentionDTO).
+export interface TicketChatMentionDTO {
+  id: string;
+  chatId: string;
+  ticketId: string | null;
+  mentionedUserId: string;
+  mentionedUserRole: ActorRoleEnum;
+  mentionedDisplayName: string | null;
+  isAcknowledged: boolean;
+  acknowledgedAt: string | null;
+  createdAt: string;
+}
+
+// GH-68 — attachment đầy đủ (chỉ điền khi GetById; list dùng attachmentFileIds).
+export interface TicketAttachmentDTO {
+  id: string;
+  fileId: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
 export interface TicketCommentDTO {
   id: string;
   ticketId: string;
@@ -70,6 +112,14 @@ export interface TicketCommentDTO {
   isPinned?: boolean;
   pinnedAt?: string | null;
   pinnedByUserId?: string | null;
+  // GH-68 — cursor/list handler BE populate đủ; realtime ChatAdded không kèm → optional.
+  bodyFormat?: string;
+  bodyHtml?: string | null;
+  editedAt?: string | null;
+  lastEditedByUserId?: string | null;
+  reactions?: TicketChatReactionsAggregateDTO;
+  mentions?: TicketChatMentionDTO[];
+  attachments?: TicketAttachmentDTO[] | null;
 }
 
 export interface TicketDTO {

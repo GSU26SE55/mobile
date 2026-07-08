@@ -3,7 +3,7 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from '
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../lib/theme';
 import { ChatBubble } from './ChatBubble';
-import { TicketCommentDTO } from '../types/ticket.types';
+import { ReactionTypeEnum, TicketCommentDTO } from '../types/ticket.types';
 
 export type ChatTab = 'public' | 'internal';
 
@@ -88,6 +88,9 @@ interface CommentThreadProps {
   onPin?: (comment: TicketCommentDTO) => void;
   onUnpin?: (comment: TicketCommentDTO) => void;
   pinningId?: string | null;
+  // GH-68 — Reactions + download attachment (Mọi role). Có prop là bật tính năng.
+  onToggleReaction?: (comment: TicketCommentDTO, type: ReactionTypeEnum, isActive: boolean) => void;
+  onDownloadAttachments?: (comment: TicketCommentDTO, fileIds: string[]) => void;
 }
 
 /** Danh sách chat dùng chung customer + staff — từ trên xuống dưới, kéo để tải thêm lịch sử cũ. */
@@ -117,6 +120,8 @@ export function CommentThread({
   onPin,
   onUnpin,
   pinningId,
+  onToggleReaction,
+  onDownloadAttachments,
 }: CommentThreadProps) {
   const [internalTab, setInternalTab] = useState<ChatTab>('public');
   const tab = activeTab ?? internalTab;
@@ -277,6 +282,17 @@ export function CommentThread({
                 canPin={canPin}
                 pinning={pinningId === comment.id}
                 onTogglePin={() => (comment.isPinned ? onUnpin?.(comment) : onPin?.(comment))}
+                currentUserId={currentUserId}
+                onToggleReaction={
+                  onToggleReaction
+                    ? (type, isActive) => onToggleReaction(comment, type, isActive)
+                    : undefined
+                }
+                onDownloadAttachments={
+                  onDownloadAttachments
+                    ? (fileIds) => onDownloadAttachments(comment, fileIds)
+                    : undefined
+                }
               />
             );
           }}

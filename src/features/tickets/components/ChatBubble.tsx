@@ -16,8 +16,9 @@ import { BASE_URL } from '../../../lib/axios';
 import { ENDPOINTS } from '../../../lib/endpoints';
 import { Colors, Shadow } from '../../../lib/theme';
 import { BottomSheet } from '../../../shared/components/BottomSheet';
-import { TicketCommentDTO } from '../types/ticket.types';
+import { ReactionTypeEnum, TicketCommentDTO } from '../types/ticket.types';
 import { VoiceMessageBubble } from './VoiceMessageBubble';
+import { ReactionBar } from './ReactionBar';
 import { isFileId, useAudioAttachment } from '../hooks/useAudioAttachment';
 
 const ROLE_AVATAR: Record<string, { icon: keyof typeof Ionicons.glyphMap; iconColor: string; bg: string }> = {
@@ -181,12 +182,14 @@ interface ChatActionMenuProps {
   canTranslate: boolean;
   canPin: boolean;
   isPinned: boolean;
+  canDownload: boolean;
   translating: boolean;
   pinning: boolean;
   onEdit: () => void;
   onDeleteRequest: () => void;
   onTranslate: (lang: string) => void;
   onTogglePin: () => void;
+  onDownload: () => void;
 }
 
 const POPUP_WIDTH = 190;
@@ -206,12 +209,14 @@ function ChatActionMenu({
   canTranslate,
   canPin,
   isPinned,
+  canDownload,
   translating,
   pinning,
   onEdit,
   onDeleteRequest,
   onTranslate,
   onTogglePin,
+  onDownload,
 }: ChatActionMenuProps) {
   const [showLangs, setShowLangs] = useState(false);
 
@@ -224,7 +229,7 @@ function ChatActionMenu({
 
   const rowCount = showLangs
     ? LANGUAGE_OPTIONS.length + 1
-    : Number(canEdit) + Number(canPin) + Number(canTranslate) + Number(canDelete);
+    : Number(canEdit) + Number(canPin) + Number(canDownload) + Number(canTranslate) + Number(canDelete);
   const popupHeight = rowCount * MENU_ROW_HEIGHT + 12;
   const { width: screenW, height: screenH } = Dimensions.get('window');
 
@@ -258,6 +263,12 @@ function ChatActionMenu({
                 <Pressable style={styles.menuItem} onPress={() => { handleClose(); onTogglePin(); }} disabled={pinning}>
                   <Ionicons name={isPinned ? 'bookmark' : 'bookmark-outline'} size={18} color={Colors.primaryDark} />
                   <Text style={styles.menuItemText}>{isPinned ? 'Bỏ ghim' : 'Ghim'}</Text>
+                </Pressable>
+              )}
+              {canDownload && (
+                <Pressable style={styles.menuItem} onPress={() => { handleClose(); onDownload(); }}>
+                  <Ionicons name="download-outline" size={18} color={Colors.text} />
+                  <Text style={styles.menuItemText}>Tải tệp đính kèm</Text>
                 </Pressable>
               )}
               {canTranslate && (
@@ -321,6 +332,12 @@ export interface ChatBubbleProps {
   canPin?: boolean;
   pinning?: boolean;
   onTogglePin?: () => void;
+
+  // GH-68 — Reactions + download attachment. Mọi role.
+  currentUserId?: string | null;
+  onToggleReaction?: (type: ReactionTypeEnum, isActive: boolean) => void;
+  /** Tải toàn bộ attachment của chat (fileIds) qua virus-scan gate. */
+  onDownloadAttachments?: (fileIds: string[]) => void;
 }
 
 /** Bong bóng chat dùng chung customer + staff — tin của mình bên phải, người khác bên trái kèm avatar theo role. */
@@ -347,6 +364,9 @@ export function ChatBubble({
   canPin = false,
   pinning = false,
   onTogglePin,
+  currentUserId = null,
+  onToggleReaction,
+  onDownloadAttachments,
 }: ChatBubbleProps) {
   const [showTime, setShowTime] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
@@ -384,7 +404,8 @@ export function ChatBubble({
   // Tin trống (chỉ khoảng trắng) và không có ảnh — không render bubble rỗng gây dư khoảng trắng.
   if (!body && fileIds.length === 0) return null;
 
-  const canShowActions = canEdit || canDelete || canTranslate || canPin;
+  const canDownload = !!onDownloadAttachments && fileIds.length > 0;
+  const canShowActions = canEdit || canDelete || canTranslate || canPin || canDownload;
   const displayBody = showingOriginal || !translation ? body : translation.text;
 
   const time = new Date(comment.createdAt).toLocaleTimeString('vi-VN', {
@@ -533,6 +554,15 @@ export function ChatBubble({
           {!!comment.editCount && comment.editCount > 0 && !editing && (
             <Text style={styles.editedTag}>đã chỉnh sửa</Text>
           )}
+
+          {onToggleReaction && !editing && (
+            <ReactionBar
+              reactions={comment.reactions}
+              currentUserId={currentUserId}
+              onToggle={onToggleReaction}
+              alignEnd={isMe}
+            />
+          )}
         </View>
       </View>
 
@@ -545,12 +575,14 @@ export function ChatBubble({
         canTranslate={canTranslate}
         canPin={canPin}
         isPinned={!!comment.isPinned}
+        canDownload={canDownload}
         translating={translating}
         pinning={pinning}
         onEdit={startEdit}
         onDeleteRequest={() => setConfirmingDelete(true)}
         onTranslate={(lang) => onTranslate?.(lang)}
         onTogglePin={() => onTogglePin?.()}
+        onDownload={() => onDownloadAttachments?.(fileIds)}
       />
 
       <BottomSheet visible={confirmingDelete} onClose={() => setConfirmingDelete(false)} scroll={false}>

@@ -33,7 +33,10 @@ import { useRateTicket } from '../../../src/features/tickets/hooks/useRateTicket
 import { useReopenTicket } from '../../../src/features/tickets/hooks/useReopenTicket';
 import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/useUploadCommentAttachment';
 import { useTicketDetail } from '../../../src/features/tickets/hooks/useTicketDetail';
-import { useTicketComments } from '../../../src/features/tickets/hooks/useTicketComments';
+import { useTicketChatsCursor } from '../../../src/features/tickets/hooks/useTicketChatsCursor';
+import { useAddReaction, useRemoveReaction } from '../../../src/features/tickets/hooks/useChatReactions';
+import { useDownloadChatAttachment } from '../../../src/features/tickets/hooks/useDownloadChatAttachment';
+import { useTicketUnreadCount } from '../../../src/features/tickets/hooks/useTicketUnreadCount';
 import { useTicketActivities } from '../../../src/features/tickets/hooks/useTicketActivities';
 import { useTicketCommentsRealtime } from '../../../src/features/tickets/hooks/useTicketCommentsRealtime';
 import {
@@ -171,12 +174,16 @@ function TicketDetailScreenInner() {
   const { mutateAsync: uploadAttachment, isPending: isUploading  } = useUploadCommentAttachment();
 
   // GH-44 — comments qua GET phân trang (DESC newest-first) + activities standalone + realtime.
-  const commentsQuery = useTicketComments(id);
+  const commentsQuery = useTicketChatsCursor(id);
   const activitiesQuery = useTicketActivities(id);
   const { isConnected, typingUsers, notifyTyping } = useTicketCommentsRealtime(id);
   const { mutate: updateChat, isPending: editChatPending } = useUpdateTicketChat(id ?? '');
   const { mutate: deleteChat, isPending: deleteChatPending } = useDeleteTicketChat(id ?? '');
   const { mutate: markChatsRead } = useMarkTicketChatsRead(id ?? '');
+  const { mutate: addReaction } = useAddReaction(id ?? '');
+  const { mutate: removeReaction } = useRemoveReaction(id ?? '');
+  const { mutateAsync: downloadAttachment } = useDownloadChatAttachment(id ?? '');
+  const { data: unreadCount = 0 } = useTicketUnreadCount(id);
   const { mutateAsync: translateChat } = useTranslateTicketChat(id ?? '');
   const { mutateAsync: transcribeVoice, isPending: transcribing } = useTranscribeVoiceChat(id ?? '');
   const voiceRecorder = useVoiceRecorder();
@@ -370,7 +377,14 @@ function TicketDetailScreenInner() {
           <Ionicons name="chevron-back" size={18} color={Colors.text} />
         </Pressable>
         <Text style={styles.topCode} numberOfLines={1}>{ticket.code}</Text>
-        <View style={{ width: 42 }} />
+        <View style={styles.unreadSlot}>
+          {unreadCount > 0 && (
+            <View style={styles.unreadBadge}>
+              <Ionicons name="chatbubble" size={11} color="#FFF" />
+              <Text style={styles.unreadText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {/* Tab bar */}
@@ -573,6 +587,24 @@ function TicketDetailScreenInner() {
             deletePending={deleteChatPending}
             onMarkRead={handleMarkRead}
             onTranslate={handleTranslate}
+            onToggleReaction={(comment, type, isActive) =>
+              isActive
+                ? removeReaction({ chatId: comment.id, type })
+                : addReaction({ chatId: comment.id, reactionType: type })
+            }
+            onDownloadAttachments={(comment, fileIds) => {
+              // Tuần tự — tránh nhiều share sheet mở cùng lúc (share sheet thứ 2 bị nuốt).
+              void (async () => {
+                for (const fid of fileIds) {
+                  try {
+                    await downloadAttachment({ chatId: comment.id, fileId: fid, fileName: `tep-${fid.slice(0, 8)}` });
+                  } catch (e) {
+                    Alert.alert('Tải tệp', (e as Error).message);
+                    break;
+                  }
+                }
+              })();
+            }}
           />
 
           {/* Attachment chips */}
@@ -703,6 +735,13 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(0,0,0,0.02)',
   },
   topCode:        { flex: 1, textAlign: 'center', fontSize: 14, fontWeight: '800', color: Colors.text },
+  unreadSlot:     { width: 42, alignItems: 'flex-end', justifyContent: 'center' },
+  unreadBadge:    {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: Colors.primary, borderRadius: 999,
+    paddingHorizontal: 7, paddingVertical: 3,
+  },
+  unreadText:     { color: '#FFF', fontSize: 11, fontWeight: '800' },
   moreBtn:        {
     width: 42, height: 42, borderRadius: 14,
     backgroundColor: '#FFFFFF',

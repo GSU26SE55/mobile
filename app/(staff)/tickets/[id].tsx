@@ -39,7 +39,10 @@ import { useStaffAddComment } from '../../../src/features/staff/hooks/useStaffAd
 import { useAddMaintenanceLog } from '../../../src/features/staff/hooks/useAddMaintenanceLog';
 import { useUpdateMaintenanceLog } from '../../../src/features/staff/hooks/useUpdateMaintenanceLog';
 import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/useUploadCommentAttachment';
-import { useTicketComments } from '../../../src/features/tickets/hooks/useTicketComments';
+import { useTicketChatsCursor } from '../../../src/features/tickets/hooks/useTicketChatsCursor';
+import { useAddReaction, useRemoveReaction } from '../../../src/features/tickets/hooks/useChatReactions';
+import { useDownloadChatAttachment } from '../../../src/features/tickets/hooks/useDownloadChatAttachment';
+import { useTicketUnreadCount } from '../../../src/features/tickets/hooks/useTicketUnreadCount';
 import { useTicketActivities } from '../../../src/features/tickets/hooks/useTicketActivities';
 import { useTicketCommentsRealtime } from '../../../src/features/tickets/hooks/useTicketCommentsRealtime';
 import {
@@ -140,13 +143,17 @@ function StaffTicketDetailScreenInner() {
   const { mutate: removeKbRef } = useRemoveKbRef(ticketId);
 
   // GH-44 — comments/activities qua GET riêng + realtime (Staff thấy cả comment internal).
-  const commentsQuery = useTicketComments(ticketId || undefined);
+  const commentsQuery = useTicketChatsCursor(ticketId || undefined);
   const activitiesQuery = useTicketActivities(ticketId || undefined);
   const { isConnected, typingUsers, notifyTyping } = useTicketCommentsRealtime(ticketId || undefined);
   const { mutate: updateChat, isPending: editChatPending } = useUpdateTicketChat(ticketId);
   const { mutate: deleteChat, isPending: deleteChatPending } = useDeleteTicketChat(ticketId);
   const { mutate: markChatsRead } = useMarkTicketChatsRead(ticketId);
   const { mutateAsync: translateChat } = useTranslateTicketChat(ticketId);
+  const { mutate: addReaction } = useAddReaction(ticketId);
+  const { mutate: removeReaction } = useRemoveReaction(ticketId);
+  const { mutateAsync: downloadAttachment } = useDownloadChatAttachment(ticketId);
+  const { data: unreadCount = 0 } = useTicketUnreadCount(ticketId || undefined);
   const { mutateAsync: transcribeVoice, isPending: transcribing } = useTranscribeVoiceChat(ticketId);
   // GH-67 — ghim chat. pinningId theo dõi bubble đang thao tác để hiện spinner đúng chỗ.
   const { mutate: pinChat, isPending: pinChatPending, variables: pinningVar } = usePinChat(ticketId);
@@ -335,7 +342,14 @@ function StaffTicketDetailScreenInner() {
           <Text style={styles.headerCode}>{ticket.code}</Text>
           <TicketStatusBadge status={ticket.status} />
         </View>
-        <View style={{ width: 36 }} />
+        <View style={styles.unreadSlot}>
+          {unreadCount > 0 && (
+            <View style={styles.unreadBadge}>
+              <Ionicons name="chatbubble" size={10} color="#FFF" />
+              <Text style={styles.unreadText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {activeTab === 'comments' ? (
@@ -370,6 +384,24 @@ function StaffTicketDetailScreenInner() {
             onPin={(comment) => pinChat(comment.id)}
             onUnpin={(comment) => unpinChat(comment.id)}
             pinningId={pinningId}
+            onToggleReaction={(comment, type, isActive) =>
+              isActive
+                ? removeReaction({ chatId: comment.id, type })
+                : addReaction({ chatId: comment.id, reactionType: type })
+            }
+            onDownloadAttachments={(comment, fileIds) => {
+              // Tuần tự — tránh nhiều share sheet mở cùng lúc (share sheet thứ 2 bị nuốt).
+              void (async () => {
+                for (const fid of fileIds) {
+                  try {
+                    await downloadAttachment({ chatId: comment.id, fileId: fid, fileName: `tep-${fid.slice(0, 8)}` });
+                  } catch (e) {
+                    Alert.alert('Tải tệp', (e as Error).message);
+                    break;
+                  }
+                }
+              })();
+            }}
           />
 
           {/* GH-67 — thanh AI/Export (Staff). Disable khi ticket đã đóng. */}
@@ -705,6 +737,13 @@ const styles = StyleSheet.create({
   backBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: Colors.card2, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerCode: { fontSize: 16, fontWeight: '800', color: Colors.text },
+  unreadSlot: { width: 36, alignItems: 'flex-end', justifyContent: 'center' },
+  unreadBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: Colors.primary, borderRadius: 999,
+    paddingHorizontal: 6, paddingVertical: 3,
+  },
+  unreadText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
 
   scrollBody: { flex: 1 },
   scrollContent: { padding: 16, gap: 12 },

@@ -8,6 +8,7 @@ import { P } from '../../../src/lib/authz';
 import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
 import { useSiteDetail } from '../../../src/features/sites/hooks/useSiteDetail';
 import { useSiteDashboard } from '../../../src/features/sites/hooks/useSiteDashboard';
+import { SiteActiveIncidentsWidget } from '../../../src/features/incidents/components/SiteActiveIncidentsWidget';
 import { useSiteAssets } from '../../../src/features/sites/hooks/useSiteAssets';
 import { SiteHealthBadge } from '../../../src/features/sites/components/SiteHealthBadge';
 import { useAmbientLatest } from '../../../src/features/ambient/hooks/useAmbientLatest';
@@ -66,6 +67,11 @@ function SiteDetailInner() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.name}>{site.name}</Text>
         {site.address ? <Text style={styles.address}>{site.address}</Text> : null}
+
+        <SiteActiveIncidentsWidget
+          siteId={siteId}
+          onPressIncident={(incidentId) => router.push(`/(staff)/incidents/${incidentId}`)}
+        />
 
         {dashboard ? (
           <View style={[styles.statsCard, Shadow]}>
