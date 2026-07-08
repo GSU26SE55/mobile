@@ -1,7 +1,7 @@
 # Plan — GH-67: [Mobile] Staff chat & dashboard API gap — 6 endpoint Staff-only
 
 ## Metadata
-- **Status:** IN_PROGRESS | **Role:** FE (Mobile) | **Ngày:** 2026-07-08
+- **Status:** REVIEWING | **Role:** FE (Mobile) | **Ngày:** 2026-07-08
 - **Issue:** #67 — https://github.com/GSU26SE55/mobile/issues/67
 - **Sprint:** Sprint 1 (deadline 2026-05-30)
 - **Dev:** Trần Minh Trí (SE183109)
