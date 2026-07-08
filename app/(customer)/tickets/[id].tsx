@@ -45,9 +45,10 @@ import {
 } from '../../../src/features/tickets/hooks/useTicketChatActions';
 import { useVoiceRecorder } from '../../../src/features/tickets/hooks/useVoiceRecorder';
 import { VoiceRecordingModal } from '../../../src/features/tickets/components/VoiceRecordingModal';
+import { TypingIndicator } from '../../../src/features/tickets/components/TypingIndicator';
 import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
 import { AuthImage } from '../../../src/features/file-storage/components/AuthImage';
-import { AttachmentForm, commentSchema } from '../../../src/features/tickets/schemas/comment.schema';
+import { AttachmentForm } from '../../../src/features/tickets/schemas/comment.schema';
 import { RatePayload, ReopenPayload, TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
 import { BASE_URL } from '../../../src/lib/axios';
 import { ENDPOINTS } from '../../../src/lib/endpoints';
@@ -285,13 +286,11 @@ function TicketDetailScreenInner() {
 
   const handleSendComment = async () => {
     setCommentError('');
-    const result = commentSchema.safeParse({ body: commentText, attachments });
-    if (!result.success) {
-      setCommentError(result.error.flatten().fieldErrors.body?.[0] ?? 'Nội dung không hợp lệ');
-      return;
-    }
+    // Không báo lỗi "để trống" — nút gửi đã disable khi rỗng. Chỉ chặn gửi tin hoàn toàn trống.
+    const trimmed = commentText.trim();
+    if (!trimmed && attachments.length === 0) return;
     try {
-      await addComment({ body: result.data.body, attachments: result.data.attachments });
+      await addComment({ body: trimmed, attachments: attachments.length > 0 ? attachments : undefined });
       setCommentText('');
       setAttachments([]);
       // Realtime là nguồn chính: hub đẩy ChatAdded (BE gửi tới cả người gửi) → setQueryData prepend.
@@ -576,13 +575,6 @@ function TicketDetailScreenInner() {
             onTranslate={handleTranslate}
           />
 
-          {/* Typing indicator (realtime) */}
-          {typingUsers.length > 0 && (
-            <Text style={styles.typingText}>
-              {typingUsers.map((u) => u.displayName).join(', ')} đang nhập…
-            </Text>
-          )}
-
           {/* Attachment chips */}
           {attachments.length > 0 && (
             <View style={styles.attachmentList}>
@@ -603,6 +595,9 @@ function TicketDetailScreenInner() {
               <Text style={styles.fieldError}>{commentError}</Text>
             </View>
           ) : null}
+
+          {/* "Đang nhập" — ngay trên ô input, nền transparent */}
+          <TypingIndicator names={typingUsers.map((u) => u.displayName)} />
 
           {/* Composer bar */}
           <View
@@ -639,9 +634,9 @@ function TicketDetailScreenInner() {
                 : <Ionicons name="mic-outline" size={22} color={Colors.textMute} />}
             </Pressable>
             <Pressable
-              style={[styles.sendBtn, (!commentText.trim() || isCommenting) && styles.btnDisabled]}
+              style={[styles.sendBtn, ((!commentText.trim() && attachments.length === 0) || isCommenting) && styles.btnDisabled]}
               onPress={handleSendComment}
-              disabled={!commentText.trim() || isCommenting}
+              disabled={(!commentText.trim() && attachments.length === 0) || isCommenting}
             >
               {isCommenting
                 ? <ActivityIndicator color="#fff" size="small" />
@@ -933,8 +928,6 @@ const styles = StyleSheet.create({
   closedText:     { fontSize: 13, fontWeight: '700', color: Colors.textMute },
 
   timelineCard:   { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, gap: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
-
-  typingText:     { color: Colors.textMute, fontSize: 12, fontStyle: 'italic', paddingHorizontal: 18, paddingBottom: 4 },
 
   composer:       {
     flexDirection: 'row', alignItems: 'center', gap: 8,

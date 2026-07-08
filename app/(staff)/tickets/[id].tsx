@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BadgeColors, Colors, Shadow, ShadowPrimary } from '../../../src/lib/theme';
 import { ActivityTimeline } from '../../../src/features/tickets/components/ActivityTimeline';
+import { TypingIndicator } from '../../../src/features/tickets/components/TypingIndicator';
 import { SlaCountdown } from '../../../src/features/tickets/components/SlaCountdown';
 import { TicketStatusBadge } from '../../../src/features/tickets/components/TicketStatusBadge';
 import { TicketActionBar } from '../../../src/features/staff/components/TicketActionBar';
@@ -47,11 +48,14 @@ import {
   useMarkTicketChatsRead,
   useTranslateTicketChat,
   useTranscribeVoiceChat,
+  usePinChat,
+  useUnpinChat,
 } from '../../../src/features/tickets/hooks/useTicketChatActions';
 import { useVoiceRecorder } from '../../../src/features/tickets/hooks/useVoiceRecorder';
 import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
 import { AuthImage } from '../../../src/features/file-storage/components/AuthImage';
 import { CommentThread, ChatTab } from '../../../src/features/tickets/components/CommentThread';
+import { ChatAiToolbar } from '../../../src/features/tickets/components/ChatAiToolbar';
 import { VoiceRecordingModal } from '../../../src/features/tickets/components/VoiceRecordingModal';
 import { ProcessingDurationTimer } from '../../../src/features/staff/components/ProcessingDurationTimer';
 import { AttachmentForm } from '../../../src/features/tickets/schemas/comment.schema';
@@ -144,6 +148,10 @@ function StaffTicketDetailScreenInner() {
   const { mutate: markChatsRead } = useMarkTicketChatsRead(ticketId);
   const { mutateAsync: translateChat } = useTranslateTicketChat(ticketId);
   const { mutateAsync: transcribeVoice, isPending: transcribing } = useTranscribeVoiceChat(ticketId);
+  // GH-67 — ghim chat. pinningId theo dõi bubble đang thao tác để hiện spinner đúng chỗ.
+  const { mutate: pinChat, isPending: pinChatPending, variables: pinningVar } = usePinChat(ticketId);
+  const { mutate: unpinChat, isPending: unpinChatPending, variables: unpinningVar } = useUnpinChat(ticketId);
+  const pinningId = pinChatPending ? pinningVar : unpinChatPending ? unpinningVar : null;
   const voiceRecorder = useVoiceRecorder();
   // Trung bình biên độ hiện tại — điều khiển quả cầu "thở" theo giọng nói trong VoiceRecordingModal.
   const voiceLevel =
@@ -226,7 +234,7 @@ function StaffTicketDetailScreenInner() {
 
   const handleSendComment = () => {
     const trimmed = commentText.trim();
-    if (!trimmed && attachments.length === 0) return;
+    if (!trimmed && commentAttachments.length === 0) return;
     addComment(
       {
         body: trimmed,
@@ -359,13 +367,20 @@ function StaffTicketDetailScreenInner() {
             deletePending={deleteChatPending}
             onMarkRead={handleMarkRead}
             onTranslate={handleTranslate}
+            onPin={(comment) => pinChat(comment.id)}
+            onUnpin={(comment) => unpinChat(comment.id)}
+            pinningId={pinningId}
           />
 
-          {typingUsers.length > 0 && (
-            <Text style={styles.typingText}>
-              {typingUsers.map((u) => u.displayName).join(', ')} đang nhập…
-            </Text>
-          )}
+          {/* GH-67 — thanh AI/Export (Staff). Disable khi ticket đã đóng. */}
+          <ChatAiToolbar
+            ticketId={ticketId}
+            disabled={ticketClosed}
+            onInsert={(text) => setCommentText((prev) => (prev.trim() ? `${prev}\n${text}` : text))}
+          />
+
+          {/* "Đang nhập" — ngay trên ô input, nền transparent */}
+          <TypingIndicator names={typingUsers.map((u) => u.displayName)} />
 
           <View
             style={[
@@ -414,9 +429,9 @@ function StaffTicketDetailScreenInner() {
                 )}
               </Pressable>
               <Pressable
-                style={[styles.sendBtn, (!commentText.trim() || isSending || uploadingComment || voiceRecorder.isRecording) && styles.sendBtnDisabled]}
+                style={[styles.sendBtn, ((!commentText.trim() && commentAttachments.length === 0) || isSending || uploadingComment || voiceRecorder.isRecording) && styles.sendBtnDisabled]}
                 onPress={handleSendComment}
-                disabled={!commentText.trim() || isSending || uploadingComment || voiceRecorder.isRecording}
+                disabled={(!commentText.trim() && commentAttachments.length === 0) || isSending || uploadingComment || voiceRecorder.isRecording}
               >
                 {isSending ? (
                   <ActivityIndicator size="small" color="#FFF" />
@@ -732,7 +747,6 @@ const styles = StyleSheet.create({
   chatTabRowWrap: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
   tabContent: { gap: 10 },
   emptyTab: { textAlign: 'center', fontSize: 13, color: Colors.textFaint, fontWeight: '600', paddingVertical: 24 },
-  typingText: { color: Colors.textMute, fontSize: 12, fontStyle: 'italic', paddingHorizontal: 16, paddingBottom: 4 },
   logEditBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', marginTop: 6, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999, backgroundColor: Colors.primaryLight },
   logEditText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
   kbAssignBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11, borderRadius: 14, backgroundColor: Colors.primary, marginBottom: 12 },

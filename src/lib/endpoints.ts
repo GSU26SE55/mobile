@@ -104,6 +104,12 @@ export const ENDPOINTS = {
     CHAT_MARK_READ:  (tid: string) => `/api/tickets/${tid}/chats/mark-read`, // POST { chatIds }
     CHAT_TRANSLATE:  (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}/translate`, // POST ?to=
     CHAT_VOICE:      (tid: string) => `/api/tickets/${tid}/chats/voice`, // POST multipart — field "AudioFile"
+    // GH-67 — Staff/Manager/Admin chat actions
+    CHAT_PIN:        (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}/pin`, // POST pin / DELETE unpin
+    CHAT_SUGGEST:    (tid: string) => `/api/tickets/${tid}/chats/suggest`,        // POST { intent } (AI)
+    CHAT_SUMMARIZE:  (tid: string) => `/api/tickets/${tid}/chats/summarize`,      // POST (AI)
+    CHAT_SENTIMENT:  (tid: string) => `/api/tickets/${tid}/chats/sentiment-check`, // POST (AI)
+    CHAT_EXPORT_PDF: (tid: string) => `/api/tickets/${tid}/chats/export-pdf`,     // GET application/pdf
     ACTIVITIES:      (id: string) => `/api/tickets/${id}/activities`, // GH-44 — timeline
     REOPEN:          (id: string) => `/api/customer/tickets/${id}/reopen`,
     RATE:            (id: string) => `/api/customer/tickets/${id}/rate`,
@@ -113,6 +119,8 @@ export const ENDPOINTS = {
   },
   STAFF_TICKETS: {
     MY_LIST:          '/api/staff/tickets/me',
+    DASHBOARD_STATS:  '/api/staff/tickets/dashboard/stats', // GH-67 — KPI snapshot theo JWT
+
     START:            (id: string) => `/api/staff/tickets/${id}/start`,
     HOLD:             (id: string) => `/api/staff/tickets/${id}/hold`,
     RESUME:           (id: string) => `/api/staff/tickets/${id}/resume`,

@@ -76,6 +76,7 @@ export const QUERY_KEY = {
     list:   (params?: Record<string, unknown>) => [...KEY.staffTickets, 'list', params] as const,
     detail: (id: string) => [...KEY.staffTickets, 'detail', id] as const,
     myLogs: () => [...KEY.staffTickets, 'my-logs'] as const, // GH-44 #3
+    dashboardStats: () => [...KEY.staffTickets, 'dashboard-stats'] as const, // GH-67
   },
   notifications: {
     list: (params?: Record<string, unknown>) => [...KEY.notifications, 'list', params] as const,

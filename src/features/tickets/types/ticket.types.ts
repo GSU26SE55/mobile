@@ -65,6 +65,11 @@ export interface TicketCommentDTO {
   createdAt: string;
   editCount?: number;
   updatedAt?: string | null;
+  // GH-67 — pin chat. BE GET /chats list (TicketChatsQueryHandler) project cả 3; realtime
+  // ChatAdded không kèm → optional, undefined = chưa pin.
+  isPinned?: boolean;
+  pinnedAt?: string | null;
+  pinnedByUserId?: string | null;
 }
 
 export interface TicketDTO {

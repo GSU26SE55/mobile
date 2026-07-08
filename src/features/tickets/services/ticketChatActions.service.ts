@@ -6,7 +6,12 @@ import {
   ChatMarkReadPayload,
   ChatTranslateDTO,
   ChatVoiceActionDTO,
+  ChatSuggestDTO,
+  ChatSummarizeDTO,
+  ChatSentimentCheckDTO,
 } from '../types/chat-actions.types';
+import { ChatAiIntentEnum } from '../../../shared/enums/chat.enum';
+import { TicketActionResponse } from '../types/ticket.types';
 
 // Edit/Delete/Mark-read/Translate/Voice cho ticket chat — cùng endpoint
 // /api/tickets/{id}/chats mà staff đã gọi để list/add comment.
@@ -51,4 +56,31 @@ export const ticketChatActionsService = {
       { headers: { 'Content-Type': 'multipart/form-data' } },
     );
   },
+
+  // ── GH-67 — Staff/Manager/Admin ────────────────────────────────────────
+  pin: (ticketId: string, chatId: string) =>
+    axiosInstance.post<TicketActionResponse>(ENDPOINTS.TICKETS.CHAT_PIN(ticketId, chatId)),
+
+  unpin: (ticketId: string, chatId: string) =>
+    axiosInstance.delete<TicketActionResponse>(ENDPOINTS.TICKETS.CHAT_PIN(ticketId, chatId)),
+
+  // AI — intent gửi STRING (BE JsonStringEnumConverter). 200 isSuccess:false (Gemini rate-limit)
+  // được interceptor tự reject → xử lý ở onError của hook.
+  suggest: (ticketId: string, intent: ChatAiIntentEnum) =>
+    axiosInstance.post<CommonResponse<ChatSuggestDTO>>(
+      ENDPOINTS.TICKETS.CHAT_SUGGEST(ticketId),
+      { intent },
+    ),
+
+  summarize: (ticketId: string) =>
+    axiosInstance.post<CommonResponse<ChatSummarizeDTO>>(ENDPOINTS.TICKETS.CHAT_SUMMARIZE(ticketId)),
+
+  sentimentCheck: (ticketId: string) =>
+    axiosInstance.post<CommonResponse<ChatSentimentCheckDTO>>(ENDPOINTS.TICKETS.CHAT_SENTIMENT(ticketId)),
+
+  // Binary PDF — KHÔNG bọc CommonResponse (giống file-storage.downloadFile). Hook tự guard rỗng.
+  exportPdf: (ticketId: string) =>
+    axiosInstance.get<ArrayBuffer>(ENDPOINTS.TICKETS.CHAT_EXPORT_PDF(ticketId), {
+      responseType: 'arraybuffer',
+    }),
 };

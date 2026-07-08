@@ -84,6 +84,10 @@ interface CommentThreadProps {
     comment: TicketCommentDTO,
     targetLanguage: string,
   ) => Promise<{ translatedBody: string; targetLanguage: string } | undefined>;
+  // GH-67 — Ghim (Staff/Manager/Admin). Có đủ onPin + onUnpin mới hiện menu ghim.
+  onPin?: (comment: TicketCommentDTO) => void;
+  onUnpin?: (comment: TicketCommentDTO) => void;
+  pinningId?: string | null;
 }
 
 /** Danh sách chat dùng chung customer + staff — từ trên xuống dưới, kéo để tải thêm lịch sử cũ. */
@@ -110,6 +114,9 @@ export function CommentThread({
   deletePending = false,
   onMarkRead,
   onTranslate,
+  onPin,
+  onUnpin,
+  pinningId,
 }: CommentThreadProps) {
   const [internalTab, setInternalTab] = useState<ChatTab>('public');
   const tab = activeTab ?? internalTab;
@@ -147,6 +154,7 @@ export function CommentThread({
     const id = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(id);
   }, []);
+
 
   // Bản dịch giữ cục bộ theo chatId — cho phép toggle gốc/dịch không cần gọi lại BE.
   const [translations, setTranslations] = useState<Record<string, { lang: string; text: string }>>({});
@@ -241,6 +249,7 @@ export function CommentThread({
             const authorWindowOk = isOwn && now - new Date(comment.createdAt).getTime() <= EDIT_WINDOW_MS;
             const canEdit = !ticketClosed && (authorWindowOk || canEditAny) && !!onEdit;
             const canDelete = !ticketClosed && (isOwn || canDeleteAny) && !!onDelete;
+            const canPin = !ticketClosed && !!onPin && !!onUnpin;
             const editNeedsReason = canEdit && !authorWindowOk;
             const deleteNeedsReason = canDelete && !isOwn;
 
@@ -265,6 +274,9 @@ export function CommentThread({
                 translation={translations[comment.id]}
                 showingOriginal={!translations[comment.id] || showOriginalIds.has(comment.id)}
                 onToggleOriginal={() => toggleShowOriginal(comment.id)}
+                canPin={canPin}
+                pinning={pinningId === comment.id}
+                onTogglePin={() => (comment.isPinned ? onUnpin?.(comment) : onPin?.(comment))}
               />
             );
           }}

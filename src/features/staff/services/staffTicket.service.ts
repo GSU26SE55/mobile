@@ -2,13 +2,17 @@ import { axiosInstance } from '../../../lib/axios';
 import { ENDPOINTS } from '../../../lib/endpoints';
 import { CommonResponse, PaginationResponse } from '../../../types/api.types';
 import { TicketActionResponse, TicketDetailDTO, TicketDTO } from '../../tickets/types/ticket.types';
-import { EscalatePayload, HoldPayload, MaintenanceLogPayload, ResolvePayload, StaffAddCommentPayload, StaffMaintenanceLogGroupDTO, StaffTicketListParams, UpdateMaintenanceLogPayload } from '../types/staff.types';
+import { EscalatePayload, HoldPayload, MaintenanceLogPayload, ResolvePayload, StaffAddCommentPayload, StaffMaintenanceLogGroupDTO, StaffTicketDashboardStatsDto, StaffTicketListParams, UpdateMaintenanceLogPayload } from '../types/staff.types';
 
 const { STAFF_TICKETS, TICKETS } = ENDPOINTS;
 
 export const staffTicketService = {
   getMyTickets: (params?: StaffTicketListParams) =>
     axiosInstance.get<CommonResponse<PaginationResponse<TicketDTO>>>(STAFF_TICKETS.MY_LIST, { params }),
+
+  // GH-67 — KPI snapshot theo JWT (không query param).
+  getDashboardStats: () =>
+    axiosInstance.get<CommonResponse<StaffTicketDashboardStatsDto>>(STAFF_TICKETS.DASHBOARD_STATS),
 
   getDetail: (id: string) =>
     axiosInstance.get<CommonResponse<TicketDetailDTO>>(TICKETS.DETAIL(id)),

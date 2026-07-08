@@ -65,6 +65,9 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
   const stop = useCallback(async (): Promise<VoiceFile | null> => {
     if (!state.isRecording) return null;
     await recorder.stop();
+    // iOS: rời khỏi category PlayAndRecord ngay khi ngừng ghi — nếu để allowsRecording=true,
+    // mic bị loopback ra loa gây vọng lại chính giọng vừa ghi sau khi bấm gửi.
+    await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
     setWaveform(SILENT_WAVEFORM);
     const uri = recorder.uri;
     if (!uri) return null;
@@ -75,6 +78,7 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
     if (state.isRecording) {
       await recorder.stop();
     }
+    await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
     setWaveform(SILENT_WAVEFORM);
   }, [recorder, state.isRecording]);
 
