@@ -1,11 +1,13 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { useChangeEmail } from '../../../src/features/account/hooks/useChangeEmail';
 import { useConfirmEmailChange } from '../../../src/features/account/hooks/useConfirmEmailChange';
 import { ChangeEmailForm } from '../../../src/features/account/components/ChangeEmailForm';
 import { ConfirmEmailOtpForm } from '../../../src/features/account/components/ConfirmEmailOtpForm';
 import { handleErrorApi } from '../../../src/lib/errors';
 import { ChangeEmailInput, ConfirmEmailOtpInput } from '../../../src/features/account/schemas/changeEmail.schema';
+import { Colors } from '../../../src/lib/theme';
 
 export default function ChangeEmailScreen() {
   const [step, setStep] = useState<1 | 2>(1);
@@ -40,6 +42,12 @@ export default function ChangeEmailScreen() {
     }
   };
 
+  // Quay lại step 1 để nhập email khác / gửi lại OTP (tránh kẹt khi OTP hết hạn ở step 2).
+  const backToStep1 = () => {
+    setStep(1);
+    setStep2Errors({});
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.step}>Bước {step}/2</Text>
@@ -51,11 +59,17 @@ export default function ChangeEmailScreen() {
           fieldErrors={step1Errors}
         />
       ) : (
-        <ConfirmEmailOtpForm
-          onSubmit={handleStep2}
-          isLoading={confirmChange.isPending}
-          fieldErrors={step2Errors}
-        />
+        <>
+          <ConfirmEmailOtpForm
+            onSubmit={handleStep2}
+            isLoading={confirmChange.isPending}
+            fieldErrors={step2Errors}
+          />
+          <Pressable style={styles.backLink} onPress={backToStep1} accessibilityRole="button">
+            <Ionicons name="chevron-back" size={16} color={Colors.primary} />
+            <Text style={styles.backText}>Nhập email khác</Text>
+          </Pressable>
+        </>
       )}
     </ScrollView>
   );
@@ -63,5 +77,7 @@ export default function ChangeEmailScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 24 },
-  step:      { fontSize: 13, color: '#6b7280', marginBottom: 16 },
+  step:      { fontSize: 13, color: Colors.textMute, marginBottom: 16 },
+  backLink:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 20 },
+  backText:  { fontSize: 14, fontWeight: '600', color: Colors.primary },
 });

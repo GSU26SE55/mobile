@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
+import { useEffect, useState, useRef } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -24,19 +24,23 @@ import { Colors, Spacing } from '../../src/lib/theme';
 type Mode = 'totp' | 'backup' | 'sms';
 
 const SUBTITLES: Record<Mode, string> = {
-  totp: 'Nhập mã 6 số từ ứng dụng Authenticator.',
-  backup: 'Nhập một backup code (xxxx-xxxx).',
-  sms: 'Nhập mã 6 số đã gửi qua SMS.',
+  totp: 'Nhập mã 6 số từ ứng dụng Authenticator để tiếp tục.',
+  backup: 'Nhập mã dự phòng (backup code) định dạng xxxx-xxxx.',
+  sms: 'Nhập mã xác thực 6 số đã gửi qua tin nhắn SMS.',
 };
 
 export default function Login2faScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [mode, setMode] = useState<Mode>('totp');
   const [maskedPhone, setMaskedPhone] = useState<string | null>(null);
   const [trustDevice, setTrustDevice] = useState(false);
   const [trustLabel, setTrustLabel] = useState('');
+  const [focused, setFocused] = useState(false);
+
+  const otpInputRef = useRef<TextInput>(null);
 
   const verify = useVerify2faLogin();
   const sendSms = useSend2faSms();
@@ -93,61 +97,116 @@ export default function Login2faScreen() {
     verify.mutate(payload, { onError: (error) => handleErrorApi({ error }) });
   };
 
+  const focusOtp = () => {
+    otpInputRef.current?.focus();
+  };
+
   const showTrust = mode !== 'backup';
+  const isOtpMode = mode === 'totp' || mode === 'sms';
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Back button to go back to Login */}
+      <Pressable onPress={() => router.replace('/(auth)/login')} style={[styles.backBtn, { top: insets.top + 16 }]}>
+        <Ionicons name="chevron-back" size={20} color="#1A1A1C" />
+      </Pressable>
+
       <ScrollView
-        contentContainerStyle={[styles.container, { paddingTop: insets.top + 40 }]}
+        contentContainerStyle={[styles.container, { paddingTop: insets.top + 76, paddingBottom: insets.bottom + 24 }]}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.logoBox}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="shield-checkmark" size={36} color={Colors.primary} />
-          </View>
-          <Text style={styles.brand}>Xác thực 2 lớp</Text>
+        <View style={styles.header}>
+          <Text style={styles.title}>Xác thực 2 lớp</Text>
           <Text style={styles.subtitle}>{SUBTITLES[mode]}</Text>
           {mode === 'sms' && maskedPhone ? (
             <Text style={styles.smsHint}>Đã gửi tới số {maskedPhone}</Text>
           ) : null}
         </View>
 
-        <View style={styles.formCard}>
-          <TextInput
-            autoFocus
-            style={styles.input}
-            keyboardType={mode === 'backup' ? 'default' : 'number-pad'}
-            placeholder={mode === 'backup' ? 'abcd-2345' : '123456'}
-            placeholderTextColor={Colors.textMute}
-            value={code}
-            onChangeText={(t) => setCode(mode === 'backup' ? t : t.replace(/\D/g, '').slice(0, 6))}
-          />
+        <View style={styles.formSection}>
+          {isOtpMode ? (
+            <>
+              {/* Hidden text input for OTP */}
+              <TextInput
+                ref={otpInputRef}
+                style={styles.hiddenInput}
+                keyboardType="number-pad"
+                maxLength={6}
+                value={code}
+                onChangeText={(t) => setCode(t.replace(/\D/g, '').slice(0, 6))}
+                autoFocus
+              />
+
+              {/* Visual OTP bubbles */}
+              <Pressable style={styles.otpContainer} onPress={focusOtp}>
+                {Array(6).fill(0).map((_, index) => {
+                  const char = code[index] || '';
+                  const isFocused = index === code.length;
+                  return (
+                    <View
+                      key={index}
+                      style={[
+                        styles.otpSlot,
+                        isFocused && styles.otpSlotFocused,
+                      ]}
+                    >
+                      <Text style={styles.otpText}>
+                        {char || (isFocused ? '|' : '-')}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </Pressable>
+            </>
+          ) : (
+            <View style={styles.inputFieldSection}>
+              <Text style={styles.label}>Mã dự phòng</Text>
+              <View style={[styles.inputRow, focused && styles.inputRowFocused]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="xxxx-xxxx"
+                  placeholderTextColor={Colors.textFaint}
+                  autoCapitalize="none"
+                  value={code}
+                  onChangeText={setCode}
+                  onFocus={() => setFocused(true)}
+                  onBlur={() => setFocused(false)}
+                />
+              </View>
+            </View>
+          )}
 
           {showTrust && (
-            <>
+            <View style={styles.trustSection}>
               <Pressable style={styles.trustRow} onPress={() => setTrustDevice((v) => !v)}>
                 <Ionicons
-                  name={trustDevice ? 'checkbox' : 'square-outline'}
+                  name={trustDevice ? 'checkmark-circle' : 'ellipse-outline'}
                   size={22}
-                  color={trustDevice ? Colors.primary : Colors.textMute}
+                  color={trustDevice ? '#34C759' : '#B0AEA6'}
                 />
-                <Text style={styles.trustText}>Tin cậy thiết bị này (bỏ qua 2FA trong 30 ngày)</Text>
+                <Text style={styles.trustText}>Tin cậy thiết bị này trong 30 ngày</Text>
               </Pressable>
               {trustDevice && (
-                <TextInput
-                  style={styles.labelInput}
-                  placeholder="Tên thiết bị (tuỳ chọn, vd: Điện thoại của tôi)"
-                  placeholderTextColor={Colors.textMute}
-                  maxLength={120}
-                  value={trustLabel}
-                  onChangeText={setTrustLabel}
-                />
+                <View style={styles.inputFieldSection}>
+                  <Text style={styles.label}>Tên thiết bị (tuỳ chọn)</Text>
+                  <View style={styles.inputRow}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="vd: Điện thoại của tôi"
+                      placeholderTextColor={Colors.textFaint}
+                      maxLength={120}
+                      value={trustLabel}
+                      onChangeText={setTrustLabel}
+                    />
+                  </View>
+                </View>
               )}
-            </>
+            </View>
           )}
 
           <Pressable
-            style={styles.submitBtn}
+            style={({ pressed }) => [styles.submitBtn, (verify.isPending || code.length === 0) && styles.submitBtnDisabled, pressed && styles.submitBtnPressed]}
             onPress={onSubmit}
             disabled={verify.isPending || code.length === 0}
           >
@@ -158,25 +217,27 @@ export default function Login2faScreen() {
             )}
           </Pressable>
 
-          {mode !== 'sms' && (
-            <Pressable onPress={onSendSms} disabled={sendSms.isPending}>
-              {sendSms.isPending ? (
-                <ActivityIndicator color={Colors.primary} />
-              ) : (
-                <Text style={styles.toggle}>Không có Authenticator? Gửi mã qua SMS</Text>
-              )}
-            </Pressable>
-          )}
+          <View style={styles.switchLinks}>
+            {mode !== 'sms' && (
+              <Pressable onPress={onSendSms} disabled={sendSms.isPending} style={styles.toggleBtn}>
+                {sendSms.isPending ? (
+                  <ActivityIndicator color={Colors.primary} size="small" />
+                ) : (
+                  <Text style={styles.toggleText}>Gửi mã qua tin nhắn SMS</Text>
+                )}
+              </Pressable>
+            )}
 
-          {mode !== 'backup' ? (
-            <Pressable onPress={() => switchMode('backup')}>
-              <Text style={styles.toggle}>Dùng backup code thay thế</Text>
-            </Pressable>
-          ) : (
-            <Pressable onPress={() => switchMode('totp')}>
-              <Text style={styles.toggle}>Dùng mã TOTP từ Authenticator</Text>
-            </Pressable>
-          )}
+            {mode !== 'backup' ? (
+              <Pressable onPress={() => switchMode('backup')} style={styles.toggleBtn}>
+                <Text style={styles.toggleText}>Sử dụng mã dự phòng</Text>
+              </Pressable>
+            ) : (
+              <Pressable onPress={() => switchMode('totp')} style={styles.toggleBtn}>
+                <Text style={styles.toggleText}>Sử dụng ứng dụng Authenticator</Text>
+              </Pressable>
+            )}
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -184,62 +245,160 @@ export default function Login2faScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: Colors.bg },
-  container: { flexGrow: 1, paddingHorizontal: Spacing.xxl, paddingBottom: 40 },
-  logoBox: { alignItems: 'center', marginBottom: 32 },
-  iconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: Colors.primaryLight,
+  flex: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  container: {
+    flexGrow: 1,
+    paddingHorizontal: 28,
+  },
+  backBtn: {
+    position: 'absolute',
+    left: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    zIndex: 10,
   },
-  brand: { fontSize: 22, fontWeight: '700', color: Colors.primary },
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1A1A1C',
+  },
   subtitle: {
-    fontSize: 13,
-    color: Colors.textSecondary,
+    fontSize: 14,
+    color: '#7A7872',
     textAlign: 'center',
-    marginTop: 4,
-    maxWidth: 280,
-    lineHeight: 18,
+    marginTop: 8,
+    lineHeight: 20,
   },
-  smsHint: { fontSize: 13, color: Colors.primary, marginTop: 6, fontWeight: '600' },
-  formCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: Spacing.xxl,
-    gap: Spacing.lg,
+  smsHint: {
+    fontSize: 14,
+    color: '#34C759',
+    marginTop: 8,
+    fontWeight: '700',
+  },
+  formSection: {
+    width: '100%',
+  },
+  hiddenInput: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    opacity: 0,
+  },
+  otpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 12,
+    marginBottom: 24,
+  },
+  otpSlot: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    backgroundColor: '#F9F9F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 5,
+  },
+  otpSlotFocused: {
+    borderColor: '#34C759',
+    backgroundColor: '#FFFFFF',
+  },
+  otpText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1C',
+  },
+  inputFieldSection: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A1A1C',
+    marginBottom: 8,
+    marginLeft: 16,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    height: 54,
+  },
+  inputRowFocused: {
+    borderColor: '#34C759',
   },
   input: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    fontSize: 18,
-    letterSpacing: 2,
-    color: Colors.text,
-    textAlign: 'center',
+    flex: 1,
+    fontSize: 15,
+    color: '#1A1A1C',
+    paddingVertical: 0,
   },
-  trustRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  trustText: { flex: 1, fontSize: 13, color: Colors.text },
-  labelInput: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+  trustSection: {
+    marginBottom: 16,
+    gap: 14,
+  },
+  trustRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 4,
+  },
+  trustText: {
     fontSize: 14,
-    color: Colors.text,
+    fontWeight: '600',
+    color: '#1A1A1C',
   },
   submitBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
+    backgroundColor: '#34C759',
+    borderRadius: 28,
+    height: 54,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  submitBtnDisabled: {
+    opacity: 0.55,
+  },
+  submitBtnPressed: {
+    opacity: 0.85,
+  },
+  submitText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  switchLinks: {
+    marginTop: 20,
+    gap: 10,
     alignItems: 'center',
   },
-  submitText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  toggle: { color: Colors.primary, fontSize: 14, textAlign: 'center', fontWeight: '500' },
+  toggleBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  toggleText: {
+    color: '#E0533C',
+    fontSize: 14,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
 });

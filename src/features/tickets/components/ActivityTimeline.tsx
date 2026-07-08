@@ -1,61 +1,71 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../lib/theme';
-import { ActivityActionEnum, TicketActivityDTO } from '../types/ticket.types';
-
-const ACTION_LABEL: Partial<Record<ActivityActionEnum, string>> = {
-  Created:            'Ticket duoc tao',
-  StatusChanged:      'Trang thai thay doi',
-  StaffAssigned:      'Staff duoc gan',
-  StaffReassigned:    'Staff duoc dieu chuyen',
-  Commented:          'Co binh luan moi',
-  SlaPaused:          'SLA tam dung',
-  SlaResumed:         'SLA tiep tuc',
-  SlaBreached:        'SLA vi pham',
-  Escalated:          'Ticket leo thang',
-  Resolved:           'Staff bao da xu ly xong',
-  Approved:           'Manager phe duyet',
-  Rejected:           'Manager tu choi',
-  Rated:              'Customer da danh gia',
-  Reopened:           'Ticket duoc mo lai',
-  AutoClosed:         'Ticket tu dong dong',
-  TriageApproved:     'Manager duyet triage',
-  Closed:             'Ticket da dong',
-};
+import { TicketActivityDTO } from '../types/ticket.types';
+import { getActivityMeta, activityToneStyle } from '../utils/activityMeta';
 
 interface Props {
-  activities: TicketActivityDTO[];
+  activities?: TicketActivityDTO[];
+  isLoading?: boolean;
 }
 
-export function ActivityTimeline({ activities }: Props) {
-  if (activities.length === 0) {
-    return <Text style={styles.empty}>Chua co hoat dong nao.</Text>;
+// Format dd/MM/yyyy HH:mm — khớp frontend (date-fns "dd/MM/yyyy HH:mm").
+// Tự viết để không thêm package date-fns vào mobile.
+function formatActivityTime(iso: string): string {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+export function ActivityTimeline({ activities, isLoading }: Props) {
+  if (isLoading) {
+    return (
+      <View>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <View key={i} style={styles.skeleton} />
+        ))}
+      </View>
+    );
+  }
+
+  if (!activities?.length) {
+    return <Text style={styles.empty}>Chưa có hoạt động nào.</Text>;
   }
 
   return (
     <View>
       {activities.map((item, index) => {
         const isLast = index === activities.length - 1;
-        const isFirst = index === 0;
+        const meta = getActivityMeta(item.action);
+        const style = activityToneStyle(meta.tone);
         return (
           <View key={item.id ?? `activity-${index}`} style={styles.item}>
             <View style={styles.dotCol}>
-              <View style={[styles.dot, isFirst && styles.dotActive]} />
-              {!isLast && <View style={[styles.line, isFirst && styles.lineActive]} />}
+              <View style={[styles.dot, { backgroundColor: style.bg }]}>
+                <Ionicons name={meta.icon} size={13} color={style.iconColor} />
+              </View>
+              {!isLast && <View style={styles.line} />}
             </View>
             <View style={[styles.content, !isLast && styles.contentSpaced]}>
-              <Text style={[styles.action, isFirst && styles.actionActive]}>
-                {ACTION_LABEL[item.action] ?? item.action}
-              </Text>
+              <View style={styles.headerRow}>
+                <Text style={[styles.action, { color: style.dot }]} numberOfLines={1}>
+                  {meta.label}
+                </Text>
+                <Text style={styles.time}>{formatActivityTime(item.createdAt)}</Text>
+              </View>
               {item.actorDisplayName && (
-                <Text style={styles.actor}>{item.actorRole} · {item.actorDisplayName}</Text>
+                <Text style={styles.actor}>{item.actorDisplayName} · {item.actorRole}</Text>
+              )}
+              {(item.oldValue || item.newValue) && (
+                <Text style={styles.value}>
+                  {item.oldValue && <Text style={styles.oldValue}>{item.oldValue} </Text>}
+                  {item.newValue && <Text>{item.newValue}</Text>}
+                </Text>
               )}
               {item.reason && (
-                <Text style={styles.reason}>Ly do: {item.reason}</Text>
+                <Text style={styles.reason}>Lý do: {item.reason}</Text>
               )}
-              <Text style={styles.time}>
-                {new Date(item.createdAt).toLocaleString('vi-VN')}
-              </Text>
             </View>
           </View>
         );
@@ -66,23 +76,21 @@ export function ActivityTimeline({ activities }: Props) {
 
 const styles = StyleSheet.create({
   empty:          { color: Colors.textMute, fontSize: 13, textAlign: 'center', paddingVertical: 12 },
+  skeleton:       { height: 56, borderRadius: 8, backgroundColor: Colors.card3, marginBottom: 12 },
   item:           { flexDirection: 'row', gap: 14 },
-  dotCol:         { alignItems: 'center', width: 24 },
+  dotCol:         { alignItems: 'center', width: 26 },
   dot:            {
-    width: 24, height: 24, borderRadius: 12,
-    backgroundColor: Colors.card2,
-    borderWidth: 2, borderColor: Colors.card3,
-  },
-  dotActive:      {
-    backgroundColor: Colors.primary, borderColor: Colors.primary,
+    width: 26, height: 26, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center',
   },
   line:           { flex: 1, width: 2, backgroundColor: Colors.card3, marginTop: 2 },
-  lineActive:     { backgroundColor: Colors.primary },
-  content:        { flex: 1, paddingTop: 1, gap: 2 },
+  content:        { flex: 1, paddingTop: 2, gap: 2 },
   contentSpaced:  { paddingBottom: 14 },
-  action:         { fontSize: 13, fontWeight: '600', color: Colors.text },
-  actionActive:   { fontWeight: '700' },
+  headerRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  action:         { flex: 1, fontSize: 13, fontWeight: '700' },
   actor:          { fontSize: 12, color: Colors.textMute },
+  value:          { fontSize: 12, color: Colors.textMute },
+  oldValue:       { textDecorationLine: 'line-through' },
   reason:         { fontSize: 12, color: Colors.textMute, fontStyle: 'italic' },
-  time:           { fontSize: 11, color: Colors.textFaint, marginTop: 2 },
+  time:           { fontSize: 11, color: Colors.textFaint },
 });

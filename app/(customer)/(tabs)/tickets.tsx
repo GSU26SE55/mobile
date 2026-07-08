@@ -5,6 +5,8 @@ import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Tex
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TicketCard } from '../../../src/features/tickets/components/TicketCard';
 import { useTickets } from '../../../src/features/tickets/hooks/useTickets';
+import { checkPermission, P } from '../../../src/lib/authz';
+import { useSessionStore } from '../../../src/stores/sessionStore';
 import { Colors, Shadow, ShadowPrimary } from '../../../src/lib/theme';
 
 type FilterKey = 'all' | 'open' | 'closed';
@@ -12,6 +14,8 @@ type FilterKey = 'all' | 'open' | 'closed';
 export default function TicketListScreen() {
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<FilterKey>('all');
+  const user = useSessionStore((s) => s.user);
+  const canCreate = checkPermission(user, P.TICKET_CREATE); // GH-47
 
   // Fetch all tickets from API
   const { data: allData, isLoading, isError, isRefetching, refetch } = useTickets({ PageSize: 100 });
@@ -53,12 +57,14 @@ export default function TicketListScreen() {
           <Text style={styles.title}>Tickets</Text>
           <Text style={styles.subtitle}>{openCount} đang mở · {totalCount} tổng</Text>
         </View>
-        <Pressable
-          style={[styles.addBtn, Shadow]}
-          onPress={() => router.push('/(customer)/tickets/create')}
-        >
-          <Ionicons name="add" size={20} color="#34C759" />
-        </Pressable>
+        {canCreate && (
+          <Pressable
+            style={[styles.addBtn, Shadow]}
+            onPress={() => router.push('/(customer)/tickets/create')}
+          >
+            <Ionicons name="add" size={20} color="#34C759" />
+          </Pressable>
+        )}
       </View>
 
       {/* Filter tabs */}
@@ -95,12 +101,14 @@ export default function TicketListScreen() {
         <View style={styles.empty}>
           <Ionicons name="document-text-outline" size={36} color={Colors.textFaint} />
           <Text style={styles.emptyText}>Không có ticket nào</Text>
-          <Pressable
-            style={[styles.emptyBtn, ShadowPrimary]}
-            onPress={() => router.push('/(customer)/tickets/create')}
-          >
-            <Text style={styles.emptyBtnText}>Tạo ticket đầu tiên</Text>
-          </Pressable>
+          {canCreate && (
+            <Pressable
+              style={[styles.emptyBtn, ShadowPrimary]}
+              onPress={() => router.push('/(customer)/tickets/create')}
+            >
+              <Text style={styles.emptyBtnText}>Tạo ticket đầu tiên</Text>
+            </Pressable>
+          )}
         </View>
       ) : (
         <FlatList

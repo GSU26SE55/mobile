@@ -38,7 +38,6 @@ export function BatteryRealtimeCard({ data }: { data: BatteryAssetRealtimeDto })
         <Metric icon="swap-vertical-outline" label="Dòng điện" value={fmt(data.current, ' A', 2)} />
         <Metric icon="thermometer-outline" label="Nhiệt độ" value={fmt(data.temperature, ' °C')} />
         <Metric icon="battery-half-outline" label="SOC" value={fmt(data.socPercent, ' %')} />
-        <Metric icon="heart-outline" label="SOH" value={fmt(data.sohPercent, ' %')} />
         <Metric
           icon="repeat-outline"
           label="Chu kỳ"

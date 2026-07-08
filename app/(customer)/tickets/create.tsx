@@ -9,8 +9,18 @@ import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyB
 import { TicketCategoryEnum } from '../../../src/features/tickets/types/ticket.types';
 import type { UploadedTicketAttachment } from '../../../src/features/tickets/types/ticket.types';
 import { Colors } from '../../../src/lib/theme';
+import { P } from '../../../src/lib/authz';
+import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
 
 export default function CreateTicketScreen() {
+  return (
+    <PermissionGuard permission={P.TICKET_CREATE}>
+      <CreateTicketScreenInner />
+    </PermissionGuard>
+  );
+}
+
+function CreateTicketScreenInner() {
   const insets = useSafeAreaInsets();
   const { mutateAsync, isPending } = useCreateTicket();
   const { data: batteries = [] } = useMyBatteryAssets();
@@ -26,17 +36,19 @@ export default function CreateTicketScreen() {
 
   const handleCancel = () => {
     Alert.alert(
-      'Cancel ticket',
-      'Are you sure? All entered information will be lost.',
+      'Hủy tạo ticket',
+      'Bạn có chắc không? Toàn bộ thông tin đã nhập sẽ bị mất.',
       [
-        { text: 'No', style: 'cancel' },
-        { text: 'Cancel', style: 'destructive', onPress: () => router.back() },
+        { text: 'Không', style: 'cancel' },
+        { text: 'Hủy', style: 'destructive', onPress: () => router.back() },
       ]
     );
   };
 
   const handleSubmit = async () => {
     if (!category || description.length < 10) return;
+    // Chặn tạo trùng: đã tạo thành công (có id) hoặc đang gửi thì bỏ qua.
+    if (createdTicketId || isPending) return;
 
     const categoryLabels: Record<TicketCategoryEnum, string> = {
       Charging: 'Charging Issue',
@@ -76,7 +88,7 @@ export default function CreateTicketScreen() {
         throw new Error(res.data?.message ?? 'System error occurred');
       }
     } catch (err: any) {
-      Alert.alert('Error', err?.message ?? 'Could not create ticket. Please try again.');
+      Alert.alert('Lỗi', err?.message ?? 'Không thể tạo ticket. Vui lòng thử lại.');
     }
   };
 

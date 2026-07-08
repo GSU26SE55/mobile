@@ -10,10 +10,12 @@ export const registerSchema = z.object({
     .regex(/[A-Z]/, 'Cần ít nhất 1 chữ hoa')
     .regex(/[a-z]/, 'Cần ít nhất 1 chữ thường')
     .regex(/[0-9]/, 'Cần ít nhất 1 chữ số')
-    .regex(/[!@#$%^&*]/, 'Cần ít nhất 1 ký tự đặc biệt'),
+    // Khớp BE PasswordPolicy: ký tự đặc biệt = bất kỳ ký tự không phải chữ-số-khoảng trắng (không chỉ !@#$%^&*).
+    .regex(/[^A-Za-z0-9\s]/, 'Cần ít nhất 1 ký tự đặc biệt'),
+  // BE chỉ validate độ dài (≤20), không ép định dạng số VN → nới cho khớp (số cố định/quốc tế vẫn hợp lệ).
   phoneNumber: z
     .string()
-    .regex(/^(0[35789])[0-9]{8}$/, 'Số điện thoại không hợp lệ')
+    .max(20, 'Số điện thoại tối đa 20 ký tự')
     .optional()
     .or(z.literal('')),
 });

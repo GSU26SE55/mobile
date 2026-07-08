@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Colors, Shadow } from '../../../src/lib/theme';
+import { Colors } from '../../../src/lib/theme';
 import { useStaffTickets } from '../../../src/features/staff/hooks/useStaffTickets';
-import { useStaffProfile } from '../../../src/features/staff/hooks/useStaffProfile';
+import { useStaffDashboardStats } from '../../../src/features/staff/hooks/useStaffDashboardStats';
 import { StaffTicketCard } from '../../../src/features/staff/components/StaffTicketCard';
+import { StaffDashboardStats } from '../../../src/features/staff/components/StaffDashboardStats';
+import { StaffHeader } from '../../../src/features/staff/components/StaffHeader';
 import { TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
 
 type FilterTab = 'all' | 'active' | 'waiting' | 'resolved';
@@ -22,12 +23,15 @@ const ACTIVE_STATUSES: TicketStatusEnum[] = ['Assigned', 'InProgress'];
 const WAITING_STATUSES: TicketStatusEnum[] = ['WaitingCustomer', 'WaitingParts', 'WaitingOnsiteSchedule'];
 const RESOLVED_STATUSES: TicketStatusEnum[] = ['Resolved', 'Escalated'];
 
-
 export default function StaffDashboardScreen() {
-  const insets = useSafeAreaInsets();
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
-  const { data: apiTickets, isLoading, refetch } = useStaffTickets();
-  const { data: profile } = useStaffProfile();
+  // BE default PageSize=10 (PaginationRequest) → phải truyền để đếm/list không bị cắt còn 10.
+  // BE clamp max=100; counts dưới tính client-side trên trang này. Nếu staff vượt 100 ticket
+  // cần đếm bằng totalItems + filter status server-side (BE chưa hỗ trợ multi-status filter).
+  const { data: apiTickets, isLoading, isError, isRefetching, refetch } = useStaffTickets({ PageSize: 100 });
+  // GH-67 — counts đọc từ endpoint dashboard/stats (server-side, chính xác) thay vì đếm
+  // client-side trên trang cap-100. Query dùng chung cache với StaffDashboardStats (dedup).
+  const { data: stats } = useStaffDashboardStats();
 
   const allTickets = apiTickets?.items ?? [];
 
@@ -38,27 +42,21 @@ export default function StaffDashboardScreen() {
     return true;
   });
 
-  const activeCount  = allTickets.filter((t) => ACTIVE_STATUSES.includes(t.status)).length;
-  const waitingCount = allTickets.filter((t) => WAITING_STATUSES.includes(t.status)).length;
+  // Tab counts từ stats.countByStatus (single source). Chưa load → null → ẩn số trên tab.
+  const cbs = stats?.countByStatus;
+  const sumOf = (statuses: TicketStatusEnum[]) => statuses.reduce((s, k) => s + (cbs?.[k] ?? 0), 0);
+  const counts: Record<FilterTab, number | null> = {
+    all:      cbs ? Object.values(cbs).reduce((s, v) => s + v, 0) : null,
+    active:   cbs ? sumOf(ACTIVE_STATUSES) : null,
+    waiting:  cbs ? sumOf(WAITING_STATUSES) : null,
+    resolved: cbs ? sumOf(RESOLVED_STATUSES) : null,
+  };
 
   return (
     <View style={styles.root}>
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <View>
-          <Text style={styles.greeting}>Xin chào,</Text>
-          <Text style={styles.name}>{profile?.fullName ?? 'Staff'}</Text>
-        </View>
-        <View style={styles.statsRow}>
-          <View style={[styles.statChip, { backgroundColor: Colors.warningLight }]}>
-            <Text style={[styles.statNum, { color: Colors.warningDark }]}>{activeCount}</Text>
-            <Text style={[styles.statLabel, { color: Colors.warningDark }]}>đang xử lý</Text>
-          </View>
-          <View style={[styles.statChip, { backgroundColor: Colors.infoLight }]}>
-            <Text style={[styles.statNum, { color: Colors.infoDark }]}>{waitingCount}</Text>
-            <Text style={[styles.statLabel, { color: Colors.infoDark }]}>đang chờ</Text>
-          </View>
-        </View>
-      </View>
+      <StaffHeader showGreeting />
+
+      <StaffDashboardStats />
 
       <View style={styles.filterRow}>
         {FILTER_TABS.map((tab) => (
@@ -67,8 +65,8 @@ export default function StaffDashboardScreen() {
             style={[styles.filterTab, activeFilter === tab.key && styles.filterTabActive]}
             onPress={() => setActiveFilter(tab.key)}
           >
-            <Text style={[styles.filterText, activeFilter === tab.key && styles.filterTextActive]}>
-              {tab.label}
+            <Text style={[styles.filterText, activeFilter === tab.key && styles.filterTextActive]} numberOfLines={1}>
+              {tab.label}{counts[tab.key] != null ? ` (${counts[tab.key]})` : ''}
             </Text>
           </Pressable>
         ))}
@@ -77,6 +75,14 @@ export default function StaffDashboardScreen() {
       {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={Colors.primary} size="large" />
+        </View>
+      ) : isError ? (
+        <View style={styles.center}>
+          <Ionicons name="cloud-offline-outline" size={48} color={Colors.textFaint} />
+          <Text style={styles.emptyText}>Không tải được danh sách ticket</Text>
+          <Pressable onPress={() => refetch()} style={styles.retryBtn}>
+            <Text style={styles.retryText}>Thử lại</Text>
+          </Pressable>
         </View>
       ) : (
         <FlatList
@@ -90,7 +96,7 @@ export default function StaffDashboardScreen() {
           )}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} tintColor={Colors.primary} />}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Ionicons name="checkmark-done-circle-outline" size={48} color={Colors.textFaint} />
@@ -104,15 +110,8 @@ export default function StaffDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  root:    { flex: 1, backgroundColor: Colors.bg },
-  center:  { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header:  { paddingHorizontal: 20, paddingBottom: 16 },
-  greeting:{ fontSize: 14, fontWeight: '500', color: Colors.textMute },
-  name:    { fontSize: 22, fontWeight: '800', color: Colors.text, marginTop: 2 },
-  statsRow:{ flexDirection: 'row', gap: 8, marginTop: 14 },
-  statChip:{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-  statNum: { fontSize: 18, fontWeight: '800' },
-  statLabel:{ fontSize: 12, fontWeight: '600' },
+  root:   { flex: 1, backgroundColor: Colors.bg },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   filterRow: {
     flexDirection: 'row',
     gap: 6,
@@ -120,9 +119,10 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   filterTab: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderRadius: 16,
     backgroundColor: Colors.card2,
   },
   filterTabActive: {
@@ -150,5 +150,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textFaint,
     fontWeight: '600',
+  },
+  retryBtn: {
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    backgroundColor: Colors.primary,
+  },
+  retryText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

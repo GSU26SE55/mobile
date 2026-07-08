@@ -39,7 +39,7 @@ export function ProfileForm({ account, onSubmit, isLoading, fieldErrors }: Props
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Ho va ten *</Text>
+      <Text style={styles.label}>Họ và tên *</Text>
       <TextInput
         style={[styles.input, getError('fullName') && styles.inputError]}
         value={fullName}
@@ -48,7 +48,7 @@ export function ProfileForm({ account, onSubmit, isLoading, fieldErrors }: Props
       />
       {getError('fullName') ? <Text style={styles.error}>{getError('fullName')}</Text> : null}
 
-      <Text style={styles.label}>So dien thoai</Text>
+      <Text style={styles.label}>Số điện thoại</Text>
       <TextInput
         style={[styles.input, getError('phoneNumber') && styles.inputError]}
         value={phoneNumber}
@@ -58,7 +58,7 @@ export function ProfileForm({ account, onSubmit, isLoading, fieldErrors }: Props
       />
       {getError('phoneNumber') ? <Text style={styles.error}>{getError('phoneNumber')}</Text> : null}
 
-      <Text style={styles.label}>Dia chi</Text>
+      <Text style={styles.label}>Địa chỉ</Text>
       <TextInput
         style={[styles.input, styles.multiline, getError('address') && styles.inputError]}
         value={address}
@@ -69,7 +69,7 @@ export function ProfileForm({ account, onSubmit, isLoading, fieldErrors }: Props
       {getError('address') ? <Text style={styles.error}>{getError('address')}</Text> : null}
 
       <Pressable style={[styles.button, isLoading && styles.btnDisabled]} onPress={handleSubmit} disabled={isLoading}>
-        {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Luu thay doi</Text>}
+        {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Lưu thay đổi</Text>}
       </Pressable>
     </View>
   );

@@ -1,10 +1,11 @@
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -19,7 +20,10 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { HttpError } from '../../../src/lib/errors';
+import { P } from '../../../src/lib/authz';
+import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
 import { ActivityTimeline } from '../../../src/features/tickets/components/ActivityTimeline';
+import { CommentThread } from '../../../src/features/tickets/components/CommentThread';
 import { RateModal } from '../../../src/features/tickets/components/RateModal';
 import { ReopenModal } from '../../../src/features/tickets/components/ReopenModal';
 import { SlaCountdown } from '../../../src/features/tickets/components/SlaCountdown';
@@ -29,16 +33,33 @@ import { useRateTicket } from '../../../src/features/tickets/hooks/useRateTicket
 import { useReopenTicket } from '../../../src/features/tickets/hooks/useReopenTicket';
 import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/useUploadCommentAttachment';
 import { useTicketDetail } from '../../../src/features/tickets/hooks/useTicketDetail';
+import { useTicketChatsCursor } from '../../../src/features/tickets/hooks/useTicketChatsCursor';
+import { useAddReaction, useRemoveReaction } from '../../../src/features/tickets/hooks/useChatReactions';
+import { useDownloadChatAttachment } from '../../../src/features/tickets/hooks/useDownloadChatAttachment';
+import { useTicketUnreadCount } from '../../../src/features/tickets/hooks/useTicketUnreadCount';
+import { useTicketActivities } from '../../../src/features/tickets/hooks/useTicketActivities';
+import { useTicketCommentsRealtime } from '../../../src/features/tickets/hooks/useTicketCommentsRealtime';
+import {
+  useUpdateTicketChat,
+  useDeleteTicketChat,
+  useMarkTicketChatsRead,
+  useTranslateTicketChat,
+  useTranscribeVoiceChat,
+} from '../../../src/features/tickets/hooks/useTicketChatActions';
+import { useVoiceRecorder } from '../../../src/features/tickets/hooks/useVoiceRecorder';
+import { VoiceRecordingModal } from '../../../src/features/tickets/components/VoiceRecordingModal';
+import { TypingIndicator } from '../../../src/features/tickets/components/TypingIndicator';
 import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
-import { AttachmentThumbnails } from '../../../src/features/file-storage/components/AttachmentThumbnails';
-import { AttachmentForm, commentSchema } from '../../../src/features/tickets/schemas/comment.schema';
-import { RatePayload, ReopenPayload, TicketDetailDTO, TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
+import { AuthImage } from '../../../src/features/file-storage/components/AuthImage';
+import { AttachmentForm } from '../../../src/features/tickets/schemas/comment.schema';
+import { RatePayload, ReopenPayload, TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
 import { BASE_URL } from '../../../src/lib/axios';
 import { ENDPOINTS } from '../../../src/lib/endpoints';
 import { BadgeColors, Colors, Shadow, ShadowPrimary } from '../../../src/lib/theme';
 import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
 import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
 import { KbRelatedSection } from '../../../src/features/kb/components/KbRelatedSection';
+import { useSessionStore } from '../../../src/stores/sessionStore';
 
 const PRIORITY_MAP: Record<string, { label: string; badge: keyof typeof BadgeColors }> = {
   P1Critical: { label: 'P1 Critical', badge: 'p1' },
@@ -65,60 +86,6 @@ function PriorityBadge({ priority }: { priority: string | null }) {
     <View style={[styles.badge, { backgroundColor: bc.bg }]}>
       <View style={[styles.badgeDot, { backgroundColor: bc.text }]} />
       <Text style={[styles.badgeLabel, { color: bc.text }]}>{cfg.label}</Text>
-    </View>
-  );
-}
-
-function ChatBubble({
-  comment,
-  imageHeaders,
-  onImagePress,
-}: {
-  comment: NonNullable<TicketDetailDTO['comments']>[number];
-  imageHeaders?: { Authorization: string };
-  onImagePress?: (uri: string) => void;
-}) {
-  const isCustomer = comment.authorRole === 'Customer';
-  const isSystem = comment.authorRole === 'System';
-  const fileIds = comment.attachmentFileIds ?? [];
-
-  if (isSystem) {
-    return (
-      <View style={styles.systemMsg}>
-        <Text style={styles.systemMsgText}>{comment.body}</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={[styles.bubble, isCustomer ? styles.bubbleUser : styles.bubbleStaff, Shadow]}>
-      <View style={styles.bubbleHeader}>
-        <Text style={[styles.bubbleAuthor, isCustomer && { color: '#fff' }]}>
-          {comment.authorDisplayName ?? comment.authorRole}
-        </Text>
-        <Text style={[styles.bubbleTime, isCustomer && { color: 'rgba(255,255,255,0.7)' }]}>
-          {new Date(comment.createdAt).toLocaleString('vi-VN')}
-        </Text>
-      </View>
-      {!!comment.body && (
-        <Text style={[styles.bubbleBody, isCustomer && { color: '#fff' }]}>{comment.body}</Text>
-      )}
-      {fileIds.length > 0 && (
-        <View style={styles.bubbleImages}>
-          {fileIds.map((fid, i) => {
-            const uri = `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(fid)}`;
-            return (
-              <Pressable key={fid ?? `img-${i}`} onPress={() => onImagePress?.(uri)}>
-                <Image
-                  source={{ uri, headers: imageHeaders }}
-                  style={styles.bubbleImageThumb}
-                  resizeMode="cover"
-                />
-              </Pressable>
-            );
-          })}
-        </View>
-      )}
     </View>
   );
 }
@@ -186,16 +153,43 @@ function HorizontalStepper({ status }: { status: TicketStatusEnum }) {
 }
 
 export default function TicketDetailScreen() {
+  return (
+    <PermissionGuard permission={P.TICKET_VIEW}>
+      <TicketDetailScreenInner />
+    </PermissionGuard>
+  );
+}
+
+function TicketDetailScreenInner() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: ticket, isLoading, isError, refetch } = useTicketDetail(id ?? '');
   const imageHeaders = useAuthImageHeaders();
+  const accountId = useSessionStore((s) => s.user?.accountId);
 
   const { data: batteries = [] } = useMyBatteryAssets();
   const { mutateAsync: addComment,      isPending: isCommenting  } = useAddComment(id ?? '');
   const { mutateAsync: rateTicket,      isPending: isRating      } = useRateTicket(id ?? '');
   const { mutateAsync: reopenTicket,    isPending: isReopening   } = useReopenTicket(id ?? '');
   const { mutateAsync: uploadAttachment, isPending: isUploading  } = useUploadCommentAttachment();
+
+  // GH-44 — comments qua GET phân trang (DESC newest-first) + activities standalone + realtime.
+  const commentsQuery = useTicketChatsCursor(id);
+  const activitiesQuery = useTicketActivities(id);
+  const { isConnected, typingUsers, notifyTyping } = useTicketCommentsRealtime(id);
+  const { mutate: updateChat, isPending: editChatPending } = useUpdateTicketChat(id ?? '');
+  const { mutate: deleteChat, isPending: deleteChatPending } = useDeleteTicketChat(id ?? '');
+  const { mutate: markChatsRead } = useMarkTicketChatsRead(id ?? '');
+  const { mutate: addReaction } = useAddReaction(id ?? '');
+  const { mutate: removeReaction } = useRemoveReaction(id ?? '');
+  const { mutateAsync: downloadAttachment } = useDownloadChatAttachment(id ?? '');
+  const { data: unreadCount = 0 } = useTicketUnreadCount(id);
+  const { mutateAsync: translateChat } = useTranslateTicketChat(id ?? '');
+  const { mutateAsync: transcribeVoice, isPending: transcribing } = useTranscribeVoiceChat(id ?? '');
+  const voiceRecorder = useVoiceRecorder();
+  // Trung bình biên độ hiện tại — điều khiển quả cầu "thở" theo giọng nói trong VoiceRecordingModal.
+  const voiceLevel =
+    voiceRecorder.waveform.reduce((sum, v) => sum + v, 0) / voiceRecorder.waveform.length;
 
   const [commentText,     setCommentText]     = useState('');
   const [commentError,    setCommentError]    = useState('');
@@ -204,13 +198,23 @@ export default function TicketDetailScreen() {
   const [showReopenModal, setShowReopenModal] = useState(false);
   const [activeTab,       setActiveTab]       = useState<'info' | 'chat'>('info');
   const [viewingImage,    setViewingImage]    = useState<string | null>(null);
-  const chatScrollRef = useRef<ScrollView>(null);
+
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
-    if (activeTab === 'chat') {
-      setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 80);
-    }
-  }, [activeTab]);
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow',
+      (e) => setKeyboardHeight(e.endCoordinates.height)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide',
+      () => setKeyboardHeight(0)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   if (isLoading) {
     return (
@@ -239,7 +243,17 @@ export default function TicketDetailScreen() {
   const isClosed  = ['Closed', 'ClosedRejected'].includes(ticket.status);
   const isWaiting = ticket.status === 'WaitingCustomer';
 
-  const comments = (ticket.comments ?? []).filter((c) => !c.isInternal);
+  // BE đã ẩn comment internal cho Customer; flatten các page (DESC newest-first).
+  // Dedup theo id: offset-pagination + realtime prepend có thể trả trùng 1 comment ở ranh giới trang.
+  const seenCommentIds = new Set<string>();
+  const comments = (commentsQuery.data?.pages ?? [])
+    .flatMap((p) => p?.items ?? [])
+    .filter((c) => {
+      if (c.isInternal || seenCommentIds.has(c.id)) return false;
+      seenCommentIds.add(c.id);
+      return true;
+    });
+  const activities = activitiesQuery.data ?? [];
 
   const battery = batteries.find((b: BatteryAssetDto) => b.id === ticket.batteryAssetId);
 
@@ -279,17 +293,40 @@ export default function TicketDetailScreen() {
 
   const handleSendComment = async () => {
     setCommentError('');
-    const result = commentSchema.safeParse({ body: commentText, attachments });
-    if (!result.success) {
-      setCommentError(result.error.flatten().fieldErrors.body?.[0] ?? 'Nội dung không hợp lệ');
-      return;
-    }
+    // Không báo lỗi "để trống" — nút gửi đã disable khi rỗng. Chỉ chặn gửi tin hoàn toàn trống.
+    const trimmed = commentText.trim();
+    if (!trimmed && attachments.length === 0) return;
     try {
-      await addComment({ body: result.data.body, attachments: result.data.attachments });
+      await addComment({ body: trimmed, attachments: attachments.length > 0 ? attachments : undefined });
       setCommentText('');
       setAttachments([]);
+      // Realtime là nguồn chính: hub đẩy ChatAdded (BE gửi tới cả người gửi) → setQueryData prepend.
+      // Chỉ fallback refetch khi hub không kết nối (WS bị chặn / chưa connect).
+      if (!isConnected) commentsQuery.refetch();
     } catch {
       Alert.alert('Lỗi', 'Không thể gửi bình luận. Vui lòng thử lại.');
+    }
+  };
+
+  const handleMarkRead = (chatIds: string[]) => markChatsRead(chatIds);
+  const handleTranslate = async (comment: { id: string }, targetLanguage: string) => {
+    const res = await translateChat({ chatId: comment.id, targetLanguage });
+    return res.data.data ?? undefined;
+  };
+  const handleStartRecording = async () => {
+    try {
+      await voiceRecorder.start();
+    } catch {
+      Alert.alert('Quyền truy cập', 'Cần quyền truy cập micro để ghi âm.');
+    }
+  };
+  const handleStopRecording = async () => {
+    const file = await voiceRecorder.stop();
+    if (!file) return;
+    try {
+      await transcribeVoice(file);
+    } catch {
+      // handleErrorApi trong hook đã Alert lỗi — không cần xử lý thêm ở đây.
     }
   };
 
@@ -331,7 +368,8 @@ export default function TicketDetailScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior="padding"
+      enabled={Platform.OS === 'ios'}
     >
       {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
@@ -339,9 +377,14 @@ export default function TicketDetailScreen() {
           <Ionicons name="chevron-back" size={18} color={Colors.text} />
         </Pressable>
         <Text style={styles.topCode} numberOfLines={1}>{ticket.code}</Text>
-        <Pressable style={[styles.moreBtn, Shadow]}>
-          <Ionicons name="ellipsis-horizontal" size={16} color={Colors.text} />
-        </Pressable>
+        <View style={styles.unreadSlot}>
+          {unreadCount > 0 && (
+            <View style={styles.unreadBadge}>
+              <Ionicons name="chatbubble" size={11} color="#FFF" />
+              <Text style={styles.unreadText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {/* Tab bar */}
@@ -460,17 +503,11 @@ export default function TicketDetailScreen() {
                 <>
                   <Text style={[styles.sectionH, { marginTop: 14, marginBottom: 8 }]}>Ảnh đính kèm</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.attachRow}>
-                    {ticket.attachmentFileIds!.map((fileId, i) => {
-                      const uri = `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(fileId)}`;
-                      return (
-                        <Pressable key={fileId ?? `att-${i}`} style={styles.attachCard} onPress={() => setViewingImage(uri)}>
-                          <Image
-                            source={{ uri, headers: imageHeaders }}
-                            style={styles.attachImage}
-                          />
-                        </Pressable>
-                      );
-                    })}
+                    {ticket.attachmentFileIds!.map((fileId, i) => (
+                      <Pressable key={fileId ?? `att-${i}`} style={styles.attachCard} onPress={() => setViewingImage(fileId)}>
+                        <AuthImage fileId={fileId} style={styles.attachImage} />
+                      </Pressable>
+                    ))}
                   </ScrollView>
                 </>
               )}
@@ -518,45 +555,57 @@ export default function TicketDetailScreen() {
           {/* Related KB articles */}
           <KbRelatedSection ticket={ticket} />
 
-          {/* Historical activities timeline */}
-          {(ticket.activities?.length ?? 0) > 0 && (
+          {/* Historical activities timeline — GH-44: GET /activities standalone */}
+          {activities.length > 0 && (
             <View style={[styles.timelineCard, Shadow]}>
               <Text style={styles.sectionH}>Lịch sử hoạt động</Text>
-              <ActivityTimeline activities={ticket.activities!} />
+              <ActivityTimeline activities={activities} />
             </View>
           )}
         </ScrollView>
       )}
 
-      {/* Chat tab — messenger style */}
+      {/* Chat tab — messenger style, FlatList inverted: mới nhất neo xuống đáy */}
       {activeTab === 'chat' && (
         <View style={styles.chatContainer}>
-          <ScrollView
-            ref={chatScrollRef}
-            style={styles.chatScroll}
-            contentContainerStyle={styles.chatContent}
-            showsVerticalScrollIndicator={false}
-            onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: false })}
-            keyboardShouldPersistTaps="handled"
-          >
-            {comments.length === 0 ? (
-              <View style={styles.chatEmpty}>
-                <Ionicons name="chatbubbles-outline" size={36} color={Colors.textFaint} />
-                <Text style={styles.chatEmptyText}>Chưa có trao đổi nào.</Text>
-              </View>
-            ) : (
-              <View style={styles.chatList}>
-                {comments.map((c, i) => (
-                  <ChatBubble
-                    key={c.id ?? `comment-${i}`}
-                    comment={c}
-                    imageHeaders={imageHeaders}
-                    onImagePress={setViewingImage}
-                  />
-                ))}
-              </View>
-            )}
-          </ScrollView>
+          <CommentThread
+            comments={comments}
+            currentUserId={accountId}
+            imageHeaders={imageHeaders}
+            onImagePress={setViewingImage}
+            isLoading={commentsQuery.isLoading}
+            hasNextPage={commentsQuery.hasNextPage}
+            isFetchingNextPage={commentsQuery.isFetchingNextPage}
+            onLoadMore={() => commentsQuery.fetchNextPage()}
+            accentColor="#FF5E13"
+            ticketClosed={isClosed}
+            onEdit={(comment, body, editReason) =>
+              updateChat({ chatId: comment.id, payload: { body, editReason } })
+            }
+            onDelete={(comment, reason) => deleteChat({ chatId: comment.id, reason })}
+            editPending={editChatPending}
+            deletePending={deleteChatPending}
+            onMarkRead={handleMarkRead}
+            onTranslate={handleTranslate}
+            onToggleReaction={(comment, type, isActive) =>
+              isActive
+                ? removeReaction({ chatId: comment.id, type })
+                : addReaction({ chatId: comment.id, reactionType: type })
+            }
+            onDownloadAttachments={(comment, fileIds) => {
+              // Tuần tự — tránh nhiều share sheet mở cùng lúc (share sheet thứ 2 bị nuốt).
+              void (async () => {
+                for (const fid of fileIds) {
+                  try {
+                    await downloadAttachment({ chatId: comment.id, fileId: fid, fileName: `tep-${fid.slice(0, 8)}` });
+                  } catch (e) {
+                    Alert.alert('Tải tệp', (e as Error).message);
+                    break;
+                  }
+                }
+              })();
+            }}
+          />
 
           {/* Attachment chips */}
           {attachments.length > 0 && (
@@ -579,34 +628,64 @@ export default function TicketDetailScreen() {
             </View>
           ) : null}
 
+          {/* "Đang nhập" — ngay trên ô input, nền transparent */}
+          <TypingIndicator names={typingUsers.map((u) => u.displayName)} />
+
           {/* Composer bar */}
-          <View style={[styles.composer, { paddingBottom: insets.bottom + 8 }]}>
+          <View
+            style={[
+              styles.composer,
+              {
+                paddingBottom: keyboardHeight > 0
+                  ? keyboardHeight + 12
+                  : (insets.bottom > 0 ? insets.bottom + 8 : 12)
+              }
+            ]}
+          >
             <Pressable style={styles.composerIcon} onPress={handlePickAttachment} disabled={isUploading}>
               {isUploading
                 ? <ActivityIndicator size="small" color={Colors.textMute} />
-                : <Ionicons name="camera-outline" size={20} color={Colors.textMute} />}
+                : <Ionicons name="camera-outline" size={24} color={Colors.textMute} />}
             </Pressable>
             <TextInput
               style={styles.composerInput}
               value={commentText}
-              onChangeText={(t) => { setCommentText(t); setCommentError(''); }}
+              onChangeText={(t) => { setCommentText(t); setCommentError(''); notifyTyping(); }}
               placeholder="Nhập tin nhắn..."
               placeholderTextColor={Colors.textFaint}
               multiline
               maxLength={1000}
             />
             <Pressable
-              style={[styles.sendBtn, (!commentText.trim() || isCommenting) && styles.btnDisabled]}
+              style={styles.composerIcon}
+              onPress={handleStartRecording}
+              disabled={isUploading || transcribing}
+            >
+              {transcribing
+                ? <ActivityIndicator size="small" color={Colors.textMute} />
+                : <Ionicons name="mic-outline" size={22} color={Colors.textMute} />}
+            </Pressable>
+            <Pressable
+              style={[styles.sendBtn, ((!commentText.trim() && attachments.length === 0) || isCommenting) && styles.btnDisabled]}
               onPress={handleSendComment}
-              disabled={!commentText.trim() || isCommenting}
+              disabled={(!commentText.trim() && attachments.length === 0) || isCommenting}
             >
               {isCommenting
                 ? <ActivityIndicator color="#fff" size="small" />
-                : <Ionicons name="send" size={16} color="#fff" />}
+                : <Ionicons name="send" size={18} color="#fff" />}
             </Pressable>
           </View>
         </View>
       )}
+
+      <VoiceRecordingModal
+        visible={voiceRecorder.isRecording}
+        elapsedSeconds={voiceRecorder.elapsedSeconds}
+        level={voiceLevel}
+        transcribing={transcribing}
+        onStop={handleStopRecording}
+        onCancel={voiceRecorder.cancel}
+      />
 
       <RateModal visible={showRateModal} isLoading={isRating} onClose={() => setShowRateModal(false)} onSubmit={handleRate} />
       <ReopenModal visible={showReopenModal} isLoading={isReopening} onClose={() => setShowReopenModal(false)} onSubmit={handleReopen} />
@@ -622,11 +701,7 @@ export default function TicketDetailScreen() {
         >
           <View style={styles.imgOverlay}>
             <Pressable style={StyleSheet.absoluteFill} onPress={() => setViewingImage(null)} />
-            <Image
-              source={{ uri: viewingImage, headers: imageHeaders ?? undefined }}
-              style={styles.imgFull}
-              resizeMode="contain"
-            />
+            <AuthImage fileId={viewingImage} style={styles.imgFull} resizeMode="contain" />
             <Pressable
               style={[styles.imgCloseBtn, { top: insets.top + 12 }]}
               onPress={() => setViewingImage(null)}
@@ -660,6 +735,13 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(0,0,0,0.02)',
   },
   topCode:        { flex: 1, textAlign: 'center', fontSize: 14, fontWeight: '800', color: Colors.text },
+  unreadSlot:     { width: 42, alignItems: 'flex-end', justifyContent: 'center' },
+  unreadBadge:    {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: Colors.primary, borderRadius: 999,
+    paddingHorizontal: 7, paddingVertical: 3,
+  },
+  unreadText:     { color: '#FFF', fontSize: 11, fontWeight: '800' },
   moreBtn:        {
     width: 42, height: 42, borderRadius: 14,
     backgroundColor: '#FFFFFF',
@@ -714,26 +796,6 @@ const styles = StyleSheet.create({
   chatContainer: {
     flex: 1,
     backgroundColor: Colors.bg,
-  },
-  chatScroll: {
-    flex: 1,
-  },
-  chatContent: {
-    padding: 16,
-    gap: 8,
-    paddingBottom: 8,
-  },
-  chatEmpty: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    gap: 10,
-  },
-  chatEmptyText: {
-    color: Colors.textFaint,
-    fontSize: 14,
-    fontWeight: '500',
   },
 
   scroll:         { padding: 20, gap: 14, paddingBottom: 40 },
@@ -906,39 +968,23 @@ const styles = StyleSheet.create({
 
   timelineCard:   { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, gap: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
 
-  commentsCard:   { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, gap: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
-  chatList:       { gap: 10 },
-  emptyText:      { color: Colors.textFaint, fontSize: 13, textAlign: 'center', paddingVertical: 8 },
-
-  systemMsg:      { alignItems: 'center', paddingVertical: 4 },
-  systemMsgText:  { fontSize: 11, color: Colors.textMute, fontStyle: 'italic', fontWeight: '600' },
-
-  bubble:         { borderRadius: 20, padding: 14, maxWidth: '85%' },
-  bubbleUser:     { backgroundColor: '#FF5E13', alignSelf: 'flex-end', borderBottomRightRadius: 4 },
-  bubbleStaff:    { backgroundColor: Colors.card2, alignSelf: 'flex-start', borderBottomLeftRadius: 4 },
-  bubbleHeader:   { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginBottom: 4 },
-  bubbleAuthor:   { fontSize: 11, fontWeight: '800', color: Colors.text },
-  bubbleTime:     { fontSize: 10, color: Colors.textMute },
-  bubbleBody:     { fontSize: 13, color: Colors.text, lineHeight: 20, fontWeight: '500' },
-
   composer:       {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 14, paddingTop: 10,
     backgroundColor: '#FFFFFF',
-    borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.02)',
+    borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.08)',
   },
-  composerIcon:   { padding: 8, paddingBottom: 10 },
+  composerIcon:   { padding: 8 },
   composerInput:  {
-    flex: 1, backgroundColor: Colors.card2, borderRadius: 18,
-    paddingHorizontal: 14, paddingVertical: 9,
-    fontSize: 13, color: Colors.text,
-    maxHeight: 100,
+    flex: 1, backgroundColor: Colors.card2, borderRadius: 22,
+    paddingHorizontal: 16, paddingVertical: 10,
+    fontSize: 15, color: Colors.text,
+    maxHeight: 120,
   },
   sendBtn:        {
-    width: 36, height: 36, borderRadius: 18,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: '#FF5E13',
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: 2,
   },
   btnDisabled:    { opacity: 0.35 },
   composerError:  { backgroundColor: '#FFFFFF', paddingHorizontal: 18 },
@@ -949,9 +995,6 @@ const styles = StyleSheet.create({
   attachmentChipIcon: { fontSize: 12 },
   attachmentName:     { flex: 1, fontSize: 12, color: Colors.text, fontWeight: '500' },
   attachmentRemove:   { fontSize: 12, color: Colors.textMute, fontWeight: '700', marginLeft: 2 },
-
-  bubbleImages:     { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 },
-  bubbleImageThumb: { width: 150, height: 110, borderRadius: 10 },
 
   imgOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.93)', alignItems: 'center', justifyContent: 'center' },
   imgFull:     { width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.78 },

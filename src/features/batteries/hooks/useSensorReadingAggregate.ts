@@ -1,22 +1,28 @@
 import { useQuery } from '@tanstack/react-query';
 import { QUERY_KEY } from '../../../lib/queryKeys';
 import { sensorReadingService } from '../services/sensor-reading.service';
-import { SensorReadingAggregateParams } from '../types/sensor-reading.types';
+import { SensorReadingInterval } from '../types/sensor-reading.types';
 
-// Dữ liệu bucket cho chart. Mặc định 24h gần nhất, interval 1h.
+interface UseSensorReadingAggregateOptions {
+  hours: number; // khoảng thời gian lùi từ hiện tại — `from` tính lại mỗi lần fetch
+  interval: SensorReadingInterval;
+}
+
+// Dữ liệu bucket cho chart — poll mỗi 30s để chart tự cập nhật khi có reading mới.
 export function useSensorReadingAggregate(
   assetId: string,
-  params?: SensorReadingAggregateParams,
+  opts: UseSensorReadingAggregateOptions,
 ) {
   return useQuery({
-    queryKey: QUERY_KEY.sensorReadings.aggregate(
-      assetId,
-      params as Record<string, unknown> | undefined,
-    ),
-    queryFn: () =>
-      sensorReadingService
-        .getAggregate(assetId, params)
-        .then((r) => r.data.data ?? []),
+    queryKey: QUERY_KEY.sensorReadings.aggregate(assetId, opts as unknown as Record<string, unknown>),
+    queryFn: () => {
+      const from = new Date(Date.now() - opts.hours * 3_600_000).toISOString();
+      return sensorReadingService
+        .getAggregate(assetId, { from, interval: opts.interval })
+        .then((r) => r.data.data ?? []);
+    },
     enabled: !!assetId,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
   });
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Colors, CommonStyles } from '../../../lib/theme';
 import { HttpError, EntityError } from '../../../lib/errors';
@@ -17,6 +17,8 @@ export function OtpVerifyForm({ email }: Props) {
   const [otpError, setOtpError] = useState('');
   const [generalError, setGeneralError] = useState('');
   const [countdown, setCountdown] = useState(RESEND_COOLDOWN);
+  
+  const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     if (countdown <= 0) return;
@@ -52,30 +54,72 @@ export function OtpVerifyForm({ email }: Props) {
     resendMutation.mutate({ email });
   };
 
+  const focusInput = () => {
+    inputRef.current?.focus();
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.hint}>
-        Mã xác thực đã gửi đến{'\n'}
-        <Text style={styles.emailHighlight}>{email}</Text>
-      </Text>
 
+      {/* Hidden input to receive key presses */}
       <TextInput
-        style={[styles.otpInput, otpError && styles.inputError]}
-        placeholder="000000"
-        placeholderTextColor={Colors.placeholder}
+        ref={inputRef}
+        style={styles.hiddenInput}
         keyboardType="number-pad"
         maxLength={6}
         value={otp}
         onChangeText={setOtp}
+        autoFocus
       />
+
+      {/* Visual OTP Slots */}
+      <Pressable style={styles.otpContainer} onPress={focusInput}>
+        {Array(6).fill(0).map((_, index) => {
+          const char = otp[index] || '';
+          const isFocused = index === otp.length;
+          return (
+            <View
+              key={index}
+              style={[
+                styles.otpSlot,
+                isFocused && styles.otpSlotFocused,
+                otpError ? styles.otpSlotError : null,
+              ]}
+            >
+              <Text style={styles.otpText}>
+                {char || (isFocused ? '|' : '-')}
+              </Text>
+            </View>
+          );
+        })}
+      </Pressable>
+
       {otpError ? <Text style={styles.errorText}>{otpError}</Text> : null}
 
       {generalError ? (
-        <View style={CommonStyles.generalError}>
-          <Text style={CommonStyles.generalErrorText}>{generalError}</Text>
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{generalError}</Text>
         </View>
       ) : null}
 
+      {/* Resend code */}
+      <Pressable
+        onPress={handleResend}
+        disabled={countdown > 0 || resendMutation.isPending}
+        style={styles.resendBtn}
+      >
+        {countdown > 0 ? (
+          <Text style={styles.resendDisabled}>
+            Gửi lại mã sau <Text style={{ fontWeight: '700' }}>{countdown}s</Text>
+          </Text>
+        ) : (
+          <Text style={styles.resendText}>
+            Không nhận được OTP? <Text style={styles.resendLink}>Gửi lại mã</Text>
+          </Text>
+        )}
+      </Pressable>
+
+      {/* Verify button */}
       <Pressable
         style={[styles.button, verifying && styles.buttonDisabled]}
         onPress={handleVerify}
@@ -83,36 +127,72 @@ export function OtpVerifyForm({ email }: Props) {
       >
         {verifying ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.buttonText}>Xác thực</Text>}
       </Pressable>
-
-      <Pressable
-        onPress={handleResend}
-        disabled={countdown > 0 || resendMutation.isPending}
-        style={styles.resendBtn}
-      >
-        <Text style={[styles.resendText, countdown > 0 && styles.resendDisabled]}>
-          {countdown > 0 ? `Gửi lại sau ${countdown}s` : 'Gửi lại OTP'}
-        </Text>
-      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container:      { gap: 16 },
-  hint:           { color: Colors.textSecondary, fontSize: 14, textAlign: 'center', lineHeight: 22 },
-  emailHighlight: { color: Colors.primary, fontWeight: '600' },
-  otpInput:       {
-    backgroundColor: Colors.bg, borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: 12, padding: 16, fontSize: 28,
-    textAlign: 'center', letterSpacing: 12, fontWeight: '700',
-    color: Colors.text,
+  hint:           { color: '#7A7872', fontSize: 14, textAlign: 'center', lineHeight: 22 },
+  emailHighlight: { color: '#1A1A1C', fontWeight: '700' },
+  hiddenInput: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    opacity: 0,
   },
-  inputError:     { borderColor: Colors.danger, backgroundColor: '#FFF5F5' },
-  errorText:      { color: Colors.danger, fontSize: 12, textAlign: 'center' },
-  button:         { backgroundColor: Colors.primary, borderRadius: 10, paddingVertical: 15, alignItems: 'center' },
+  otpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  otpSlot: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    backgroundColor: '#F9F9F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 5,
+  },
+  otpSlotFocused: {
+    borderColor: '#34C759',
+    backgroundColor: '#FFFFFF',
+  },
+  otpSlotError: {
+    borderColor: Colors.danger,
+    backgroundColor: '#FFF5F5',
+  },
+  otpText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1C',
+  },
+  errorText:      { color: Colors.danger, fontSize: 12, textAlign: 'center', marginTop: -8 },
+  button:         {
+    backgroundColor: '#34C759', borderRadius: 28,
+    height: 54, alignItems: 'center', justifyContent: 'center', marginTop: 12,
+  },
   buttonDisabled: { opacity: 0.5 },
-  buttonText:     { color: Colors.white, fontWeight: '600', fontSize: 16 },
+  buttonText:     { color: Colors.white, fontWeight: '700', fontSize: 16 },
   resendBtn:      { alignItems: 'center', paddingVertical: 8 },
-  resendText:     { color: Colors.primary, fontSize: 14, fontWeight: '500' },
-  resendDisabled: { color: Colors.textTertiary },
+  resendText:     { color: '#7A7872', fontSize: 14 },
+  resendLink:     { color: '#E0533C', fontWeight: '700', textDecorationLine: 'underline' },
+  resendDisabled: { color: '#B0AEA6', fontSize: 14 },
+  errorBanner: {
+    backgroundColor: Colors.dangerLight,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  errorBannerText: {
+    color: Colors.dangerDark,
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
 });

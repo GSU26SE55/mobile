@@ -20,8 +20,18 @@ import { KbSearchBar } from '../../../src/features/kb/components/KbSearchBar';
 import { useDebouncedValue } from '../../../src/features/kb/hooks/useDebouncedValue';
 import { useKbInfiniteList } from '../../../src/features/kb/hooks/useKbInfiniteList';
 import type { KbArticleSummaryDTO } from '../../../src/features/kb/types/kb.types';
+import { P } from '../../../src/lib/authz';
+import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
 
 export default function StaffKbListScreen() {
+  return (
+    <PermissionGuard permission={P.KNOWLEDGE_BASE_VIEW}>
+      <StaffKbListScreenInner />
+    </PermissionGuard>
+  );
+}
+
+function StaffKbListScreenInner() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ tag?: string }>();
   const [query, setQuery] = useState('');

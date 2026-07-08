@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from '../src/context/authContext';
+import { PermissionsSync } from '../src/features/auth/components/PermissionsSync';
 import { useAuthGuard } from '../src/hooks/useAuthGuard';
 
 const queryClient = new QueryClient({
@@ -34,6 +35,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
+          <PermissionsSync />
           <RootLayoutNav />
           <StatusBar style="dark" />
         </AuthProvider>

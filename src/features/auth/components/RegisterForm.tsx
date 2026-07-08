@@ -22,8 +22,13 @@ export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState('');
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const getError = (field: string) => fieldErrors[field];
+
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const isNameValid = fullName.trim().length >= 2;
+  const isPhoneValid = phoneNumber.trim().length >= 9;
 
   const handleSubmit = async () => {
     setFieldErrors({});
@@ -62,7 +67,6 @@ export function RegisterForm() {
   const fields: {
     key: string;
     label: string;
-    icon: keyof typeof Ionicons.glyphMap;
     placeholder: string;
     value: string;
     onChangeText: (t: string) => void;
@@ -70,11 +74,12 @@ export function RegisterForm() {
     autoCapitalize?: 'none' | 'words';
     secure?: boolean;
     optional?: boolean;
+    isValid?: boolean;
   }[] = [
-    { key: 'fullName', label: 'Họ và tên', icon: 'person-outline', placeholder: 'Nguyễn Văn A', value: fullName, onChangeText: setFullName, autoCapitalize: 'words' },
-    { key: 'email', label: 'Email', icon: 'mail-outline', placeholder: 'name@example.com', value: email, onChangeText: setEmail, keyboardType: 'email-address', autoCapitalize: 'none' },
-    { key: 'password', label: 'Mật khẩu', icon: 'lock-closed-outline', placeholder: 'Tối thiểu 8 ký tự', value: password, onChangeText: setPassword, secure: true },
-    { key: 'phoneNumber', label: 'Số điện thoại', icon: 'call-outline', placeholder: '0912345678', value: phoneNumber, onChangeText: setPhoneNumber, keyboardType: 'phone-pad', optional: true },
+    { key: 'fullName', label: 'Họ và tên', placeholder: 'Nguyễn Văn A', value: fullName, onChangeText: setFullName, autoCapitalize: 'words', isValid: isNameValid },
+    { key: 'email', label: 'Email', placeholder: 'name@example.com', value: email, onChangeText: setEmail, keyboardType: 'email-address', autoCapitalize: 'none', isValid: isEmailValid },
+    { key: 'password', label: 'Mật khẩu', placeholder: 'Tối thiểu 8 ký tự', value: password, onChangeText: setPassword, secure: true },
+    { key: 'phoneNumber', label: 'Số điện thoại', placeholder: '0912345678 (Tùy chọn)', value: phoneNumber, onChangeText: setPhoneNumber, keyboardType: 'phone-pad', optional: true, isValid: isPhoneValid },
   ];
 
   return (
@@ -83,10 +88,12 @@ export function RegisterForm() {
         <View key={f.key}>
           <Text style={styles.label}>
             {f.label}{f.optional ? '' : ' *'}
-            {f.optional && <Text style={styles.optional}> (tuỳ chọn)</Text>}
           </Text>
-          <View style={[styles.inputWrap, getError(f.key) && styles.inputError]}>
-            <Ionicons name={f.icon} size={18} color={Colors.textTertiary} style={styles.inputIcon} />
+          <View style={[
+            styles.inputWrap, 
+            focusedField === f.key && styles.inputFocused,
+            getError(f.key) ? styles.inputError : null
+          ]}>
             <TextInput
               style={styles.input}
               placeholder={f.placeholder}
@@ -96,11 +103,20 @@ export function RegisterForm() {
               keyboardType={f.keyboardType}
               autoCapitalize={f.autoCapitalize}
               secureTextEntry={f.secure && !showPassword}
+              onFocus={() => setFocusedField(f.key)}
+              onBlur={() => setFocusedField(null)}
             />
             {f.secure && (
               <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
                 <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textTertiary} />
               </Pressable>
+            )}
+            {!f.secure && f.value.length > 0 && f.isValid !== undefined && (
+              <Ionicons 
+                name={f.isValid ? 'checkmark-circle' : 'close-circle'} 
+                size={20} 
+                color={f.isValid ? '#34C759' : Colors.textTertiary} 
+              />
             )}
           </View>
           {getError(f.key) ? <Text style={styles.errorText}>{getError(f.key)}</Text> : null}
@@ -108,35 +124,50 @@ export function RegisterForm() {
       ))}
 
       {generalError ? (
-        <View style={CommonStyles.generalError}>
-          <Text style={CommonStyles.generalErrorText}>{generalError}</Text>
+        <View style={styles.errorBanner}>
+          <Ionicons name="alert-circle-outline" size={16} color={Colors.danger} />
+          <Text style={styles.errorBannerText}>{generalError}</Text>
         </View>
       ) : null}
 
       <Pressable style={[styles.button, isPending && styles.buttonDisabled]} onPress={handleSubmit} disabled={isPending}>
-        {isPending ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.buttonText}>Đăng ký</Text>}
+        {isPending ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.buttonText}>Tạo tài khoản</Text>}
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container:      { gap: 14 },
-  label:          { fontSize: 13, fontWeight: '500', color: Colors.textSecondary, marginBottom: 6 },
-  optional:       { color: Colors.textTertiary, fontWeight: '400' },
+  container:      { gap: 10 },
+  label:          { fontSize: 13, fontWeight: '700', color: '#1A1A1C', marginBottom: 4, marginLeft: 16 },
   inputWrap:      {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.border,
-    borderRadius: 10, paddingHorizontal: 12,
+    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EBEBEB',
+    borderRadius: 24, paddingHorizontal: 18, height: 48,
   },
-  inputIcon:      { marginRight: 8 },
-  input:          { flex: 1, fontSize: 15, color: Colors.text, paddingVertical: 13 },
+  input:          { flex: 1, fontSize: 14, color: '#1A1A1C', paddingVertical: 0 },
+  inputFocused:   { borderColor: '#34C759' },
   inputError:     { borderColor: Colors.danger, backgroundColor: '#FFF5F5' },
-  errorText:      { color: Colors.danger, fontSize: 12, marginTop: 4 },
+  errorText:      { color: Colors.danger, fontSize: 11, marginTop: 2, marginLeft: 16 },
   button:         {
-    backgroundColor: Colors.primary, borderRadius: 10,
-    paddingVertical: 15, alignItems: 'center', marginTop: 4,
+    backgroundColor: '#34C759', borderRadius: 24,
+    height: 48, alignItems: 'center', justifyContent: 'center', marginTop: 6,
   },
   buttonDisabled: { opacity: 0.5 },
-  buttonText:     { color: Colors.white, fontWeight: '600', fontSize: 16 },
+  buttonText:     { color: Colors.white, fontWeight: '700', fontSize: 15 },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.dangerLight,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  errorBannerText: {
+    color: Colors.dangerDark,
+    fontSize: 12,
+    fontWeight: '500',
+    flex: 1,
+  },
 });

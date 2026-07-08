@@ -8,13 +8,19 @@ import type { MaintenanceLogPayload } from '../types/staff.types';
 interface Props {
   isLoading: boolean;
   onSubmit: (data: MaintenanceLogPayload) => void;
+  // GH-44 — tái dùng cho sửa log (PATCH): prefill các field text. Ảnh không prefill (PATCH partial — bỏ trống = giữ nguyên).
+  initialValues?: Pick<MaintenanceLogPayload, 'summary' | 'actionsTaken' | 'partsUsed' | 'durationMinutes'>;
+  title?: string;
+  submitLabel?: string;
 }
 
-export function MaintenanceLogForm({ isLoading, onSubmit }: Props) {
-  const [description, setDescription] = useState('');
-  const [actionTaken, setActionTaken] = useState('');
-  const [partsUsed, setPartsUsed] = useState('');
-  const [duration, setDuration] = useState('');
+export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, submitLabel }: Props) {
+  const [description, setDescription] = useState(initialValues?.summary ?? '');
+  const [actionTaken, setActionTaken] = useState(initialValues?.actionsTaken ?? '');
+  const [partsUsed, setPartsUsed] = useState(initialValues?.partsUsed ?? '');
+  const [duration, setDuration] = useState(
+    initialValues?.durationMinutes != null ? String(initialValues.durationMinutes) : '',
+  );
   const [beforePhotos, setBeforePhotos] = useState<UploadedAttachment[]>([]);
   const [afterPhotos, setAfterPhotos] = useState<UploadedAttachment[]>([]);
   const [uploadingBefore, setUploadingBefore] = useState(false);
@@ -47,7 +53,7 @@ export function MaintenanceLogForm({ isLoading, onSubmit }: Props) {
 
   return (
     <View style={[styles.container, Shadow]}>
-      <Text style={styles.title}>Ghi nhật ký bảo trì</Text>
+      <Text style={styles.title}>{title ?? 'Ghi nhật ký bảo trì'}</Text>
 
       <View style={styles.field}>
         <Text style={styles.label}>Mô tả công việc *</Text>
@@ -128,7 +134,7 @@ export function MaintenanceLogForm({ isLoading, onSubmit }: Props) {
         {isLoading ? (
           <ActivityIndicator color="#fff" size="small" />
         ) : (
-          <Text style={styles.submitText}>Lưu nhật ký</Text>
+          <Text style={styles.submitText}>{submitLabel ?? 'Lưu nhật ký'}</Text>
         )}
       </Pressable>
     </View>

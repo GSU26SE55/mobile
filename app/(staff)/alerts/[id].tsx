@@ -1,10 +1,12 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Shadow } from '../../../src/lib/theme';
+import { handleErrorApi } from '../../../src/lib/errors';
 import { useAlert } from '../../../src/features/batteries/hooks/useAlert';
+import { useResolveAlert } from '../../../src/features/batteries/hooks/useResolveAlert';
 import { ANOMALY_LABEL } from '../../../src/features/batteries/components/AssetAlertList';
 import { formatMeasure } from '../../../src/features/batteries/types/alert.types';
 import {
@@ -29,6 +31,7 @@ export default function StaffAlertDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: alert, isLoading, isError } = useAlert(id ?? '');
+  const { mutateAsync: resolve, isPending: resolvePending } = useResolveAlert();
 
   if (isLoading) {
     return (
@@ -51,6 +54,18 @@ export default function StaffAlertDetailScreen() {
   }
 
   const sev = SEVERITY_STYLE[alert.severity] ?? SEVERITY_STYLE[AlertSeverityEnum.Info];
+  // Resolve hợp lệ khi Open/Acknowledged. Merged/Resolved → ẩn nút.
+  const canResolve =
+    alert.status === AlertStatusEnum.Open || alert.status === AlertStatusEnum.Acknowledged;
+
+  const handleResolve = async () => {
+    try {
+      await resolve(alert.id);
+      Alert.alert('Thành công', 'Đã xử lý cảnh báo này.');
+    } catch (error) {
+      handleErrorApi({ error });
+    }
+  };
 
   return (
     <View style={styles.root}>
@@ -93,6 +108,25 @@ export default function StaffAlertDetailScreen() {
           ) : null}
         </View>
       </ScrollView>
+
+      {canResolve && (
+        <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
+          <Pressable
+            style={[styles.resolveBtn, Shadow]}
+            onPress={handleResolve}
+            disabled={resolvePending}
+          >
+            {resolvePending ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="checkmark-done-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.resolveText}>Resolve</Text>
+              </>
+            )}
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }
@@ -149,4 +183,20 @@ const styles = StyleSheet.create({
   rowLabel: { fontSize: 13, color: Colors.textMute, fontWeight: '600' },
   rowValue: { fontSize: 13, fontWeight: '800', color: Colors.accent, flexShrink: 1, textAlign: 'right', marginLeft: 12 },
   divider: { height: 1, backgroundColor: 'rgba(0,0,0,0.03)' },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+  },
+  resolveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    paddingVertical: 14,
+    backgroundColor: Colors.primary,
+  },
+  resolveText: { fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
 });

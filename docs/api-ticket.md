@@ -15,7 +15,7 @@
   "statusCode": 200,
   "message": "...",
   "data": { ... },
-  "listErrors": []
+  "listErrors": null
 }
 ```
 
@@ -25,7 +25,7 @@
 | `statusCode` | `int` | HTTP status code |
 | `message` | `string?` | Thông báo tóm tắt kết quả |
 | `data` | `T?` | Dữ liệu trả về, `null` khi thất bại |
-| `listErrors` | `Errors[]` | Danh sách lỗi validation — mỗi phần tử có `field` và `detail` |
+| `listErrors` | `Errors[] \| null` | Lỗi validation field-level — mỗi phần tử có `field` và `detail`. **`null`** khi thành công hoặc khi lỗi không thuộc field-level (lỗi nghiệp vụ/quyền chỉ có `message`) — BE serialize list rỗng thành `null` (`ErrorsListJsonConverter`), không bao giờ trả `[]` |
 
 **Lỗi HTTP chung:**
 - `400` — Validation hoặc input không hợp lệ
@@ -36,7 +36,7 @@
 
 ### `TicketActionResponse`
 
-Wrapper **riêng biệt** (không phải `CommonResponse<T>`) dành cho các hành động thay đổi trạng thái ticket (POST mutations). `data` trỏ tới `TicketActionDto`.
+Wrapper **riêng biệt** (không phải `CommonResponse<T>`) dành cho các hành động thay đổi trạng thái ticket (POST mutations). `data` trỏ tới `TicketActionDTO`.
 
 ```json
 {
@@ -48,7 +48,7 @@ Wrapper **riêng biệt** (không phải `CommonResponse<T>`) dành cho các hà
     "code": "TKT-2606-0001",
     "status": "InProgress"
   },
-  "listErrors": []
+  "listErrors": null
 }
 ```
 
@@ -61,7 +61,7 @@ Wrapper **riêng biệt** (không phải `CommonResponse<T>`) dành cho các hà
 
 **TypeScript types:**
 ```ts
-interface TicketActionDto {
+interface TicketActionDTO {
   id: string;
   ticketId?: string; // chỉ có ở response của POST maintenance-logs
   code: string;
@@ -72,7 +72,7 @@ interface TicketActionResponse {
   isSuccess: boolean;
   statusCode: number;
   message: string | null;
-  data: TicketActionDto | null;
+  data: TicketActionDTO | null;
   listErrors: Array<{ field: string | null; detail: string | null }> | null;
 }
 ```
@@ -257,6 +257,66 @@ ClosedPendingRate → Open (Customer reopen → Manager triage lại; lần 2+ t
 | `Customer` | 4 | Khách hàng |
 | `System` | 5 | Hành động tự động của hệ thống |
 
+### `KbArticleStatusEnum`
+
+| Giá trị | Int | Ý nghĩa |
+|---|---|---|
+| `Draft` | 1 | Nháp |
+| `PendingReview` | 2 | Chờ phê duyệt |
+| `Published` | 3 | Đã xuất bản (Customer xem được) |
+| `Archived` | 4 | Đã lưu trữ (ẩn) |
+
+### `KbVersionStatusEnum`
+
+Trạng thái của một bản ghi lịch sử (`KbArticleVersion`) — khác với `KbArticleStatusEnum` của bài viết chính.
+
+| Giá trị | Int | Ý nghĩa |
+|---|---|---|
+| `Pending` | 1 | Chờ duyệt |
+| `Approved` | 2 | Đã duyệt |
+| `Rejected` | 3 | Bị từ chối |
+| `Archived` | 4 | Bản sao lưu (snapshot) |
+
+### `KbReferenceTypeEnum`
+
+Dùng khi gán bài viết Knowledge Base vào Ticket (Nhóm 11).
+
+| Giá trị | Int | Ý nghĩa | Ràng buộc |
+|---|---|---|---|
+| `ConsultedDuringResolve` | 1 | Tham khảo khi xử lý | Chỉ gán được **trước** khi ticket `Resolved` |
+| `ProvidedToCustomer` | 2 | Cung cấp cho khách hàng | Gán được đến hết state `Resolved`; **không** gán được bài `isInternalOnly` (→ `422`) |
+| `GeneratedAfterResolve` | 3 | Tạo ra sau khi xử lý xong | Gán được đến hết state `Resolved` |
+
+> Từ `ClosedPendingRate` trở đi, **mọi type** đều bị chặn (`409`). Chi tiết bảng quy tắc: xem `POST /api/knowledge-base/references` (Nhóm 11).
+
+### `ChatBodyFormatEnum`
+
+| Giá trị | Int | Ý nghĩa |
+|---|---|---|
+| `PlainText` | 1 | Văn bản thường |
+| `Markdown` | 2 | Markdown — BE tự render sang HTML lưu vào `bodyHtml` |
+
+### `ReactionTypeEnum`
+
+| Giá trị | Int | Ý nghĩa |
+|---|---|---|
+| `ThumbsUp` | 1 | 👍 |
+| `Acknowledged` | 2 | ✅ Đã biết |
+| `Resolved` | 3 | 🔧 Đã giải quyết |
+| `NeedMoreInfo` | 4 | ❓ Cần thêm thông tin |
+| `Disagree` | 5 | ❌ Không đồng ý |
+
+### `ChatAiIntentEnum`
+
+Phong cách gợi ý AI cho endpoint `POST /chats/suggest`.
+
+| Giá trị | Int | Ý nghĩa |
+|---|---|---|
+| `RequestInfo` | 1 | Yêu cầu thêm thông tin từ Customer |
+| `TechnicalAnswer` | 2 | Trả lời kỹ thuật (mặc định) |
+| `Resolution` | 3 | Đề xuất giải pháp xử lý |
+| `FollowUp` | 4 | Theo dõi tiến độ |
+
 ---
 
 ## DTOs
@@ -281,7 +341,7 @@ ClosedPendingRate → Open (Customer reopen → Manager triage lại; lần 2+ t
 | `isIncident` | `bool` | Không | Có được đánh dấu là Incident không |
 | `createdAt` | `string` | Không | Thời điểm tạo (ISO 8601 UTC) |
 | `updatedAt` | `string?` | Null nếu chưa cập nhật | Thời điểm cập nhật gần nhất |
-| `slaTimer` | `SlaTimerDTO` | Không | Thông tin SLA timer hiện tại |
+| `slaTimer` | `SlaTimerDTO?` | **Null khi chưa có SLA** | Thông tin SLA timer hiện tại — `null` khi ticket chưa triage (chưa tạo timer) |
 
 ### `TicketDetailDTO` (chi tiết một ticket — extend `TicketDTO`)
 
@@ -304,7 +364,7 @@ Bao gồm tất cả field của `TicketDTO`, cộng thêm:
 | `escalationReason` | `EscalationReasonEnum?` | **Nullable** — trả về `null` khi ticket chưa escalate (KHÔNG phải `0`). | Lý do chuyển cấp |
 | `originAlertId` | `string?` | Null nếu không từ alert | ID cảnh báo nguồn (khi `origin = AutoFromAlert`) |
 | `activities` | `TicketActivityDTO[]` | Không (default `[]`) | Lịch sử hành động (timeline) |
-| `comments` | `TicketCommentDTO[]` | Không (default `[]`) | Danh sách bình luận |
+| `chats` | `TicketChatDTO[]` | Không (default `[]`) | Danh sách chat — thay thế `comments` từ v2. Xem mục `TicketChatDTO` bên dưới |
 | `maintenanceLogs` | `MaintenanceLogDTO[]` | Không (default `[]`) | Nhật ký bảo trì |
 | `attachmentFileIds` | `string[]` | Không (default `[]`) | **Mảng FileId (string)** của file đính kèm — KHÔNG phải mảng `TicketAttachmentDTO`. Field thực tế tên `attachmentFileIds` |
 
@@ -338,26 +398,82 @@ Bao gồm tất cả field của `TicketDTO`, cộng thêm:
 | `reason` | `string?` | Null | Lý do thực hiện |
 | `createdAt` | `string` | Không | Thời điểm ghi nhận (UTC) |
 
-### `TicketCommentDTO`
+### `TicketCommentDTO` ~~(Deprecated)~~
+
+> **⚠️ DEPRECATED — đã thay thế bởi `TicketChatDTO`.** Controller `TicketCommentsController` đã bị xóa. Endpoint `GET/POST /api/tickets/{ticketId}/comments` không còn tồn tại. Dùng `GET/POST /api/tickets/{ticketId}/chats` thay thế. `TicketDetailDTO.chats` trả về `TicketChatDTO[]` (không còn `comments`).
+
+### `TicketChatDTO`
 
 | Field | Type | Nullable | Mô tả |
 |---|---|---|---|
-| `id` | `string` | Không | ID comment |
+| `id` | `string` | Không | ID chat |
 | `ticketId` | `string` | Không | ID ticket |
-| `authorUserId` | `string?` | Null | ID người viết |
+| `authorUserId` | `string` | Không (default `""`) | ID người viết |
 | `authorRole` | `ActorRoleEnum` | Không | Role của người viết |
 | `authorDisplayName` | `string?` | Null | Tên hiển thị |
-| `body` | `string` | Không | Nội dung bình luận |
-| `isInternal` | `bool` | Không | `true` = chỉ Staff/Manager xem được, ẩn với Customer |
-| `attachmentFileIds` | `string[]?` | Null | Danh sách FileId đính kèm |
+| `body` | `string` | Không | Nội dung chat |
+| `isInternal` | `bool` | Không | `true` = chỉ Staff/Manager/Admin xem được, ẩn với Customer |
+| `attachmentFileIds` | `string[]` | Không (default `[]`) | FileId đính kèm — luôn là mảng, không bao giờ `null` |
 | `createdAt` | `string` | Không | Thời điểm tạo (UTC) |
+| `editedAt` | `string?` | Null nếu chưa sửa | Thời điểm sửa gần nhất |
+| `editCount` | `int` | Không | Số lần đã sửa |
+| `lastEditedByUserId` | `string?` | Null | ID người sửa gần nhất |
+| `bodyFormat` | `ChatBodyFormatEnum` | Không | Định dạng body (`PlainText` hoặc `Markdown`) |
+| `bodyHtml` | `string?` | Null khi PlainText | HTML đã render (chỉ khi `bodyFormat=Markdown`) |
+| `parentChatId` | `string?` | Null nếu không phải reply | ID chat cha (thread) |
+| `threadRootId` | `string?` | Null nếu không thuộc thread | ID chat gốc của thread |
+| `replyCount` | `int` | Không | Số reply của chat này |
+| `isPinned` | `bool` | Không | Đang được pin không |
+| `pinnedAt` | `string?` | Null | Thời điểm pin |
+| `pinnedByUserId` | `string?` | Null | ID người pin |
+| `attachments` | `TicketAttachmentDTO[]?` | Null trong GetList, có trong GetById | Danh sách attachment đầy đủ (chỉ khi GetById) |
+| `mentions` | `TicketChatMentionDTO[]` | Không (default `[]`) | Danh sách mention trong chat này |
+| `reactions` | `TicketChatReactionsAggregateDTO` | Không | Tổng hợp reaction theo loại |
+
+**`TicketChatReactionsAggregateDTO`:**
+
+| Field | Type | Mô tả |
+|---|---|---|
+| `thumbsUp` | `ChatReactionGroupDTO` | 👍 |
+| `acknowledged` | `ChatReactionGroupDTO` | ✅ Đã biết |
+| `resolved` | `ChatReactionGroupDTO` | 🔧 Đã giải quyết |
+| `needMoreInfo` | `ChatReactionGroupDTO` | ❓ Cần thêm thông tin |
+| `disagree` | `ChatReactionGroupDTO` | ❌ Không đồng ý |
+
+**`ChatReactionGroupDTO`:** `count: int`, `users: [{ userId: string, role: ActorRoleEnum }]`
+
+**`TicketChatMentionDTO`:**
+
+| Field | Type | Mô tả |
+|---|---|---|
+| `id` | `string` | ID mention |
+| `chatId` | `string` | ID chat chứa mention |
+| `ticketId` | `string?` | ID ticket |
+| `mentionedUserId` | `string` | ID người được mention |
+| `mentionedUserRole` | `ActorRoleEnum` | Role người được mention |
+| `mentionedDisplayName` | `string?` | Tên hiển thị |
+| `isAcknowledged` | `bool` | Đã xem/xác nhận |
+| `acknowledgedAt` | `string?` | Thời điểm xác nhận |
+| `createdAt` | `string` | Thời điểm tạo |
+
+**`ChatEditHistoryDTO`:**
+
+| Field | Type | Mô tả |
+|---|---|---|
+| `id` | `string` | ID bản ghi lịch sử sửa |
+| `chatId` | `string` | ID chat |
+| `oldBody` | `string` | Nội dung cũ |
+| `newBody` | `string` | Nội dung mới |
+| `editedAt` | `string` | Thời điểm sửa |
+| `editedByUserId` | `string` | ID người sửa |
+| `editedByRole` | `ActorRoleEnum` | Role người sửa |
+| `editReason` | `string?` | Lý do sửa (bắt buộc khi Manager/Admin sửa chat của người khác) |
 
 ### `MaintenanceLogDTO`
 
 | Field | Type | Nullable | Mô tả |
 |---|---|---|---|
 | `id` | `string` | Không | ID nhật ký |
-| `ticketId` | `string` | Không | ID ticket |
 | `staffId` | `string` | Không | ID Staff tạo nhật ký |
 | `logType` | `MaintenanceLogTypeEnum` | Không | Loại nhật ký |
 | `summary` | `string` | Không (default `""`) | Tóm tắt công việc |
@@ -367,10 +483,10 @@ Bao gồm tất cả field của `TicketDTO`, cộng thêm:
 | `resolutionNote` | `string?` | Null | Ghi chú kết quả |
 | `startedAt` | `string` | Không | Thời điểm bắt đầu (UTC) |
 | `completedAt` | `string?` | Null | Thời điểm hoàn thành (UTC) |
-| `attachmentFileIds` | `string[]?` | Null | File đính kèm chung |
-| `beforePhotosFileIds` | `string[]?` | Null | Ảnh trước khi sửa |
-| `afterPhotosFileIds` | `string[]?` | Null | Ảnh sau khi sửa |
-| `relatedKbArticleIds` | `string[]?` | Null | ID bài viết KB liên quan |
+| `attachmentFileIds` | `string[]` | Không (default `[]`) | File đính kèm chung — luôn là mảng (rỗng nếu không có), không `null` |
+| `beforePhotosFileIds` | `string[]` | Không (default `[]`) | Ảnh trước khi sửa — luôn là mảng, không `null` |
+| `afterPhotosFileIds` | `string[]` | Không (default `[]`) | Ảnh sau khi sửa — luôn là mảng, không `null` |
+| `relatedKbArticleIds` | `string[]` | Không (default `[]`) | ID bài viết KB liên quan — luôn là mảng, không `null` |
 | `createdAt` | `string` | Không | Thời điểm tạo (UTC) |
 
 ### `StaffMaintenanceLogGroupDTO`
@@ -467,59 +583,9 @@ Base path: `/api/tickets`
 
 ---
 
-### `GET /api/tickets/{ticketId}/comments`
+### ~~`GET /api/tickets/{ticketId}/comments`~~ ~~`POST /api/tickets/{ticketId}/comments`~~ (Removed)
 
-**Mục đích:** Lấy danh sách bình luận của Ticket (có phân trang).
-
-**Auth:** Bắt buộc (mọi role)
-
-**Quyền hạn:**
-- Customer: Chỉ xem được bình luận công khai (`IsInternal = false`).
-- Staff/Manager/Admin: Xem được tất cả bao gồm bình luận nội bộ.
-
-**Path param:** `ticketId` — UUID của ticket.
-
-**Query params:**
-
-| Param | Type | Mô tả |
-|---|---|---|
-| `page` | `int` | Số trang (mặc định 1) |
-| `pageSize` | `int` | Kích thước trang (mặc định 10) |
-
-**Response thành công `200`:** `CommonResponse<PaginationResponse<TicketCommentDTO>>`
-
----
-
-### `POST /api/tickets/{ticketId}/comments`
-
-**Mục đích:** Thêm bình luận vào ticket. Áp dụng cho cả Customer và Staff.
-
-**Auth:** Bắt buộc (mọi role)
-
-**Path param:** `ticketId` — UUID của ticket.
-
-**Request body:**
-
-| Field | Type | Bắt buộc | Validation | Mô tả |
-|---|---|---|---|---|
-| `body` | `string` | Bắt buộc | Không rỗng | Nội dung bình luận |
-| `isInternal` | `bool` | Không (mặc định `false`) | — | `true` = chỉ Staff/Manager xem được |
-| `attachments` | `CommentAttachmentInput[]?` | Không | — | Danh sách file đính kèm |
-
-**`CommentAttachmentInput`:**
-
-| Field | Type | Bắt buộc | Mô tả |
-|---|---|---|---|
-| `fileId` | `string` (UUID) | Bắt buộc | FileId từ FileStorageService — gửi dạng UUID string |
-| `fileName` | `string?` | Không | Tên file gốc |
-| `contentType` | `string?` | Không | MIME type |
-| `sizeBytes` | `int64` | Không | Kích thước file (bytes) |
-
-**Response thành công `201`:** `TicketActionResponse`
-
-**Lỗi thường gặp:**
-- `401` — Chưa đăng nhập
-- `404` — Không tìm thấy ticket
+> **⚠️ REMOVED — Controller `TicketCommentsController` đã bị xóa.** Không còn endpoint `GET/POST /api/tickets/{ticketId}/comments`. Dùng `GET/POST /api/tickets/{ticketId}/chats` thay thế (xem mục **Nhóm — Ticket Chats** bên dưới).
 
 ---
 
@@ -574,6 +640,593 @@ Một ticket chỉ được có **1 log đang mở** (`CompletedAt = null`) tạ
 
 ---
 
+## Realtime — SignalR Hub `/hubs/ticket-chats`
+
+**Mục đích:** Push realtime chat mới (`ChatAdded`) + typing indicator (`UserTyping`) cho ticket detail screen — thay thế polling `GET /api/tickets/{ticketId}/chats`.
+
+**Endpoint:** `/hubs/ticket-chats` (gắn ở root, **KHÔNG** có prefix `/api` — vd `http://localhost:{port}/hubs/ticket-chats`)
+**Transport:** WebSockets (SignalR tự fallback sang ServerSentEvents/LongPolling nếu WS bị chặn)
+**Auth:** Cùng JWT access token với REST (`[Authorize]` trên Hub), nhưng SignalR JS client **không gửi header** lúc bắt tay WS — phải truyền qua query string `access_token`:
+
+```
+ws://localhost:{port}/hubs/ticket-chats?access_token=<accessToken>
+```
+
+> Server tự nhận diện: `Program.cs` override `JwtBearerEvents.OnMessageReceived` — nếu path bắt đầu `/hubs/ticket-chats` và có query `access_token`, server lấy token từ query string thay vì header `Authorization`. Dùng `accessTokenFactory` của `@microsoft/signalr` thì KHÔNG cần tự ghép query string — client lib tự làm điều này.
+
+### Client → Server methods
+
+#### `JoinTicket(ticketId: string)`
+
+Bắt buộc gọi **sau khi connect** để nhận event của 1 ticket cụ thể — Hub không tự join group nào khi connect.
+
+- Validate `ticketId` là Guid hợp lệ — sai format → `HubException("Invalid ticket ID format.")`
+- Check quyền truy cập ticket — **cùng rule với REST** (`TicketQueryHelper.CanAccessTicket`: Admin/Manager luôn được; Customer phải là chủ ticket; Staff phải đang `AssignedStaffId`) — không có quyền → `HubException("Forbidden: No access to this ticket.")`
+- Join group `ticket:{ticketId}:public` (mọi role hợp lệ)
+- Nếu role ∈ `Admin`/`Manager`/`Staff` → join thêm group `ticket:{ticketId}:internal` (nhận cả chat `isInternal=true`)
+
+#### `LeaveTicket(ticketId: string)`
+
+Rời cả 2 group của ticket đó. `ticketId` sai format → no-op (không throw).
+
+#### `Typing(ticketId: string)`
+
+Broadcast cho người khác đang xem ticket biết mình đang gõ bình luận. Không có quyền truy cập ticket → no-op (không throw, không broadcast).
+
+### Server → Client events
+
+#### `ChatAdded`
+
+Push khi `POST /api/tickets/{ticketId}/chats` tạo chat thành công (xem Nhóm — Ticket Chats).
+
+**Payload:** `TicketChatDTO` (xem bảng field ở mục DTOs đầu tài liệu) — y nguyên DTO trả về từ REST, camelCase, enum dạng chuỗi.
+
+**Group routing (xem `SignalRTicketChatNotifier.cs`):**
+- `chat.isInternal == true` → chỉ push tới group `ticket:{ticketId}:internal` (Staff/Manager/Admin đã join)
+- `chat.isInternal == false` → push tới group `ticket:{ticketId}:public` (mọi role đã join, bao gồm Customer)
+
+#### `UserTyping(ticketId: string, userId: string, displayName: string)`
+
+Push tới **người khác** (không phải chính người gõ) trong group `ticket:{ticketId}:public` khi có client gọi `Typing`. **Lưu ý:** chỉ broadcast qua group public — Staff/Manager/Admin xem comment nội bộ vẫn nhận được (họ cũng ở group public), nhưng hiện tại không có channel typing riêng cho nhóm internal.
+
+### Connection lifecycle
+
+- Hub **không tự join group** khi connect (`OnConnectedAsync` dùng default — không override) — client **phải** gọi `JoinTicket` sau mỗi lần connect/reconnect (kể cả auto-reconnect) trước khi nhận event.
+- Khi connection đóng (tab close, mất mạng…), SignalR framework tự gỡ connection khỏi mọi group — không cần gọi `LeaveTicket` trước khi unload, nhưng nên gọi khi user rời màn hình ticket detail trong khi tab vẫn mở (chuyển sang ticket khác) để tránh nhận nhầm event của ticket cũ.
+- Token hết hạn giữa session: Hub không tự refresh — connection bị đóng khi token expire, FE cần `accessTokenFactory` trả token mới nhất mỗi lần reconnect và tự gọi lại `JoinTicket`.
+
+### Hub options (server-side)
+
+| Option | Giá trị | Mục đích |
+|---|---|---|
+| `KeepAliveInterval` | 15 giây | Server ping client để giữ WS sống |
+| `ClientTimeoutInterval` | 60 giây | Server đánh dấu disconnect nếu im lặng quá 60s |
+| `EnableDetailedErrors` | `true` (Development), `false` (Production) | Chi tiết exception trả client khi `HubException` |
+| JSON protocol | camelCase + `JsonStringEnumConverter` | Khớp định dạng JSON với REST response (`TicketChatDTO`) |
+
+### Test nhanh (FE / tay)
+
+Cách nhanh nhất — dán đoạn dưới vào DevTools Console của bất kỳ trang nào (hoặc 1 file `.html` mở trực tiếp), không cần cài project:
+
+```html
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+<script>
+  const accessToken = "<dán accessToken lấy từ POST /api/auth/login>";
+  const ticketId = "<dán 1 ticketId có thật>";
+
+  const connection = new signalR.HubConnectionBuilder()
+    .withUrl("http://localhost:{port}/hubs/ticket-chats", {
+      accessTokenFactory: () => accessToken,
+    })
+    .withAutomaticReconnect()
+    .configureLogging(signalR.LogLevel.Information)
+    .build();
+
+  connection.on("ChatAdded", (chat) => console.log("[ChatAdded]", chat));
+  connection.on("UserTyping", (tId, userId, displayName) => console.log("[UserTyping]", displayName));
+
+  connection
+    .start()
+    .then(() => connection.invoke("JoinTicket", ticketId))
+    .then(() => console.log("Joined ticket", ticketId))
+    .catch((err) => console.error(err));
+
+  // Test: mở tab khác / Postman gọi POST /api/tickets/{ticketId}/chats
+  // → console phải in ra "[ChatAdded]" gần như ngay lập tức.
+</script>
+```
+
+> Thay `{port}` bằng port thật của TicketService (`http://localhost:{port}`, không qua API Gateway nếu gateway chưa proxy WebSocket). `accessToken` lấy từ response `POST /api/auth/login` (AuthService, xem `docs/api-auth.md`) — dùng đúng tài khoản có quyền xem `ticketId` đó (Customer chủ ticket, Staff được assign, hoặc Admin/Manager).
+> **ApiGateway route:** `/hubs/ticket-chats` đã được proxy trong YARP config (`ticket-chats-hub-route`, `ticket-chats-hub-root-route`) → ticketCluster.
+
+---
+
+## Nhóm — Ticket Chats
+
+Base path: `/api/tickets/{ticketId}/chats`
+**Auth:** Bắt buộc — mọi role đã đăng nhập (`[Authorize]` trên controller)
+**Hub:** `/hubs/ticket-chats` — xem mục **Realtime** bên trên
+
+> Thay thế toàn bộ hệ thống Comments cũ. `POST` và `PUT` áp dụng rate limit (`ChatWritePolicy`).
+
+### Tóm tắt endpoints
+
+| Method | Path | Auth | Mô tả |
+|---|---|---|---|
+| `GET` | `/api/tickets/{ticketId}/chats` | Mọi role | Danh sách chat (phân trang, offset) |
+| `GET` | `/api/tickets/{ticketId}/chats/cursor` | Mọi role | Danh sách chat (cursor — infinite scroll) |
+| `POST` | `/api/tickets/{ticketId}/chats` | Mọi role | Thêm chat mới |
+| `GET` | `/api/tickets/{ticketId}/chats/{id}` | Mọi role | Lấy chi tiết 1 chat |
+| `PUT` | `/api/tickets/{ticketId}/chats/{id}` | Mọi role | Sửa chat |
+| `DELETE` | `/api/tickets/{ticketId}/chats/{id}` | Mọi role | Xóa (soft-delete) chat |
+| `GET` | `/api/tickets/{ticketId}/chats/{id}/history` | Mọi role | Lịch sử sửa chat |
+| `POST` | `/api/tickets/{ticketId}/chats/{id}/replies` | Mọi role | Trả lời chat (thread, tối đa 1 cấp) |
+| `GET` | `/api/tickets/{ticketId}/chats/{id}/replies` | Mọi role | Danh sách reply |
+| `POST` | `/api/tickets/{ticketId}/chats/{id}/attachments` | Mọi role | Thêm attachment vào chat |
+| `DELETE` | `/api/tickets/{ticketId}/chats/{id}/attachments/{attachmentId}` | Mọi role | Xóa attachment |
+| `GET` | `/api/tickets/{ticketId}/chats/{id}/attachments` | Mọi role | Danh sách attachment của chat |
+| `GET` | `/api/tickets/{ticketId}/chats/{id}/attachments/{attachmentId}/download` | Mọi role | URL download attachment |
+| `POST` | `/api/tickets/{ticketId}/chats/{id}/pin` | Staff/Manager/Admin | Pin chat (tối đa 3/ticket) |
+| `DELETE` | `/api/tickets/{ticketId}/chats/{id}/pin` | Staff/Manager/Admin | Unpin chat |
+| `POST` | `/api/tickets/{ticketId}/chats/{id}/reactions` | Mọi role | Thêm reaction |
+| `DELETE` | `/api/tickets/{ticketId}/chats/{id}/reactions` | Mọi role | Xóa reaction |
+| `GET` | `/api/tickets/{ticketId}/chats/{id}/reactions` | Mọi role | Lấy reaction aggregate |
+| `POST` | `/api/tickets/{ticketId}/chats/mark-read` | Mọi role | Mark-read nhiều chat (bulk) |
+| `GET` | `/api/tickets/{ticketId}/chats/{id}/readers` | Staff/Manager/Admin | Danh sách user đã đọc chat |
+| `GET` | `/api/tickets/{ticketId}/chats/unread-count` | Mọi role | Số chat chưa đọc |
+| `POST` | `/api/tickets/{ticketId}/chats/from-template/{templateId}` | Staff/Manager/Admin | Gửi chat từ template |
+| `POST` | `/api/tickets/{ticketId}/chats/{id}/attach-kb` | Staff/Manager/Admin | Gắn KB article vào chat |
+| `POST` | `/api/tickets/{ticketId}/chats/{id}/to-kb-draft` | Staff/Manager/Admin | Chuyển chat thành KB Draft |
+| `GET` | `/api/tickets/{ticketId}/chats/{id}/kb-suggestions` | Staff/Manager/Admin | Gợi ý KB articles |
+| `POST` | `/api/tickets/{ticketId}/chats/suggest` | Staff/Manager/Admin | AI gợi ý nội dung chat |
+| `POST` | `/api/tickets/{ticketId}/chats/sentiment-check` | Staff/Manager/Admin | AI phân tích tone Customer |
+| `POST` | `/api/tickets/{ticketId}/chats/summarize` | Staff/Manager/Admin | AI tóm tắt thread |
+| `POST` | `/api/tickets/{ticketId}/chats/{id}/translate` | Mọi role | Dịch nội dung chat |
+| `POST` | `/api/tickets/{ticketId}/chats/voice` | Mọi role | Upload audio → transcribe → tạo chat |
+| `GET` | `/api/tickets/{ticketId}/chats/export-pdf` | Staff/Manager/Admin | Export PDF toàn bộ chat |
+| `POST` | `/api/tickets/{ticketId}/chats/{id}/escalation-review/ack` | Manager/Admin | ACK escalation review |
+
+---
+
+### `GET /api/tickets/{ticketId}/chats`
+
+**Mục đích:** Danh sách chat của ticket (offset pagination, sort ASC theo `CreatedAt`). Auto mark-read trang hiện tại.
+
+**Query params:**
+
+| Param | Type | Mặc định | Mô tả |
+|---|---|---|---|
+| `pageNumber` | `int` | 1 | Số trang |
+| `pageSize` | `int` | 10 | Số item/trang |
+| `search` | `string?` | — | Tìm full-text trong `body` |
+| `authorUserId` | `Guid?` | — | Lọc theo tác giả |
+| `authorRole` | `ActorRoleEnum?` | — | Lọc theo role tác giả |
+| `isInternal` | `bool?` | — | Lọc chat nội bộ/công khai |
+| `isPinned` | `bool?` | — | Chỉ chat đã pin |
+| `hasAttachments` | `bool?` | — | Chỉ chat có file đính kèm |
+| `mentionedMe` | `bool?` | — | Chỉ chat mention user hiện tại |
+| `dateFrom` | `DateTime?` | — | Lọc từ ngày (UTC) |
+| `dateTo` | `DateTime?` | — | Lọc đến ngày (UTC) |
+
+**Quyền hạn:**
+- Customer: Chỉ thấy chat `isInternal=false`
+- Staff/Manager/Admin: Thấy tất cả bao gồm `isInternal=true`
+
+**Response `200`:** `CommonResponse<PaginationResponse<TicketChatDTO>>`
+
+---
+
+### `GET /api/tickets/{ticketId}/chats/cursor`
+
+**Mục đích:** Cursor-based pagination — phù hợp load-more / infinite scroll. Không dùng offset.
+
+**Query params:**
+
+| Param | Type | Mặc định | Mô tả |
+|---|---|---|---|
+| `cursor` | `string?` | — | Opaque cursor từ `nextCursor` trang trước. Bỏ trống = trang đầu |
+| `limit` | `int` | 20 | Số chat/trang (tối đa 100) |
+
+**Response `200`:** `CommonResponse<CursorPaginationResponse<TicketChatDTO>>`
+
+```json
+{
+  "isSuccess": true,
+  "data": {
+    "items": [...],
+    "nextCursor": "opaque-string",
+    "hasMore": true
+  }
+}
+```
+
+---
+
+### `POST /api/tickets/{ticketId}/chats`
+
+**Mục đích:** Thêm chat vào ticket. Áp dụng cho mọi role. Rate-limited.
+
+**Request body:**
+
+| Field | Type | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `body` | `string` | **Bắt buộc** | Nội dung chat (1–10 000 ký tự) |
+| `isInternal` | `bool` | Không (mặc định `false`) | `true` = ẩn với Customer |
+| `bodyFormat` | `ChatBodyFormatEnum` | Không (mặc định `PlainText`) | Định dạng body |
+| `attachments` | `ChatAttachmentInput[]?` | Không | Danh sách file đính kèm |
+
+**`ChatAttachmentInput`:** `fileId` (Guid, bắt buộc) · `fileName` (string, bắt buộc) · `contentType` (string, bắt buộc) · `sizeBytes` (int64, tùy chọn)
+
+**Response `201`:** `TicketActionResponse`
+
+**Realtime:** Phát event `ChatAdded` qua SignalR hub `/hubs/ticket-chats` — routing theo `isInternal` (internal group / public group).
+
+**Lỗi:**
+- `400` — `body` rỗng, hoặc attachment thiếu `fileId`/`fileName`/`contentType`
+- `401` — Chưa đăng nhập
+- `404` — Không tìm thấy ticket
+
+---
+
+### `PUT /api/tickets/{ticketId}/chats/{id}`
+
+**Mục đích:** Sửa nội dung chat.
+
+**Quyền:**
+- Author: Sửa trong 15 phút kể từ lúc tạo (window configurable `Chat:EditWindowMinutes`)
+- Manager/Admin: Sửa bất cứ lúc nào nhưng phải có `editReason`
+- Blocked khi ticket `Closed`
+
+**Request body:**
+
+| Field | Type | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `body` | `string` | **Bắt buộc** | Nội dung mới |
+| `editReason` | `string?` | Bắt buộc khi Manager/Admin sửa của người khác | Lý do sửa |
+
+**Response `200`:** `TicketActionResponse`
+
+**Lỗi:** `400` (đã quá window/ticket closed) · `403` (không có quyền) · `404`
+
+---
+
+### `DELETE /api/tickets/{ticketId}/chats/{id}`
+
+**Mục đích:** Soft-delete chat.
+
+**Quyền:**
+- Author: Xóa của mình bất kỳ lúc nào
+- Manager/Admin: Xóa của ai cũng được, phải có `deleteReason`
+- Blocked khi ticket `Closed`
+
+**Request body (tùy chọn):** `{ "deleteReason": "string?" }`
+
+**Response `200`:** `TicketActionResponse`
+
+---
+
+### `POST /api/tickets/{ticketId}/chats/{id}/pin` / `DELETE .../pin`
+
+**Mục đích:** Pin / Unpin chat. Tối đa 3 chat pin/ticket.
+**Auth:** Staff/Manager/Admin
+
+**Response `200`:** `TicketActionResponse`
+
+**Lỗi `400`:** Pin: đã pin hoặc đạt giới hạn 3. Unpin: chưa pin.
+
+---
+
+### `POST /api/tickets/{ticketId}/chats/{id}/reactions`
+
+**Mục đích:** Thêm reaction — idempotent nếu đã react cùng loại.
+
+**Request body:** `{ "reactionType": "ThumbsUp" }` (xem `ReactionTypeEnum`)
+
+**Response `200`:** `CommonResponse<TicketChatReactionsAggregateDTO>`
+
+---
+
+### `DELETE /api/tickets/{ticketId}/chats/{id}/reactions`
+
+**Mục đích:** Xóa reaction — no-op nếu chưa react loại này.
+
+**Query param:** `type` — `ReactionTypeEnum` (vd `?type=ThumbsUp`)
+
+**Response `200`:** `CommonResponse<TicketChatReactionsAggregateDTO>`
+
+---
+
+### `GET /api/tickets/{ticketId}/chats/{id}/attachments/{attachmentId}/download`
+
+**Mục đích:** Lấy URL download sau khi kiểm tra virus scan.
+
+**Response:**
+- `200` — URL download
+- `202` — File đang scan, thử lại sau
+- `451` — File bị nhiễm virus, không thể tải
+
+---
+
+### `POST /api/tickets/{ticketId}/chats/suggest` (AI)
+
+**Mục đích:** AI gợi ý 3 nội dung chat theo intent — dành cho Staff. PII được mask trước khi gửi Gemini.
+**Auth:** Staff/Manager/Admin
+
+**Request body:**
+
+| Field | Type | Mặc định | Mô tả |
+|---|---|---|---|
+| `intent` | `ChatAiIntentEnum` | `TechnicalAnswer` | Phong cách gợi ý |
+
+**Response `200`:** `CommonResponse<ChatSuggestDTO>`
+
+```json
+{
+  "isSuccess": true,
+  "data": {
+    "suggestionId": "guid",
+    "suggestions": ["Gợi ý 1", "Gợi ý 2", "Gợi ý 3"]
+  }
+}
+```
+
+**Rate limit (Gemini):** Trả `isSuccess: false, message: "AI service đang bận, vui lòng thử lại sau ít giây."` khi Gemini 429.
+
+---
+
+### `POST /api/tickets/{ticketId}/chats/sentiment-check` (AI)
+
+**Mục đích:** Phân tích tone cảm xúc Customer trong ticket. Nếu score < -0.7 → gửi SignalR alert tới Manager.
+**Auth:** Staff/Manager/Admin
+
+**Request body:** Không cần (ticketId lấy từ path)
+
+**Response `200`:** `CommonResponse<ChatSentimentCheckDTO>`
+
+```json
+{
+  "isSuccess": true,
+  "data": {
+    "score": -0.85,
+    "label": "Critical",
+    "isAlertSent": true
+  }
+}
+```
+
+**Label values:** `Positive` (score > 0.3) · `Neutral` (-0.3 ≤ score ≤ 0.3) · `Negative` (-0.7 < score < -0.3) · `Critical` (score ≤ -0.7)
+
+---
+
+### `POST /api/tickets/{ticketId}/chats/summarize` (AI)
+
+**Mục đích:** Tóm tắt toàn bộ thread thành 5 dòng bullet — cho Staff mới tiếp nhận ticket sau escalation.
+**Auth:** Staff/Manager/Admin
+
+**Response `200`:** `CommonResponse<ChatSummarizeDTO>`
+
+```json
+{
+  "isSuccess": true,
+  "data": {
+    "summary": "- Vấn đề: pin không sạc được\n- Đã kiểm tra cáp: bình thường\n- ..."
+  }
+}
+```
+
+---
+
+### `POST /api/tickets/{ticketId}/chats/{id}/translate` (AI)
+
+**Mục đích:** Dịch nội dung chat sang ngôn ngữ đích. Cache 2 lớp: Redis (30 ngày) → DB → Gemini AI.
+**Auth:** Mọi role
+
+**Query param:** `to` — mã ISO 639-1 (vd `en`, `vi`, `fr`, `ja`)
+
+**Response `200`:** `CommonResponse<ChatTranslateDTO>`
+
+```json
+{
+  "isSuccess": true,
+  "data": {
+    "translatedBody": "Battery cannot charge",
+    "targetLanguage": "en",
+    "originalLanguage": "vi",
+    "provider": "GeminiAi",
+    "fromCache": false
+  }
+}
+```
+
+**Validation:** `to` bắt buộc, tối đa 5 ký tự. Rate limit Gemini → `isSuccess: false`.
+
+---
+
+### `POST /api/tickets/{ticketId}/chats/voice` (AI)
+
+**Mục đích:** Upload file audio → Gemini transcribe → tạo chat với nội dung transcribed + đính kèm audio trong `ticket_attachments`.
+**Auth:** Mọi role
+**Content-Type:** `multipart/form-data`
+
+**Form field:** `audioFile` — file âm thanh
+
+**MIME types hỗ trợ** (từ `Chat:Voice:AllowedAudioMimeTypes`):
+`audio/mpeg` · `audio/wav` · `audio/ogg` · `audio/webm` · `audio/mp4` · `audio/flac`
+
+**Giới hạn:** 20MB / file
+
+**Response `201`:** `TicketActionResponse`
+
+```json
+{
+  "isSuccess": true,
+  "statusCode": 201,
+  "message": "Voice transcription thành công.",
+  "data": {
+    "id": "guid-of-new-chat",
+    "ticketId": "guid",
+    "code": "TKT-2606-0001",
+    "status": "InProgress"
+  }
+}
+```
+
+**Lỗi:**
+- `400` — MIME không hỗ trợ hoặc file quá lớn
+- `404` — Không tìm thấy ticket
+- `422` — Transcription trả kết quả rỗng
+- `429` (wrap trong `isSuccess:false`) — Gemini rate limit
+
+---
+
+### `GET /api/tickets/{ticketId}/chats/export-pdf`
+
+**Mục đích:** Export PDF toàn bộ chat thread của ticket. Customer chat nội bộ bị ẩn.
+**Auth:** Staff/Manager/Admin
+
+**Response:** `application/pdf` — file `ticket-{ticketId}-chats.pdf`
+
+**Lỗi `404`:** Ticket không tồn tại hoặc không có chat.
+
+---
+
+### `GET /api/tickets/{ticketId}/chats/unread-count`
+
+**Mục đích:** Số chat chưa đọc của user hiện tại trên ticket này.
+
+**Response `200`:** `CommonResponse<{ unreadCount: int }>`
+
+---
+
+### `POST /api/tickets/{ticketId}/chats/mark-read`
+
+**Mục đích:** Mark-read nhiều chat (bulk) — cũng được gọi tự động khi `GET /chats`.
+
+**Request body:** `{ "chatIds": ["guid", "guid"] }`
+
+**Response `200`:** `CommonResponse<{ markedCount: int }>`
+
+---
+
+## Nhóm — Admin Ticket Chats
+
+Base path: `/api/admin/tickets/{ticketId}/chats`
+**Auth:** Bắt buộc — **Admin only** (`[Authorize(Roles = "Admin")]`)
+
+> Cho phép Admin thêm/sửa/xóa chat trên ticket đã **Closed** — vượt qua giới hạn bình thường. Bắt buộc kèm `overrideReason` mọi thao tác.
+
+### Tóm tắt endpoints
+
+| Method | Path | Mô tả |
+|---|---|---|
+| `POST` | `/api/admin/tickets/{ticketId}/chats/closed-override` | Thêm chat vào ticket đã closed |
+| `PUT` | `/api/admin/tickets/{ticketId}/chats/{id}/closed-override` | Sửa chat trên ticket đã closed |
+| `DELETE` | `/api/admin/tickets/{ticketId}/chats/{id}/closed-override` | Xóa chat trên ticket đã closed |
+| `PATCH` | `/api/admin/tickets/{ticketId}/chats/{id}/restore` | Khôi phục chat đã soft-delete |
+
+---
+
+### `POST /api/admin/tickets/{ticketId}/chats/closed-override`
+
+**Request body:**
+
+| Field | Type | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `body` | `string` | **Bắt buộc** | Nội dung chat |
+| `isInternal` | `bool` | Không (mặc định `false`) | Chat nội bộ |
+| `bodyFormat` | `ChatBodyFormatEnum` | Không (mặc định `PlainText`) | Định dạng |
+| `overrideReason` | `string` | **Bắt buộc** | Lý do override |
+
+**Response `201`:** `TicketActionResponse`
+
+---
+
+### `PUT /api/admin/tickets/{ticketId}/chats/{id}/closed-override`
+
+**Request body:**
+
+| Field | Type | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `body` | `string` | **Bắt buộc** | Nội dung mới |
+| `overrideReason` | `string` | **Bắt buộc** | Lý do override |
+
+**Response `200`:** `TicketActionResponse`
+
+---
+
+### `DELETE /api/admin/tickets/{ticketId}/chats/{id}/closed-override`
+
+**Request body:** `{ "overrideReason": "string" }` (bắt buộc)
+
+**Response `200`:** `TicketActionResponse`
+
+---
+
+### `PATCH /api/admin/tickets/{ticketId}/chats/{id}/restore`
+
+**Mục đích:** Khôi phục chat đã bị soft-delete — `IsDeleted=false`.
+
+**Request body:** Không cần
+
+**Response `200`:** `TicketActionResponse`
+
+---
+
+## Nhóm — Chats Utilities
+
+Các endpoint cross-ticket — không gắn với 1 ticket cụ thể.
+
+---
+
+### `GET /api/chats/me`
+
+**Mục đích:** Lấy tất cả chat của user hiện tại trên toàn bộ tickets (phân trang).
+**Auth:** Mọi role
+
+**Response `200`:** `CommonResponse<PaginationResponse<TicketChatDTO>>`
+
+---
+
+### `POST /api/chats/erase-my-data`
+
+**Mục đích:** GDPR — xóa nội dung toàn bộ chat của user hiện tại (`body` được overwrite bằng `[ERASED]`).
+**Auth:** Mọi role
+
+**Response `200`:** `CommonResponse<{ erasedCount: int }>`
+
+---
+
+### `GET /api/chats/search`
+
+**Mục đích:** Tìm kiếm chat toàn hệ thống (Admin/Manager).
+**Auth:** Manager hoặc Admin
+
+**Query params:** `q` (full-text), `ticketId`, `authorUserId`, `from`, `to`, `page`, `pageSize`
+
+**Response `200`:** `CommonResponse<PaginationResponse<TicketChatDTO>>`
+
+---
+
+### `GET /api/chats/mentions/me`
+
+**Mục đích:** Danh sách mention của user hiện tại trên mọi ticket.
+**Auth:** Mọi role
+
+**Query params:** `unreadOnly` (bool), `page`, `pageSize`
+
+**Response `200`:** `CommonResponse<PaginationResponse<TicketChatMentionDTO>>`
+
+---
+
+### `PATCH /api/chats/mentions/{id}/acknowledge`
+
+**Mục đích:** Xác nhận đã xem 1 mention.
+**Auth:** Mọi role
+
+**Response `200`:** `CommonResponse<object>`
+
+---
+
 ## Nhóm 2 — Customer
 
 Base path: `/api/customer/tickets`
@@ -614,10 +1267,12 @@ Base path: `/api/customer/tickets`
 
 | Field | Type | Bắt buộc | Validation | Mô tả |
 |---|---|---|---|---|
-| `title` | `string` | Bắt buộc | Không rỗng, max 200 ký tự | Tiêu đề ngắn gọn |
-| `description` | `string` | Bắt buộc | Max 2000 ký tự | Mô tả chi tiết vấn đề |
+| `title` | `string` | Bắt buộc | Không rỗng/whitespace (`400` nếu thiếu) | Tiêu đề ngắn gọn |
+| `description` | `string` | Bắt buộc | Không rỗng/whitespace (`400` nếu thiếu) | Mô tả chi tiết vấn đề |
 | `category` | `TicketCategoryEnum` | Bắt buộc | — | Loại lỗi |
 | `batteryAssetId` | `Guid?` | Không | — | ID thiết bị đang gặp lỗi |
+
+> **Lưu ý:** `TicketCreateCommand.ValidateAsync()` hiện chỉ check **không rỗng/whitespace** cho `title`/`description` — **KHÔNG** enforce giới hạn độ dài (max 200/2000). FE nên tự giới hạn input để tránh dữ liệu quá dài.
 
 **Response thành công `201`:** `TicketActionResponse`
 
@@ -695,15 +1350,101 @@ Base path: `/api/staff/tickets`
 | Param | Type | Mô tả |
 |---|---|---|
 | `Status` | `TicketStatusEnum?` | Lọc theo trạng thái |
+| `SlaOpen` | `bool?` | `true` = chỉ lấy ticket **đang trong vòng theo dõi SLA**: status ∈ {`Assigned`, `InProgress`, `WaitingCustomer`, `WaitingParts`, `WaitingOnsiteSchedule`, `Escalated`} **và** có `slaTimer != null`. Dùng cho bảng **SLA Monitor** — filter server-side, không bị cap theo pageSize. Bỏ trống/`false` → không filter |
+| `SortBy` | `string?` | `"slaRemaining"` (không phân biệt hoa thường) = sort theo hạn SLA (`slaTimer.dueAt`) **tăng dần** — ticket gần breach lên đầu; ticket không có timer xếp cuối; 2 ticket cùng hạn thì tie-break theo `Priority` tăng dần. Giá trị khác/bỏ trống → sort mặc định: `Priority` tăng dần (P1 trước) rồi `CreatedAt` giảm dần |
 | `PageNumber` | `int` | Trang (mặc định 1; giá trị ≤ 0 → tự về 1) |
 | `PageSize` | `int` | Số item/trang (mặc định 10; max 100; ≤ 0 → về 10) |
 
 > **Internal param:** BE expose thêm `ActorStaffId` (uuid) dùng nội bộ để BE đọc từ JWT. FE **không gửi** param này.
 
+**Ví dụ — bảng SLA Monitor (thay cho việc FE tự lọc client-side trên 1 trang):**
+```
+GET /api/staff/tickets/me?slaOpen=true&sortBy=slaRemaining&pageNumber=1&pageSize=20
+```
+
 **Response thành công `200`:** `CommonResponse<PaginationResponse<TicketDTO>>`
 
 **Lỗi thường gặp:**
 - `401` — Chưa đăng nhập
+
+---
+
+### `GET /api/staff/tickets/dashboard/stats`
+
+**Mục đích:** Snapshot KPI dashboard cho **chính Staff đang đăng nhập** — thay cho việc FE tự đếm trên 1 trang list (bị cap 100 → sai số khi vượt pageSize). Phục vụ Staff Dashboard (KPI đang phụ trách / sắp breach / quá hạn / đã xử lý, gauge SLA, donut trạng thái, donut rủi ro SLA, chart 7 ngày) và các KPI của trang SLA Monitor.
+
+**Auth:** Bắt buộc (Staff). Scope tự động theo `assignedStaffId` từ JWT.
+
+**Query params:** Không có — endpoint snapshot, **không nhận from/to** (báo cáo time-series dùng `GET /api/reports/*`). FE nên cache ~1 phút (staleTime).
+
+**Response thành công `200`:** `CommonResponse<StaffTicketDashboardStatsDto>`
+
+```json
+{
+  "isSuccess": true, "statusCode": 200, "message": "",
+  "data": {
+    "openCount": 5,
+    "resolvedCount": 12,
+    "nearBreachCount": 1,
+    "breachedCount": 1,
+    "pausedCount": 1,
+    "slaMonitoredCount": 5,
+    "sla": { "met": 10, "breached": 2, "running": 4, "paused": 1, "compliancePercent": 83.33 },
+    "countByStatus": {
+      "New": 0, "Open": 0, "Assigned": 2, "InProgress": 2,
+      "WaitingCustomer": 0, "WaitingParts": 1, "WaitingOnsiteSchedule": 0,
+      "Resolved": 3, "Escalated": 0, "ClosedPendingRate": 2, "Closed": 7,
+      "ClosedRejected": 1, "Incident": 0, "Approved": 0
+    },
+    "slaRisk": { "healthy": 3, "near": 1, "breached": 1 },
+    "createdTrend7Days": [
+      { "date": "2026-07-01", "count": 0 },
+      { "date": "2026-07-02", "count": 1 },
+      { "date": "2026-07-03", "count": 0 },
+      { "date": "2026-07-04", "count": 2 },
+      { "date": "2026-07-05", "count": 0 },
+      { "date": "2026-07-06", "count": 1 },
+      { "date": "2026-07-07", "count": 2 }
+    ]
+  },
+  "listErrors": null
+}
+```
+
+**`StaffTicketDashboardStatsDto`** — mọi field đều **không null** (list/dict/object luôn được khởi tạo; `data` chỉ null khi lỗi):
+
+| Field | Type | Mô tả |
+|---|---|---|
+| `openCount` | `int` | Số ticket đang phụ trách — status **không** thuộc {`Resolved`, `ClosedPendingRate`, `Closed`, `ClosedRejected`} |
+| `resolvedCount` | `int` | Số ticket đã xử lý — status ∈ {`Resolved`, `ClosedPendingRate`, `Closed`} (**không** gồm `ClosedRejected` — bị từ chối, không phải hoàn tất) |
+| `nearBreachCount` | `int` | Trong nhóm monitored: timer `Running` còn **≤ 25%** thời gian (`remainingPercent ≤ 25`) |
+| `breachedCount` | `int` | Trong nhóm monitored: timer đã `Breached` |
+| `pausedCount` | `int` | Trong nhóm monitored: timer đang `Paused` |
+| `slaMonitoredCount` | `int` | Tổng ticket "đang theo dõi SLA" — status ∈ {`Assigned`, `InProgress`, `WaitingCustomer`, `WaitingParts`, `WaitingOnsiteSchedule`, `Escalated`} **và** có SLA timer (đúng bộ lọc `slaOpen=true` của `GET /me`) |
+| `sla` | `SlaSummaryDto` | Tổng hợp **toàn bộ** SLA timer của ticket được gán cho staff (kể cả ticket đã đóng) — xem bảng dưới |
+| `countByStatus` | `Dictionary<string,int>` | Số ticket theo từng status — **luôn đủ 14 key** (`TicketStatusEnum`, key PascalCase), status không có ticket = `0` |
+| `slaRisk` | `SlaRiskDto` | Phân bố rủi ro trên nhóm monitored: `healthy` + `near` + `breached` = `slaMonitoredCount`. `healthy` = còn > 25% thời gian **hoặc đang Paused** |
+| `createdTrend7Days` | `DailyCountPointDto[]` | Số ticket (được gán cho staff) tạo mới theo ngày — **luôn đúng 7 phần tử** (6 ngày trước + hôm nay), bucket theo **UTC**, ngày trống = `0` |
+
+**`SlaSummaryDto`:**
+
+| Field | Type | Mô tả |
+|---|---|---|
+| `met` | `int` | Số timer `Met` (hoàn thành đúng hạn) |
+| `breached` | `int` | Số timer `Breached` |
+| `running` | `int` | Số timer `Running` |
+| `paused` | `int` | Số timer `Paused` |
+| `compliancePercent` | `number` | `met / (met + breached) × 100`, làm tròn 2 chữ số. **= 100 khi chưa có timer nào kết thúc** (met + breached = 0) — tránh dashboard hiện 0% khi chưa có data |
+
+**`SlaRiskDto`:** `healthy` (`int`) · `near` (`int`) · `breached` (`int`) — như mô tả ở bảng trên.
+
+**`DailyCountPointDto`:** `date` (`string`, dạng `"2026-07-07"` — ngày UTC) · `count` (`int`).
+
+> ⚠️ **Timezone:** trend bucket theo **ngày UTC** — FE vẽ chart theo giờ VN (UTC+7) cần lưu ý ranh giới ngày.
+
+**Lỗi thường gặp:**
+- `401` — Chưa đăng nhập / không đọc được userId từ token
+- `403` — Không phải role Staff
 
 ---
 
@@ -722,8 +1463,8 @@ Base path: `/api/staff/tickets`
 | Field | Type | Bắt buộc | Mô tả |
 |---|---|---|---|
 | `logType` | `MaintenanceLogTypeEnum?` | Không | Loại nhật ký cho log tự động |
-| `latitude` | `decimal?` | Không | Vĩ độ check-in |
-| `longitude` | `decimal?` | Không | Kinh độ check-in |
+
+> **Lưu ý:** `TicketStartCommand` chỉ nhận `logType`. **Không** có field tọa độ check-in (`latitude`/`longitude`) ở endpoint này — nếu cần ghi tọa độ, dùng `checkInLatitude`/`checkInLongitude`/`checkInAt` khi tạo maintenance log qua `POST /api/tickets/{ticketId}/maintenance-logs`.
 
 **Response thành công `200`:** `TicketActionResponse`
 
@@ -1063,6 +1804,70 @@ Base path: `/api/admin/tickets`
 
 ---
 
+### `GET /api/tickets/dashboard/stats`
+
+> **Lưu ý route:** endpoint này nằm ở `/api/tickets/dashboard/stats` (KHÔNG phải `/api/admin/tickets/...`) nhưng thuộc nhóm Admin/Manager về mặt quyền — cùng pattern với `GET /api/battery/dashboard/stats` bên BatteryService.
+
+**Mục đích:** Snapshot KPI ticket **toàn hệ thống** cho Dashboard Admin/Manager — thay cho việc FE tự đếm trên 1 trang list (cap 200 → sai số khi vượt pageSize). Phục vụ: KPI tickets mở/tổng, gauge tuân thủ SLA, pipeline 6 giai đoạn, chart "Ticket mới · 7 ngày", widget "Tải nhân sự" (workload theo staff).
+
+**Auth:** Bắt buộc (Manager hoặc Admin).
+
+**Query params:** Không có — endpoint snapshot, **không nhận from/to** (báo cáo time-series dùng `GET /api/reports/*`). FE nên cache ~1 phút (staleTime).
+
+**Response thành công `200`:** `CommonResponse<TicketDashboardStatsDto>`
+
+```json
+{
+  "isSuccess": true, "statusCode": 200, "message": "",
+  "data": {
+    "total": 128,
+    "openCount": 38,
+    "sla": { "met": 70, "breached": 12, "running": 30, "paused": 4, "compliancePercent": 85.37 },
+    "countByStatus": {
+      "New": 3, "Open": 8, "Assigned": 6, "InProgress": 12,
+      "WaitingCustomer": 2, "WaitingParts": 3, "WaitingOnsiteSchedule": 1,
+      "Resolved": 9, "Escalated": 2, "ClosedPendingRate": 5, "Closed": 70,
+      "ClosedRejected": 6, "Incident": 0, "Approved": 1
+    },
+    "countByPriority": { "P1Critical": 9, "P2High": 34, "P3Normal": 77 },
+    "createdTrend7Days": [
+      { "date": "2026-07-01", "count": 4 },
+      { "date": "2026-07-02", "count": 6 },
+      { "date": "2026-07-03", "count": 2 },
+      { "date": "2026-07-04", "count": 0 },
+      { "date": "2026-07-05", "count": 5 },
+      { "date": "2026-07-06", "count": 3 },
+      { "date": "2026-07-07", "count": 7 }
+    ],
+    "openCountByStaff": [
+      { "staffId": "3f2a4f35-...", "activeCount": 8 },
+      { "staffId": "7a3bbc97-...", "activeCount": 5 }
+    ]
+  },
+  "listErrors": null
+}
+```
+
+**`TicketDashboardStatsDto`** — mọi field đều **không null** (list/dict/object luôn được khởi tạo; `data` chỉ null khi lỗi):
+
+| Field | Type | Mô tả |
+|---|---|---|
+| `total` | `int` | Tổng số ticket toàn hệ thống (không tính đã xóa mềm) |
+| `openCount` | `int` | Số ticket mở — status **không** thuộc {`Resolved`, `ClosedPendingRate`, `Closed`, `ClosedRejected`} |
+| `sla` | `SlaSummaryDto` | Tổng hợp SLA timer toàn hệ thống (met/breached/running/paused + `compliancePercent`) — cấu trúc giống endpoint staff, xem `GET /api/staff/tickets/dashboard/stats` |
+| `countByStatus` | `Dictionary<string,int>` | Số ticket theo từng status — **luôn đủ 14 key** (`TicketStatusEnum`, key PascalCase), status không có = `0`. FE tự nhóm pipeline — **không gộp `ClosedRejected` vào "Hoàn tất"** (bị từ chối ≠ hoàn tất) |
+| `countByPriority` | `Dictionary<string,int>` | Số ticket theo priority — luôn đủ 3 key `P1Critical`/`P2High`/`P3Normal`. **Ticket chưa triage (priority null) không được tính** — vì vậy tổng 3 key có thể nhỏ hơn `total` |
+| `createdTrend7Days` | `DailyCountPointDto[]` | Số ticket tạo mới theo ngày — **luôn đúng 7 phần tử** (6 ngày trước + hôm nay), bucket theo **ngày UTC**, ngày trống = `0` |
+| `openCountByStaff` | `StaffOpenCountDto[]` | Số ticket mở theo từng staff, **sort giảm dần theo `activeCount`** — chỉ tính ticket mở có `assignedStaffId != null`. Staff không có ticket mở sẽ **không xuất hiện** trong list (FE join với danh sách staff để hiện 0) |
+
+**`StaffOpenCountDto`:** `staffId` (`string` — Guid dạng chuỗi) · `activeCount` (`int`).
+
+**Lỗi thường gặp:**
+- `401` — Chưa đăng nhập
+- `403` — Không có role Manager/Admin
+
+---
+
 ## Nhóm 5 — Maintenance Logs (Nhật ký bảo trì)
 
 Cơ chế quản lý nhật ký bảo trì được tích hợp chặt chẽ với vòng đời của Ticket.
@@ -1166,7 +1971,7 @@ Quản lý trạng thái Saga điều phối tự động tạo Ticket từ Aler
 | `PageSize` | `int` | ❌ (mặc định 50) | Số item/trang |
 | `IsDescending` | `bool` | ❌ (mặc định `true`) | Sort theo `StartedAt` |
 
-**Response thành công `200`:** `AlertTicketSagaListResponse` = `CommonResponse<PaginationResponse<AlertTicketSagaDto>>`
+**Response thành công `200`:** `AlertTicketSagaListResponse` = `CommonResponse<PaginationResponse<AlertTicketSagaDTO>>`
 
 ```json
 {
@@ -1200,7 +2005,7 @@ Quản lý trạng thái Saga điều phối tự động tạo Ticket từ Aler
 }
 ```
 
-**Chi tiết `AlertTicketSagaDto`:**
+**Chi tiết `AlertTicketSagaDTO`:**
 
 | Field | Type | Nullable | Mô tả |
 |---|---|---|---|
@@ -1233,7 +2038,7 @@ Quản lý trạng thái Saga điều phối tự động tạo Ticket từ Aler
 
 **Path param:** `alertId` — UUID của alert gốc trigger Saga.
 
-**Response thành công `200`:** `AlertTicketSagaDetailResponse` = `CommonResponse<AlertTicketSagaDto>` (shape giống item trong list).
+**Response thành công `200`:** `AlertTicketSagaDetailResponse` = `CommonResponse<AlertTicketSagaDTO>` (shape giống item trong list).
 
 **Lỗi thường gặp:**
 - `401` — Chưa đăng nhập
@@ -1370,6 +2175,8 @@ Base path: `/api/ticket/health`
 | `403` | `Ticket` | Quá hạn 7 ngày để mở lại ticket |
 | `403` | `Ticket` | Không đủ thẩm quyền xử lý ticket đã Escalated |
 | `404` | `Ticket` | Không tìm thấy ticket yêu cầu |
+| `409` | `Ticket` | Ticket đã ở trạng thái chờ phê duyệt hoặc đã hoàn thành — không thể gán thêm tài liệu tham khảo KB (xem bảng quy tắc Nhóm 11) |
+| `422` | `KbArticle` | Bài viết nội bộ không thể gán với loại tham chiếu "Cung cấp cho khách hàng" (`ProvidedToCustomer`) |
 
 ---
 
@@ -1378,11 +2185,11 @@ Base path: `/api/ticket/health`
 Base path: `/api/knowledge-base`
 **Auth:** Bắt buộc — `Authorization: Bearer {accessToken}` (controller có `[Authorize]`, mọi role đã đăng nhập). **KHÔNG anonymous.**
 
-> **Enum serialize:** Toàn bộ response của TicketService dùng `JsonStringEnumConverter` → enum (`status`, `category`) trả về dạng **chuỗi** (vd `"Published"`, `"Charging"`). **Ngoại lệ:** `KbArticleVersionDto.status` trả **số** (BE để kiểu `int` raw). Khi **filter/gửi request**, enum lại nhận **số** (`Status=2`, `Category=1`).
+> **Enum serialize:** Toàn bộ response của TicketService dùng `JsonStringEnumConverter` → mọi enum (`status`, `category`, kể cả `KbArticleVersionDTO.status`) trả về dạng **chuỗi** (vd `"Published"`, `"Charging"`). Khi **filter/gửi request** (query string hoặc body), enum cũng nhận **chuỗi tên enum** — gửi đúng tên (vd `Status=Published`, `Category=Charging`), KHÔNG gửi số.
 
 ---
 
-### GET /api/knowledge-base
+### `GET /api/knowledge-base`
 
 **Mục đích:** Tìm kiếm và liệt kê bài viết Knowledge Base. **Lọc theo role:**
 - **Customer:** chỉ trả bài `Published` và `IsInternalOnly = false`. Param `Status` bị bỏ qua.
@@ -1395,19 +2202,19 @@ Base path: `/api/knowledge-base`
 | Param | Type | Mô tả |
 |---|---|---|
 | `Q` | `string?` | Từ khóa — tìm trong `title` và `symptoms` |
-| `Category` | `int?` | Lọc theo danh mục lỗi (gửi **số** của `TicketCategoryEnum`, vd `1` = Charging) |
-| `Status` | `int?` | Lọc theo trạng thái (gửi **số** của `KbArticleStatusEnum` 1–4). **Chỉ áp dụng cho internal role**; Customer bị bỏ qua |
+| `Category` | `TicketCategoryEnum?` | Lọc theo danh mục lỗi — gửi **chuỗi tên enum** (vd `Charging`) |
+| `Status` | `KbArticleStatusEnum?` | Lọc theo trạng thái — gửi **chuỗi tên enum** (vd `Published`). **Chỉ áp dụng cho internal role**; Customer bị bỏ qua |
 | `Tag` | `string?` | Lọc theo **một** thẻ (số ít — không phải mảng) |
 | `PageNumber` | `int` | Trang (mặc định 1) |
 | `PageSize` | `int` | Số item/trang |
 
-> ⚠️ Param đúng theo `GetKbArticleListQuery`: tên là **`Q`** (không phải `Keyword`), **`Tag`** số ít (không phải `Tags[]`), `Status`/`Category` là **`int`** (không phải string enum).
+> ⚠️ Param đúng theo `GetKbArticleListQuery`: tên là **`Q`** (không phải `Keyword`), **`Tag`** số ít (không phải `Tags[]`).
 
-**Response thành công `200`:** `CommonResponse<PaginationResponse<KbArticleListItemDto>>`
+**Response thành công `200`:** `CommonResponse<PaginationResponse<KbArticleListItemDTO>>`
 
 ---
 
-### GET /api/knowledge-base/{id}
+### `GET /api/knowledge-base/{id}`
 
 **Mục đích:** Lấy thông tin chi tiết một bài viết Knowledge Base để đọc. Không tự động tăng lượt xem.
 
@@ -1415,7 +2222,7 @@ Base path: `/api/knowledge-base`
 
 **Path param:** `id` — UUID của bài viết.
 
-**Response thành công `200`:** `CommonResponse<KbArticleDto>`
+**Response thành công `200`:** `CommonResponse<KbArticleDTO>`
 
 **Lỗi thường gặp:**
 - `401` — Chưa đăng nhập
@@ -1423,9 +2230,9 @@ Base path: `/api/knowledge-base`
 
 ---
 
-### GET /api/knowledge-base/suggest
+### `GET /api/knowledge-base/suggest`
 
-**Mục đích:** Gợi ý các bài viết liên quan **theo Ticket** (cùng `Category`, ưu tiên `HelpfulCount`/`ViewCount` cao). Trả tối đa 5 bài đã `Published`.
+**Mục đích:** Gợi ý các bài viết liên quan **theo Ticket** (cùng `Category`, ưu tiên `HelpfulCount`/`ViewCount` cao). Trả tối đa 5 bài đã `Published` và **không phải bài nội bộ** (`isInternalOnly = true` bị lọc khỏi kết quả — áp dụng cho cả endpoint kb-suggestions của chat) — vì vậy `isInternalOnly` trong response thường luôn `false`.
 
 **Auth:** Bắt buộc (mọi role đã đăng nhập).
 
@@ -1437,14 +2244,14 @@ Base path: `/api/knowledge-base`
 
 > ⚠️ Theo `SuggestKbArticlesQuery`, param là **`TicketId` (Guid)** — không phải `query` text. (Doc cũ ghi sai.)
 
-**Response thành công `200`:** `CommonResponse<KbArticleSuggestDto[]>` (tối đa 5 phần tử)
+**Response thành công `200`:** `CommonResponse<KbArticleSuggestDTO[]>` (tối đa 5 phần tử)
 
 **Lỗi thường gặp:**
 - `404` — Không tìm thấy Ticket.
 
 ---
 
-### POST /api/knowledge-base/{id}/helpful
+### `POST /api/knowledge-base/{id}/helpful`
 
 **Mục đích:** Người dùng đánh giá bài viết là hữu ích (Tăng HelpfulCount).
 
@@ -1462,6 +2269,58 @@ Base path: `/api/knowledge-base`
 
 ---
 
+### `GET /api/knowledge-base/{id}/usage-stats`
+
+**Mục đích:** Thống kê số lần bài viết được dùng làm tài liệu tham khảo trong các Ticket, chia theo `KbReferenceTypeEnum`.
+
+**Auth:** Bắt buộc — **chỉ role `Manager` hoặc `Admin`** (`[Authorize(Roles = "Manager,Admin")]`). Staff/Customer không gọi được, dù controller cha cho phép mọi role đã đăng nhập.
+
+**Path param:** `id` — UUID của bài viết Knowledge Base.
+
+**Response thành công `200`:** `CommonResponse<KbUsageStatsDTO>`
+
+```json
+{
+  "isSuccess": true,
+  "data": {
+    "kbArticleId": "guid",
+    "kbArticleCode": "KB-2606-0001",
+    "kbArticleTitle": "Pin không sạc được khi nhiệt độ thấp",
+    "totalReferences": 12,
+    "byType": {
+      "consultedDuringResolve": 8,
+      "providedToCustomer": 3,
+      "generatedAfterResolve": 1
+    }
+  }
+}
+```
+
+**Chi tiết `KbUsageStatsDTO`:**
+
+| Field | Type | Mô tả |
+|---|---|---|
+| `kbArticleId` | `string` | ID bài viết |
+| `kbArticleCode` | `string` | Mã bài viết |
+| `kbArticleTitle` | `string` | Tiêu đề bài viết |
+| `totalReferences` | `int` | Tổng số tham chiếu (`TicketKbReference`) chưa bị xóa |
+| `byType` | `KbUsageByTypeDTO` | Đếm tham chiếu theo từng `KbReferenceTypeEnum` |
+
+**`KbUsageByTypeDTO`:**
+
+| Field | Type | Mô tả |
+|---|---|---|
+| `consultedDuringResolve` | `int` | Số lần `ReferenceType = ConsultedDuringResolve` |
+| `providedToCustomer` | `int` | Số lần `ReferenceType = ProvidedToCustomer` |
+| `generatedAfterResolve` | `int` | Số lần `ReferenceType = GeneratedAfterResolve` |
+
+**Lỗi thường gặp:**
+- `401` — Chưa đăng nhập
+- `403` — Không có role Manager/Admin
+- `404` — Không tìm thấy bài viết
+
+---
+
 ## Nhóm 9 — Knowledge Base (Internal - Staff/Manager/Admin)
 
 Base path: `/api/internal/knowledge-base`
@@ -1469,18 +2328,18 @@ Base path: `/api/internal/knowledge-base`
 
 ---
 
-### POST /api/internal/knowledge-base
+### `POST /api/internal/knowledge-base`
 
 **Mục đích:** Tạo mới một bài viết Knowledge Base.
 Bài viết được khởi tạo ở trạng thái **`PendingReview`**, đồng thời tạo một bản `KbArticleVersion` (V1.0) ở trạng thái `Pending`. Cần Manager/Admin duyệt để xuất bản.
 
 **Auth:** Bắt buộc (Staff, Manager, Admin)
 
-**Request body:** (gửi `category` dạng **số** của `TicketCategoryEnum`)
+**Request body:**
 
 | Field | Type | Bắt buộc | Mô tả |
 |---|---|---|---|
-| `category` | `int` (`TicketCategoryEnum`) | ✅ | Danh mục lỗi — gửi **số** (vd `1` = Charging), phải là enum hợp lệ |
+| `category` | `TicketCategoryEnum` | ✅ | Danh mục lỗi — gửi **chuỗi tên enum** (vd `Charging`), phải là enum hợp lệ |
 | `title` | `string` | ✅ | Tiêu đề — không rỗng, max 200 ký tự |
 | `symptoms` | `string` | ✅ | Triệu chứng — không rỗng, max 2000 ký tự |
 | `diagnosisSteps` | `string` | ✅ | Bước chẩn đoán — không rỗng, max 4000 ký tự |
@@ -1488,14 +2347,14 @@ Bài viết được khởi tạo ở trạng thái **`PendingReview`**, đồng
 | `recommendedParts` | `string[]?` | Không | Linh kiện khuyến nghị thay thế |
 | `tags` | `string[]?` | Không | Từ khóa — tối đa 10 thẻ, mỗi thẻ ≤ 50 ký tự |
 | `isInternalOnly` | `bool` | Không (mặc định `false`) | `true` = ẩn với khách hàng |
-**Response thành công `201`:** `CommonResponse<KbArticleActionDto>` (trả về `id`, `code`, `status`)
+**Response thành công `201`:** `CommonResponse<KbArticleActionDTO>` (trả về `id`, `code`, `status`)
 
 **Lỗi thường gặp:**
 - `400` — Validation field (`Title`/`Symptoms`/`DiagnosisSteps`/`SolutionSteps` rỗng hoặc quá độ dài; `Category` không hợp lệ; `Tags` > 10)
 
 ---
 
-### PUT /api/internal/knowledge-base/{id}
+### `PUT /api/internal/knowledge-base/{id}`
 
 **Mục đích:** Cập nhật nội dung bài viết hiện có.
 Hệ thống tự động lưu bản hiện tại vào lịch sử. Trạng thái bài viết sẽ chuyển về PendingReview để chờ Manager duyệt (trừ khi người cập nhật là Manager/Admin hoặc chủ sở hữu bài viết).
@@ -1512,11 +2371,11 @@ Hệ thống tự động lưu bản hiện tại vào lịch sử. Trạng thá
 
 > ⚠️ Doc cũ ghi `changeDescription` là "required" — **SAI**. Theo `UpdateKbArticleCommand`, field là `string?` và không có rule validate.
 
-**Response thành công `200`:** `CommonResponse<KbArticleDto>`
+**Response thành công `200`:** `CommonResponse<KbArticleDTO>`
 
 ---
 
-### GET /api/internal/knowledge-base/{id}/versions
+### `GET /api/internal/knowledge-base/{id}/versions`
 
 **Mục đích:** Xem danh sách lịch sử các phiên bản của bài viết.
 
@@ -1524,11 +2383,11 @@ Hệ thống tự động lưu bản hiện tại vào lịch sử. Trạng thá
 
 **Path param:** `id` — UUID của bài viết.
 
-**Response thành công `200`:** `CommonResponse<KbArticleVersionDto[]>`
+**Response thành công `200`:** `CommonResponse<KbArticleVersionDTO[]>`
 
 ---
 
-### GET /api/internal/knowledge-base/{id}/versions/{versionId}
+### `GET /api/internal/knowledge-base/{id}/versions/{versionId}`
 
 **Mục đích:** Lấy chi tiết một phiên bản cụ thể trong lịch sử.
 
@@ -1536,11 +2395,11 @@ Hệ thống tự động lưu bản hiện tại vào lịch sử. Trạng thá
 
 **Path params:** `id` — UUID bài viết · `versionId` — UUID phiên bản (`KbArticleVersion.id`).
 
-**Response thành công `200`:** `CommonResponse<KbArticleVersionDto>`
+**Response thành công `200`:** `CommonResponse<KbArticleVersionDTO>`
 
 ---
 
-### GET /api/internal/knowledge-base/{id}/compare
+### `GET /api/internal/knowledge-base/{id}/compare`
 
 **Mục đích:** So sánh sự khác biệt giữa hai phiên bản của bài viết.
 
@@ -1552,16 +2411,16 @@ Hệ thống tự động lưu bản hiện tại vào lịch sử. Trạng thá
 
 | Param | Type | Bắt buộc | Mô tả |
 |---|---|---|---|
-| `FromVersionId` | `Guid` | ✅ | ID phiên bản gốc (`KbArticleVersion.id`) |
-| `ToVersionId` | `Guid?` | Không | ID phiên bản đích. Bỏ trống → so sánh với **bản hiện tại** |
+| `fromVersion` | `Guid` | ✅ | ID phiên bản gốc (`KbArticleVersion.id`) |
+| `toVersion` | `Guid?` | Không | ID phiên bản đích. Bỏ trống → so sánh với **bản hiện tại** |
 
-> ⚠️ Doc cũ ghi param `fromVersion`/`toVersion` kiểu `int` — **SAI**. Theo `CompareKbArticleVersionsQuery`, param là **`FromVersionId`/`ToVersionId` kiểu `Guid`** (ID của version, không phải số version).
+> ⚠️ Tham số `fromVersion`/`toVersion` trong API là kiểu **`Guid`** (ID của version, không phải số version hay số nguyên `int`).
 
-**Response thành công `200`:** `CommonResponse<KbArticleDiffDto>` — 6 `DiffSection` (`titleDiff`, `symptomsDiff`, `diagnosisStepsDiff`, `solutionStepsDiff`, `recommendedPartsDiff`, `tagsDiff`), mỗi cái có `oldValue`/`newValue`/`isChanged`.
+**Response thành công `200`:** `CommonResponse<KbArticleDiffDTO>` — 6 `DiffSection` (`titleDiff`, `symptomsDiff`, `diagnosisStepsDiff`, `solutionStepsDiff`, `recommendedPartsDiff`, `tagsDiff`), mỗi cái có `oldValue`/`newValue`/`isChanged`.
 
 ---
 
-### GET /api/internal/knowledge-base/{id}/copy-template
+### `GET /api/internal/knowledge-base/{id}/copy-template`
 
 **Mục đích:** Sao chép cấu trúc bài viết mẫu để tạo bài mới. Chỉ áp dụng cho bài viết có gắn tag **`template`** hoặc **`example`** (so khớp không phân biệt hoa thường).
 
@@ -1569,7 +2428,7 @@ Hệ thống tự động lưu bản hiện tại vào lịch sử. Trạng thá
 
 **Path param:** `id` — UUID của bài viết mẫu.
 
-**Response thành công `200`:** `CommonResponse<KbArticleTemplateDto>` — gồm `category` (int), `symptoms`, `diagnosisSteps`, `solutionSteps`, `recommendedParts`, `tags` (**không** có `id`/`title`).
+**Response thành công `200`:** `CommonResponse<KbArticleTemplateDTO>` — gồm `category` (`TicketCategoryEnum`, chuỗi), `symptoms`, `diagnosisSteps`, `solutionSteps`, `recommendedParts`, `tags` (**không** có `id`/`title`).
 
 ---
 
@@ -1582,7 +2441,7 @@ Quản lý vòng đời bài viết: Phê duyệt / từ chối thay đổi, Xu�
 
 ---
 
-### POST /api/admin/knowledge-base/{id}/approve-review
+### `POST /api/admin/knowledge-base/{id}/approve-review`
 
 **Mục đích:** Chấp nhận các thay đổi (`PendingReview → Published`). Nội dung từ bản nháp được đắp lên bài viết chính.
 
@@ -1590,11 +2449,11 @@ Quản lý vòng đời bài viết: Phê duyệt / từ chối thay đổi, Xu�
 
 **Path param:** `id` — UUID bài viết.
 
-**Response thành công `200`:** `CommonResponse<KbArticleActionDto>`
+**Response thành công `200`:** `CommonResponse<KbArticleActionDTO>`
 
 ---
 
-### POST /api/admin/knowledge-base/{id}/reject-review
+### `POST /api/admin/knowledge-base/{id}/reject-review`
 
 **Mục đích:** Từ chối thay đổi của Staff.
 
@@ -1608,11 +2467,11 @@ Quản lý vòng đời bài viết: Phê duyệt / từ chối thay đổi, Xu�
 |---|---|---|---|
 | `reason` | `string` | ✅ | Lý do từ chối — không được rỗng/whitespace (`400` nếu thiếu) |
 
-**Response thành công `200`:** `CommonResponse<KbArticleActionDto>`
+**Response thành công `200`:** `CommonResponse<KbArticleActionDTO>`
 
 ---
 
-### POST /api/admin/knowledge-base/{id}/publish
+### `POST /api/admin/knowledge-base/{id}/publish`
 
 **Mục đích:** Xuất bản bài viết (→ `Published`).
 
@@ -1620,11 +2479,11 @@ Quản lý vòng đời bài viết: Phê duyệt / từ chối thay đổi, Xu�
 
 **Path param:** `id` — UUID bài viết.
 
-**Response thành công `200`:** `CommonResponse<KbArticleActionDto>`
+**Response thành công `200`:** `CommonResponse<KbArticleActionDTO>`
 
 ---
 
-### POST /api/admin/knowledge-base/{id}/archive
+### `POST /api/admin/knowledge-base/{id}/archive`
 
 **Mục đích:** Lưu trữ bài viết (→ `Archived`, ngừng hiển thị với Customer).
 
@@ -1632,11 +2491,11 @@ Quản lý vòng đời bài viết: Phê duyệt / từ chối thay đổi, Xu�
 
 **Path param:** `id` — UUID bài viết.
 
-**Response thành công `200`:** `CommonResponse<KbArticleActionDto>`
+**Response thành công `200`:** `CommonResponse<KbArticleActionDTO>`
 
 ---
 
-### POST /api/admin/knowledge-base/{id}/rollback
+### `POST /api/admin/knowledge-base/{id}/rollback`
 
 **Mục đích:** Hoàn tác nội dung bài viết về một phiên bản cũ trong lịch sử. Lấy nội dung phiên bản cũ đè lên bản hiện tại và tăng Version.
 
@@ -1650,11 +2509,11 @@ Quản lý vòng đời bài viết: Phê duyệt / từ chối thay đổi, Xu�
 |---|---|---|---|
 | `toVersionId` | `Guid` | ✅ | ID phiên bản (`KbArticleVersion.id`) cần khôi phục (`400` nếu thiếu/rỗng) |
 
-**Response thành công `200`:** `CommonResponse<KbArticleActionDto>`
+**Response thành công `200`:** `CommonResponse<KbArticleActionDTO>`
 
 ---
 
-### DELETE /api/admin/knowledge-base/{id}
+### `DELETE /api/admin/knowledge-base/{id}`
 
 **Mục đích:** Xóa mềm (soft delete) một bài viết Knowledge Base.
 
@@ -1679,7 +2538,7 @@ Gán bài viết Knowledge Base vào Ticket làm tài liệu tham khảo (lưu v
 
 ---
 
-### POST /api/knowledge-base/references
+### `POST /api/knowledge-base/references`
 
 **Mục đích:** Gán một bài viết KB vào một Ticket.
 
@@ -1692,31 +2551,48 @@ Gán bài viết Knowledge Base vào Ticket làm tài liệu tham khảo (lưu v
 | `referenceType` | `KbReferenceTypeEnum` | ✅ | Loại tham chiếu |
 | `note` | `string?` | ❌ | Ghi chú |
 
-**Response thành công `200`:** `CommonResponse<object>`
+**Response thành công `200`:** `CommonResponse<object>` (idempotent theo cặp ticket+bài viết: nếu tham chiếu đã tồn tại — kể cả đã xóa mềm — sẽ được khôi phục và cập nhật `referenceType`/`note` mới).
 
-**Lỗi thường gặp:**
-- `403` — Ticket đang ở `Resolved` / `ClosedPendingRate` / `Closed` (không cho gán thêm)
-- `404` — Không tìm thấy Ticket hoặc Bài viết
+**Quy tắc trạng thái ticket (theo `referenceType`):**
+
+| Trạng thái ticket | `ConsultedDuringResolve` | `GeneratedAfterResolve` / `ProvidedToCustomer` |
+|---|---|---|
+| Trước `Resolved` (New → Escalated) | ✅ Gán được | ✅ Gán được |
+| `Resolved` | ❌ `409` | ✅ Gán được — 2 type này về ngữ nghĩa xảy ra **lúc/sau khi resolve** |
+| `ClosedPendingRate` / `Closed` | ❌ `409` | ❌ `409` |
+
+**Quy tắc bài viết nội bộ:** bài có `isInternalOnly = true` **không thể** gán với `referenceType = ProvidedToCustomer` (không được cung cấp tài liệu nội bộ cho khách hàng) → `422`. Các type khác vẫn gán được bài nội bộ bình thường.
+
+**Bảng status code:**
+
+| Status | Trường hợp | `listErrors` |
+|---|---|---|
+| `400` | Lỗi field: `ticketId`/`kbArticleId` = Guid rỗng, `referenceType` không phải giá trị enum hợp lệ | Có — từng phần tử ghi rõ `field` + `detail` |
+| `401` | Chưa đăng nhập | `null` |
+| `403` | **Lỗi quyền:** Staff không phải người được phân công xử lý ticket (`assignedStaffId` khác), hoặc role không hợp lệ | `null` |
+| `404` | Không tìm thấy Ticket hoặc Bài viết trong DB | `null` |
+| `409` | **Xung đột trạng thái:** ticket đã chờ phê duyệt/hoàn thành theo bảng quy tắc trên | `null` |
+| `422` | **Vi phạm rule nghiệp vụ:** bài nội bộ + `ProvidedToCustomer` | `null` |
 
 ---
 
-### GET /api/knowledge-base/references?ticketId={ticketId}
+### `GET /api/knowledge-base/references?ticketId={ticketId}`
 
 **Mục đích:** Lấy danh sách bài viết KB đã gán cho một Ticket (sắp xếp mới nhất trước).
 
 **Query param:** `ticketId` — UUID của ticket.
 
-**Response thành công `200`:** `CommonResponse<TicketKbReferenceDto[]>`
+**Response thành công `200`:** `CommonResponse<TicketKbReferenceDTO[]>`
 
 > Trả về toàn bộ array — **không pagination**. Chỉ trả các tham chiếu chưa bị xóa (`!IsDeleted`).
 
 ---
 
-### DELETE /api/knowledge-base/references/{referenceId}
+### `DELETE /api/knowledge-base/references/{referenceId}`
 
 **Mục đích:** Gỡ một tham chiếu KB khỏi Ticket (xóa mềm).
 
-**Path param:** `referenceId` — UUID của bản ghi tham chiếu (`TicketKbReferenceDto.id`).
+**Path param:** `referenceId` — UUID của bản ghi tham chiếu (`TicketKbReferenceDTO.id`).
 
 **Response thành công `200`:** `CommonResponse<object>`
 
@@ -1725,9 +2601,154 @@ Gán bài viết Knowledge Base vào Ticket làm tài liệu tham khảo (lưu v
 
 ---
 
-## Knowledge Base DTOs & Enums
+## Nhóm 12 — Reports (Sprint 7 #114 · §5.2)
 
-### KbArticleDto (detail — `GET /{id}`, response của `update`)
+**Quy ước chung mọi report:**
+- **Export:** thêm query `?format=csv` hoặc `?format=xlsx` → trả **file download** (XLSX dùng ClosedXML; CSV có UTF-8 BOM). Không truyền `format` → trả **JSON** `CommonResponse<List<...>>` (riêng `csat` trả `CommonResponse<CsatDto>`).
+- **Thời gian:** `from`/`to` UTC, tùy chọn. Report time-series mặc định **30 ngày gần nhất** nếu bỏ trống. `granularity`: `day` (mặc định) · `week` · `month`.
+- **SLA:** "met"/"breached" lấy từ `SlaTimerStatusEnum` (Met/Breached). "resolved" = Status ∈ {Resolved, ClosedPendingRate, Closed}.
+- Route phẳng `api/reports/...`. Tất cả là `GET`.
+- **Auth:** mặc định **Admin/Manager** (riêng `saga-failed-rate` chỉ **Admin**).
+
+### `GET /api/reports/sla-by-staff`
+
+**Mục đích:** SLA compliance theo từng staff — tổng assigned, met, breached, tỷ lệ tuân thủ.
+**Auth:** Admin/Manager · **Query:** `from?`, `to?`, `format?`.
+**Response `200`:** `CommonResponse<List<SlaByStaffRow>>`
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `staffId` | `string` | Không | ID staff (AssignedStaffId) |
+| `name` | `string?` | **Null nếu không map được tên** | Tên staff (từ `StaffAccount`) |
+| `totalAssigned` | `int` | Không | Tổng ticket được giao trong khoảng |
+| `met` | `int` | Không | Số ticket SLA Met |
+| `breached` | `int` | Không | Số ticket SLA Breached |
+| `complianceRate` | `decimal` | Không | `% = met / (met + breached)` (chỉ tính ticket đã chốt SLA) |
+
+### `GET /api/reports/sla-by-priority`
+
+**Mục đích:** SLA compliance theo priority (luôn trả đủ 3 dòng P1/P2/P3).
+**Auth:** Admin/Manager · **Query:** `from?`, `to?`, `format?`.
+**Response `200`:** `CommonResponse<List<SlaByPriorityRow>>`
+
+```json
+{
+  "isSuccess": true, "statusCode": 200, "message": "",
+  "data": [
+    { "priority": "P1Critical", "met": 2, "breached": 1, "total": 3, "complianceRate": 66.67 },
+    { "priority": "P2High", "met": 5, "breached": 0, "total": 5, "complianceRate": 100 },
+    { "priority": "P3Normal", "met": 0, "breached": 0, "total": 0, "complianceRate": 0 }
+  ],
+  "listErrors": null
+}
+```
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `priority` | `string` | Không | Tên `TicketPriorityEnum` (P1Critical/P2High/P3Normal) |
+| `met` | `int` | Không | Số SLA timer Met |
+| `breached` | `int` | Không | Số SLA timer Breached |
+| `total` | `int` | Không | Tổng SLA timer của priority đó |
+| `complianceRate` | `decimal` | Không | `% = met / (met + breached)` |
+
+### `GET /api/reports/ticket-volume`
+
+**Mục đích:** Số lượng ticket tạo mới theo thời gian (time-series).
+**Auth:** Admin/Manager · **Query:** `from?`, `to?`, `granularity?` (mặc định 30 ngày/day), `format?`.
+**Response `200`:** `CommonResponse<List<TicketTimeSeriesPoint>>` — `{ date: DateTime, count: int }` (cả 2 không null).
+
+### `GET /api/reports/top-reopen-issues`
+
+**Mục đích:** Top category bị reopen nhiều (chỉ tính ticket `ReopenCount > 0`).
+**Auth:** Admin/Manager · **Query:** `limit?` (mặc định 10, tối đa 100), `format?`.
+**Response `200`:** `CommonResponse<List<ReopenIssueRow>>`
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `category` | `string` | Không | Tên `TicketCategoryEnum` |
+| `count` | `int` | Không | Số ticket bị reopen của category |
+| `avgReopenCount` | `decimal` | Không | Số lần reopen trung bình |
+
+### `GET /api/reports/staff-performance`
+
+**Mục đích:** Hiệu suất staff — số ticket resolved, giờ xử lý TB, rating TB, % SLA compliance.
+**Auth:** Admin/Manager · **Query:** `from?`, `to?`, `format?`.
+**Response `200`:** `CommonResponse<List<StaffPerformanceRow>>`
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `staffId` | `string` | Không | ID staff |
+| `name` | `string?` | **Null nếu không map được tên** | Tên staff |
+| `ticketsResolved` | `int` | Không | Số ticket đã resolve |
+| `avgResolveHours` | `decimal` | Không | Giờ xử lý trung bình (ResolvedAt − CreatedAt) |
+| `avgRating` | `decimal?` | **Null nếu chưa có ticket nào được rate** | Điểm đánh giá trung bình (1–5) |
+| `slaCompliance` | `decimal` | Không | `% = met / (met + breached)` |
+
+### `GET /api/reports/csat`
+
+**Mục đích:** Chỉ số hài lòng khách hàng — rating trung bình, tổng số rated, phân bố 1..5 sao.
+**Auth:** Admin/Manager · **Query:** `from?`, `to?` (lọc theo `RatedAt`), `format?`.
+**Response `200`:** `CommonResponse<CsatDto>` (**object**, không phải list)
+
+```json
+{
+  "isSuccess": true, "statusCode": 200, "message": "",
+  "data": {
+    "avgRating": 4.33,
+    "totalRated": 3,
+    "ratingDistribution": { "1": 0, "2": 0, "3": 1, "4": 0, "5": 2 }
+  },
+  "listErrors": null
+}
+```
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `avgRating` | `decimal` | Không | Điểm trung bình (0 nếu chưa có rating) |
+| `totalRated` | `int` | Không | Số ticket đã được đánh giá |
+| `ratingDistribution` | `object<int,int>` | Không (luôn có key 1..5) | Phân bố số sao: key = 1..5, value = số lượng |
+
+### `GET /api/reports/resolution-time-histogram`
+
+**Mục đích:** Histogram thời gian resolution (chỉ tính ticket đã có `ResolvedAt`).
+**Auth:** Admin/Manager · **Query:** `from?`, `to?`, `format?`.
+**Response `200`:** `CommonResponse<List<HistogramBucketRow>>`
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `bucket` | `string` | Không | Khoảng thời gian: `0-1h` · `1-4h` · `4-24h` · `1-3d` · `>3d` |
+| `count` | `int` | Không | Số ticket rơi vào bucket |
+
+### `GET /api/reports/category-breakdown`
+
+**Mục đích:** Phân bố ticket theo category (sort giảm dần).
+**Auth:** Admin/Manager · **Query:** `from?`, `to?`, `format?`.
+**Response `200`:** `CommonResponse<List<CategoryBreakdownRow>>` — `{ category: string (tên TicketCategoryEnum), count: int }`.
+
+### `GET /api/reports/saga-failed-rate`
+
+**Mục đích:** Tỷ lệ thất bại của Alert-Ticket Saga theo thời gian — phục vụ demo SRE/SLO. Đọc từ `AlertTicketSagaState`.
+**Auth:** **Chỉ Admin** · **Query:** `from?`, `to?`, `granularity?` (mặc định 30 ngày/day), `format?`.
+**Response `200`:** `CommonResponse<List<SagaFailedRatePoint>>`
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `date` | `DateTime` | Không | Mốc bucket (UTC) |
+| `started` | `int` | Không | Số saga bắt đầu trong bucket |
+| `completed` | `int` | Không | Số saga hoàn tất |
+| `failed` | `int` | Không | Số saga thất bại |
+| `failedRate` | `decimal` | Không | `% = failed / started` |
+| `p95DurationSec` | `decimal` | Không | p95 thời gian chạy saga hoàn tất (giây) |
+
+**Lỗi thường gặp (mọi report):** `401` chưa đăng nhập · `403` không đủ role (vd non-Admin gọi `saga-failed-rate`).
+
+---
+
+## Knowledge Base DTOs
+
+> Enum của domain Knowledge Base (`KbArticleStatusEnum`, `KbVersionStatusEnum`, `KbReferenceTypeEnum`) xem ở mục **Enums** đầu tài liệu — không lặp lại ở đây.
+
+### `KbArticleDTO` (detail — `GET /{id}`, response của `update`)
 
 > Enum `category`/`status` trả về **dạng chuỗi** (`JsonStringEnumConverter`).
 
@@ -1754,7 +2775,7 @@ Gán bài viết Knowledge Base vào Ticket làm tài liệu tham khảo (lưu v
 | `createdAt` | `string` | Không | Thời điểm tạo (ISO 8601 UTC) |
 | `updatedAt` | `string?` | Có | Thời điểm cập nhật gần nhất |
 
-### KbArticleListItemDto (item trong danh sách — `GET /api/knowledge-base`)
+### `KbArticleListItemDTO` (item trong danh sách — `GET /api/knowledge-base`)
 
 | Field | Type | Mô tả |
 |---|---|---|
@@ -1770,7 +2791,7 @@ Gán bài viết Knowledge Base vào Ticket làm tài liệu tham khảo (lưu v
 
 > ⚠️ List item **KHÔNG** có `tags` (chỉ detail mới có). **CÓ** `reviewRequired` + `createdAt`.
 
-### KbArticleVersionDto (phiên bản trong lịch sử)
+### `KbArticleVersionDTO` (phiên bản trong lịch sử)
 
 | Field | Type | Mô tả |
 |---|---|---|
@@ -1778,7 +2799,7 @@ Gán bài viết Knowledge Base vào Ticket làm tài liệu tham khảo (lưu v
 | `articleId` | `string` | ID bài viết gốc |
 | `majorVersion` | `int` | Major version |
 | `minorVersion` | `int` | Minor version |
-| `status` | `int` | `KbVersionStatusEnum` dạng **số** (BE để raw `int`, KHÔNG serialize chuỗi) |
+| `status` | `KbVersionStatusEnum` | Enum chuỗi (e.g. `"Approved"`) — xem mục Enums |
 | `title` / `symptoms` / `diagnosisSteps` / `solutionSteps` | `string` | Nội dung snapshot |
 | `recommendedParts` | `string[]?` | Linh kiện snapshot |
 | `tags` | `string[]` | Thẻ snapshot |
@@ -1786,7 +2807,7 @@ Gán bài viết Knowledge Base vào Ticket làm tài liệu tham khảo (lưu v
 | `changedBy` | `string` | Người thực hiện thay đổi |
 | `createdAt` | `string` | Thời điểm tạo phiên bản (UTC) |
 
-### KbArticleDiffDto (kết quả `compare`)
+### `KbArticleDiffDTO` (kết quả `compare`)
 
 | Field | Type | Mô tả |
 |---|---|---|
@@ -1796,18 +2817,18 @@ Gán bài viết Knowledge Base vào Ticket làm tài liệu tham khảo (lưu v
 
 **`DiffSection`:** `{ oldValue: string; newValue: string; isChanged: bool }`
 
-### KbArticleTemplateDto (kết quả `copy-template`)
+### `KbArticleTemplateDTO` (kết quả `copy-template`)
 
 | Field | Type | Mô tả |
 |---|---|---|
-| `category` | `int` | Danh mục (số) |
+| `category` | `TicketCategoryEnum` | Enum chuỗi — xem mục Enums |
 | `symptoms` / `diagnosisSteps` / `solutionSteps` | `string` | Nội dung mẫu |
 | `recommendedParts` | `string[]?` | Linh kiện mẫu |
 | `tags` | `string[]` | Thẻ mẫu |
 
 > Không có `id`/`title` — chỉ là cấu trúc để fill vào form tạo bài mới.
 
-### KbArticleSuggestDto (kết quả `suggest`)
+### `KbArticleSuggestDTO` (kết quả `suggest`)
 
 | Field | Type | Mô tả |
 |---|---|---|
@@ -1817,8 +2838,9 @@ Gán bài viết Knowledge Base vào Ticket làm tài liệu tham khảo (lưu v
 | `symptoms` | `string` | Triệu chứng |
 | `helpfulCount` | `int` | Lượt hữu ích |
 | `viewCount` | `int` | Lượt xem |
+| `isInternalOnly` | `bool` | `true` = bài nội bộ, **không được** gán vào ticket với `referenceType = ProvidedToCustomer` (BE chặn `422` — xem Nhóm 11). ⚠️ Các endpoint suggest hiện **lọc sẵn** bài nội bộ khỏi kết quả nên giá trị thường là `false` — field tồn tại để FE cảnh báo/ẩn nếu nguồn danh sách bài thay đổi (vd chọn từ KB list đầy đủ của Staff) |
 
-### KbArticleActionDto
+### `KbArticleActionDTO`
 
 Payload nhẹ dùng cho các hành động chuyển trạng thái.
 
@@ -1828,20 +2850,7 @@ Payload nhẹ dùng cho các hành động chuyển trạng thái.
 | `code` | `string` | Mã bài viết |
 | `status` | `KbArticleStatusEnum` | Trạng thái hiện tại sau thao tác (enum chuỗi) |
 
-### KbArticleStatusEnum
-- Draft (1): Nháp
-- PendingReview (2): Chờ phê duyệt
-- Published (3): Đã xuất bản (Customer thấy được)
-- Archived (4): Đã lưu trữ (Ẩn)
-
-### KbVersionStatusEnum
-Dành cho bảng lịch sử KbArticleVersion.
-- Pending (1): Chờ duyệt
-- Approved (2): Đã duyệt
-- Rejected (3): Bị từ chối
-- Archived (4): Bản sao lưu (Snapshot)
-
-### TicketKbReferenceDto (Nhóm 11 — `GET .../references`)
+### `TicketKbReferenceDTO` (Nhóm 11 — `GET .../references`)
 
 | Field | Type | Nullable | Mô tả |
 |---|---|---|---|
@@ -1851,12 +2860,125 @@ Dành cho bảng lịch sử KbArticleVersion.
 | `kbArticleCode` | `string` | Không | Mã bài viết (snapshot lúc gán) |
 | `kbArticleTitle` | `string?` | Có | Tiêu đề bài viết (join từ KB hiện tại) |
 | `referencedByUserId` | `string` | Không | Người gán |
-| `referenceType` | `KbReferenceTypeEnum` | Không | Loại tham chiếu (**chuỗi**, vd `"ConsultedDuringResolve"`) |
+| `referenceType` | `KbReferenceTypeEnum` | Không | Loại tham chiếu (**chuỗi**, vd `"ConsultedDuringResolve"`) — xem mục Enums |
 | `note` | `string?` | Có | Ghi chú |
 | `createdAt` | `string` | Không | Thời điểm gán (UTC) |
 
-### KbReferenceTypeEnum
-Dùng khi link Ticket với Article.
-- ConsultedDuringResolve (1): Tham khảo khi xử lý
-- ProvidedToCustomer (2): Cung cấp cho khách hàng
-- GeneratedAfterResolve (3): Tạo ra sau khi xử lý xong
+---
+
+## Changelog
+
+### 2026-07-07 — Dashboard aggregate stats + SLA filter + KB reference rules
+- **Thêm `GET /api/tickets/dashboard/stats`** (Nhóm 4, Manager/Admin) — snapshot KPI toàn hệ thống: total/openCount, SLA summary + compliancePercent, countByStatus (zero-fill 14 status), countByPriority, createdTrend7Days (UTC), openCountByStaff. Thay cho FE tự đếm trên 1 trang list.
+- **Thêm `GET /api/staff/tickets/dashboard/stats`** (Nhóm 3, Staff) — snapshot KPI per-staff từ JWT: open/resolved, nearBreach (≤25%)/breached/paused/slaMonitored, slaRisk, countByStatus, trend 7 ngày.
+- **`GET /api/staff/tickets/me`:** thêm query param `SlaOpen` (filter server-side nhóm ticket đang theo dõi SLA — bảng SLA Monitor hết bị cap theo pageSize) và `SortBy=slaRemaining` (sort theo dueAt tăng dần, ticket không timer xếp cuối).
+- **`POST /api/knowledge-base/references`:** (1) nới quy tắc trạng thái — state `Resolved` cho phép gán 2 type after-resolve (`GeneratedAfterResolve`, `ProvidedToCustomer`); (2) chặn bài `isInternalOnly` với type `ProvidedToCustomer`; (3) chuẩn hóa status code: state lock đổi `403` → **`409`** (xung đột trạng thái), rule nội bộ trả **`422`**, `403` chỉ còn cho lỗi quyền. ⚠️ FE đang bắt riêng 403 cho state lock cần đổi theo.
+- **`KbArticleSuggestDTO`:** thêm field `isInternalOnly` (bool).
+
+### 2026-06-24 — Sprint 7 #114: bổ sung Nhóm 12 — Reports (9 endpoint)
+- Thêm 9 endpoint `GET /api/reports/*`: `sla-by-staff`, `sla-by-priority`, `ticket-volume`, `top-reopen-issues`, `staff-performance`, `csat`, `resolution-time-histogram`, `category-breakdown`, `saga-failed-rate`.
+- Tất cả hỗ trợ `?format=csv|xlsx` (export ClosedXML/CSV) hoặc trả JSON. Auth Admin/Manager; `saga-failed-rate` chỉ Admin.
+- Tài liệu hóa đầy đủ DTO response (field/type/nullable) + query params + JSON mẫu, đối chiếu trực tiếp code (`TicketReportDtos`, `ReportsController`).
+
+### 2026-06-22 — Đối chiếu DTO/request với code thực tế (6 fix)
+
+Verify toàn bộ doc với codebase TicketService. Enums (16/16) và SignalR Hub khớp 100%. Sửa 6 sai lệch:
+
+- **`MaintenanceLogDTO`:** xóa field `ticketId` — DTO thực tế ([`MaintenanceLogDTO.cs`]) **không có** property này (đừng nhầm với `TicketActionDTO.ticketId`).
+- **`MaintenanceLogDTO`:** `attachmentFileIds`/`beforePhotosFileIds`/`afterPhotosFileIds`/`relatedKbArticleIds` trước ghi `string[]?` (Null) — thực tế là `List<string>` default `[]`, **không bao giờ null**. Đổi sang `string[]` (luôn mảng).
+- **`TicketCommentDTO`:** `authorUserId` thực tế `string=""` (không null, sửa từ `string?`); `attachmentFileIds` thực tế `List<string>` default `[]` (không null, sửa từ `string[]?`).
+- **`TicketDTO.slaTimer`:** thực tế `SlaTimerDTO?` — null khi ticket chưa triage. Sửa từ non-null sang nullable.
+- **`POST /api/staff/tickets/{id}/start`:** xóa field `latitude`/`longitude` khỏi body — `TicketStartCommand` **chỉ có** `logType`. Tọa độ check-in chỉ ghi qua endpoint maintenance-log.
+- **`POST /api/customer/tickets`:** bỏ "max 200/2000 ký tự" khỏi validation `title`/`description` — `TicketCreateCommand.ValidateAsync()` chỉ check không rỗng, **không** enforce độ dài.
+
+### 2026-06-22 — Bổ sung SignalR Hub + sửa doc `POST .../comments`
+
+- **Thêm mục "Realtime — SignalR Hub `/hubs/ticket-comments`"** (sau Nhóm 1) — endpoint, auth qua query `access_token`, 3 method `JoinTicket`/`LeaveTicket`/`Typing`, 2 event `CommentAdded`/`UserTyping`, group routing theo `isInternal`, và snippet test nhanh bằng `@microsoft/signalr` CDN cho FE dán vào console.
+- **Sửa `POST /api/tickets/{ticketId}/comments`:** `CommentAttachmentInput.fileName`/`.contentType` trước đây ghi "Không bắt buộc" — **SAI**, `ValidateAsync` thực tế reject `400` nếu rỗng. Đã sửa thành bắt buộc, thêm so sánh với `MaintenanceAttachmentInput` (không validate field-level). Bổ sung `400` vào "Lỗi thường gặp" (trước đó thiếu) và note hành động phụ phát SignalR event sau khi tạo comment.
+
+### 2026-06-27 — Ticket Chats system: thay thế Comments + bổ sung AI endpoints
+
+**Breaking changes:**
+- `GET/POST /api/tickets/{ticketId}/comments` — **REMOVED**. Controller `TicketCommentsController` đã bị xóa.
+- `TicketDetailDTO.comments` (kiểu `TicketCommentDTO[]`) → `TicketDetailDTO.chats` (kiểu `TicketChatDTO[]`).
+- SignalR Hub path: `/hubs/ticket-comments` → `/hubs/ticket-chats`.
+- SignalR event: `CommentAdded` → `ChatAdded`. Payload: `TicketCommentDTO` → `TicketChatDTO`.
+- Hub notifier class: `SignalRTicketCommentNotifier` → `SignalRTicketChatNotifier`.
+
+**Endpoints mới (TicketChatsController — `/api/tickets/{ticketId}/chats`):**
+32 endpoints thay thế và mở rộng hệ thống comment cũ: CRUD + reply thread + pin + reaction + mark-read + readers + unread-count + template + KB integration + AI (suggest/sentiment-check/summarize/translate/voice) + export PDF + escalation-review ACK.
+
+**Endpoints mới (AdminTicketChatsController — `/api/admin/tickets/{ticketId}/chats`):**
+4 endpoints Admin-only override cho ticket đã Closed: `closed-override` POST/PUT/DELETE, `restore` PATCH.
+
+**Endpoints mới (Chats Utilities — `/api/chats/...`):**
+`GET /api/chats/me`, `POST /api/chats/erase-my-data` (GDPR), `GET /api/chats/search` (Manager/Admin), `GET /api/chats/mentions/me`, `PATCH /api/chats/mentions/{id}/acknowledge`.
+
+**ApiGateway:** Không cần thay đổi — các catch-all routes (`/api/tickets/{**catch-all}`, `/api/admin/tickets/{**catch-all}`, `/api/chats/{**catch-all}`, `/hubs/ticket-chats`) đã cover toàn bộ.
+
+**Enums mới:** `ChatBodyFormatEnum`, `ReactionTypeEnum`, `ChatAiIntentEnum`.
+
+**DTOs mới:** `TicketChatDTO`, `TicketChatReactionsAggregateDTO`, `ChatReactionGroupDTO`, `TicketChatMentionDTO`, `ChatEditHistoryDTO`, `ChatSuggestDTO`, `ChatSentimentCheckDTO`, `ChatSummarizeDTO`, `ChatTranslateDTO`.
+
+---
+
+### 2026-06-22 — Fix Knowledge Base enum bị khai sai kiểu `int`
+
+- **Breaking change cho FE:** `GetKbArticleListQuery.Category`/`.Status` (query param `GET /api/knowledge-base`), `KbArticleVersionDTO.status`, `KbArticleTemplateDTO.category` trước đây khai sai kiểu `int`/`int?` — đã sửa sang đúng enum (`TicketCategoryEnum`, `KbArticleStatusEnum`, `KbVersionStatusEnum`). Toàn bộ 4 field này giờ gửi/nhận **chuỗi tên enum** (vd `Category=Charging`, `"status": "Approved"`), không còn ngoại lệ số như trước.
+- Bổ sung endpoint `GET /api/knowledge-base/{id}/usage-stats` (Nhóm 8) — đã có trong code (Manager/Admin only) nhưng thiếu trong doc.
+- Gom 3 enum của domain Knowledge Base (`KbArticleStatusEnum`, `KbVersionStatusEnum`, `KbReferenceTypeEnum`) vào mục **Enums** chung đầu tài liệu — bỏ bản liệt kê dạng bullet trùng lặp ở cuối file.
+- Đổi tên các DTO trong doc từ hậu tố `Dto` sang `DTO` (khớp tên class C# thật, ví dụ `KbArticleDTO`, `TicketActionDTO`, `AlertTicketSagaDTO`) — áp dụng cho toàn bộ file, không chỉ phần Knowledge Base.
+
+---
+
+## Nhóm — Audit Logs nội bộ (Option C — Sprint audit)
+
+> Endpoint **dự phòng (fallback resilience)**: query trực tiếp bảng nguồn `ticket_audit_logs` ngay tại TicketService, dùng được kể cả khi `AuditAggregatorService` gặp sự cố. Enum `Severity`/`ActionCategory` dùng chung — xem [docs/api-audit.md](api-audit.md#enums--tập-giá-trị-cố-định).
+>
+> **Lưu ý:** đây là `ticket_audit_logs` (audit forensic), **TÁCH BIỆT** với `TicketActivity` (dòng thời gian hiển thị cho user trên UI).
+>
+> **Auth:** chỉ role `Admin` (`401` thiếu token / `403` sai role).
+
+### `GET /api/admin/ticket/audit-logs`
+
+**Mục đích:** Tra cứu audit log thao tác trên TICKET, có phân trang + lọc.
+
+**Tác dụng:** Điều tra SLA breach / escalation (ai làm gì với ticket, khi nào), compliance, truy trách nhiệm.
+
+**Auth:** Admin.
+
+**Query params (đều optional):**
+
+| Param | Type | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `action` | `string?` | Không | Mã action (vd `StateTransitioned`). Bỏ trống = tất cả |
+| `ticketId` | `string?` (UUID) | Không | Lọc theo ticket cụ thể (target) |
+| `from` | `DateTime?` | Không | Mốc đầu (UTC) |
+| `to` | `DateTime?` | Không | Mốc cuối (UTC) |
+| `pageNumber` | `int` | Không (mặc định 1) | Số trang |
+| `pageSize` | `int` | Không (mặc định 50, trần 100) | Số item/trang |
+
+**Action codes (ticket, 21):** `TicketCreated` · `StateTransitioned` · `PriorityChanged` · `AssignedToStaff` · `UnassignedFromStaff` · `SlaPaused` · `SlaResumed` · `SlaBreached` · `EscalatedToManager` · `EscalatedToAdmin` · `MaintenanceLogAdded` · `CommentAdded` · `AttachmentUploaded` · `AttachmentDeleted` · `ResolutionAdded` · `ClosedByUser` · `ReopenedByAdmin` · `RejectedByManager` · `FalseAlarmMarked` · `CustomerRated` · `AutoCreatedFromAnomaly`
+
+> `AutoCreatedFromAnomaly` có `causationId = OriginAlertId` (chuỗi nhân-quả anomaly → ticket).
+
+**Response thành công `200`:** `CommonResponse<PaginationResponse<TicketAuditLogDto>>` (mới nhất trước).
+
+**`DTO TicketAuditLogDto`:**
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `id` | `string` | Không | ID bản ghi audit |
+| `eventId` | `string` | Không | Idempotency key |
+| `actionCode` | `string` | Không | Mã hành động |
+| `actionCategory` | `string` | Không | Category |
+| `severity` | `string` | Không | Mức độ |
+| `targetId` | `string?` | Null nếu không gắn | ID ticket (target) |
+| `actorAccountId` | `string?` | Null nếu hệ thống | Account thực hiện |
+| `correlationId` | `string?` | Null nếu không gắn luồng | Id luồng nghiệp vụ |
+| `causationId` | `string?` | Null nếu không có | Id event gây ra (vd OriginAlertId) |
+| `isSuccess` | `bool` | Không | Thành công/thất bại |
+| `reason` | `string?` | Null nếu không có | Lý do/ghi chú |
+| `occurredAt` | `DateTime` | Không | Thời điểm xảy ra (UTC) |
+
+**Lỗi:** `401` / `403`.

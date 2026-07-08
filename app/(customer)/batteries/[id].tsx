@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -6,28 +6,35 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Shadow } from '../../../src/lib/theme';
 import { useBatteryAsset } from '../../../src/features/batteries/hooks/useBatteryAsset';
 import { useBatteryAssetRealtime } from '../../../src/features/batteries/hooks/useBatteryAssetRealtime';
-import { useSensorReadingAggregate } from '../../../src/features/batteries/hooks/useSensorReadingAggregate';
+import { useBatterySensorStream } from '../../../src/features/batteries/hooks/useBatterySensorStream';
 import { useAssetAlerts } from '../../../src/features/batteries/hooks/useAssetAlerts';
+import { useCascadeRisk } from '../../../src/features/batteries/hooks/useCascadeRisk';
 import { BatteryInfoCard } from '../../../src/features/batteries/components/BatteryInfoCard';
 import { BatteryRealtimeCard } from '../../../src/features/batteries/components/BatteryRealtimeCard';
+import { CascadeRiskBadge } from '../../../src/features/batteries/components/CascadeRiskBadge';
 import { SensorChart } from '../../../src/features/batteries/components/SensorChart';
 import { AssetAlertList } from '../../../src/features/batteries/components/AssetAlertList';
+import { P } from '../../../src/lib/authz';
+import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
 
 export default function BatteryDetailScreen() {
+  return (
+    <PermissionGuard permission={P.BATTERY_VIEW}>
+      <BatteryDetailScreenInner />
+    </PermissionGuard>
+  );
+}
+
+function BatteryDetailScreenInner() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const assetId = id ?? '';
 
   const { data: battery, isLoading, isError } = useBatteryAsset(assetId);
   const { data: realtime } = useBatteryAssetRealtime(assetId);
-
-  // Aggregate 24h gần nhất, bucket 1h cho chart.
-  const aggregateParams = useMemo(() => {
-    const to = new Date();
-    const from = new Date(to.getTime() - 24 * 60 * 60 * 1000);
-    return { from: from.toISOString(), to: to.toISOString(), interval: '1h' as const };
-  }, []);
-  const { data: aggregate = [] } = useSensorReadingAggregate(assetId, aggregateParams);
+  // SSE realtime — merge vào cache realtime(assetId); polling là seed + fallback.
+  useBatterySensorStream(assetId);
+  const { data: cascade } = useCascadeRisk(assetId);
   const { data: alerts = [] } = useAssetAlerts(assetId);
 
   if (isLoading) {
@@ -67,8 +74,25 @@ export default function BatteryDetailScreen() {
 
         {realtime ? <BatteryRealtimeCard data={realtime} /> : null}
 
+        <CascadeRiskBadge data={cascade} />
+
+        {battery.siteId ? (
+          <Pressable
+            style={[styles.ctaCard, Shadow]}
+            onPress={() =>
+              router.push({ pathname: '/(customer)/sites/[id]', params: { id: battery.siteId! } })
+            }
+          >
+            <Ionicons name="business-outline" size={20} color={Colors.primary} />
+            <Text style={styles.ctaText}>
+              {battery.siteName ? `Xem site: ${battery.siteName}` : 'Xem site lắp đặt'}
+            </Text>
+            <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
+          </Pressable>
+        ) : null}
+
         <Text style={styles.sectionTitle}>Biểu đồ</Text>
-        <SensorChart data={aggregate} />
+        <SensorChart assetId={assetId} />
 
         <Text style={styles.sectionTitle}>Thông tin</Text>
         <BatteryInfoCard battery={battery} />

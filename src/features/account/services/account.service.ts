@@ -13,6 +13,8 @@ import {
   Disable2faPayload,
   RegenBackupPayload,
   RegenBackupResponse,
+  LoginHistoryDto,
+  LoginHistoryParams,
 } from '../types/account.types';
 
 const { ACCOUNT } = ENDPOINTS;
@@ -55,4 +57,11 @@ export const accountService = {
   // #AUTH-62: GDPR export — trả full data; hook đọc res.data.data (axios không unwrap).
   exportMyData: () =>
     axiosInstance.get<CommonResponse<AccountDataExportDto>>(ACCOUNT.EXPORT),
+
+  // #AUTH-62: login history (audit log dạng phân trang)
+  getLoginHistory: (params?: LoginHistoryParams) =>
+    axiosInstance.get<CommonResponse<{ items: LoginHistoryDto[]; totalItems: number; pageNumber: number; pageSize: number; hasNextPage: boolean }>>(
+      ACCOUNT.LOGIN_HISTORY,
+      { params },
+    ),
 };

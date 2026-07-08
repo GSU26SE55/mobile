@@ -1,10 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Link } from 'expo-router';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Link, useRouter } from 'expo-router';
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { RegisterForm } from '../../src/features/auth/components/RegisterForm';
-import { Colors, Spacing } from '../../src/lib/theme';
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
@@ -13,33 +11,40 @@ export default function RegisterScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      {/* Back button */}
+      <Pressable onPress={() => router.back()} style={[styles.backBtn, { top: insets.top + 16 }]}>
+        <Ionicons name="chevron-back" size={20} color="#1A1A1C" />
+      </Pressable>
+
       <ScrollView
-        contentContainerStyle={[styles.container, { paddingTop: insets.top + 16 }]}
+        contentContainerStyle={[styles.container, { paddingTop: insets.top + 76, paddingBottom: insets.bottom + 24 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={Colors.primary} />
-          <Text style={styles.backText}>Quay lại</Text>
-        </Pressable>
-
-        <View style={styles.header}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="person-add" size={28} color={Colors.primary} />
-          </View>
-          <Text style={styles.title}>Tạo tài khoản</Text>
-          <Text style={styles.subtitle}>Đăng ký để sử dụng hệ thống</Text>
+        {/* Logo */}
+        <View style={styles.logoSection}>
+          <Image
+            source={require('../../assets/images/logo.png')}
+            style={styles.logoImage}
+          />
+          <Text style={styles.brand}>Solar Battery</Text>
         </View>
 
-        <View style={styles.formCard}>
+        {/* Form */}
+        <View style={styles.formSection}>
           <RegisterForm />
         </View>
 
+        {/* TODO(BE): Google OAuth chưa có backend — ẩn nút thay vì để dead-end. */}
+
+        {/* Footer */}
         <View style={styles.loginRow}>
           <Text style={styles.loginText}>Đã có tài khoản? </Text>
-          <Link href="/(auth)/login" style={styles.link}>Đăng nhập</Link>
+          <Link href="/(auth)/login" style={styles.link}>
+            Đăng nhập
+          </Link>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -47,24 +52,61 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex:       { flex: 1, backgroundColor: Colors.bg },
-  container:  { flexGrow: 1, paddingHorizontal: Spacing.xxl, paddingBottom: 40 },
-  backBtn:    { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: Spacing.xl, paddingVertical: 4 },
-  backText:   { color: Colors.primary, fontSize: 15, fontWeight: '500' },
-  header:     { alignItems: 'center', marginBottom: Spacing.xxl },
-  iconCircle: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: Colors.primaryLight,
-    alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md,
+  flex: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
-  title:      { fontSize: 24, fontWeight: '700', color: Colors.text },
-  subtitle:   { fontSize: 14, color: Colors.textSecondary, marginTop: 4 },
-  formCard:   {
-    backgroundColor: Colors.white, borderRadius: 16, padding: Spacing.xxl,
-    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 }, elevation: 3,
+  container: {
+    flexGrow: 1,
+    paddingHorizontal: 28,
   },
-  loginRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: Spacing.xl },
-  loginText:  { color: Colors.textSecondary, fontSize: 14 },
-  link:       { color: Colors.primary, fontSize: 14, fontWeight: '600' },
+  backBtn: {
+    position: 'absolute',
+    left: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  logoSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  logoImage: {
+    width: 72,
+    height: 72,
+    marginBottom: 8,
+  },
+  brand: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#1A1A1C',
+    letterSpacing: -0.5,
+  },
+
+  formSection: {
+    marginBottom: 24,
+  },
+
+  loginRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    gap: 4,
+  },
+  loginText: {
+    color: '#7A7872',
+    fontSize: 14,
+  },
+  link: {
+    color: '#E0533C',
+    fontSize: 14,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
 });

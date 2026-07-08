@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { useDeactivateAccount } from '../../../src/features/account/hooks/useDeactivateAccount';
 import { useDeleteAccount } from '../../../src/features/account/hooks/useDeleteAccount';
 import { useExportMyData } from '../../../src/features/account/hooks/useExportMyData';
+import { useEraseMyChatData } from '../../../src/features/tickets/hooks/useChatInbox';
 import { handleErrorApi } from '../../../src/lib/errors';
 import { Colors } from '../../../src/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +12,34 @@ export default function DangerZoneScreen() {
   const deactivate = useDeactivateAccount();
   const deleteAccount = useDeleteAccount();
   const exportData = useExportMyData();
+  const eraseChat = useEraseMyChatData();
+
+  const handleEraseChat = () => {
+    Alert.alert(
+      'Xóa dữ liệu chat',
+      'Toàn bộ nội dung tin nhắn của bạn sẽ bị xóa (thay bằng [ERASED]). Không thể hoàn tác. Tiếp tục?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: () =>
+            Alert.alert('Xác nhận lần cuối', 'Bạn chắc chắn muốn xóa dữ liệu chat?', [
+              { text: 'Hủy', style: 'cancel' },
+              {
+                text: 'Xóa vĩnh viễn',
+                style: 'destructive',
+                onPress: () =>
+                  eraseChat.mutate(undefined, {
+                    onSuccess: (res) =>
+                      Alert.alert('Đã xóa', `Đã xóa ${res.data.data?.erasedCount ?? 0} tin nhắn.`),
+                  }),
+              },
+            ]),
+        },
+      ],
+    );
+  };
 
   const handleExport = () => {
     // non-form → onError trực tiếp. Share sheet tự mở khi success.
@@ -92,6 +121,17 @@ export default function DangerZoneScreen() {
             <ActivityIndicator color={Colors.primary} />
           ) : (
             <Text style={styles.exportBtnText}>Tải dữ liệu của tôi</Text>
+          )}
+        </Pressable>
+
+        <Text style={[styles.sectionDesc, { marginTop: 12 }]}>
+          Xóa toàn bộ nội dung tin nhắn chat của bạn (thay bằng [ERASED]). Không thể hoàn tác.
+        </Text>
+        <Pressable style={styles.deactivateBtn} onPress={handleEraseChat} disabled={eraseChat.isPending}>
+          {eraseChat.isPending ? (
+            <ActivityIndicator color={Colors.warning} />
+          ) : (
+            <Text style={styles.deactivateBtnText}>Xóa dữ liệu chat của tôi</Text>
           )}
         </Pressable>
       </View>

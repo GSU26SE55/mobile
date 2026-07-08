@@ -43,7 +43,7 @@ export function ChangeEmailForm({ onSubmit, isLoading, fieldErrors }: Props) {
       />
       {getError('newEmail') ? <Text style={styles.error}>{getError('newEmail')}</Text> : null}
 
-      <Text style={styles.label}>Mat khau hien tai</Text>
+      <Text style={styles.label}>Mật khẩu hiện tại</Text>
       <TextInput
         style={[styles.input, getError('currentPassword') && styles.inputError]}
         value={currentPassword}
@@ -54,7 +54,7 @@ export function ChangeEmailForm({ onSubmit, isLoading, fieldErrors }: Props) {
       {getError('currentPassword') ? <Text style={styles.error}>{getError('currentPassword')}</Text> : null}
 
       <Pressable style={[styles.button, isLoading && styles.btnDisabled]} onPress={handleSubmit} disabled={isLoading}>
-        {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Gui OTP xac nhan</Text>}
+        {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Gửi OTP xác nhận</Text>}
       </Pressable>
     </View>
   );

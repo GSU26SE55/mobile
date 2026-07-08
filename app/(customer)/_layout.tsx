@@ -42,6 +42,8 @@ export default function CustomerLayout() {
       />
       <Stack.Screen name="settings" options={{ headerShown: false }} />
       <Stack.Screen name="kb" options={{ headerShown: false }} />
+      <Stack.Screen name="chats" options={{ headerShown: false }} />
+      <Stack.Screen name="incidents/[id]" />
     </Stack>
   );
 }

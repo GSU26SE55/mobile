@@ -87,3 +87,18 @@ export interface VerifyResetOtpData {
   resetToken: string;
   expiresInSeconds: number;
 }
+
+// #AUTH-51: cross-device 2FA confirm — Device A requests, Device B confirms.
+export interface CrossDevice2faRequestPayload {
+  challengeToken: string;
+}
+
+export interface CrossDevice2faRequestResponse {
+  requestId: string;
+  expiresInSeconds: number;
+}
+
+export interface CrossDevice2faConfirmPayload {
+  requestId: string;
+  totpCode: string;
+}

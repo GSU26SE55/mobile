@@ -8,18 +8,24 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Colors, CommonStyles, Spacing } from '../../../lib/theme';
+import { useRouter } from 'expo-router';
+import { Colors } from '../../../lib/theme';
 import { HttpError, EntityError } from '../../../lib/errors';
 import { useLogin } from '../hooks/useLogin';
 import { loginSchema } from '../schemas/login.schema';
 
 export function LoginForm() {
+  const router = useRouter();
   const { mutateAsync, isPending } = useLogin();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState('');
+
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   const handleSubmit = async () => {
     setFieldErrors({});
@@ -53,67 +59,88 @@ export function LoginForm() {
     }
   };
 
-  const getFieldError = (field: string) => fieldErrors[field];
-
   return (
     <View style={styles.container}>
+      {/* Email */}
       <View>
-        <Text style={styles.label}>Email</Text>
-        <View style={[styles.inputWrap, getFieldError('email') && styles.inputError]}>
-          <Ionicons name="mail-outline" size={18} color={Colors.textTertiary} style={styles.inputIcon} />
+        <Text style={styles.label}>Email hoặc tên đăng nhập</Text>
+        <View style={[
+          styles.inputRow,
+          emailFocused && styles.inputRowFocused,
+          fieldErrors.email ? styles.inputRowError : null,
+        ]}>
           <TextInput
             style={styles.input}
-            placeholder="name@example.com"
-            placeholderTextColor={Colors.placeholder}
+            placeholder="Tên đăng nhập hoặc email"
+            placeholderTextColor={Colors.textFaint}
             autoCapitalize="none"
             keyboardType="email-address"
             value={email}
             onChangeText={setEmail}
+            onFocus={() => setEmailFocused(true)}
+            onBlur={() => setEmailFocused(false)}
           />
+          {email.length > 0 && (
+            <Ionicons
+              name={isEmailValid ? 'checkmark-circle' : 'close-circle'}
+              size={20}
+              color={isEmailValid ? '#34C759' : Colors.textFaint}
+            />
+          )}
         </View>
-        {getFieldError('email') ? (
-          <Text style={styles.errorText}>{getFieldError('email')}</Text>
-        ) : null}
+        {fieldErrors.email ? <Text style={styles.errorText}>{fieldErrors.email}</Text> : null}
       </View>
 
+      {/* Password */}
       <View>
         <Text style={styles.label}>Mật khẩu</Text>
-        <View style={[styles.inputWrap, getFieldError('password') && styles.inputError]}>
-          <Ionicons name="lock-closed-outline" size={18} color={Colors.textTertiary} style={styles.inputIcon} />
+        <View style={[
+          styles.inputRow,
+          passwordFocused && styles.inputRowFocused,
+          fieldErrors.password ? styles.inputRowError : null,
+        ]}>
           <TextInput
             style={styles.input}
             placeholder="Nhập mật khẩu"
-            placeholderTextColor={Colors.placeholder}
+            placeholderTextColor={Colors.textFaint}
             secureTextEntry={!showPassword}
             value={password}
             onChangeText={setPassword}
+            onFocus={() => setPasswordFocused(true)}
+            onBlur={() => setPasswordFocused(false)}
           />
           <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
             <Ionicons
               name={showPassword ? 'eye-off-outline' : 'eye-outline'}
               size={20}
-              color={Colors.textTertiary}
+              color={Colors.textFaint}
             />
           </Pressable>
         </View>
-        {getFieldError('password') ? (
-          <Text style={styles.errorText}>{getFieldError('password')}</Text>
-        ) : null}
+        {fieldErrors.password ? <Text style={styles.errorText}>{fieldErrors.password}</Text> : null}
       </View>
 
+      {/* Forgot Password Link */}
+      <Pressable onPress={() => router.push('/(auth)/forgot-password')} style={styles.forgotBtn}>
+        <Text style={styles.forgotText}>Quên mật khẩu?</Text>
+      </Pressable>
+
+      {/* General error */}
       {generalError ? (
-        <View style={CommonStyles.generalError}>
-          <Text style={CommonStyles.generalErrorText}>{generalError}</Text>
+        <View style={styles.errorBanner}>
+          <Ionicons name="alert-circle-outline" size={16} color={Colors.danger} />
+          <Text style={styles.errorBannerText}>{generalError}</Text>
         </View>
       ) : null}
 
+      {/* Submit */}
       <Pressable
-        style={[styles.button, isPending && styles.buttonDisabled]}
+        style={({ pressed }) => [styles.button, isPending && styles.buttonDisabled, pressed && styles.buttonPressed]}
         onPress={handleSubmit}
         disabled={isPending}
       >
         {isPending ? (
-          <ActivityIndicator color={Colors.white} />
+          <ActivityIndicator color="#FFFFFF" />
         ) : (
           <Text style={styles.buttonText}>Đăng nhập</Text>
         )}
@@ -123,21 +150,89 @@ export function LoginForm() {
 }
 
 const styles = StyleSheet.create({
-  container:      { gap: 16 },
-  label:          { fontSize: 13, fontWeight: '500', color: Colors.textSecondary, marginBottom: 6 },
-  inputWrap:      {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.border,
-    borderRadius: 10, paddingHorizontal: 12,
+  container: { gap: 16 },
+
+  label: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A1A1C',
+    marginBottom: 8,
+    marginLeft: 16,
   },
-  inputIcon:      { marginRight: 8 },
-  input:          { flex: 1, fontSize: 15, color: Colors.text, paddingVertical: 13 },
-  inputError:     { borderColor: Colors.danger, backgroundColor: '#FFF5F5' },
-  errorText:      { color: Colors.danger, fontSize: 12, marginTop: 4 },
-  button:         {
-    backgroundColor: Colors.primary, borderRadius: 10,
-    paddingVertical: 15, alignItems: 'center', marginTop: 4,
+
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    height: 54,
   },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText:     { color: Colors.white, fontWeight: '600', fontSize: 16 },
+  inputRowFocused: {
+    borderColor: '#34C759',
+  },
+  inputRowError: {
+    borderColor: Colors.danger,
+    backgroundColor: '#FFF5F5',
+  },
+
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: '#1A1A1C',
+    paddingVertical: 0,
+  },
+
+  forgotBtn: {
+    alignSelf: 'flex-end',
+    marginTop: -8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  forgotText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#7A7872',
+  },
+
+  errorText: {
+    color: Colors.danger,
+    fontSize: 12,
+    marginTop: 5,
+    marginLeft: 16,
+  },
+
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.dangerLight,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  errorBannerText: {
+    color: Colors.dangerDark,
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
+  },
+
+  button: {
+    backgroundColor: '#34C759',
+    borderRadius: 28,
+    height: 54,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  buttonDisabled: { opacity: 0.55 },
+  buttonPressed:  { opacity: 0.85 },
+  buttonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 16,
+  },
 });

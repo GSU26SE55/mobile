@@ -19,12 +19,13 @@
 | File system | expo-file-system | Ghi file JSON cho GDPR data export (GH-37). API SDK 54: `File`/`Paths` (`new File(Paths.cache, name)` → `.create()` → `.write()`) |
 | Share | expo-sharing | Mở share sheet để lưu/chia sẻ file export GDPR (GH-37). Check `Sharing.isAvailableAsync()` trước khi `shareAsync` |
 | Validation | Zod | Schema-first validation cho form — nhất quán với Web. Không dùng React Hook Form (thiết kế cho web DOM) — parse thủ công bằng `schema.safeParse()` |
+| Realtime | @microsoft/signalr | SignalR client cho hub `/hubs/ticket-comments` — realtime comment ticket detail (GH-44). Client thuần JS (WS/SSE/LongPolling), **không** phải native module → `npm install`, không cần `expo install`/rebuild dev client. Auth qua `accessTokenFactory` (lib tự gắn `?access_token=`); URL = `${BASE_URL}/hubs/ticket-comments` (BASE_URL không có `/api`) |
 
 ## Packages cần cài
 
 ```bash
 npx expo install expo-router expo-secure-store expo-notifications expo-image-picker react-native-svg expo-crypto expo-file-system expo-sharing
-npm install @tanstack/react-query zustand axios react-native-qrcode-svg zod
+npm install @tanstack/react-query zustand axios react-native-qrcode-svg zod @microsoft/signalr
 ```
 
 ---

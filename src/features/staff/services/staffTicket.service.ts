@@ -2,13 +2,17 @@ import { axiosInstance } from '../../../lib/axios';
 import { ENDPOINTS } from '../../../lib/endpoints';
 import { CommonResponse, PaginationResponse } from '../../../types/api.types';
 import { TicketActionResponse, TicketDetailDTO, TicketDTO } from '../../tickets/types/ticket.types';
-import { EscalatePayload, HoldPayload, MaintenanceLogPayload, ResolvePayload, StaffAddCommentPayload, StaffTicketListParams } from '../types/staff.types';
+import { EscalatePayload, HoldPayload, MaintenanceLogPayload, ResolvePayload, StaffAddCommentPayload, StaffMaintenanceLogGroupDTO, StaffTicketDashboardStatsDto, StaffTicketListParams, UpdateMaintenanceLogPayload } from '../types/staff.types';
 
 const { STAFF_TICKETS, TICKETS } = ENDPOINTS;
 
 export const staffTicketService = {
   getMyTickets: (params?: StaffTicketListParams) =>
     axiosInstance.get<CommonResponse<PaginationResponse<TicketDTO>>>(STAFF_TICKETS.MY_LIST, { params }),
+
+  // GH-67 — KPI snapshot theo JWT (không query param).
+  getDashboardStats: () =>
+    axiosInstance.get<CommonResponse<StaffTicketDashboardStatsDto>>(STAFF_TICKETS.DASHBOARD_STATS),
 
   getDetail: (id: string) =>
     axiosInstance.get<CommonResponse<TicketDetailDTO>>(TICKETS.DETAIL(id)),
@@ -29,8 +33,14 @@ export const staffTicketService = {
     axiosInstance.post<TicketActionResponse>(STAFF_TICKETS.ESCALATE_REQUEST(id), data),
 
   addComment: (ticketId: string, data: StaffAddCommentPayload) =>
-    axiosInstance.post<TicketActionResponse>(TICKETS.COMMENT(ticketId), data),
+    axiosInstance.post<TicketActionResponse>(TICKETS.CHATS(ticketId), data),
 
   addMaintenanceLog: (ticketId: string, data: MaintenanceLogPayload) =>
     axiosInstance.post<TicketActionResponse>(STAFF_TICKETS.MAINTENANCE_LOG(ticketId), data),
+
+  getMyMaintenanceLogs: () =>
+    axiosInstance.get<CommonResponse<StaffMaintenanceLogGroupDTO[]>>(STAFF_TICKETS.MY_MAINTENANCE_LOGS),
+
+  updateMaintenanceLog: (ticketId: string, logId: string, data: UpdateMaintenanceLogPayload) =>
+    axiosInstance.patch<TicketActionResponse>(STAFF_TICKETS.MAINTENANCE_LOG_ITEM(ticketId, logId), data),
 };

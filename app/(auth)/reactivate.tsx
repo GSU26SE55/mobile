@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -32,9 +32,14 @@ export default function ReactivateScreen() {
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [emailFocused, setEmailFocused] = useState(false);
+  
+  const otpInputRef = useRef<TextInput>(null);
 
   const request = useReactivateRequest();
   const verify = useReactivateVerify();
+
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   const onRequest = () => {
     setError(null);
@@ -66,46 +71,84 @@ export default function ReactivateScreen() {
     });
   };
 
+  const focusOtp = () => {
+    otpInputRef.current?.focus();
+  };
+
+  // Back nội bộ step: ở step 2 (nhập OTP) thì lùi về step 1 giữ email, chỉ thoát màn khi ở step 1.
+  const handleBack = () => {
+    if (step > 1) {
+      setStep(1);
+      setOtp('');
+      setError(null);
+    } else {
+      router.back();
+    }
+  };
+
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Back button */}
+      <Pressable
+        onPress={handleBack}
+        style={[styles.backBtn, { top: insets.top + 16 }]}
+        accessibilityRole="button"
+        accessibilityLabel="Quay lại"
+      >
+        <Ionicons name="chevron-back" size={20} color="#1A1A1C" />
+      </Pressable>
+
       <ScrollView
-        contentContainerStyle={[styles.container, { paddingTop: insets.top + 16 }]}
+        contentContainerStyle={[styles.container, { paddingTop: insets.top + 76, paddingBottom: insets.bottom + 24 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={Colors.primary} />
-          <Text style={styles.backText}>Quay lại</Text>
-        </Pressable>
-
         <View style={styles.header}>
-          <View style={styles.iconCircle}>
-            <Ionicons name={step === 1 ? 'refresh-outline' : 'keypad-outline'} size={28} color={Colors.primary} />
-          </View>
           <Text style={styles.title}>Khôi phục tài khoản</Text>
           <Text style={styles.subtitle}>
-            {step === 1
-              ? 'Nhập email của tài khoản đã xóa (trong vòng 90 ngày) để nhận mã khôi phục.'
-              : 'Nhập mã OTP 6 số đã gửi tới email của bạn.'}
+            {step === 1 ? (
+              'Nhập email của tài khoản đã xóa (trong vòng 90 ngày) để nhận mã khôi phục.'
+            ) : (
+              <>
+                Mã OTP đã gửi đến <Text style={styles.emailHighlight}>{email}</Text>
+              </>
+            )}
           </Text>
         </View>
 
-        <View style={styles.formCard}>
+        <View style={styles.formSection}>
           {step === 1 ? (
-            <>
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor={Colors.textMute}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                value={email}
-                onChangeText={setEmail}
-              />
+            <View style={styles.formFields}>
+              <Text style={styles.label}>Email tài khoản</Text>
+              <View style={[
+                styles.inputRow,
+                emailFocused && styles.inputRowFocused,
+                error ? styles.inputRowError : null,
+              ]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="name@example.com"
+                  placeholderTextColor={Colors.textFaint}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  value={email}
+                  onChangeText={setEmail}
+                  onFocus={() => setEmailFocused(true)}
+                  onBlur={() => setEmailFocused(false)}
+                />
+                {email.length > 0 && (
+                  <Ionicons
+                    name={isEmailValid ? 'checkmark-circle' : 'close-circle'}
+                    size={20}
+                    color={isEmailValid ? '#34C759' : Colors.textFaint}
+                  />
+                )}
+              </View>
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
+              
               <Pressable
-                style={styles.submitBtn}
+                style={({ pressed }) => [styles.submitBtn, (request.isPending || email.length === 0) && styles.submitBtnDisabled, pressed && styles.submitBtnPressed]}
                 onPress={onRequest}
                 disabled={request.isPending || email.length === 0}
               >
@@ -115,23 +158,48 @@ export default function ReactivateScreen() {
                   <Text style={styles.submitText}>Gửi mã khôi phục</Text>
                 )}
               </Pressable>
-            </>
+            </View>
           ) : (
-            <>
+            <View style={styles.formFields}>
+              {/* Hidden text input for OTP */}
               <TextInput
-                autoFocus
-                style={[styles.input, styles.otpInput]}
-                placeholder="123456"
-                placeholderTextColor={Colors.textMute}
+                ref={otpInputRef}
+                style={styles.hiddenInput}
                 keyboardType="number-pad"
+                maxLength={6}
                 value={otp}
                 onChangeText={(t) => setOtp(t.replace(/\D/g, '').slice(0, 6))}
+                autoFocus
               />
-              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+              {/* Visual OTP bubbles */}
+              <Pressable style={styles.otpContainer} onPress={focusOtp}>
+                {Array(6).fill(0).map((_, index) => {
+                  const char = otp[index] || '';
+                  const isFocused = index === otp.length;
+                  return (
+                    <View
+                      key={index}
+                      style={[
+                        styles.otpSlot,
+                        isFocused && styles.otpSlotFocused,
+                        error ? styles.otpSlotError : null,
+                      ]}
+                    >
+                      <Text style={styles.otpText}>
+                        {char || (isFocused ? '|' : '-')}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </Pressable>
+
+              {error ? <Text style={[styles.errorText, { textAlign: 'center', marginTop: -4 }]}>{error}</Text> : null}
+
               <Pressable
-                style={styles.submitBtn}
+                style={({ pressed }) => [styles.submitBtn, (verify.isPending || otp.length < 6) && styles.submitBtnDisabled, pressed && styles.submitBtnPressed]}
                 onPress={onVerify}
-                disabled={verify.isPending || otp.length === 0}
+                disabled={verify.isPending || otp.length < 6}
               >
                 {verify.isPending ? (
                   <ActivityIndicator color="#fff" />
@@ -139,10 +207,11 @@ export default function ReactivateScreen() {
                   <Text style={styles.submitText}>Khôi phục tài khoản</Text>
                 )}
               </Pressable>
-              <Pressable onPress={() => { setStep(1); setOtp(''); setError(null); }}>
-                <Text style={styles.toggle}>Đổi email khác</Text>
+
+              <Pressable onPress={() => { setStep(1); setOtp(''); setError(null); }} style={styles.toggleBtn}>
+                <Text style={styles.toggleText}>Đổi email khác</Text>
               </Pressable>
-            </>
+            </View>
           )}
         </View>
       </ScrollView>
@@ -151,30 +220,153 @@ export default function ReactivateScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex:       { flex: 1, backgroundColor: Colors.bg },
-  container:  { flexGrow: 1, paddingHorizontal: Spacing.xxl, paddingBottom: 40 },
-  backBtn:    { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: Spacing.xl, paddingVertical: 4 },
-  backText:   { color: Colors.primary, fontSize: 15, fontWeight: '500' },
-  header:     { alignItems: 'center', marginBottom: Spacing.xxl },
-  iconCircle: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: Colors.primaryLight,
-    alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md,
+  flex: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
-  title:      { fontSize: 22, fontWeight: '700', color: Colors.text },
-  subtitle:   { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', marginTop: 4, maxWidth: 300, lineHeight: 20 },
-  formCard:   {
-    backgroundColor: Colors.white, borderRadius: 16, padding: Spacing.xxl, gap: Spacing.lg,
-    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 }, elevation: 3,
+  container: {
+    flexGrow: 1,
+    paddingHorizontal: 28,
+  },
+  backBtn: {
+    position: 'absolute',
+    left: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1A1A1C',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#7A7872',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  emailHighlight: {
+    color: '#1A1A1C',
+    fontWeight: '700',
+  },
+  formSection: {
+    width: '100%',
+  },
+  formFields: {
+    gap: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A1A1C',
+    marginBottom: 8,
+    marginLeft: 16,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    height: 54,
+  },
+  inputRowFocused: {
+    borderColor: '#34C759',
+  },
+  inputRowError: {
+    borderColor: Colors.danger,
+    backgroundColor: '#FFF5F5',
   },
   input: {
-    borderWidth: 1, borderColor: Colors.border, borderRadius: 12,
-    paddingVertical: 14, paddingHorizontal: 16, fontSize: 15, color: Colors.text,
+    flex: 1,
+    fontSize: 15,
+    color: '#1A1A1C',
+    paddingVertical: 0,
   },
-  otpInput:   { fontSize: 18, letterSpacing: 2, textAlign: 'center' },
-  errorText:  { fontSize: 12, color: Colors.danger, marginTop: -8 },
-  submitBtn:  { backgroundColor: Colors.primary, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
-  submitText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  toggle:     { color: Colors.primary, fontSize: 14, textAlign: 'center', fontWeight: '500' },
+  hiddenInput: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    opacity: 0,
+  },
+  otpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  otpSlot: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    backgroundColor: '#F9F9F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 5,
+  },
+  otpSlotFocused: {
+    borderColor: '#34C759',
+    backgroundColor: '#FFFFFF',
+  },
+  otpSlotError: {
+    borderColor: Colors.danger,
+    backgroundColor: '#FFF5F5',
+  },
+  otpText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1C',
+  },
+  errorText: {
+    fontSize: 12,
+    color: Colors.danger,
+    marginLeft: 16,
+    marginTop: 4,
+  },
+  submitBtn: {
+    backgroundColor: '#34C759',
+    borderRadius: 28,
+    height: 54,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  submitBtnDisabled: {
+    opacity: 0.55,
+  },
+  submitBtnPressed: {
+    opacity: 0.85,
+  },
+  submitText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  toggleBtn: {
+    alignSelf: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginTop: 4,
+  },
+  toggleText: {
+    color: '#E0533C',
+    fontSize: 14,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
 });

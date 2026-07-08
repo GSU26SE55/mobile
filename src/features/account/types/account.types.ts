@@ -150,6 +150,22 @@ export interface BackupCodeExportSnapshot {
   redeemedAt: string | null;
 }
 
+// ── #AUTH-62: Login history ──
+export interface LoginHistoryParams {
+  pageNumber?: number;
+  pageSize?: number;
+}
+
+export interface LoginHistoryDto {
+  id: string;
+  action: string;
+  isSuccess: boolean;
+  ipAddress: string | null;
+  userAgent: string | null;
+  reason: string | null;
+  occurredAt: string;
+}
+
 export interface AccountDataExportDto {
   account: AccountExportSnapshot;
   profile: AccountProfileExportSnapshot | null;

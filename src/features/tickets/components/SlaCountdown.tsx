@@ -12,7 +12,7 @@ function formatDueAt(dueAt: string): string {
   const due = new Date(dueAt);
   const now = new Date();
   const diffMs = due.getTime() - now.getTime();
-  if (diffMs <= 0) return 'Qua han';
+  if (diffMs <= 0) return 'Quá hạn';
   const diffH = Math.floor(diffMs / 3_600_000);
   const diffM = Math.floor((diffMs % 3_600_000) / 60_000);
   if (diffH > 0) return `< ${diffH}h ${diffM}m`;
@@ -29,11 +29,11 @@ export function SlaCountdown({ sla }: Props) {
   const color = isBreached ? Colors.danger : isUrgent ? Colors.danger : isTight ? Colors.warning : Colors.textMute;
 
   const label = isBreached
-    ? 'SLA Vi pham'
+    ? 'SLA Vi phạm'
     : isPaused
-      ? 'SLA Tam dung'
+      ? 'SLA Tạm dừng'
       : isMet
-        ? 'Dung han'
+        ? 'Đúng hạn'
         : `SLA ${formatDueAt(sla.dueAt)}`;
 
   return (

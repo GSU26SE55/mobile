@@ -4,10 +4,12 @@ import { CommonResponse, PaginationResponse } from '../../../types/api.types';
 import { KbCategoryCode } from '../../../shared/enums/kb.enum';
 import type {
   KbArticleSummaryDTO,
+  KbArticleSuggestDTO,
   KbArticleDTO,
   KbListParams,
   KbListQuery,
   TicketKbReferenceDTO,
+  AddKbReferencePayload,
 } from '../types/kb.types';
 
 function toListQuery(params?: KbListParams): KbListQuery | undefined {
@@ -41,4 +43,16 @@ export const kbService = {
       ENDPOINTS.KB_REFERENCES.LIST,
       { params: { ticketId } },
     ),
+  // GH-44 #7 — gợi ý KB theo ticket (param BE là `TicketId`, Guid).
+  suggest: (ticketId: string) =>
+    axiosInstance.get<CommonResponse<KbArticleSuggestDTO[]>>(
+      ENDPOINTS.KNOWLEDGE_BASE.SUGGEST,
+      { params: { TicketId: ticketId } },
+    ),
+  // GH-44 #5 — gán bài KB vào ticket.
+  addReference: (data: AddKbReferencePayload) =>
+    axiosInstance.post<CommonResponse<object>>(ENDPOINTS.KB_REFERENCES.LIST, data),
+  // GH-44 #6 — gỡ tham chiếu KB (soft delete).
+  removeReference: (referenceId: string) =>
+    axiosInstance.delete<CommonResponse<object>>(ENDPOINTS.KB_REFERENCES.ITEM(referenceId)),
 };

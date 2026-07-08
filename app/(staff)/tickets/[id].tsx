@@ -1,10 +1,11 @@
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -20,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BadgeColors, Colors, Shadow, ShadowPrimary } from '../../../src/lib/theme';
 import { ActivityTimeline } from '../../../src/features/tickets/components/ActivityTimeline';
+import { TypingIndicator } from '../../../src/features/tickets/components/TypingIndicator';
 import { SlaCountdown } from '../../../src/features/tickets/components/SlaCountdown';
 import { TicketStatusBadge } from '../../../src/features/tickets/components/TicketStatusBadge';
 import { TicketActionBar } from '../../../src/features/staff/components/TicketActionBar';
@@ -35,16 +37,43 @@ import { useResolveTicket } from '../../../src/features/staff/hooks/useResolveTi
 import { useEscalateTicket } from '../../../src/features/staff/hooks/useEscalateTicket';
 import { useStaffAddComment } from '../../../src/features/staff/hooks/useStaffAddComment';
 import { useAddMaintenanceLog } from '../../../src/features/staff/hooks/useAddMaintenanceLog';
+import { useUpdateMaintenanceLog } from '../../../src/features/staff/hooks/useUpdateMaintenanceLog';
 import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/useUploadCommentAttachment';
+import { useTicketChatsCursor } from '../../../src/features/tickets/hooks/useTicketChatsCursor';
+import { useAddReaction, useRemoveReaction } from '../../../src/features/tickets/hooks/useChatReactions';
+import { useDownloadChatAttachment } from '../../../src/features/tickets/hooks/useDownloadChatAttachment';
+import { useTicketUnreadCount } from '../../../src/features/tickets/hooks/useTicketUnreadCount';
+import { useTicketActivities } from '../../../src/features/tickets/hooks/useTicketActivities';
+import { useTicketCommentsRealtime } from '../../../src/features/tickets/hooks/useTicketCommentsRealtime';
+import {
+  useUpdateTicketChat,
+  useDeleteTicketChat,
+  useMarkTicketChatsRead,
+  useTranslateTicketChat,
+  useTranscribeVoiceChat,
+  usePinChat,
+  useUnpinChat,
+} from '../../../src/features/tickets/hooks/useTicketChatActions';
+import { useVoiceRecorder } from '../../../src/features/tickets/hooks/useVoiceRecorder';
 import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
+import { AuthImage } from '../../../src/features/file-storage/components/AuthImage';
+import { CommentThread, ChatTab } from '../../../src/features/tickets/components/CommentThread';
+import { ChatAiToolbar } from '../../../src/features/tickets/components/ChatAiToolbar';
+import { VoiceRecordingModal } from '../../../src/features/tickets/components/VoiceRecordingModal';
+import { ProcessingDurationTimer } from '../../../src/features/staff/components/ProcessingDurationTimer';
 import { AttachmentForm } from '../../../src/features/tickets/schemas/comment.schema';
-import { MaintenanceLogPayload } from '../../../src/features/staff/types/staff.types';
-import { EscalationReasonEnum, PauseReasonEnum, TicketStatusEnum, TicketCommentDTO } from '../../../src/features/tickets/types/ticket.types';
+import { MaintenanceLogPayload, UpdateMaintenanceLogPayload } from '../../../src/features/staff/types/staff.types';
+import { EscalationReasonEnum, PauseReasonEnum, TicketStatusEnum, MaintenanceLogDTO } from '../../../src/features/tickets/types/ticket.types';
 import { AttachmentPicker, UploadedAttachment } from '../../../src/features/file-storage/components/AttachmentPicker';
+import { AttachmentPreviewStrip } from '../../../src/features/file-storage/components/AttachmentPreviewStrip';
 import { AttachmentThumbnails } from '../../../src/features/file-storage/components/AttachmentThumbnails';
 import { FilePurposeEnum } from '../../../src/features/file-storage/enums/file-storage.enum';
 import { useSessionStore } from '../../../src/stores/sessionStore';
+import { checkPermission, P } from '../../../src/lib/authz';
+import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
 import { useTicketKbRefs } from '../../../src/features/kb/hooks/useTicketKbRefs';
+import { useRemoveKbRef } from '../../../src/features/kb/hooks/useRemoveKbRef';
+import { KbReferencePicker } from '../../../src/features/staff/components/KbReferencePicker';
 
 type TabKey = 'comments' | 'activities' | 'logs' | 'kb';
 
@@ -67,68 +96,40 @@ const PRIORITY_LABELS: Record<string, string> = {
   P3Normal:   'P3 Normal',
 };
 
-const ROLE_AVATAR: Record<string, { icon: keyof typeof Ionicons.glyphMap; iconColor: string; bg: string }> = {
-  System:   { icon: 'server-outline',  iconColor: Colors.info,        bg: Colors.infoLight },
-  Customer: { icon: 'person-outline',  iconColor: Colors.warningDark, bg: Colors.warningLight },
-  Manager:  { icon: 'briefcase-outline', iconColor: Colors.primaryDark, bg: Colors.primaryLight },
-  Staff:    { icon: 'shield-outline',  iconColor: Colors.primaryDark, bg: Colors.primaryLight },
-};
-
-function ChatBubble({
-  comment,
-  isMe,
-  imageHeaders,
-  onImagePress,
-}: {
-  comment: TicketCommentDTO;
-  isMe: boolean;
-  imageHeaders?: { Authorization: string };
-  onImagePress?: (uri: string) => void;
-}) {
-  const avatar = ROLE_AVATAR[comment.authorRole] ?? ROLE_AVATAR.Staff;
-  const displayName =
-    isMe ? 'Bạn' :
-    comment.authorDisplayName ??
-    (comment.authorRole === 'System' ? 'Hệ thống' :
-     comment.authorRole === 'Customer' ? 'Khách hàng' :
-     comment.authorRole === 'Manager' ? 'Manager' : 'Nhân viên');
-
-  const fileIds = comment.attachmentFileIds ?? [];
-
-  if (comment.authorRole === 'System') {
-    return (
-      <View style={styles.systemMsg}>
-        <Text style={styles.systemMsgText}>{comment.body}</Text>
-      </View>
-    );
-  }
-
+function TabsRow({ activeTab, onChange }: { activeTab: TabKey; onChange: (key: TabKey) => void }) {
   return (
-    <View style={[styles.bubbleRow, isMe && styles.bubbleRowMe]}>
-      {!isMe && (
-        <View style={[styles.avatar, { backgroundColor: avatar.bg }]}>
-          <Ionicons name={avatar.icon} size={14} color={avatar.iconColor} />
-        </View>
-      )}
-      <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleOther]}>
-        {!isMe && <Text style={styles.bubbleName}>{displayName}</Text>}
-        <Text style={[styles.bubbleText, isMe && styles.bubbleTextMe]}>{comment.body}</Text>
-        <AttachmentThumbnails fileIds={comment.attachmentFileIds} size={64} />
-        <Text style={[styles.bubbleTime, isMe && styles.bubbleTimeMe]}>
-          {new Date(comment.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-        </Text>
-      </View>
+    <View style={styles.tabRow}>
+      {TABS.map((tab) => (
+        <Pressable
+          key={tab.key}
+          style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+          onPress={() => onChange(tab.key)}
+        >
+          <Ionicons name={tab.icon} size={16} color={activeTab === tab.key ? Colors.primary : Colors.textMute} />
+          <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>{tab.label}</Text>
+        </Pressable>
+      ))}
     </View>
   );
 }
 
 export default function StaffTicketDetailScreen() {
+  return (
+    <PermissionGuard permission={P.TICKET_VIEW}>
+      <StaffTicketDetailScreenInner />
+    </PermissionGuard>
+  );
+}
+
+function StaffTicketDetailScreenInner() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const ticketId = id ?? '';
   const accountId = useSessionStore((s) => s.user?.accountId);
-  const { data: ticket, isLoading, isError, refetch } = useStaffTicketDetail(ticketId);
   const imageHeaders = useAuthImageHeaders();
+  const user = useSessionStore((s) => s.user);
+  const canResolve = checkPermission(user, P.TICKET_RESOLVE); // GH-47
+  const { data: ticket, isLoading, isError, refetch } = useStaffTicketDetail(ticketId);
   const { mutate: startTicket, isPending: isStarting } = useStartTicket(ticketId);
   const { mutate: holdTicket, isPending: isHolding } = useHoldTicket(ticketId);
   const { mutate: resumeTicket, isPending: isResuming } = useResumeTicket(ticketId);
@@ -136,28 +137,80 @@ export default function StaffTicketDetailScreen() {
   const { mutate: escalateTicket, isPending: isEscalating } = useEscalateTicket(ticketId);
   const { mutate: addComment, isPending: isSending } = useStaffAddComment(ticketId);
   const { mutate: addLog, isPending: isAddingLog } = useAddMaintenanceLog(ticketId);
+  const { mutate: updateLog, isPending: isUpdatingLog } = useUpdateMaintenanceLog(ticketId);
   const { mutateAsync: uploadAttachment, isPending: isUploading } = useUploadCommentAttachment();
   const { data: kbRefs, isLoading: kbRefsLoading } = useTicketKbRefs(ticketId || undefined);
+  const { mutate: removeKbRef } = useRemoveKbRef(ticketId);
+
+  // GH-44 — comments/activities qua GET riêng + realtime (Staff thấy cả comment internal).
+  const commentsQuery = useTicketChatsCursor(ticketId || undefined);
+  const activitiesQuery = useTicketActivities(ticketId || undefined);
+  const { isConnected, typingUsers, notifyTyping } = useTicketCommentsRealtime(ticketId || undefined);
+  const { mutate: updateChat, isPending: editChatPending } = useUpdateTicketChat(ticketId);
+  const { mutate: deleteChat, isPending: deleteChatPending } = useDeleteTicketChat(ticketId);
+  const { mutate: markChatsRead } = useMarkTicketChatsRead(ticketId);
+  const { mutateAsync: translateChat } = useTranslateTicketChat(ticketId);
+  const { mutate: addReaction } = useAddReaction(ticketId);
+  const { mutate: removeReaction } = useRemoveReaction(ticketId);
+  const { mutateAsync: downloadAttachment } = useDownloadChatAttachment(ticketId);
+  const { data: unreadCount = 0 } = useTicketUnreadCount(ticketId || undefined);
+  const { mutateAsync: transcribeVoice, isPending: transcribing } = useTranscribeVoiceChat(ticketId);
+  // GH-67 — ghim chat. pinningId theo dõi bubble đang thao tác để hiện spinner đúng chỗ.
+  const { mutate: pinChat, isPending: pinChatPending, variables: pinningVar } = usePinChat(ticketId);
+  const { mutate: unpinChat, isPending: unpinChatPending, variables: unpinningVar } = useUnpinChat(ticketId);
+  const pinningId = pinChatPending ? pinningVar : unpinChatPending ? unpinningVar : null;
+  const voiceRecorder = useVoiceRecorder();
+  // Trung bình biên độ hiện tại — điều khiển quả cầu "thở" theo giọng nói trong VoiceRecordingModal.
+  const voiceLevel =
+    voiceRecorder.waveform.reduce((sum, v) => sum + v, 0) / voiceRecorder.waveform.length;
 
   const [activeTab, setActiveTab] = useState<TabKey>('comments');
+  const [chatTab, setChatTab] = useState<ChatTab>('public');
   const [commentText, setCommentText] = useState('');
   const [attachments, setAttachments] = useState<AttachmentForm[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
-  const [isInternalComment, setIsInternalComment] = useState(false);
   const [commentAttachments, setCommentAttachments] = useState<UploadedAttachment[]>([]);
   const [uploadingComment, setUploadingComment] = useState(false);
   const [showHold, setShowHold] = useState(false);
   const [showResolve, setShowResolve] = useState(false);
   const [showEscalate, setShowEscalate] = useState(false);
   const [showLogForm, setShowLogForm] = useState(false);
-  const scrollRef = useRef<ScrollView>(null);
+  const [editingLog, setEditingLog] = useState<MaintenanceLogDTO | null>(null);
+  const [showKbPicker, setShowKbPicker] = useState(false);
+
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
-    if (activeTab === 'comments') {
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 50);
-    }
-  }, [activeTab, ticket?.comments?.length]);
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow',
+      (e) => setKeyboardHeight(e.endCoordinates.height)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide',
+      () => setKeyboardHeight(0)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+  // GH-44: bỏ auto scrollToEnd — comments giờ DESC (newest-first).
   const isActioning = isStarting || isHolding || isResuming || isResolving || isEscalating;
+
+  // Staff thấy cả comment internal — flatten các page (DESC newest-first), KHÔNG filter internal.
+  // Dedup theo id: offset-pagination + realtime prepend có thể trả trùng 1 comment ở ranh giới trang.
+  const seenCommentIds = new Set<string>();
+  const comments = (commentsQuery.data?.pages ?? [])
+    .flatMap((p) => p?.items ?? [])
+    .filter((c) => {
+      if (seenCommentIds.has(c.id)) return false;
+      seenCommentIds.add(c.id);
+      return true;
+    });
+  const activities = activitiesQuery.data ?? [];
+  // Chỉ cho sửa log khi: là chủ log + ticket chưa đóng (BE cũng chặn 403 các case này).
+  const ticketClosed = ['Resolved', 'ClosedPendingRate', 'Closed', 'ClosedRejected'].includes(ticket?.status ?? '');
+  const canEditLog = (log: MaintenanceLogDTO) => !ticketClosed && !!accountId && log.staffId === accountId;
 
   const handlePickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -188,20 +241,58 @@ export default function StaffTicketDetailScreen() {
 
   const handleSendComment = () => {
     const trimmed = commentText.trim();
-    if (!trimmed && attachments.length === 0) return;
+    if (!trimmed && commentAttachments.length === 0) return;
     addComment(
       {
         body: trimmed,
-        isInternal: isInternalComment,
+        isInternal: chatTab === 'internal',
         attachments: commentAttachments.length > 0 ? commentAttachments : undefined,
       },
       {
         onSuccess: () => {
           setCommentText('');
           setCommentAttachments([]);
+          // Realtime đẩy CommentAdded về (cả người gửi) → setQueryData. Chỉ fallback khi mất kết nối.
+          if (!isConnected) commentsQuery.refetch();
         },
       },
     );
+  };
+
+  const handleMarkRead = (chatIds: string[]) => markChatsRead(chatIds);
+  const handleTranslate = async (comment: { id: string }, targetLanguage: string) => {
+    const res = await translateChat({ chatId: comment.id, targetLanguage });
+    return res.data.data ?? undefined;
+  };
+  const handleStartRecording = async () => {
+    try {
+      await voiceRecorder.start();
+    } catch {
+      Alert.alert('Quyền truy cập', 'Cần quyền truy cập micro để ghi âm.');
+    }
+  };
+  const handleStopRecording = async () => {
+    const file = await voiceRecorder.stop();
+    if (!file) return;
+    try {
+      await transcribeVoice(file);
+    } catch {
+      // handleErrorApi trong hook đã Alert lỗi — không cần xử lý thêm ở đây.
+    }
+  };
+
+  // GH-44 #4 — sửa maintenance log (PATCH). Form trả MaintenanceLogPayload (gán được vào UpdateMaintenanceLogPayload).
+  const handleUpdateLog = (data: UpdateMaintenanceLogPayload) => {
+    if (!editingLog) return;
+    updateLog({ logId: editingLog.id, data }, { onSuccess: () => setEditingLog(null) });
+  };
+
+  // GH-44 #6 — gỡ KB reference (có xác nhận).
+  const handleRemoveRef = (referenceId: string) => {
+    Alert.alert('Gỡ bài KB', 'Gỡ tham chiếu bài viết này khỏi ticket?', [
+      { text: 'Hủy', style: 'cancel' },
+      { text: 'Gỡ', style: 'destructive', onPress: () => removeKbRef(referenceId) },
+    ]);
   };
 
   const handleStart = () => { startTicket(undefined); };
@@ -237,7 +328,11 @@ export default function StaffTicketDetailScreen() {
   const pColor = ticket.priority ? (PRIORITY_COLORS[ticket.priority] ?? PRIORITY_COLORS.P3Normal) : PRIORITY_COLORS.P3Normal;
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior="padding"
+      enabled={Platform.OS === 'ios'}
+    >
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
@@ -247,17 +342,143 @@ export default function StaffTicketDetailScreen() {
           <Text style={styles.headerCode}>{ticket.code}</Text>
           <TicketStatusBadge status={ticket.status} />
         </View>
-        <View style={{ width: 36 }} />
+        <View style={styles.unreadSlot}>
+          {unreadCount > 0 && (
+            <View style={styles.unreadBadge}>
+              <Ionicons name="chatbubble" size={10} color="#FFF" />
+              <Text style={styles.unreadText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+            </View>
+          )}
+        </View>
       </View>
 
+      {activeTab === 'comments' ? (
+        <View style={styles.chatScreen}>
+          <View style={styles.chatTabRowWrap}>
+            <TabsRow activeTab={activeTab} onChange={setActiveTab} />
+          </View>
+
+          <CommentThread
+            comments={comments}
+            currentUserId={accountId}
+            imageHeaders={imageHeaders}
+            onImagePress={setViewingImage}
+            isLoading={commentsQuery.isLoading}
+            hasNextPage={commentsQuery.hasNextPage}
+            isFetchingNextPage={commentsQuery.isFetchingNextPage}
+            onLoadMore={() => commentsQuery.fetchNextPage()}
+            showTabs
+            activeTab={chatTab}
+            onTabChange={setChatTab}
+            canEditAny={checkPermission(user, P.CHAT_EDIT_ANY)}
+            canDeleteAny={checkPermission(user, P.CHAT_DELETE_ANY)}
+            ticketClosed={ticketClosed}
+            onEdit={(comment, body, editReason) =>
+              updateChat({ chatId: comment.id, payload: { body, editReason } })
+            }
+            onDelete={(comment, reason) => deleteChat({ chatId: comment.id, reason })}
+            editPending={editChatPending}
+            deletePending={deleteChatPending}
+            onMarkRead={handleMarkRead}
+            onTranslate={handleTranslate}
+            onPin={(comment) => pinChat(comment.id)}
+            onUnpin={(comment) => unpinChat(comment.id)}
+            pinningId={pinningId}
+            onToggleReaction={(comment, type, isActive) =>
+              isActive
+                ? removeReaction({ chatId: comment.id, type })
+                : addReaction({ chatId: comment.id, reactionType: type })
+            }
+            onDownloadAttachments={(comment, fileIds) => {
+              // Tuần tự — tránh nhiều share sheet mở cùng lúc (share sheet thứ 2 bị nuốt).
+              void (async () => {
+                for (const fid of fileIds) {
+                  try {
+                    await downloadAttachment({ chatId: comment.id, fileId: fid, fileName: `tep-${fid.slice(0, 8)}` });
+                  } catch (e) {
+                    Alert.alert('Tải tệp', (e as Error).message);
+                    break;
+                  }
+                }
+              })();
+            }}
+          />
+
+          {/* GH-67 — thanh AI/Export (Staff). Disable khi ticket đã đóng. */}
+          <ChatAiToolbar
+            ticketId={ticketId}
+            disabled={ticketClosed}
+            onInsert={(text) => setCommentText((prev) => (prev.trim() ? `${prev}\n${text}` : text))}
+          />
+
+          {/* "Đang nhập" — ngay trên ô input, nền transparent */}
+          <TypingIndicator names={typingUsers.map((u) => u.displayName)} />
+
+          <View
+            style={[
+              styles.composer,
+              {
+                paddingBottom: keyboardHeight > 0
+                  ? keyboardHeight + 12
+                  : (insets.bottom > 0 ? insets.bottom + 8 : 12)
+              }
+            ]}
+          >
+            <AttachmentPreviewStrip
+              items={commentAttachments}
+              imageHeaders={imageHeaders}
+              disabled={uploadingComment}
+              onRemove={(fileId) =>
+                setCommentAttachments((prev) => prev.filter((a) => a.fileId !== fileId))
+              }
+            />
+            <View style={styles.composerRow}>
+              <AttachmentPicker
+                compact
+                hideThumbnails
+                purpose={FilePurposeEnum.TicketAttachment}
+                value={commentAttachments}
+                onChange={setCommentAttachments}
+                onUploadingChange={setUploadingComment}
+              />
+              <TextInput
+                style={styles.composerInput}
+                placeholder={chatTab === 'internal' ? 'Ghi chú nội bộ (khách không thấy)...' : 'Nhập tin nhắn...'}
+                placeholderTextColor={Colors.textFaint}
+                value={commentText}
+                onChangeText={(t) => { setCommentText(t); notifyTyping(); }}
+                multiline
+              />
+              <Pressable
+                style={styles.internalToggle}
+                onPress={handleStartRecording}
+                disabled={chatTab === 'internal' || uploadingComment || transcribing}
+              >
+                {transcribing ? (
+                  <ActivityIndicator size="small" color={Colors.textMute} />
+                ) : (
+                  <Ionicons name="mic-outline" size={17} color={chatTab === 'internal' ? Colors.textFaint : Colors.textMute} />
+                )}
+              </Pressable>
+              <Pressable
+                style={[styles.sendBtn, ((!commentText.trim() && commentAttachments.length === 0) || isSending || uploadingComment || voiceRecorder.isRecording) && styles.sendBtnDisabled]}
+                onPress={handleSendComment}
+                disabled={(!commentText.trim() && commentAttachments.length === 0) || isSending || uploadingComment || voiceRecorder.isRecording}
+              >
+                {isSending ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Ionicons name="send" size={18} color="#FFF" />
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      ) : (
       <ScrollView
-        ref={scrollRef}
         style={styles.scrollBody}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        onContentSizeChange={() => {
-          if (activeTab === 'comments') scrollRef.current?.scrollToEnd({ animated: true });
-        }}
       >
         {/* Title + Priority + SLA */}
         <View style={[styles.card, Shadow]}>
@@ -269,6 +490,10 @@ export default function StaffTicketDetailScreen() {
             <Text style={styles.metaCategory}>{ticket.category}</Text>
           </View>
           {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} />}
+          <View style={styles.durationRow}>
+            <Text style={styles.durationLabel}>Thời gian xử lý</Text>
+            <ProcessingDurationTimer activities={activities} status={ticket.status} />
+          </View>
         </View>
 
         {/* Description */}
@@ -283,7 +508,7 @@ export default function StaffTicketDetailScreen() {
         {(ticket.attachmentFileIds?.length ?? 0) > 0 && (
           <View style={[styles.card, Shadow]}>
             <Text style={styles.sectionLabel}>Ảnh đính kèm</Text>
-            <AttachmentThumbnails fileIds={ticket.attachmentFileIds} size={72} />
+            <AttachmentThumbnails fileIds={ticket.attachmentFileIds} size={72} onPressImage={setViewingImage} />
           </View>
         )}
 
@@ -313,6 +538,7 @@ export default function StaffTicketDetailScreen() {
           onResolve={() => setShowResolve(true)}
           onEscalate={() => setShowEscalate(true)}
           isLoading={isActioning}
+          canResolve={canResolve}
         />
 
         {/* Maintenance log button */}
@@ -327,42 +553,11 @@ export default function StaffTicketDetailScreen() {
           <MaintenanceLogForm onSubmit={handleAddLog} isLoading={isAddingLog} />
         )}
 
-        {/* Tabs */}
-        <View style={styles.tabRow}>
-          {TABS.map((tab) => (
-            <Pressable
-              key={tab.key}
-              style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-              onPress={() => setActiveTab(tab.key)}
-            >
-              <Ionicons name={tab.icon} size={16} color={activeTab === tab.key ? Colors.primary : Colors.textMute} />
-              <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>{tab.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Tab Content */}
-        {activeTab === 'comments' && (
-          <View style={styles.chatSection}>
-            {(ticket.comments ?? []).length === 0 ? (
-              <Text style={styles.emptyTab}>Chưa có trao đổi nào</Text>
-            ) : (
-              (ticket.comments ?? []).filter((c) => !c.isInternal).map((c, i) => (
-                <ChatBubble
-                  key={c.id ?? `comment-${i}`}
-                  comment={c}
-                  isMe={!!accountId && c.authorUserId === accountId}
-                  imageHeaders={imageHeaders}
-                  onImagePress={setViewingImage}
-                />
-              ))
-            )}
-          </View>
-        )}
+        <TabsRow activeTab={activeTab} onChange={setActiveTab} />
 
         {activeTab === 'activities' && (
           <View style={styles.tabContent}>
-            <ActivityTimeline activities={ticket.activities ?? []} />
+            <ActivityTimeline activities={activities} />
           </View>
         )}
 
@@ -391,6 +586,12 @@ export default function StaffTicketDetailScreen() {
                     </>
                   )}
                   <Text style={styles.logTime}>{new Date(log.createdAt).toLocaleString('vi-VN')}</Text>
+                  {canEditLog(log) && (
+                    <Pressable style={styles.logEditBtn} onPress={() => setEditingLog(log)}>
+                      <Ionicons name="create-outline" size={14} color={Colors.primary} />
+                      <Text style={styles.logEditText}>Sửa</Text>
+                    </Pressable>
+                  )}
                 </View>
               ))
             )}
@@ -399,6 +600,13 @@ export default function StaffTicketDetailScreen() {
 
         {activeTab === 'kb' && (
           <View style={styles.tabContent}>
+            {/* Gán bài KB — chỉ Staff được phân công + ticket chưa đóng (BE chặn 403 nếu vi phạm) */}
+            {!ticketClosed && !!accountId && ticket.assignedStaffId === accountId && (
+              <Pressable style={styles.kbAssignBtn} onPress={() => setShowKbPicker(true)}>
+                <Ionicons name="add-circle-outline" size={18} color="#FFF" />
+                <Text style={styles.kbAssignText}>Gán bài viết KB</Text>
+              </Pressable>
+            )}
             {kbRefsLoading ? (
               <ActivityIndicator color={Colors.primary} style={{ marginTop: 24 }} />
             ) : !kbRefs || kbRefs.length === 0 ? (
@@ -418,7 +626,17 @@ export default function StaffTicketDetailScreen() {
                   <View style={styles.kbRefTop}>
                     <Ionicons name="book-outline" size={16} color={Colors.primary} />
                     <Text style={styles.kbRefCode}>{ref.kbArticleCode}</Text>
-                    <Ionicons name="chevron-forward" size={14} color={Colors.textFaint} style={{ marginLeft: 'auto' }} />
+                    {!ticketClosed && !!accountId && ticket.assignedStaffId === accountId ? (
+                      <Pressable
+                        style={styles.kbRefDeleteBtn}
+                        onPress={() => handleRemoveRef(ref.id)}
+                        hitSlop={8}
+                      >
+                        <Ionicons name="trash-outline" size={15} color={Colors.danger} />
+                      </Pressable>
+                    ) : (
+                      <Ionicons name="chevron-forward" size={14} color={Colors.textFaint} style={{ marginLeft: 'auto' }} />
+                    )}
                   </View>
                   {ref.kbArticleTitle ? (
                     <Text style={styles.kbRefTitle}>{ref.kbArticleTitle}</Text>
@@ -435,54 +653,47 @@ export default function StaffTicketDetailScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
-
-      {/* Comment Composer — only for comments tab */}
-      {activeTab === 'comments' && (
-        <View style={[styles.composer, { paddingBottom: insets.bottom + 8 }]}>
-          <AttachmentPicker
-            purpose={FilePurposeEnum.TicketAttachment}
-            value={commentAttachments}
-            onChange={setCommentAttachments}
-            onUploadingChange={setUploadingComment}
-          />
-          <View style={styles.composerRow}>
-            <Pressable
-              style={[styles.internalToggle, isInternalComment && styles.internalToggleOn]}
-              onPress={() => setIsInternalComment((v) => !v)}
-            >
-              <Ionicons
-                name={isInternalComment ? 'lock-closed' : 'lock-open-outline'}
-                size={16}
-                color={isInternalComment ? Colors.warningDark : Colors.textMute}
-              />
-            </Pressable>
-            <TextInput
-              style={styles.composerInput}
-              placeholder="Nhập tin nhắn..."
-              placeholderTextColor={Colors.textFaint}
-              value={commentText}
-              onChangeText={setCommentText}
-              multiline
-            />
-            <Pressable
-              style={[styles.sendBtn, (!commentText.trim() || isSending || uploadingComment) && styles.sendBtnDisabled]}
-              onPress={handleSendComment}
-              disabled={!commentText.trim() || isSending || uploadingComment}
-            >
-              {isSending ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <Ionicons name="send" size={18} color="#FFF" />
-              )}
-            </Pressable>
-          </View>
-        </View>
       )}
 
       {/* Modals */}
+      <VoiceRecordingModal
+        visible={voiceRecorder.isRecording}
+        elapsedSeconds={voiceRecorder.elapsedSeconds}
+        level={voiceLevel}
+        transcribing={transcribing}
+        onStop={handleStopRecording}
+        onCancel={voiceRecorder.cancel}
+      />
       <HoldModal visible={showHold} onClose={() => setShowHold(false)} onSubmit={handleHold} isLoading={isHolding} />
       <ResolveModal visible={showResolve} onClose={() => setShowResolve(false)} onSubmit={handleResolve} isLoading={isResolving} />
       <EscalateModal visible={showEscalate} onClose={() => setShowEscalate(false)} onSubmit={handleEscalate} isLoading={isEscalating} />
+
+      {/* GH-44 #4 — sửa maintenance log (PATCH) */}
+      <Modal visible={editingLog !== null} transparent animationType="slide" onRequestClose={() => setEditingLog(null)}>
+        <View style={styles.editOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setEditingLog(null)} />
+          <View style={[styles.editSheet, { paddingBottom: insets.bottom + 16 }]}>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              {editingLog && (
+                <MaintenanceLogForm
+                  isLoading={isUpdatingLog}
+                  onSubmit={handleUpdateLog}
+                  initialValues={{
+                    summary: editingLog.summary ?? '',
+                    actionsTaken: editingLog.actionsTaken ?? undefined,
+                    durationMinutes: editingLog.durationMinutes || undefined,
+                  }}
+                  title="Sửa nhật ký bảo trì"
+                  submitLabel="Cập nhật"
+                />
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* GH-44 #5/#7 — gán bài KB từ gợi ý */}
+      <KbReferencePicker visible={showKbPicker} ticketId={ticketId} onClose={() => setShowKbPicker(false)} />
 
       {/* Fullscreen image viewer */}
       {viewingImage !== null && (
@@ -495,11 +706,7 @@ export default function StaffTicketDetailScreen() {
         >
           <View style={styles.imgOverlay}>
             <Pressable style={StyleSheet.absoluteFill} onPress={() => setViewingImage(null)} />
-            <Image
-              source={{ uri: viewingImage, headers: imageHeaders ?? undefined }}
-              style={styles.imgFull}
-              resizeMode="contain"
-            />
+            <AuthImage fileId={viewingImage} style={styles.imgFull} resizeMode="contain" />
             <Pressable
               style={[styles.imgCloseBtn, { top: insets.top + 12 }]}
               onPress={() => setViewingImage(null)}
@@ -530,6 +737,13 @@ const styles = StyleSheet.create({
   backBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: Colors.card2, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerCode: { fontSize: 16, fontWeight: '800', color: Colors.text },
+  unreadSlot: { width: 36, alignItems: 'flex-end', justifyContent: 'center' },
+  unreadBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: Colors.primary, borderRadius: 999,
+    paddingHorizontal: 6, paddingVertical: 3,
+  },
+  unreadText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
 
   scrollBody: { flex: 1 },
   scrollContent: { padding: 16, gap: 12 },
@@ -543,6 +757,8 @@ const styles = StyleSheet.create({
   priorityBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   priorityText: { fontSize: 11, fontWeight: '800' },
   metaCategory: { fontSize: 12, fontWeight: '600', color: Colors.textMute },
+  durationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  durationLabel: { fontSize: 12, fontWeight: '600', color: Colors.textMute },
 
   sectionLabel: { fontSize: 13, fontWeight: '800', color: Colors.text },
   descText: { fontSize: 13, fontWeight: '500', color: Colors.textMute, lineHeight: 20 },
@@ -566,21 +782,17 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 12, fontWeight: '700', color: Colors.textMute },
   tabTextActive: { color: Colors.primaryDark },
 
-  chatSection: { gap: 8 },
+  chatScreen: { flex: 1, backgroundColor: Colors.bg },
+  chatTabRowWrap: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
   tabContent: { gap: 10 },
   emptyTab: { textAlign: 'center', fontSize: 13, color: Colors.textFaint, fontWeight: '600', paddingVertical: 24 },
-
-  bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
-  bubbleRowMe: { flexDirection: 'row-reverse' },
-  avatar: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  bubble: { maxWidth: '75%', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 },
-  bubbleOther: { backgroundColor: '#FFFFFF', borderBottomLeftRadius: 4 },
-  bubbleMe: { backgroundColor: Colors.primary, borderBottomRightRadius: 4 },
-  bubbleName: { fontSize: 11, fontWeight: '700', color: Colors.primary, marginBottom: 3 },
-  bubbleText: { fontSize: 13, fontWeight: '500', color: Colors.text, lineHeight: 19 },
-  bubbleTextMe: { color: '#FFFFFF' },
-  bubbleTime: { fontSize: 10, color: Colors.textFaint, marginTop: 4, textAlign: 'right' },
-  bubbleTimeMe: { color: 'rgba(255,255,255,0.6)' },
+  logEditBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', marginTop: 6, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999, backgroundColor: Colors.primaryLight },
+  logEditText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
+  kbAssignBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11, borderRadius: 14, backgroundColor: Colors.primary, marginBottom: 12 },
+  kbAssignText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
+  kbRefDeleteBtn: { padding: 4, marginLeft: 'auto' },
+  editOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  editSheet: { backgroundColor: Colors.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16, paddingTop: 12, maxHeight: '88%' },
 
   logCard: {
     backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, gap: 4,
@@ -604,17 +816,19 @@ const styles = StyleSheet.create({
   },
   attachmentName: { flex: 1, fontSize: 12, color: Colors.text, fontWeight: '500' },
   composer: {
-    gap: 8,
-    paddingHorizontal: 16, paddingTop: 10,
+    gap: 6,
+    paddingHorizontal: 12, paddingTop: 8,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.08)',
   },
   composerRow: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
   },
   composerInput: {
-    flex: 1, minHeight: 40, maxHeight: 100,
-    backgroundColor: Colors.card2, borderRadius: 20,
+    flex: 1, minHeight: 40, maxHeight: 120,
+    backgroundColor: Colors.card2, borderRadius: 22,
     paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10,
-    fontSize: 14, color: Colors.text, fontWeight: '500',
+    fontSize: 15, color: Colors.text, fontWeight: '500',
   },
   sendBtn: {
     width: 40, height: 40, borderRadius: 20,
@@ -623,12 +837,6 @@ const styles = StyleSheet.create({
     ...ShadowPrimary,
   },
   sendBtnDisabled: { backgroundColor: Colors.textFaint, shadowOpacity: 0 },
-
-  systemMsg: { alignItems: 'center', paddingVertical: 4 },
-  systemMsgText: { fontSize: 11, color: Colors.textMute, fontStyle: 'italic', fontWeight: '600' },
-
-  bubbleImages: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 },
-  bubbleImage: { width: 160, height: 120, borderRadius: 10 },
 
   imgOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.93)', alignItems: 'center', justifyContent: 'center' },
   imgFull:     { width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.78 },
@@ -639,7 +847,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card2,
     alignItems: 'center', justifyContent: 'center',
   },
-  internalToggleOn: { backgroundColor: Colors.warningLight },
 
   kbRefCard: {
     backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, gap: 6,

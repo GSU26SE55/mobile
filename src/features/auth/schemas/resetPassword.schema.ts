@@ -9,7 +9,8 @@ export const resetPasswordSchema = z
       .regex(/[A-Z]/, 'Cần ít nhất 1 chữ hoa')
       .regex(/[a-z]/, 'Cần ít nhất 1 chữ thường')
       .regex(/[0-9]/, 'Cần ít nhất 1 chữ số')
-      .regex(/[!@#$%^&*]/, 'Cần ít nhất 1 ký tự đặc biệt'),
+      // Khớp BE PasswordPolicy: ký tự đặc biệt = bất kỳ ký tự không phải chữ-số-khoảng trắng.
+      .regex(/[^A-Za-z0-9\s]/, 'Cần ít nhất 1 ký tự đặc biệt'),
     confirmPassword: z.string().min(1, 'Vui lòng xác nhận mật khẩu'),
   })
   .refine((d) => d.newPassword === d.confirmPassword, {

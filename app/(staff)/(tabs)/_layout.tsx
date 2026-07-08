@@ -1,7 +1,7 @@
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { Platform, StyleSheet, View, Pressable } from 'react-native';
+import { Platform, StyleSheet, Text, View, Pressable } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming, FadeIn, FadeOut, useSharedValue, interpolateColor } from 'react-native-reanimated';
 import { Colors, ShadowLg } from '../../../src/lib/theme';
 
@@ -59,10 +59,9 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         };
 
         let activeIcon, inactiveIcon, label;
-        if (route.name === 'dashboard')          { activeIcon = 'clipboard'; inactiveIcon = 'clipboard-outline'; label = 'Công việc'; }
-        else if (route.name === 'customers')     { activeIcon = 'chatbubbles'; inactiveIcon = 'chatbubbles-outline'; label = 'Khách hàng'; }
-        else if (route.name === 'notifications') { activeIcon = 'notifications'; inactiveIcon = 'notifications-outline'; label = 'Thông báo'; }
-        else if (route.name === 'profile')       { activeIcon = 'person-circle'; inactiveIcon = 'person-circle-outline'; label = 'Cá nhân'; }
+        if (route.name === 'dashboard')      { activeIcon = 'clipboard'; inactiveIcon = 'clipboard-outline'; label = 'Công việc'; }
+        else if (route.name === 'customers') { activeIcon = 'chatbubbles'; inactiveIcon = 'chatbubbles-outline'; label = 'Khách hàng'; }
+        else if (route.name === 'profile')   { activeIcon = 'person-circle'; inactiveIcon = 'person-circle-outline'; label = 'Cá nhân'; }
         else return null;
 
         return (
@@ -94,7 +93,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 30 : 20,
     alignSelf: 'center',
-    width: 300,
+    width: 260,
     backgroundColor: '#FFFFFF',
     borderRadius: 28,
     height: 56,

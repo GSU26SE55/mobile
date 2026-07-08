@@ -1,8 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TextInput, Pressable, View } from 'react-native';
 import { useForgotPassword } from '../hooks/useForgotPassword';
 import { loginSchema } from '../schemas/login.schema';
 import { HttpError, EntityError } from '../../../lib/errors';
+import { Colors } from '../../../lib/theme';
 
 interface Props { onSuccess: (email: string) => void; }
 
@@ -11,6 +13,9 @@ export function ForgotPasswordStep1({ onSuccess }: Props) {
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');
   const [generalError, setGeneralError] = useState('');
+  const [focused, setFocused] = useState(false);
+
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   const handleSubmit = async () => {
     setEmailError('');
@@ -38,25 +43,89 @@ export function ForgotPasswordStep1({ onSuccess }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Nhập email để nhận mã OTP đặt lại mật khẩu</Text>
-      <TextInput style={[styles.input, emailError && styles.inputError]} placeholder="Email" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
+      <Text style={styles.label}>Email tài khoản</Text>
+      <View style={[
+        styles.inputRow,
+        focused && styles.inputRowFocused,
+        emailError ? styles.inputRowError : null
+      ]}>
+        <TextInput
+          style={styles.input}
+          placeholder="name@example.com"
+          placeholderTextColor={Colors.textFaint}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+        />
+        {email.length > 0 && (
+          <Ionicons
+            name={isEmailValid ? 'checkmark-circle' : 'close-circle'}
+            size={20}
+            color={isEmailValid ? '#34C759' : Colors.textFaint}
+          />
+        )}
+      </View>
       {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
-      {generalError ? <Text style={styles.generalError}>{generalError}</Text> : null}
-      <TouchableOpacity style={[styles.button, isPending && styles.buttonDisabled]} onPress={handleSubmit} disabled={isPending}>
-        {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Gửi OTP</Text>}
-      </TouchableOpacity>
+      
+      {generalError ? (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{generalError}</Text>
+        </View>
+      ) : null}
+
+      <Pressable
+        style={[styles.button, isPending && styles.buttonDisabled]}
+        onPress={handleSubmit}
+        disabled={isPending}
+      >
+        {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Gửi mã OTP</Text>}
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 12 },
-  label: { color: '#555', fontSize: 14 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, fontSize: 16 },
-  inputError: { borderColor: '#e53e3e' },
-  errorText: { color: '#e53e3e', fontSize: 13 },
-  generalError: { color: '#e53e3e', fontSize: 14, backgroundColor: '#fff5f5', borderRadius: 8, padding: 10, textAlign: 'center', borderWidth: 1, borderColor: '#fed7d7' },
-  button: { backgroundColor: '#2563eb', borderRadius: 8, padding: 14, alignItems: 'center' },
+  container: { gap: 14 },
+  label: { fontSize: 14, fontWeight: '700', color: '#1A1A1C', marginBottom: 8, marginLeft: 16 },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    height: 54,
+  },
+  inputRowFocused: {
+    borderColor: '#34C759',
+  },
+  inputRowError: {
+    borderColor: Colors.danger,
+    backgroundColor: '#FFF5F5',
+  },
+  input: { flex: 1, fontSize: 15, color: '#1A1A1C', paddingVertical: 0 },
+  errorText: { color: Colors.danger, fontSize: 12, marginTop: 4, marginLeft: 16 },
+  button: {
+    backgroundColor: '#34C759', borderRadius: 28,
+    height: 54, alignItems: 'center', justifyContent: 'center', marginTop: 12,
+  },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  buttonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  errorBanner: {
+    backgroundColor: Colors.dangerLight,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  errorBannerText: {
+    color: Colors.dangerDark,
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
 });

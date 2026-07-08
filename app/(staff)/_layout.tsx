@@ -25,7 +25,18 @@ export default function StaffLayout() {
       <Stack.Screen name="tickets/[id]" />
       <Stack.Screen name="customers/[customerId]" />
       <Stack.Screen name="batteries/[id]" />
+      <Stack.Screen name="alerts/index" />
       <Stack.Screen name="alerts/[id]" />
+      <Stack.Screen name="incidents/[id]" />
+      <Stack.Screen name="notification-preferences" />
+      <Stack.Screen name="tools/index" />
+      <Stack.Screen name="tools/battery-types/index" />
+      <Stack.Screen name="tools/battery-types/[id]" />
+      <Stack.Screen name="tools/calibration/index" />
+      <Stack.Screen name="tools/calibration/create" />
+      <Stack.Screen name="tools/permissions" />
+      <Stack.Screen name="chats/index" />
+      <Stack.Screen name="chats/mentions" />
       <Stack.Screen name="index" />
     </Stack>
   );

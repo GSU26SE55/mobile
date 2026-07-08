@@ -15,7 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { TicketCategoryEnum, TicketPriorityEnum } from '../types/ticket.types';
+import { TicketCategoryEnum } from '../types/ticket.types';
 import type { UploadedTicketAttachment } from '../types/ticket.types';
 import { useUploadTicketAttachment } from '../hooks/useUploadTicketAttachment';
 import { useMyBatteryAssets } from '../../batteries/hooks/useMyBatteryAssets';
@@ -115,18 +115,6 @@ export function CreateTicketStepper({
   onCancel,
 }: Props) {
   const insets = useSafeAreaInsets();
-
-  const getSuggestedPriority = (): { key: TicketPriorityEnum; label: string; time: string; color: string; bg: string } => {
-    if (category === 'Overheat' || category === 'NoPower') {
-      return { key: 'P1Critical', label: 'P1', time: '< 4h', color: '#DC4F3D', bg: '#FFEBEA' };
-    }
-    if (category === 'Charging') {
-      return { key: 'P2High', label: 'P2', time: '< 24h', color: '#EF5128', bg: '#FFE5DA' };
-    }
-    return { key: 'P3Normal', label: 'P3', time: '< 72h', color: '#5081C7', bg: '#EBF3FF' };
-  };
-
-  const priorityInfo = getSuggestedPriority();
 
   const { data: batteries = [] } = useMyBatteryAssets();
   const selectedBattery = batteries.find((b: BatteryAssetDto) => b.id === selectedBatteryId);
@@ -403,17 +391,18 @@ export function CreateTicketStepper({
           <ScrollView style={styles.stepScroll} showsVerticalScrollIndicator={false}>
             <Text style={styles.stepNum}>BƯỚC 04</Text>
             <Text style={styles.stepTitle}>Xem lại & gửi</Text>
-            <Text style={styles.stepSub}>Priority hệ thống tính tự động</Text>
+            <Text style={styles.stepSub}>Đội hỗ trợ sẽ tiếp nhận và xử lý</Text>
 
+            {/* Không hiển thị priority gợi ý theo category — priority thật do Manager triage
+                (Impact × Urgency), FE gợi ý dễ dạy khách kỳ vọng SLA sai. */}
             <View style={styles.prioritySuggestedCard}>
-              <Text style={styles.prioritySuggestedLabel}>PRIORITY GỢI Ý</Text>
               <View style={styles.prioritySuggestedBody}>
-                <View style={[styles.priorityBadge, { backgroundColor: priorityInfo.bg }]}>
-                  <Text style={[styles.priorityBadgeText, { color: priorityInfo.color }]}>{priorityInfo.label}</Text>
-                </View>
+                <Ionicons name="information-circle-outline" size={20} color={Colors.info} />
                 <View style={styles.priorityTextCol}>
-                  <Text style={styles.priorityTitle}>Phản hồi dự kiến</Text>
-                  <Text style={styles.priorityTimeText}>{priorityInfo.time}</Text>
+                  <Text style={styles.priorityTitle}>Mức độ ưu tiên</Text>
+                  <Text style={styles.priorityNote}>
+                    Được đội hỗ trợ đánh giá sau khi tiếp nhận yêu cầu của bạn.
+                  </Text>
                 </View>
               </View>
             </View>
@@ -624,13 +613,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF', borderRadius: 18, padding: 16, marginBottom: 16,
     borderWidth: 1, borderColor: 'rgba(0,0,0,0.04)',
   },
-  prioritySuggestedLabel: { fontSize: 9, fontWeight: '700', color: Colors.textMute, letterSpacing: 0.5, marginBottom: 10 },
-  prioritySuggestedBody: { flexDirection: 'row', alignItems: 'center' },
-  priorityBadge: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  priorityBadgeText: { fontSize: 16, fontWeight: '800' },
+  prioritySuggestedBody: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   priorityTextCol: { flex: 1 },
-  priorityTitle: { fontSize: 11, color: Colors.textMute, fontWeight: '500' },
-  priorityTimeText: { fontSize: 18, fontWeight: '800', color: Colors.text, marginTop: 1 },
+  priorityTitle: { fontSize: 13, color: Colors.text, fontWeight: '700' },
+  priorityNote: { fontSize: 12, color: Colors.textMute, marginTop: 2, lineHeight: 17 },
   reviewTable: { backgroundColor: '#FFFFFF', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 8, marginBottom: 20 },
   reviewRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, alignItems: 'center' },
   reviewRowLabel: { fontSize: 12, color: Colors.textMute, fontWeight: '500' },

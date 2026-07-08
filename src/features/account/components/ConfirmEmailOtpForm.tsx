@@ -38,12 +38,12 @@ export function ConfirmEmailOtpForm({ onSubmit, isLoading, fieldErrors, expiresI
     <View style={styles.container}>
       <View style={styles.hintBox}>
         <Text style={styles.hintText}>
-          OTP da duoc gui den email moi cua ban.
-          {isActive ? ` Het han sau ${remaining}s.` : ' OTP da het han.'}
+          OTP đã được gửi đến email mới của bạn.
+          {isActive ? ` Hết hạn sau ${remaining}s.` : ' OTP đã hết hạn.'}
         </Text>
       </View>
 
-      <Text style={styles.label}>Ma OTP (6 chu so)</Text>
+      <Text style={styles.label}>Mã OTP (6 chữ số)</Text>
       <TextInput
         style={[styles.input, getError('otp') && styles.inputError]}
         value={otp}
@@ -55,7 +55,7 @@ export function ConfirmEmailOtpForm({ onSubmit, isLoading, fieldErrors, expiresI
       {getError('otp') ? <Text style={styles.error}>{getError('otp')}</Text> : null}
 
       <Pressable style={[styles.button, isLoading && styles.btnDisabled]} onPress={handleSubmit} disabled={isLoading}>
-        {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Xac nhan</Text>}
+        {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Xác nhận</Text>}
       </Pressable>
     </View>
   );
