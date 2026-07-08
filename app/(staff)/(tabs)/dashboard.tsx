@@ -4,7 +4,9 @@ import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Tex
 import { router } from 'expo-router';
 import { Colors } from '../../../src/lib/theme';
 import { useStaffTickets } from '../../../src/features/staff/hooks/useStaffTickets';
+import { useStaffDashboardStats } from '../../../src/features/staff/hooks/useStaffDashboardStats';
 import { StaffTicketCard } from '../../../src/features/staff/components/StaffTicketCard';
+import { StaffDashboardStats } from '../../../src/features/staff/components/StaffDashboardStats';
 import { StaffHeader } from '../../../src/features/staff/components/StaffHeader';
 import { TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
 
@@ -27,6 +29,9 @@ export default function StaffDashboardScreen() {
   // BE clamp max=100; counts dưới tính client-side trên trang này. Nếu staff vượt 100 ticket
   // cần đếm bằng totalItems + filter status server-side (BE chưa hỗ trợ multi-status filter).
   const { data: apiTickets, isLoading, isError, isRefetching, refetch } = useStaffTickets({ PageSize: 100 });
+  // GH-67 — counts đọc từ endpoint dashboard/stats (server-side, chính xác) thay vì đếm
+  // client-side trên trang cap-100. Query dùng chung cache với StaffDashboardStats (dedup).
+  const { data: stats } = useStaffDashboardStats();
 
   const allTickets = apiTickets?.items ?? [];
 
@@ -37,16 +42,21 @@ export default function StaffDashboardScreen() {
     return true;
   });
 
-  const counts: Record<FilterTab, number> = {
-    all:      allTickets.length,
-    active:   allTickets.filter((t) => ACTIVE_STATUSES.includes(t.status)).length,
-    waiting:  allTickets.filter((t) => WAITING_STATUSES.includes(t.status)).length,
-    resolved: allTickets.filter((t) => RESOLVED_STATUSES.includes(t.status)).length,
+  // Tab counts từ stats.countByStatus (single source). Chưa load → null → ẩn số trên tab.
+  const cbs = stats?.countByStatus;
+  const sumOf = (statuses: TicketStatusEnum[]) => statuses.reduce((s, k) => s + (cbs?.[k] ?? 0), 0);
+  const counts: Record<FilterTab, number | null> = {
+    all:      cbs ? Object.values(cbs).reduce((s, v) => s + v, 0) : null,
+    active:   cbs ? sumOf(ACTIVE_STATUSES) : null,
+    waiting:  cbs ? sumOf(WAITING_STATUSES) : null,
+    resolved: cbs ? sumOf(RESOLVED_STATUSES) : null,
   };
 
   return (
     <View style={styles.root}>
       <StaffHeader showGreeting />
+
+      <StaffDashboardStats />
 
       <View style={styles.filterRow}>
         {FILTER_TABS.map((tab) => (
@@ -56,7 +66,7 @@ export default function StaffDashboardScreen() {
             onPress={() => setActiveFilter(tab.key)}
           >
             <Text style={[styles.filterText, activeFilter === tab.key && styles.filterTextActive]} numberOfLines={1}>
-              {tab.label} ({counts[tab.key]})
+              {tab.label}{counts[tab.key] != null ? ` (${counts[tab.key]})` : ''}
             </Text>
           </Pressable>
         ))}

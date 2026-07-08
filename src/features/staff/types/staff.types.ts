@@ -89,3 +89,43 @@ export interface StaffAddCommentPayload {
   isInternal?: boolean;
   attachments?: CommentAttachmentPayload[];
 }
+
+// ── GH-67 — Staff dashboard KPI snapshot ──────────────────────────────────
+// GET /api/staff/tickets/dashboard/stats → CommonResponse<StaffTicketDashboardStatsDto>.
+// Verify khớp BE StaffTicketDashboardStatsDto.cs + web dashboardStats.types.ts §B.
+// Scope tự động theo assignedStaffId từ JWT; không nhận query param. FE cache ~60s.
+
+export interface SlaSummaryDto {
+  met: number;
+  breached: number;
+  running: number;
+  paused: number;
+  /** Met / (Met + Breached) × 100; = 100 khi chưa có timer kết thúc. */
+  compliancePercent: number;
+}
+
+export interface SlaRiskDto {
+  healthy: number;
+  near: number;
+  breached: number;
+}
+
+/** 1 điểm trend theo ngày (bucket UTC), ngày trống = 0. */
+export interface DailyCountPointDto {
+  date: string; // "yyyy-MM-dd"
+  count: number;
+}
+
+export interface StaffTicketDashboardStatsDto {
+  openCount: number;
+  resolvedCount: number;
+  nearBreachCount: number;
+  breachedCount: number;
+  pausedCount: number;
+  slaMonitoredCount: number;
+  sla: SlaSummaryDto;
+  /** Đủ 14 status (BE zero-fill); FE vẫn default `?? 0` khi đọc. */
+  countByStatus: Record<string, number>;
+  slaRisk: SlaRiskDto;
+  createdTrend7Days: DailyCountPointDto[]; // đúng 7 điểm
+}

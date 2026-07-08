@@ -20,6 +20,8 @@ export const KEY = {
   batteryTypes:  ['batteryTypes'] as const, // GH-56
   iotDevices:    ['iotDevices'] as const,   // GH-56
   loginHistory:  ['loginHistory'] as const,
+  chatsInbox:    ['chatsInbox'] as const,   // GH-68 — /chats/me
+  chatMentions:  ['chatMentions'] as const, // GH-68 — /chats/mentions/me
 } as const;
 
 export const QUERY_KEY = {
@@ -60,14 +62,17 @@ export const QUERY_KEY = {
     detail: (id: string) => [...KEY.alerts, 'detail', id] as const,
   },
   incidents: { // GH-55 — environmental incidents
-    list:   (params?: Record<string, unknown>) => [...KEY.incidents, 'list', params] as const,
-    detail: (id: string) => [...KEY.incidents, 'detail', id] as const,
+    list:        (params?: Record<string, unknown>) => [...KEY.incidents, 'list', params] as const,
+    detail:      (id: string) => [...KEY.incidents, 'detail', id] as const,
+    bySiteActive:(siteId: string) => [...KEY.incidents, 'by-site-active', siteId] as const, // GH-68
   },
   tickets: {
-    list:       (params?: Record<string, unknown>) => [...KEY.tickets, 'list', params] as const,
-    detail:     (id: string) => [...KEY.tickets, 'detail', id] as const,
-    chats:      (id: string) => [...KEY.tickets, 'chats', id] as const,   // GH-44 — infinite (renamed from comments, BE migration 20260622)
-    activities: (id: string) => [...KEY.tickets, 'activities', id] as const, // GH-44
+    list:           (params?: Record<string, unknown>) => [...KEY.tickets, 'list', params] as const,
+    detail:         (id: string) => [...KEY.tickets, 'detail', id] as const,
+    chats:          (id: string) => [...KEY.tickets, 'chats', id] as const,   // GH-44/GH-68 — infinite (cursor). Giữ key cho realtime prepend
+    chatUnreadCount:(id: string) => [...KEY.tickets, 'chat-unread-count', id] as const, // GH-68
+    chatReactions:  (tid: string, cid: string) => [...KEY.tickets, 'chat-reactions', tid, cid] as const, // GH-68
+    activities:     (id: string) => [...KEY.tickets, 'activities', id] as const, // GH-44
   },
   staffProfile: {
     me: () => [...KEY.staffProfile, 'me'] as const,
@@ -76,6 +81,7 @@ export const QUERY_KEY = {
     list:   (params?: Record<string, unknown>) => [...KEY.staffTickets, 'list', params] as const,
     detail: (id: string) => [...KEY.staffTickets, 'detail', id] as const,
     myLogs: () => [...KEY.staffTickets, 'my-logs'] as const, // GH-44 #3
+    dashboardStats: () => [...KEY.staffTickets, 'dashboard-stats'] as const, // GH-67
   },
   notifications: {
     list: (params?: Record<string, unknown>) => [...KEY.notifications, 'list', params] as const,
@@ -96,7 +102,14 @@ export const QUERY_KEY = {
     suggest:  (ticketId: string) => [...KEY.kb, 'suggest', ticketId] as const, // GH-44 #7
   },
   permissions: {
-    me: () => [...KEY.permissions, 'me'] as const, // GH-47
+    me:      () => [...KEY.permissions, 'me'] as const, // GH-47
+    catalog: (module?: string) => [...KEY.permissions, 'catalog', module ?? null] as const, // GH-68
+  },
+  chatsInbox: {
+    list: (params?: Record<string, unknown>) => [...KEY.chatsInbox, 'list', params] as const, // GH-68
+  },
+  chatMentions: {
+    list: (params?: Record<string, unknown>) => [...KEY.chatMentions, 'list', params] as const, // GH-68
   },
   batteryTypes: {
     list:   (params?: Record<string, unknown>) => [...KEY.batteryTypes, 'list', params] as const, // GH-56

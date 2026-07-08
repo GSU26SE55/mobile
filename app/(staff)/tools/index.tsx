@@ -10,7 +10,12 @@ type ToolRow = {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   desc: string;
-  href: '/(staff)/tools/battery-types' | '/(staff)/tools/calibration';
+  href:
+    | '/(staff)/tools/battery-types'
+    | '/(staff)/tools/calibration'
+    | '/(staff)/tools/permissions'
+    | '/(staff)/chats'
+    | '/(staff)/chats/mentions';
 };
 
 const ROWS: ToolRow[] = [
@@ -25,6 +30,24 @@ const ROWS: ToolRow[] = [
     title: 'Calibration cảm biến',
     desc: 'Hiệu chỉnh cảm biến thiết bị IoT tại hiện trường',
     href: '/(staff)/tools/calibration',
+  },
+  {
+    icon: 'chatbubbles-outline',
+    title: 'Hộp thư chat',
+    desc: 'Tất cả tin nhắn của tôi trên mọi ticket',
+    href: '/(staff)/chats',
+  },
+  {
+    icon: 'at-outline',
+    title: 'Nhắc đến tôi',
+    desc: 'Các @mention tới bạn',
+    href: '/(staff)/chats/mentions',
+  },
+  {
+    icon: 'key-outline',
+    title: 'Danh mục quyền',
+    desc: 'Tra cứu toàn bộ permission hệ thống',
+    href: '/(staff)/tools/permissions',
   },
 ];
 

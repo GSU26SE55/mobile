@@ -34,6 +34,9 @@ export default function StaffLayout() {
       <Stack.Screen name="tools/battery-types/[id]" />
       <Stack.Screen name="tools/calibration/index" />
       <Stack.Screen name="tools/calibration/create" />
+      <Stack.Screen name="tools/permissions" />
+      <Stack.Screen name="chats/index" />
+      <Stack.Screen name="chats/mentions" />
       <Stack.Screen name="index" />
     </Stack>
   );

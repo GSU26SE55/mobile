@@ -20,3 +20,11 @@ export interface PaginationResponse<T> {
   hasNextPage: boolean;
   hasPreviousPage: boolean;
 }
+
+// GH-68 — cursor-based pagination (chat cursor). BE `CursorPaginationResponse.cs`
+// CHỈ có 3 field này — KHÔNG có totalItems (khác PaginationResponse).
+export interface CursorPaginationResponse<T> {
+  items: T[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}

@@ -4,14 +4,14 @@ import * as signalR from '@microsoft/signalr';
 import { BASE_URL } from '../../../lib/axios';
 import { getAccessToken } from '../../../lib/secureStore';
 import { QUERY_KEY } from '../../../lib/queryKeys';
-import { PaginationResponse } from '../../../types/api.types';
+import { CursorPaginationResponse } from '../../../types/api.types';
 import { TicketCommentDTO } from '../types/ticket.types';
 
 const HUB_PATH = '/hubs/ticket-chats';
 const TYPING_TIMEOUT = 3000;
 const TYPING_THROTTLE = 1500; // tối đa 1 lần invoke Typing mỗi 1.5s (tránh spam hub mỗi keystroke)
 
-type CommentsPage = PaginationResponse<TicketCommentDTO> | null;
+type CommentsPage = CursorPaginationResponse<TicketCommentDTO> | null;
 
 export interface TypingUser {
   userId: string;
@@ -29,10 +29,11 @@ function prependComment(
   if (exists) return data;
   const [first, ...rest] = data.pages;
   if (!first) return data;
+  // GH-68: cursor page (CursorPaginationResponse) KHÔNG có totalItems → chỉ prepend items,
+  // không đụng totalItems (tránh NaN). CommentThread/screens không đọc totalItems.
   const updatedFirst: CommentsPage = {
     ...first,
     items: [dto, ...first.items],
-    totalItems: first.totalItems + 1,
   };
   return { ...data, pages: [updatedFirst, ...rest] };
 }
@@ -80,6 +81,11 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
     connection.on('ChatEdited', invalidateChats);
     connection.on('ChatDeleted', invalidateChats);
 
+    // Reaction realtime (BE: "ReactionChanged", payload { chatId, reactions }). Mobile
+    // hiển thị reactions NHÚNG trong comment của list chats(id) (comment.reactions), KHÔNG
+    // dùng key chatReactions riêng như web → invalidate chats(id) để list refetch aggregate.
+    connection.on('ReactionChanged', invalidateChats);
+
     connection.on('UserTyping', (_ticketId: string, userId: string, displayName: string) => {
       setTypingUsers((prev) =>
         prev.some((u) => u.userId === userId) ? prev : [...prev, { userId, displayName }],
@@ -124,6 +130,7 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
         conn.off('ChatAdded');
         conn.off('ChatEdited');
         conn.off('ChatDeleted');
+        conn.off('ReactionChanged');
         conn.off('UserTyping');
         // CHỜ start() xong rồi mới leave + stop — tránh stop-trước-start.
         void startPromise.finally(() => {

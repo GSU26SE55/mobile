@@ -17,6 +17,11 @@ export const incidentService = {
     axiosInstance.get<CommonResponse<EnvironmentalIncidentDto>>(
       ENDPOINTS.ENVIRONMENTAL_INCIDENTS.DETAIL(id),
     ),
+  // GH-68 — incident đang Active (Open+Acknowledged) theo site, 1 call server-side.
+  getActiveBySite: (siteId: string) =>
+    axiosInstance.get<CommonResponse<PaginationResponse<EnvironmentalIncidentDto>>>(
+      ENDPOINTS.ENVIRONMENTAL_INCIDENTS.BY_SITE_ACTIVE(siteId),
+    ),
   // Staff-only — POST, Open → Acknowledged. 409 nếu state ≠ Open. Trả DTO mới.
   acknowledge: (id: string) =>
     axiosInstance.post<CommonResponse<EnvironmentalIncidentDto>>(

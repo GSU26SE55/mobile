@@ -122,3 +122,13 @@ export const ActivityActionEnum = {
   Closed: 'Closed',
 } as const;
 export type ActivityActionEnum = (typeof ActivityActionEnum)[keyof typeof ActivityActionEnum];
+
+// GH-68 — loại reaction cho ticket chat (BE ReactionTypeEnum). Gửi STRING trong body/query.
+export const ReactionTypeEnum = {
+  ThumbsUp: 'ThumbsUp',
+  Acknowledged: 'Acknowledged',
+  Resolved: 'Resolved',
+  NeedMoreInfo: 'NeedMoreInfo',
+  Disagree: 'Disagree',
+} as const;
+export type ReactionTypeEnum = (typeof ReactionTypeEnum)[keyof typeof ReactionTypeEnum];

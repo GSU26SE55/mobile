@@ -6,11 +6,30 @@ import { TicketActivityDTO } from '../types/ticket.types';
 import { getActivityMeta, activityToneStyle } from '../utils/activityMeta';
 
 interface Props {
-  activities: TicketActivityDTO[];
+  activities?: TicketActivityDTO[];
+  isLoading?: boolean;
 }
 
-export function ActivityTimeline({ activities }: Props) {
-  if (activities.length === 0) {
+// Format dd/MM/yyyy HH:mm — khớp frontend (date-fns "dd/MM/yyyy HH:mm").
+// Tự viết để không thêm package date-fns vào mobile.
+function formatActivityTime(iso: string): string {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+export function ActivityTimeline({ activities, isLoading }: Props) {
+  if (isLoading) {
+    return (
+      <View>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <View key={i} style={styles.skeleton} />
+        ))}
+      </View>
+    );
+  }
+
+  if (!activities?.length) {
     return <Text style={styles.empty}>Chưa có hoạt động nào.</Text>;
   }
 
@@ -29,21 +48,24 @@ export function ActivityTimeline({ activities }: Props) {
               {!isLast && <View style={styles.line} />}
             </View>
             <View style={[styles.content, !isLast && styles.contentSpaced]}>
-              <Text style={[styles.action, { color: style.dot }]}>{meta.label}</Text>
+              <View style={styles.headerRow}>
+                <Text style={[styles.action, { color: style.dot }]} numberOfLines={1}>
+                  {meta.label}
+                </Text>
+                <Text style={styles.time}>{formatActivityTime(item.createdAt)}</Text>
+              </View>
               {item.actorDisplayName && (
-                <Text style={styles.actor}>{item.actorRole} · {item.actorDisplayName}</Text>
+                <Text style={styles.actor}>{item.actorDisplayName} · {item.actorRole}</Text>
               )}
               {(item.oldValue || item.newValue) && (
                 <Text style={styles.value}>
-                  {item.oldValue ? `${item.oldValue} → ${item.newValue ?? ''}` : item.newValue}
+                  {item.oldValue && <Text style={styles.oldValue}>{item.oldValue} </Text>}
+                  {item.newValue && <Text>{item.newValue}</Text>}
                 </Text>
               )}
               {item.reason && (
                 <Text style={styles.reason}>Lý do: {item.reason}</Text>
               )}
-              <Text style={styles.time}>
-                {new Date(item.createdAt).toLocaleString('vi-VN')}
-              </Text>
             </View>
           </View>
         );
@@ -54,6 +76,7 @@ export function ActivityTimeline({ activities }: Props) {
 
 const styles = StyleSheet.create({
   empty:          { color: Colors.textMute, fontSize: 13, textAlign: 'center', paddingVertical: 12 },
+  skeleton:       { height: 56, borderRadius: 8, backgroundColor: Colors.card3, marginBottom: 12 },
   item:           { flexDirection: 'row', gap: 14 },
   dotCol:         { alignItems: 'center', width: 26 },
   dot:            {
@@ -63,9 +86,11 @@ const styles = StyleSheet.create({
   line:           { flex: 1, width: 2, backgroundColor: Colors.card3, marginTop: 2 },
   content:        { flex: 1, paddingTop: 2, gap: 2 },
   contentSpaced:  { paddingBottom: 14 },
-  action:         { fontSize: 13, fontWeight: '700' },
+  headerRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  action:         { flex: 1, fontSize: 13, fontWeight: '700' },
   actor:          { fontSize: 12, color: Colors.textMute },
   value:          { fontSize: 12, color: Colors.textMute },
+  oldValue:       { textDecorationLine: 'line-through' },
   reason:         { fontSize: 12, color: Colors.textMute, fontStyle: 'italic' },
-  time:           { fontSize: 11, color: Colors.textFaint, marginTop: 2 },
+  time:           { fontSize: 11, color: Colors.textFaint },
 });

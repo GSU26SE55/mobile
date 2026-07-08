@@ -94,6 +94,7 @@ export const ENDPOINTS = {
     DETAIL:      (id: string) => `/api/environmental-incidents/${id}`,
     ACKNOWLEDGE: (id: string) => `/api/environmental-incidents/${id}/acknowledge`, // POST, Staff-only
     RESOLVE:     (id: string) => `/api/environmental-incidents/${id}/resolve`,     // POST { resolutionNote }, Staff-only
+    BY_SITE_ACTIVE: (siteId: string) => `/api/environmental-incidents/by-site/${siteId}/active`, // GH-68 — GET Open+Acknowledged 1 call
   },
   TICKETS: {
     CUSTOMER_LIST:   '/api/customer/tickets/me',
@@ -104,15 +105,39 @@ export const ENDPOINTS = {
     CHAT_MARK_READ:  (tid: string) => `/api/tickets/${tid}/chats/mark-read`, // POST { chatIds }
     CHAT_TRANSLATE:  (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}/translate`, // POST ?to=
     CHAT_VOICE:      (tid: string) => `/api/tickets/${tid}/chats/voice`, // POST multipart — field "AudioFile"
+    // GH-68 — Mọi role
+    CHATS_CURSOR:        (tid: string) => `/api/tickets/${tid}/chats/cursor`,        // GET ?cursor&limit(≤100,def20)
+    CHAT_UNREAD_COUNT:   (tid: string) => `/api/tickets/${tid}/chats/unread-count`,  // GET → { unreadCount } (per-ticket, KHÔNG bulk — ≠ NOTIFICATIONS.UNREAD_COUNT)
+    CHAT_REACTIONS:      (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}/reactions`, // POST { reactionType } / DELETE ?type=
+    CHAT_ATTACHMENT_DOWNLOAD: (tid: string, cid: string, fileId: string) =>
+      `/api/tickets/${tid}/chats/${cid}/attachments/${fileId}/download`,             // GET → CommonResponse<string> URL; HTTP 200/202/451/404. {attachmentId}=FileId
+    // GH-67 — Staff/Manager/Admin chat actions
+    CHAT_PIN:        (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}/pin`, // POST pin / DELETE unpin
+    CHAT_SUGGEST:    (tid: string) => `/api/tickets/${tid}/chats/suggest`,        // POST { intent } (AI)
+    CHAT_SUMMARIZE:  (tid: string) => `/api/tickets/${tid}/chats/summarize`,      // POST (AI)
+    CHAT_SENTIMENT:  (tid: string) => `/api/tickets/${tid}/chats/sentiment-check`, // POST (AI)
+    CHAT_EXPORT_PDF: (tid: string) => `/api/tickets/${tid}/chats/export-pdf`,     // GET application/pdf
     ACTIVITIES:      (id: string) => `/api/tickets/${id}/activities`, // GH-44 — timeline
     REOPEN:          (id: string) => `/api/customer/tickets/${id}/reopen`,
     RATE:            (id: string) => `/api/customer/tickets/${id}/rate`,
+  },
+  // GH-68 — chat cross-ticket (Mọi role)
+  CHATS: {
+    ME:              '/api/chats/me',                                        // GET ?page&pageSize → flat TicketChatDTO[]
+    MENTIONS_ME:     '/api/chats/mentions/me',                              // GET ?unreadOnly&page&pageSize
+    MENTION_ACK:     (id: string) => `/api/chats/mentions/${id}/acknowledge`, // PATCH
+    ERASE_MY_DATA:   '/api/chats/erase-my-data',                           // POST → { erasedCount }
+  },
+  PERMISSIONS: {
+    CATALOG: '/api/permissions', // GH-68 — catalog toàn bộ permission (mọi role); ?module
   },
   STAFF: {
     ME: '/api/auth/me',
   },
   STAFF_TICKETS: {
     MY_LIST:          '/api/staff/tickets/me',
+    DASHBOARD_STATS:  '/api/staff/tickets/dashboard/stats', // GH-67 — KPI snapshot theo JWT
+
     START:            (id: string) => `/api/staff/tickets/${id}/start`,
     HOLD:             (id: string) => `/api/staff/tickets/${id}/hold`,
     RESUME:           (id: string) => `/api/staff/tickets/${id}/resume`,
