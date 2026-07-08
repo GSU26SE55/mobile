@@ -81,6 +81,11 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
     connection.on('ChatEdited', invalidateChats);
     connection.on('ChatDeleted', invalidateChats);
 
+    // Reaction realtime (BE: "ReactionChanged", payload { chatId, reactions }). Mobile
+    // hiển thị reactions NHÚNG trong comment của list chats(id) (comment.reactions), KHÔNG
+    // dùng key chatReactions riêng như web → invalidate chats(id) để list refetch aggregate.
+    connection.on('ReactionChanged', invalidateChats);
+
     connection.on('UserTyping', (_ticketId: string, userId: string, displayName: string) => {
       setTypingUsers((prev) =>
         prev.some((u) => u.userId === userId) ? prev : [...prev, { userId, displayName }],
@@ -125,6 +130,7 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
         conn.off('ChatAdded');
         conn.off('ChatEdited');
         conn.off('ChatDeleted');
+        conn.off('ReactionChanged');
         conn.off('UserTyping');
         // CHỜ start() xong rồi mới leave + stop — tránh stop-trước-start.
         void startPromise.finally(() => {
