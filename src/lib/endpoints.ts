@@ -120,7 +120,6 @@ export const ENDPOINTS = {
   STAFF_TICKETS: {
     MY_LIST:          '/api/staff/tickets/me',
     DASHBOARD_STATS:  '/api/staff/tickets/dashboard/stats', // GH-67 — KPI snapshot theo JWT
-
     START:            (id: string) => `/api/staff/tickets/${id}/start`,
     HOLD:             (id: string) => `/api/staff/tickets/${id}/hold`,
     RESUME:           (id: string) => `/api/staff/tickets/${id}/resume`,

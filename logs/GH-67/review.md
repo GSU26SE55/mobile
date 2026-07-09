@@ -19,10 +19,15 @@ Implement 6 endpoint Staff-only (dashboard stats + chat pin/suggest/summarize/se
 - **Chart**: thuần `react-native-svg` (đã cài), KHÔNG victory-native/Skia → không rebuild dev client. Guard `data == null` → skeleton/null, không chặn list.
 - **Chất lượng**: component PascalCase, không hardcode URL (qua `ENDPOINTS`), không `console.log` trong file mới.
 
-#### 🟡 Warning
-1. `src/features/tickets/types/chat-actions.types.ts:35` — `ChatSuggestPayload` được export nhưng **không dùng** (service `suggest` nhận `intent` inline). → Xóa để tránh dead code, hoặc dùng làm kiểu tham số `suggest(payload: ChatSuggestPayload)`.
-2. `app/(staff)/(tabs)/dashboard.tsx:60` — `StaffDashboardStats` đặt **cố định** trên `filterRow`, chiều cao lớn (KPI + gauge + 2 donut + bar). Trên máy nhỏ ép vùng list ticket còn hẹp. → Cân nhắc chuyển stats + filterRow thành `ListHeaderComponent` (và bỏ early-return isLoading/isError để header không bị ẩn) cho cả màn cuộn mượt. Không chặn merge.
-3. `src/lib/endpoints.ts` (STAFF_TICKETS) — dòng trống thừa sau `DASHBOARD_STATS` (cosmetic).
+#### 🟡 Warning — ĐÃ FIX (2026-07-09)
+1. ✅ `chat-actions.types.ts` — xóa `ChatSuggestPayload` dead export + import `ChatAiIntentEnum` không dùng.
+2. ✅ `dashboard.tsx` — chuyển `StaffDashboardStats` + `filterRow` thành `ListHeaderComponent`, list state vào `ListEmptyComponent` (KPI query riêng nên luôn hiển thị); cả màn cuộn mượt, không ép list. Xóa style `center` thừa; padding card qua `cardWrap`.
+3. ✅ `endpoints.ts` — xóa dòng trống thừa sau `DASHBOARD_STATS`.
+
+→ Sau fix: `tsc` sạch, `eslint` trên **toàn bộ file GH-67 = 0 warning**.
+
+#### 🟡 Warning — NGOÀI SCOPE GH-67 (không sửa)
+- `app/(staff)/tickets/[id].tsx` 5 warning (`Image`, `isUploading`, `handlePickImage`, `handleRemoveAttachment`, `attachments` unused) + `ticket.types.ts:16` (`import/first`) — **git diff xác nhận không do GH-67 thêm**; là dead code từ work voice/reactions (GH-68) bị bundle chung commit `f0ee6db`. Nên xử lý ở ticket tương ứng, không sửa trong GH-67 (Surgical Changes).
 
 ### RỦI RO & LƯU Ý
 - **Git-bundling (không phải lỗi code):** commit `f0ee6db` gộp GH-67 + work voice-audio-bubble (TypingIndicator/VoiceMessageBubble/useAudioAttachment/useLocalAudioUri/useVoiceRecorder, customer `[id].tsx`) + docs/api-*.md. Nếu tạo PR GH-67 từ branch này, PR sẽ chứa cả work ngoài scope. → Khi ship, lưu ý phạm vi PR / tách commit nếu team yêu cầu 1-issue-1-PR sạch.

@@ -52,12 +52,11 @@ export default function StaffDashboardScreen() {
     resolved: cbs ? sumOf(RESOLVED_STATUSES) : null,
   };
 
-  return (
-    <View style={styles.root}>
-      <StaffHeader showGreeting />
-
+  // KPI + filter cuộn cùng list (ListHeaderComponent) → không ép vùng list; trạng thái
+  // load/lỗi của list nằm trong ListEmptyComponent để KPI (query riêng) luôn hiển thị.
+  const header = (
+    <>
       <StaffDashboardStats />
-
       <View style={styles.filterRow}>
         {FILTER_TABS.map((tab) => (
           <Pressable
@@ -71,47 +70,54 @@ export default function StaffDashboardScreen() {
           </Pressable>
         ))}
       </View>
+    </>
+  );
 
-      {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={Colors.primary} size="large" />
-        </View>
-      ) : isError ? (
-        <View style={styles.center}>
-          <Ionicons name="cloud-offline-outline" size={48} color={Colors.textFaint} />
-          <Text style={styles.emptyText}>Không tải được danh sách ticket</Text>
-          <Pressable onPress={() => refetch()} style={styles.retryBtn}>
-            <Text style={styles.retryText}>Thử lại</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
+  return (
+    <View style={styles.root}>
+      <StaffHeader showGreeting />
+      <FlatList
+        data={isLoading || isError ? [] : filtered}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.cardWrap}>
             <StaffTicketCard
               ticket={item}
               onPress={() => router.push({ pathname: '/(staff)/tickets/[id]', params: { id: item.id } })}
             />
-          )}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />}
-          ListEmptyComponent={
-            <View style={styles.empty}>
+          </View>
+        )}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />}
+        ListHeaderComponent={header}
+        ListEmptyComponent={
+          isLoading ? (
+            <View style={styles.stateBox}>
+              <ActivityIndicator color={Colors.primary} size="large" />
+            </View>
+          ) : isError ? (
+            <View style={styles.stateBox}>
+              <Ionicons name="cloud-offline-outline" size={48} color={Colors.textFaint} />
+              <Text style={styles.emptyText}>Không tải được danh sách ticket</Text>
+              <Pressable onPress={() => refetch()} style={styles.retryBtn}>
+                <Text style={styles.retryText}>Thử lại</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.stateBox}>
               <Ionicons name="checkmark-done-circle-outline" size={48} color={Colors.textFaint} />
               <Text style={styles.emptyText}>Không có ticket nào</Text>
             </View>
-          }
-        />
-      )}
+          )
+        }
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root:   { flex: 1, backgroundColor: Colors.bg },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   filterRow: {
     flexDirection: 'row',
     gap: 6,
@@ -137,13 +143,15 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   list: {
-    paddingHorizontal: 20,
     paddingBottom: 100,
   },
-  empty: {
+  cardWrap: {
+    paddingHorizontal: 20,
+  },
+  stateBox: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 80,
+    paddingVertical: 60,
     gap: 8,
   },
   emptyText: {

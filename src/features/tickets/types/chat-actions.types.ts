@@ -1,6 +1,5 @@
 // Edit/Delete/Dịch/Ghi âm cho ticket chat — nhân bản types từ Web
 // (shared/types/chat.types.ts) vì mobile chưa có backend riêng, dùng chung endpoint.
-import type { ChatAiIntentEnum } from '../../../shared/enums/chat.enum';
 
 export interface UpdateChatPayload {
   body: string;
@@ -34,12 +33,8 @@ export interface ChatVoiceActionDTO {
 // ── GH-67 — AI chat actions (Staff/Manager/Admin) ─────────────────────────
 // Verify từ BE .../DTOs/Response/Chats/*.cs + web frontend/src/shared/types/chat.types.ts.
 
-// POST /api/tickets/{id}/chats/suggest — body. `intent` gửi STRING (JsonStringEnumConverter).
-export interface ChatSuggestPayload {
-  intent: ChatAiIntentEnum;
-}
-
-// POST /api/tickets/{id}/chats/suggest — data
+// POST /api/tickets/{id}/chats/suggest — data. `intent` (STRING, JsonStringEnumConverter)
+// truyền trực tiếp qua service, không cần payload interface riêng.
 export interface ChatSuggestDTO {
   suggestionId: string;
   suggestions: string[];
