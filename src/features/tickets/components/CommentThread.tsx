@@ -91,6 +91,12 @@ interface CommentThreadProps {
   // GH-68 — Reactions + download attachment (Mọi role). Có prop là bật tính năng.
   onToggleReaction?: (comment: TicketCommentDTO, type: ReactionTypeEnum, isActive: boolean) => void;
   onDownloadAttachments?: (comment: TicketCommentDTO, fileIds: string[]) => void;
+
+  // GH-133 — Gợi ý AI hiển thị dạng bong bóng CUỐI luồng chat (giống web). Bấm chọn →
+  // đổ vào ô nhập (onPickSuggestion), không xóa; đóng cụm gợi ý qua onDismissSuggestions.
+  aiSuggestions?: string[];
+  onPickSuggestion?: (text: string) => void;
+  onDismissSuggestions?: () => void;
 }
 
 /** Danh sách chat dùng chung customer + staff — từ trên xuống dưới, kéo để tải thêm lịch sử cũ. */
@@ -122,6 +128,9 @@ export function CommentThread({
   pinningId,
   onToggleReaction,
   onDownloadAttachments,
+  aiSuggestions = [],
+  onPickSuggestion,
+  onDismissSuggestions,
 }: CommentThreadProps) {
   const [internalTab, setInternalTab] = useState<ChatTab>('public');
   const tab = activeTab ?? internalTab;
@@ -142,6 +151,25 @@ export function CommentThread({
     const ascComments = [...visible].reverse();
     return buildThreadItems(ascComments);
   }, [visible]);
+
+  // Luôn cuộn xuống tin mới nhất (đáy). List không inverted + data ASC ⇒ đáy = tin mới
+  // nhất. onContentSizeChange fire lúc mount, load data, có tin mới, và khi bong bóng gợi
+  // ý AI xuất hiện ⇒ vào chat / vào lại luôn ở đáy. Chặn cuộn khi đang tải TRANG CŨ hơn
+  // (kéo refresh) để không giật người dùng khỏi vị trí đang đọc.
+  const listRef = useRef<FlatList>(null);
+  const scrollToBottom = (animated: boolean) => {
+    if (isFetchingNextPage) return;
+    listRef.current?.scrollToEnd({ animated });
+  };
+
+  // Gen gợi ý AI xong (bong bóng xuất hiện ở cuối chat) → cuộn xuống để user thấy ngay.
+  // Đảm bảo chắc chắn kể cả khi onContentSizeChange không kịp fire.
+  useEffect(() => {
+    if (aiSuggestions.length === 0) return;
+    const t = setTimeout(() => scrollToBottom(true), 60);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiSuggestions.length]);
 
   // Housekeeping — đánh dấu đã đọc các comment đang hiển thị trong tab hiện tại, 1 lần/id.
   const markedRef = useRef<Set<string>>(new Set());
@@ -236,9 +264,11 @@ export function CommentThread({
         </View>
       ) : (
         <FlatList
+          ref={listRef}
           style={styles.list}
           data={items}
           keyExtractor={(item) => item.key}
+          onContentSizeChange={() => scrollToBottom(false)}
           renderItem={({ item }) => {
             if (item.kind === 'date') {
               return (
@@ -306,6 +336,28 @@ export function CommentThread({
               </View>
             ) : null
           }
+          ListFooterComponent={
+            aiSuggestions.length > 0 ? (
+              <View style={styles.aiWrap}>
+                <View style={styles.aiHeader}>
+                  <Ionicons name="sparkles" size={13} color={Colors.primaryDark} />
+                  <Text style={styles.aiHeaderText}>Gợi ý trả lời (AI) — bấm để chèn vào ô nhập</Text>
+                </View>
+                {aiSuggestions.map((s, i) => (
+                  <Pressable
+                    key={i}
+                    style={styles.aiBubble}
+                    onPress={() => onPickSuggestion?.(s)}
+                  >
+                    <Text style={styles.aiBubbleText}>{s}</Text>
+                  </Pressable>
+                ))}
+                <Pressable hitSlop={6} onPress={() => onDismissSuggestions?.()}>
+                  <Text style={styles.aiDismiss}>Bỏ qua gợi ý</Text>
+                </Pressable>
+              </View>
+            ) : null
+          }
           refreshing={isFetchingNextPage}
           onRefresh={() => {
             if (hasNextPage && !isFetchingNextPage) onLoadMore?.();
@@ -325,6 +377,19 @@ const styles = StyleSheet.create({
   // composer) và paddingBottom hiển thị ở ĐỈNH (cạnh thanh tab) — set ngược lại trực giác.
   listContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, gap: 10 },
   loadingMore: { paddingVertical: 14, alignItems: 'center' },
+
+  // Gợi ý AI — cụm bong bóng cuối chat, căn phải (phía người chat) như web.
+  aiWrap: { alignItems: 'flex-end', gap: 6, paddingTop: 6 },
+  aiHeader: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingRight: 2 },
+  aiHeaderText: { fontSize: 11, fontWeight: '700', color: Colors.textMute },
+  aiBubble: {
+    maxWidth: '85%',
+    backgroundColor: Colors.primaryLight, borderRadius: 16, borderBottomRightRadius: 4,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: Colors.primary,
+    paddingHorizontal: 12, paddingVertical: 9,
+  },
+  aiBubbleText: { fontSize: 14, color: Colors.text, lineHeight: 20 },
+  aiDismiss: { fontSize: 11, color: Colors.textMute, textDecorationLine: 'underline', paddingTop: 2 },
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dateLine: { flex: 1, height: 1, backgroundColor: Colors.border },
   dateLabel: { fontSize: 11, fontWeight: '700', color: Colors.textMute },

@@ -32,14 +32,15 @@ const SENTIMENT_VI: Record<ChatSentimentLabel, string> = {
 interface Props {
   ticketId: string;
   disabled?: boolean;
-  /** Chèn nội dung gợi ý vào ô soạn reply. */
-  onInsert: (text: string) => void;
+  /** Kết quả gợi ý → parent render thành bong bóng CUỐI luồng chat (giống web). */
+  onSuggestions: (suggestions: string[]) => void;
 }
 
-export function ChatAiToolbar({ ticketId, disabled = false, onInsert }: Props) {
-  const [sheet, setSheet] = useState<'suggest' | 'summary' | null>(null);
-  const [intent, setIntent] = useState<ChatAiIntentEnum>(ChatAiIntentEnum.TechnicalAnswer);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+export function ChatAiToolbar({ ticketId, disabled = false, onSuggestions }: Props) {
+  const [sheet, setSheet] = useState<'summary' | null>(null);
+  // Bấm "Gợi ý" → hiện hàng chip intent (compact). Chọn chip mới gen → đẩy bong bóng vào chat.
+  const [intentRowOpen, setIntentRowOpen] = useState(false);
+  const [intent, setIntent] = useState<ChatAiIntentEnum | null>(null);
   const [summary, setSummary] = useState('');
 
   const suggest = useSuggestChat(ticketId);
@@ -49,13 +50,17 @@ export function ChatAiToolbar({ ticketId, disabled = false, onInsert }: Props) {
 
   const runSuggest = (it: ChatAiIntentEnum) => {
     setIntent(it);
-    suggest.mutate(it, { onSuccess: (dto) => setSuggestions(dto?.suggestions ?? []) });
+    suggest.mutate(it, {
+      onSuccess: (dto) => {
+        onSuggestions(dto?.suggestions ?? []);
+        setIntentRowOpen(false); // gen xong → thu hàng chip, bong bóng đã hiện trong chat
+      },
+    });
   };
 
   const openSuggest = () => {
-    setSuggestions([]);
-    setSheet('suggest');
-    runSuggest(intent);
+    setIntent(null);
+    setIntentRowOpen((v) => !v); // toggle hàng chip
   };
 
   const openSummary = () => {
@@ -86,10 +91,9 @@ export function ChatAiToolbar({ ticketId, disabled = false, onInsert }: Props) {
         <ToolBtn icon="download-outline" label="PDF" loading={exportPdf.isPending} disabled={disabled} onPress={() => exportPdf.mutate()} />
       </View>
 
-      {/* Gợi ý AI */}
-      <BottomSheet visible={sheet === 'suggest'} onClose={() => setSheet(null)}>
-        <View style={styles.sheet}>
-          <Text style={styles.sheetTitle}>Gợi ý trả lời (AI)</Text>
+      {/* Gợi ý AI — chỉ hàng chip intent. Chọn 1 loại → gen → bong bóng hiện CUỐI chat. */}
+      {intentRowOpen && (
+        <View style={styles.intentPanel}>
           <View style={styles.intentRow}>
             {INTENTS.map((it) => (
               <Pressable
@@ -102,20 +106,11 @@ export function ChatAiToolbar({ ticketId, disabled = false, onInsert }: Props) {
               </Pressable>
             ))}
           </View>
-          {suggest.isPending ? (
-            <ActivityIndicator color={Colors.primary} style={styles.sheetLoading} />
-          ) : suggestions.length === 0 ? (
-            <Text style={styles.empty}>Không có gợi ý.</Text>
-          ) : (
-            suggestions.map((s, i) => (
-              <Pressable key={i} style={styles.suggestItem} onPress={() => { onInsert(s); setSheet(null); }}>
-                <Text style={styles.suggestText}>{s}</Text>
-                <Ionicons name="arrow-up-circle" size={20} color={Colors.primary} />
-              </Pressable>
-            ))
+          {suggest.isPending && (
+            <ActivityIndicator size="small" color={Colors.primary} style={styles.intentLoading} />
           )}
         </View>
-      </BottomSheet>
+      )}
 
       {/* Tóm tắt */}
       <BottomSheet visible={sheet === 'summary'} onClose={() => setSheet(null)}>
@@ -168,18 +163,18 @@ const styles = StyleSheet.create({
   btnTextOff: { color: Colors.textFaint },
 
   sheet: { gap: 12, paddingBottom: 8 },
-  sheetTitle: { fontSize: 15, fontWeight: '800', color: Colors.text },
+  sheetTitle: { flex: 1, fontSize: 15, fontWeight: '800', color: Colors.text },
   sheetLoading: { paddingVertical: 20 },
-  empty: { fontSize: 13, color: Colors.textMute, textAlign: 'center', paddingVertical: 16 },
+  summaryText: { fontSize: 14, color: Colors.text, lineHeight: 22 },
+
+  intentPanel: {
+    paddingHorizontal: 12, paddingBottom: 8,
+    backgroundColor: Colors.bg,
+  },
+  intentLoading: { paddingTop: 8 },
   intentRow: { flexDirection: 'row', gap: 6 },
   chip: { flex: 1, paddingVertical: 6, borderRadius: 999, backgroundColor: Colors.card2, alignItems: 'center' },
-  chipActive: { backgroundColor: Colors.text },
+  chipActive: { backgroundColor: Colors.primary },
   chipText: { fontSize: 11, fontWeight: '700', color: Colors.textMute },
   chipTextActive: { color: '#FFF' },
-  suggestItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: Colors.card2, borderRadius: 12, padding: 12,
-  },
-  suggestText: { flex: 1, fontSize: 13, color: Colors.text, lineHeight: 19 },
-  summaryText: { fontSize: 14, color: Colors.text, lineHeight: 22 },
 });

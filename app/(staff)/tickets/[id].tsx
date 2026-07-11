@@ -167,6 +167,9 @@ function StaffTicketDetailScreenInner() {
   const [activeTab, setActiveTab] = useState<TabKey>('comments');
   const [chatTab, setChatTab] = useState<ChatTab>('public');
   const [commentText, setCommentText] = useState('');
+  // GH-133 — gợi ý AI hiển thị dạng bong bóng cuối luồng chat (giống web). Bấm chọn →
+  // đổ vào ô nhập, không xóa; chỉ xóa khi đã gửi tin (onSuccess) hoặc bấm bỏ qua.
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [attachments, setAttachments] = useState<AttachmentForm[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [commentAttachments, setCommentAttachments] = useState<UploadedAttachment[]>([]);
@@ -252,6 +255,7 @@ function StaffTicketDetailScreenInner() {
         onSuccess: () => {
           setCommentText('');
           setCommentAttachments([]);
+          setAiSuggestions([]);
           // Realtime đẩy CommentAdded về (cả người gửi) → setQueryData. Chỉ fallback khi mất kết nối.
           if (!isConnected) commentsQuery.refetch();
         },
@@ -402,13 +406,16 @@ function StaffTicketDetailScreenInner() {
                 }
               })();
             }}
+            aiSuggestions={aiSuggestions}
+            onPickSuggestion={(text) => setCommentText(text)}
+            onDismissSuggestions={() => setAiSuggestions([])}
           />
 
           {/* GH-67 — thanh AI/Export (Staff). Disable khi ticket đã đóng. */}
           <ChatAiToolbar
             ticketId={ticketId}
             disabled={ticketClosed}
-            onInsert={(text) => setCommentText((prev) => (prev.trim() ? `${prev}\n${text}` : text))}
+            onSuggestions={setAiSuggestions}
           />
 
           {/* "Đang nhập" — ngay trên ô input, nền transparent */}
