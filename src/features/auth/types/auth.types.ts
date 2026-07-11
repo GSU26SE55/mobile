@@ -3,6 +3,11 @@ export interface LoginPayload {
   password: string;
 }
 
+// Google login — mobile gửi idToken lấy từ native Google Sign-In; BE validate + trả JWT.
+export interface GoogleLoginPayload {
+  idToken: string;
+}
+
 export interface RegisterPayload {
   fullName: string;
   email: string;

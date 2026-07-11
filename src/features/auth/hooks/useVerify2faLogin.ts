@@ -29,9 +29,10 @@ export function useVerify2faLogin() {
       const dest = redirectByRole(user.role);
 
       if (!dest) {
-        Alert.alert('Không hỗ trợ', 'Tài khoản Admin/Manager vui lòng dùng Web App.');
+        // ADMIN/MANAGER không dùng mobile — không giữ session, điều hướng sang trang hướng dẫn dùng Web App
         await clearTokens();
         clearSession();
+        router.replace('/(auth)/use-web-app' as never);
         return;
       }
 

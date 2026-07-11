@@ -3,6 +3,7 @@ import { ENDPOINTS } from '../../../lib/endpoints';
 import { CommonResponse } from '../../../types/api.types';
 import {
   ForgotPasswordPayload,
+  GoogleLoginPayload,
   LoginPayload,
   LoginResultData,
   Verify2faLoginPayload,
@@ -25,6 +26,10 @@ const { AUTH } = ENDPOINTS;
 export const authService = {
   login: (data: LoginPayload) =>
     axiosInstance.post<CommonResponse<LoginResultData>>(AUTH.LOGIN, data),
+
+  // Google login — gửi idToken (native Google Sign-In). Response shape giống login (token hoặc 2FA challenge).
+  googleLogin: (data: GoogleLoginPayload) =>
+    axiosInstance.post<CommonResponse<LoginResultData>>(AUTH.GOOGLE, data),
 
   // GH-295: bước 2 của 2FA login. Header X-Challenge-Token để rate-limit partition đúng (#AUTH-58).
   verify2faLogin: (data: Verify2faLoginPayload) =>

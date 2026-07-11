@@ -5,6 +5,10 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from '../src/context/authContext';
 import { PermissionsSync } from '../src/features/auth/components/PermissionsSync';
 import { useAuthGuard } from '../src/hooks/useAuthGuard';
+import { configureGoogleSignin } from '../src/config/googleAuth';
+
+// Cấu hình Google Sign-In 1 lần khi app boot.
+configureGoogleSignin();
 
 const queryClient = new QueryClient({
   defaultOptions: {

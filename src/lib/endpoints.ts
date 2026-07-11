@@ -1,6 +1,7 @@
 export const ENDPOINTS = {
   AUTH: {
     LOGIN:             '/api/auth/login',
+    GOOGLE:            '/api/auth/google',            // Google login — mobile gửi idToken (native Google Sign-In)
     LOGIN_VERIFY_2FA:  '/api/auth/login/verify-2fa', // GH-295 — bước 2 của 2FA login
     LOGIN_2FA_SMS:     '/api/auth/login/2fa/sms',    // #AUTH-58 — gửi OTP qua SMS (fallback)
     TWO_FA_CROSS_DEVICE_REQUEST: '/api/auth/2fa/cross-device-confirm/request', // #AUTH-51 — Device A gửi request
