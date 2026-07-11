@@ -2,6 +2,7 @@ import { Link } from 'expo-router';
 import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LoginForm } from '../../src/features/auth/components/LoginForm';
+import { GoogleSignInButton } from '../../src/features/auth/components/GoogleSignInButton';
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -30,7 +31,17 @@ export default function LoginScreen() {
           <LoginForm />
         </View>
 
-        {/* TODO(BE): Google OAuth chưa có backend — ẩn nút thay vì để dead-end (chỉ hiện Alert). */}
+        {/* Divider */}
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>hoặc</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        {/* Google login */}
+        <View style={styles.googleSection}>
+          <GoogleSignInButton />
+        </View>
 
         {/* Footer links */}
         <View style={styles.footer}>
@@ -78,6 +89,27 @@ const styles = StyleSheet.create({
   },
 
   formSection: {
+    marginBottom: 24,
+  },
+
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#EBEBEB',
+  },
+  dividerText: {
+    fontSize: 13,
+    color: '#B0AEA6',
+    fontWeight: '500',
+  },
+
+  googleSection: {
     marginBottom: 24,
   },
 

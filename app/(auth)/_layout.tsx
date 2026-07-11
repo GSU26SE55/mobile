@@ -1,5 +1,4 @@
 import { Stack } from 'expo-router';
-import { Colors } from '../../src/lib/theme';
 
 export default function AuthLayout() {
   return (
@@ -16,6 +15,7 @@ export default function AuthLayout() {
       <Stack.Screen name="verify-otp" />
       <Stack.Screen name="forgot-password" />
       <Stack.Screen name="reactivate" />
+      <Stack.Screen name="use-web-app" />
     </Stack>
   );
 }
