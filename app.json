@@ -18,6 +18,7 @@
       "bundleIdentifier": "com.shu1237.code"
     },
     "android": {
+      "package": "com.shu1237.code",
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/logo.png",

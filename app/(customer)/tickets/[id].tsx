@@ -116,32 +116,43 @@ function HorizontalStepper({ status }: { status: TicketStatusEnum }) {
       <Text style={styles.stepperTitle}>Tiến độ xử lý</Text>
       <View style={styles.stepperRow}>
         {STEP_CONFIGS.map((step, idx) => {
-          const isActive = idx <= activeIndex;
-          const isCurrent = idx === activeIndex;
+          const done = idx < activeIndex;
+          const current = idx === activeIndex;
+          const reached = idx <= activeIndex;
           const isLast = idx === STEP_CONFIGS.length - 1;
 
           return (
             <View key={step.key} style={styles.stepItemCol}>
               <View style={styles.circleRow}>
-                <View style={[styles.stepLine, idx === 0 && styles.invisibleLine, isActive && styles.stepLineActive]} />
+                <View
+                  style={[
+                    styles.stepLine,
+                    idx === 0 ? styles.lineHidden : reached && styles.stepLineActive,
+                  ]}
+                />
                 <View
                   style={[
                     styles.stepCircle,
-                    isActive && styles.stepCircleActive,
-                    isCurrent && styles.stepCircleCurrent,
+                    done && styles.stepCircleDone,
+                    current && styles.stepCircleCurrent,
                   ]}
                 >
-                  {isCurrent ? (
-                    <Ionicons name="play" size={10} color="#fff" />
-                  ) : isActive ? (
-                    <Ionicons name="checkmark" size={10} color="#fff" />
+                  {done ? (
+                    <Ionicons name="checkmark" size={13} color="#fff" />
+                  ) : current ? (
+                    <View style={styles.currentDot} />
                   ) : (
                     <View style={styles.inactiveInnerDot} />
                   )}
                 </View>
-                <View style={[styles.stepLine, isLast && styles.invisibleLine, idx < activeIndex && styles.stepLineActive]} />
+                <View
+                  style={[
+                    styles.stepLine,
+                    isLast ? styles.lineHidden : done && styles.stepLineActive,
+                  ]}
+                />
               </View>
-              <Text style={[styles.stepLabel, isActive && styles.stepLabelActive]} numberOfLines={1}>
+              <Text style={[styles.stepLabel, reached && styles.stepLabelActive]} numberOfLines={1}>
                 {step.label}
               </Text>
             </View>
@@ -219,7 +230,7 @@ function TicketDetailScreenInner() {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#FF5E13" size="large" />
+        <ActivityIndicator color="#34C759" size="large" />
       </View>
     );
   }
@@ -440,8 +451,8 @@ function TicketDetailScreenInner() {
 
           {/* Battery / Device Link card */}
           <Pressable style={[styles.batteryLinkCard, Shadow]} onPress={handleNavigateToBattery}>
-            <View style={[styles.batteryIconBg, { backgroundColor: '#FFE5DA' }]}>
-              <Ionicons name="battery-charging" size={18} color="#FF5E13" />
+            <View style={[styles.batteryIconBg, { backgroundColor: '#E8F8EE' }]}>
+              <Ionicons name="battery-charging" size={18} color="#34C759" />
             </View>
             <View style={styles.batteryLinkInfo}>
               <Text style={styles.batteryLinkTitle}>
@@ -577,7 +588,7 @@ function TicketDetailScreenInner() {
             hasNextPage={commentsQuery.hasNextPage}
             isFetchingNextPage={commentsQuery.isFetchingNextPage}
             onLoadMore={() => commentsQuery.fetchNextPage()}
-            accentColor="#FF5E13"
+            accentColor="#34C759"
             ticketClosed={isClosed}
             onEdit={(comment, body, editReason) =>
               updateChat({ chatId: comment.id, payload: { body, editReason } })
@@ -720,7 +731,7 @@ const styles = StyleSheet.create({
   root:           { flex: 1, backgroundColor: Colors.bg },
   center:         { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bg, gap: 10 },
   errorMsg:       { color: Colors.textMute, fontSize: 14, marginTop: 4 },
-  retryBtn:       { backgroundColor: '#FF5E13', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 10, marginTop: 4 },
+  retryBtn:       { backgroundColor: '#34C759', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 10, marginTop: 4 },
   retryText:      { color: '#fff', fontWeight: '800', fontSize: 14 },
 
   topBar:         {
@@ -767,7 +778,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   tabActive: {
-    borderBottomColor: '#FF5E13',
+    borderBottomColor: '#34C759',
   },
   tabText: {
     fontSize: 13,
@@ -775,11 +786,11 @@ const styles = StyleSheet.create({
     color: Colors.textMute,
   },
   tabTextActive: {
-    color: '#FF5E13',
+    color: '#34C759',
     fontWeight: '800',
   },
   tabBadge: {
-    backgroundColor: '#FF5E13',
+    backgroundColor: '#34C759',
     borderRadius: 10,
     minWidth: 18,
     height: 18,
@@ -839,38 +850,45 @@ const styles = StyleSheet.create({
   stepLine: {
     flex: 1,
     height: 3,
+    borderRadius: 2,
     backgroundColor: '#EDECE8',
   },
   stepLineActive: {
-    backgroundColor: '#FF5E13',
+    backgroundColor: '#34C759',
   },
-  invisibleLine: {
+  lineHidden: {
     backgroundColor: 'transparent',
   },
   stepCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: '#EDECE8',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepCircleActive: {
-    backgroundColor: '#FF5E13',
+  stepCircleDone: {
+    backgroundColor: '#34C759',
   },
   stepCircleCurrent: {
-    backgroundColor: '#FF5E13',
-    borderWidth: 2,
-    borderColor: '#FFE5DA',
+    backgroundColor: '#34C759',
+    borderWidth: 3,
+    borderColor: '#C6EFD3',
+  },
+  currentDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
   },
   inactiveInnerDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#BFBDB4',
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#C9C7BF',
   },
   stepLabel: {
-    fontSize: 8,
+    fontSize: 9.5,
     fontWeight: '600',
     color: Colors.textMute,
     marginTop: 8,
@@ -878,7 +896,7 @@ const styles = StyleSheet.create({
   },
   stepLabelActive: {
     fontWeight: '800',
-    color: '#FF5E13',
+    color: '#34C759',
   },
 
   waitBanner:     {
@@ -922,7 +940,7 @@ const styles = StyleSheet.create({
 
   assignCard:     { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 16, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
   assignRow:      { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  assignIconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: '#FFF0EB', alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  assignIconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: '#E8F8EE', alignItems: 'center', justifyContent: 'center', marginTop: 2 },
   assignInfo:     { flex: 1 },
   assignLabel:    { fontSize: 11, color: Colors.textMute, fontWeight: '500', marginBottom: 2 },
   assignValue:    { fontSize: 13, color: Colors.text, fontWeight: '700' },
@@ -953,12 +971,12 @@ const styles = StyleSheet.create({
 
   actionCard:     { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, gap: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
   rateBtn:        {
-    backgroundColor: '#FF5E13', borderRadius: 16,
+    backgroundColor: '#34C759', borderRadius: 16,
     padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
   },
   actionBtnText:  { color: '#fff', fontWeight: '800', fontSize: 14 },
   reopenLink:     { alignItems: 'center' },
-  reopenLinkText: { color: '#FF5E13', fontSize: 13, fontWeight: '700' },
+  reopenLinkText: { color: '#34C759', fontSize: 13, fontWeight: '700' },
 
   closedCard:     {
     backgroundColor: Colors.card2, borderRadius: 24,
@@ -983,7 +1001,7 @@ const styles = StyleSheet.create({
   },
   sendBtn:        {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#FF5E13',
+    backgroundColor: '#34C759',
     alignItems: 'center', justifyContent: 'center',
   },
   btnDisabled:    { opacity: 0.35 },
