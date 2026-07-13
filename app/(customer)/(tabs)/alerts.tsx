@@ -97,6 +97,11 @@ export default function AlertsScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        {router.canGoBack() && (
+          <Pressable onPress={() => router.back()} style={[styles.backBtn, Shadow]} hitSlop={8}>
+            <Ionicons name="chevron-back" size={18} color={Colors.accent} />
+          </Pressable>
+        )}
         <View style={styles.headerLeft}>
           <Text style={styles.title}>Cảnh báo</Text>
           <Text style={styles.subtitle}>
@@ -193,6 +198,15 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   headerLeft: { flex: 1 },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
   title: { fontSize: 22, fontWeight: '800', color: Colors.text, letterSpacing: -0.5 },
   subtitle: { fontSize: 12, color: Colors.textMute, marginTop: 2 },
   segmentRow: {

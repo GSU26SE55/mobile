@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Shadow } from '../../../src/lib/theme';
+import { BadgeColors, Colors, Shadow } from '../../../src/lib/theme';
 import { useBatteryAsset } from '../../../src/features/batteries/hooks/useBatteryAsset';
 import { useBatteryAssetRealtime } from '../../../src/features/batteries/hooks/useBatteryAssetRealtime';
 import { useBatterySensorStream } from '../../../src/features/batteries/hooks/useBatterySensorStream';
@@ -16,6 +16,12 @@ import { SensorChart } from '../../../src/features/batteries/components/SensorCh
 import { AssetAlertList } from '../../../src/features/batteries/components/AssetAlertList';
 import { P } from '../../../src/lib/authz';
 import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
+
+const STATUS_META: Record<number, { label: string; bg: string; text: string }> = {
+  1: { label: 'Hoạt động', bg: BadgeColors.ok.bg, text: BadgeColors.ok.text },
+  2: { label: 'Tạm ngưng', bg: BadgeColors.new.bg, text: BadgeColors.new.text },
+  3: { label: 'Ngừng dùng', bg: BadgeColors.crit.bg, text: BadgeColors.crit.text },
+};
 
 export default function StaffBatteryViewScreen() {
   return (
@@ -68,8 +74,23 @@ function StaffBatteryViewScreenInner() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.serial}>{battery.serialNumber}</Text>
-        <Text style={styles.typeName}>{battery.batteryTypeName}</Text>
+        {/* Title block: icon + serial/loại + trạng thái */}
+        <View style={styles.titleBlock}>
+          <View style={styles.batteryIcon}>
+            <Ionicons name="battery-charging" size={24} color={Colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.serial}>{battery.serialNumber}</Text>
+            <Text style={styles.typeName}>{battery.batteryTypeName}</Text>
+          </View>
+          {STATUS_META[battery.status] ? (
+            <View style={[styles.statusBadge, { backgroundColor: STATUS_META[battery.status].bg }]}>
+              <Text style={[styles.statusText, { color: STATUS_META[battery.status].text }]}>
+                {STATUS_META[battery.status].label}
+              </Text>
+            </View>
+          ) : null}
+        </View>
 
         {realtime ? <BatteryRealtimeCard data={realtime} /> : null}
 
@@ -77,16 +98,21 @@ function StaffBatteryViewScreenInner() {
 
         {battery.siteId ? (
           <Pressable
-            style={[styles.siteLink, Shadow]}
+            style={[styles.linkCard, Shadow]}
             onPress={() =>
               router.push({ pathname: '/(staff)/sites/[id]', params: { id: battery.siteId! } })
             }
           >
-            <Ionicons name="business-outline" size={20} color={Colors.primary} />
-            <Text style={styles.siteLinkText}>
-              {battery.siteName ? `Xem site: ${battery.siteName}` : 'Xem site lắp đặt'}
-            </Text>
-            <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
+            <View style={styles.linkIcon}>
+              <Ionicons name="business" size={18} color={Colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.linkTitle} numberOfLines={1}>
+                {battery.siteName ?? 'Trạm lắp đặt'}
+              </Text>
+              <Text style={styles.linkSub}>Xem chi tiết trạm</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={Colors.textMute} />
           </Pressable>
         ) : null}
 
@@ -99,6 +125,7 @@ function StaffBatteryViewScreenInner() {
         <Text style={styles.sectionTitle}>Cảnh báo</Text>
         <AssetAlertList
           alerts={alerts}
+          limit={4}
           onPressAlert={(alertId) =>
             router.push({ pathname: '/(staff)/alerts/[id]', params: { id: alertId } })
           }
@@ -133,17 +160,42 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 18, fontWeight: '800', color: Colors.accent },
   scroll: { padding: 20, paddingBottom: 60 },
-  serial: { fontSize: 22, fontWeight: '800', color: Colors.accent },
-  typeName: { fontSize: 14, color: Colors.gray, fontWeight: '600', marginTop: 2, marginBottom: 16 },
-  sectionTitle: { fontSize: 15, fontWeight: '800', color: Colors.accent, marginBottom: 10 },
-  siteLink: {
-    backgroundColor: Colors.white,
-    borderRadius: 24,
-    padding: 18,
+  titleBlock: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
+    marginBottom: 18,
+  },
+  batteryIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  serial: { fontSize: 20, fontWeight: '800', color: Colors.accent },
+  typeName: { fontSize: 13, color: Colors.gray, fontWeight: '600', marginTop: 2 },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
+  statusText: { fontSize: 11, fontWeight: '800' },
+  sectionTitle: { fontSize: 15, fontWeight: '800', color: Colors.accent, marginBottom: 10 },
+  linkCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 18,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     marginBottom: 16,
   },
-  siteLinkText: { flex: 1, fontSize: 13, fontWeight: '700', color: Colors.text },
+  linkIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  linkTitle: { fontSize: 14, fontWeight: '800', color: Colors.accent },
+  linkSub: { fontSize: 11, color: Colors.textMute, fontWeight: '600', marginTop: 2 },
 });

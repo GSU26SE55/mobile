@@ -1,6 +1,5 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius, Shadow } from '../../../lib/theme';
 import { BatteryAssetDto } from '../types/battery.types';
 import {
@@ -24,86 +23,56 @@ function formatDate(iso: string | null): string {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString();
+  return d.toLocaleDateString('vi-VN');
 }
 
 export function BatteryInfoCard({ battery }: { battery: BatteryAssetDto }) {
+  const rows: { label: string; value: string }[] = [
+    { label: 'Serial', value: battery.serialNumber },
+    { label: 'Loại pin', value: battery.batteryTypeName },
+    { label: 'Site', value: battery.siteName ?? 'Chưa gán' },
+    { label: 'Khách hàng', value: battery.customerName || '—' },
+    { label: 'Ngày lắp đặt', value: formatDate(battery.installDate) },
+    { label: 'Bảo hành', value: WARRANTY_LABEL[battery.warrantyStatus] ?? '—' },
+    { label: 'Trạng thái', value: STATUS_LABEL[battery.status] ?? 'Unknown' },
+  ];
+  if (battery.location) rows.push({ label: 'Vị trí', value: battery.location });
+
   return (
     <View style={[styles.card, Shadow]}>
-      <InfoRow icon="barcode-outline" label="Serial Number" value={battery.serialNumber} />
-      <Divider />
-      <InfoRow icon="cube-outline" label="Loại pin" value={battery.batteryTypeName} />
-      <Divider />
-      <InfoRow icon="location-outline" label="Site" value={battery.siteName ?? 'Chưa gán'} />
-      <Divider />
-      <InfoRow icon="person-outline" label="Khách hàng" value={battery.customerName} />
-      <Divider />
-      <InfoRow icon="calendar-outline" label="Ngày lắp đặt" value={formatDate(battery.installDate)} />
-      <Divider />
-      <InfoRow
-        icon="shield-checkmark-outline"
-        label="Bảo hành"
-        value={WARRANTY_LABEL[battery.warrantyStatus] ?? '—'}
-      />
-      <Divider />
-      <InfoRow
-        icon="pulse-outline"
-        label="Trạng thái"
-        value={STATUS_LABEL[battery.status] ?? 'Unknown'}
-      />
-      {battery.location ? (
-        <>
-          <Divider />
-          <InfoRow icon="navigate-outline" label="Vị trí" value={battery.location} />
-        </>
-      ) : null}
+      {rows.map((r, i) => (
+        <View key={r.label} style={[styles.row, i > 0 && styles.rowBorder]}>
+          <Text style={styles.label}>{r.label}</Text>
+          <Text style={styles.value} numberOfLines={1}>
+            {r.value}
+          </Text>
+        </View>
+      ))}
     </View>
   );
-}
-
-function InfoRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: string;
-}) {
-  return (
-    <View style={styles.row}>
-      <View style={styles.iconWrap}>
-        <Ionicons name={icon} size={16} color={Colors.textMute} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.label}>{label}</Text>
-        <Text style={styles.value}>{value}</Text>
-      </View>
-    </View>
-  );
-}
-
-function Divider() {
-  return <View style={styles.divider} />;
 }
 
 const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.white,
     borderRadius: Radius.lg,
+    paddingHorizontal: 16,
     marginBottom: 16,
-    overflow: 'hidden',
   },
-  row: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: Colors.bg,
+  row: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 11,
   },
-  label: { fontSize: 11, color: Colors.textMute, fontWeight: '600' },
-  value: { fontSize: 14, fontWeight: '800', color: Colors.accent, marginTop: 2 },
-  divider: { height: 1, backgroundColor: 'rgba(0,0,0,0.03)' },
+  rowBorder: { borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.04)' },
+  label: { fontSize: 12.5, color: Colors.textMute, fontWeight: '600' },
+  value: {
+    flex: 1,
+    textAlign: 'right',
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: Colors.accent,
+  },
 });
