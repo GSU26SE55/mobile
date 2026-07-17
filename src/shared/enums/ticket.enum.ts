@@ -37,6 +37,9 @@ export const TicketOriginEnum = {
   ManualByCustomer: 'ManualByCustomer',
   AutoFromAlert: 'AutoFromAlert',
   CreatedByStaff: 'CreatedByStaff',
+  // Sprint Bonus NS-13/NS-22 — hệ thống tự tạo (cascade risk High, sự cố môi trường Critical).
+  // JsonStringEnumConverter → wire là CHUỖI 'System'; int 4 ở docs/api-ticket.md:168 là cross-service BE↔BE.
+  System: 'System',
 } as const;
 export type TicketOriginEnum = (typeof TicketOriginEnum)[keyof typeof TicketOriginEnum];
 

@@ -67,6 +67,9 @@ export const ENDPOINTS = {
     LATEST:    (assetId: string) => `/api/sensor-readings/${assetId}/latest`,
     HISTORY:   (assetId: string) => `/api/sensor-readings/${assetId}/history`,
     AGGREGATE: (assetId: string) => `/api/sensor-readings/${assetId}/aggregate`,
+    // GH-74 (NS-06 #650) — bucket cố định 1h từ TimescaleDB continuous aggregate.
+    // Cùng shape response với AGGREGATE nhưng KHÔNG nhận `interval`. Dùng cho range dài.
+    AGGREGATE_HOURLY: (assetId: string) => `/api/sensor-readings/${assetId}/aggregate/hourly`,
     // GH-57 — SSE telemetry live stream (docs/battery-realtime-description.md §3).
     // Path tĩnh; hook tự ghép BASE_URL + ?scope=&access_token=. KHÔNG gọi qua axios.
     STREAM:    '/api/sensor-readings/stream',

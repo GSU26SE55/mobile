@@ -13,7 +13,11 @@ export {
 
 export interface AlertDto {
   id: string;
+  /** Chuỗi rỗng `""` cho alert cấp SITE (ambient 9/10/11, EnvironmentalIncident 14) — khi đó dùng `siteId`. */
   batteryAssetId: string;
+  /** Sprint Bonus NS-21 (#661) — ID Site cho alert cấp site. `null` với alert gắn 1 pin cụ thể. */
+  siteId: string | null;
+  /** Rỗng `""` cho alert cấp site (không gắn pin). */
   batterySerialNumber: string;
   anomalyType: AnomalyTypeEnum;
   severity: AlertSeverityEnum;
