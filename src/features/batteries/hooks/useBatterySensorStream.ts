@@ -8,11 +8,22 @@ import { QUERY_KEY } from '../../../lib/queryKeys';
 import { BatteryAssetRealtimeDto } from '../types/battery.types';
 import { LiveReadingDto } from '../types/live-reading.types';
 import { ChargingStateEnum } from '../enums/battery.enum';
+import {
+  BatteryStatsDto,
+  BatteryStatsView,
+  StatsWindow,
+  statsDtoToView,
+} from '../types/sensor-reading.types';
 
 // GH-57 — SSE telemetry live cho Battery detail (docs/battery-realtime-description.md).
 // Realtime AUGMENTS, polling /realtime (useBatteryAssetRealtime) là seed + fallback + re-seed.
 // Merge field WHITELIST vào cache realtime — KHÔNG đè nguyên payload (mất serialNumber/status/activeAlerts).
-type StreamEvent = 'reading' | 'ping';
+// GH-74 — thêm event `stats` (§5.3bis): min/max nạp-xả rolling, ghi vào cache key stats(assetId, window),
+// useBatteryStats đọc ra. `stats` đẩy incremental → seed ban đầu do useBatteryStats lo.
+type StreamEvent = 'reading' | 'stats' | 'ping';
+
+// BE chốt ĐÚNG 2 window (§5.3bis). Window lạ → bỏ qua, không ghi cache.
+const VALID_WINDOWS: StatsWindow[] = ['1h', 'today'];
 
 export function useBatterySensorStream(assetId: string) {
   const queryClient = useQueryClient();
@@ -73,6 +84,26 @@ export function useBatterySensorStream(assetId: string) {
                   chargingState: (dto.chargingState ?? null) as ChargingStateEnum | null,
                 }
               : old, // chưa có seed từ polling → chờ, không tạo object thiếu field
+        );
+      });
+
+      es.addEventListener('stats', (event) => {
+        if (!event.data) return;
+        let dto: BatteryStatsDto;
+        try {
+          dto = JSON.parse(event.data) as BatteryStatsDto;
+        } catch {
+          return; // payload lỗi → bỏ qua, giữ giá trị cũ
+        }
+        // Chỉ nhận đúng pin (giống event `reading`).
+        if (dto.batteryAssetId !== assetId) return;
+        // Window lạ (BE thêm window thứ 3) → bỏ qua thay vì ghi cache key rác.
+        if (!VALID_WINDOWS.includes(dto.window)) return;
+
+        // Đè seed REST của useBatteryStats — stats từ SSE luôn mới hơn.
+        queryClient.setQueryData<BatteryStatsView | null>(
+          QUERY_KEY.sensorReadings.stats(assetId, dto.window),
+          statsDtoToView(dto),
         );
       });
 

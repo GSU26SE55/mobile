@@ -63,7 +63,7 @@ export default function DashboardScreen() {
     () => (user ? buildFleetScope(user.role, { accountId: user.accountId }) : null),
     [user],
   );
-  const { liveByAsset } = useBatteryFleetStream(fleetScope);
+  const { liveByAsset, statsByAsset } = useBatteryFleetStream(fleetScope);
 
   const openAlertsCount = alerts.filter((a) => a.status === AlertStatusEnum.Open).length;
 
@@ -183,8 +183,18 @@ export default function DashboardScreen() {
         renderItem={({ item }) => {
           const live = liveByAsset.get(item.id);
           const health = batteryHealth(item, live);
+          // GH-74 — đỉnh nạp/xả 1h từ SSE `stats`. Chưa có event → bỏ hẳn khỏi caption
+          // (null = chưa có mẫu chiều đó, KHÔNG hiển thị 0).
+          const stats = statsByAsset.get(item.id)?.['1h'];
+          const peaks = [
+            stats?.maxChargeCurrent != null ? `↑${stats.maxChargeCurrent.toFixed(1)}A` : null,
+            stats?.maxDischargeCurrent != null ? `↓${stats.maxDischargeCurrent.toFixed(1)}A` : null,
+          ].filter(Boolean);
           const caption = live
-            ? `${live.socPercent.toFixed(0)}% · ${live.voltage.toFixed(1)}V · ${live.temperature.toFixed(0)}°C`
+            ? [
+                `${live.socPercent.toFixed(0)}% · ${live.voltage.toFixed(1)}V · ${live.temperature.toFixed(0)}°C`,
+                ...peaks,
+              ].join(' · ')
             : item.serialNumber;
           return (
             <ProgressListItem

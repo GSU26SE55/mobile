@@ -34,6 +34,7 @@ export const AnomalyTypeEnum = {
   CellImbalance: 13,
   EnvironmentalIncident: 14,
   SensorMismatch: 15,
+  Undertemp: 16, // Sprint Bonus NS-25 (#665) — wire value cross-service, mirror đúng 16
 } as const;
 export type AnomalyTypeEnum =
   (typeof AnomalyTypeEnum)[keyof typeof AnomalyTypeEnum];

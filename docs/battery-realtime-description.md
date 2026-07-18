@@ -100,6 +100,8 @@ Có **3 loại event**. Chỉ scope `asset:{1 id}` trả `reading`; mọi scope 
 > ⚠️ **Nhịp dữ liệu:** device đẩy ~5s/pin. Event `reading` forward **ngay** mỗi reading nhận được; event `summary` **gom latest-per-pin và throttle** phát mỗi `Realtime:SummaryIntervalSeconds` (mặc định **4s** — xem §9.2).
 > ⚠️ **Khi `Realtime:Enabled=false` (§9.2):** stream vẫn mở (`200 text/event-stream`) nhưng **chỉ có `ping`**, không có `reading`/`summary`. FE phải coi đây là trạng thái hợp lệ (không lỗi), không treo chờ data.
 
+> 🚧 **`stats` — PLANNED, chưa wire ở Mobile (chờ BE deploy).** BE docs (Sprint Bonus NS-01/03/04 — #646/#648/#649) mô tả thêm event `stats` (rolling min/max dòng nạp/xả theo window `1h`/`today`) đẩy trên mọi scope. **Code Mobile hiện tại (`useBatterySensorStream.ts` chỉ nghe `reading`/`ping`; `useBatteryFleetStream.ts` chỉ nghe `summary`/`ping`) chưa đăng ký `stats`.** Payload `stats` xem §5.3bis (để tham chiếu khi implement). EventSource tự bỏ qua event lạ nên chưa nghe `stats` không gây lỗi — chỉ chưa có data min/max realtime; tạm backfill bằng REST `/aggregate` (§7.3).
+
 ### 5.1. Payload `reading`
 
 ```
@@ -143,6 +145,49 @@ data: { "scopeType": "customer", "items": [ { ...các field bên dưới... }, {
 | `sensorSourceCode` | string | có | `primary` \| `redundant` \| `external-temp` |
 
 > ⚠️ **Field null bị LƯỢC khỏi JSON của SSE** (serialize bỏ field null). FE phải coi **field vắng mặt = null** (vd `chargingState`, `sohPercent`, `bmsErrorCode` có thể không xuất hiện).
+
+### 5.3bis. Payload `stats` — 🚧 PLANNED (tham chiếu khi implement)
+
+> **Trạng thái:** BE docs mô tả event này (Sprint Bonus NS-01/03/04) nhưng **Mobile chưa wire** (xem ghi chú 🚧 ở §5). Giữ ở đây để làm chuẩn khi implement — **KHÔNG** phản ánh code Mobile hiện tại.
+
+```
+event: stats
+data: {
+  "batteryAssetId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "customerId": "9b2e...",
+  "siteId": "c1d4...",
+  "window": "1h",
+  "windowStart": "2026-07-08T09:00:00Z",
+  "maxChargeCurrent": 1.92,
+  "minChargeCurrent": 0.31,
+  "maxDischargeCurrent": 4.75,
+  "minDischargeCurrent": 0.42,
+  "chargeSampleCount": 210,
+  "dischargeSampleCount": 385,
+  "updatedAt": "2026-07-08T09:41:05Z"
+}
+```
+
+| Field | Kiểu | Nullable | Ý nghĩa |
+|-------|------|----------|---------|
+| `batteryAssetId` | string (GUID) | không | Pin của thống kê này |
+| `customerId` | string (GUID) | không | Khách sở hữu (route scope) |
+| `siteId` | string (GUID) | có | Site (null nếu pin không thuộc site) |
+| `window` | string | không | `1h` (bucket giờ hiện tại, UTC) \| `today` (từ 00:00 UTC) — **chốt chỉ 2 window** |
+| `windowStart` | string (ISO UTC) | không | Thời điểm bắt đầu window |
+| `maxChargeCurrent` | number | có | Dòng nạp đỉnh trong window (A, **luôn dương**) |
+| `minChargeCurrent` | number | có | Dòng nạp thấp nhất khi đang nạp (A, dương) |
+| `maxDischargeCurrent` | number | có | Dòng xả đỉnh (A, **luôn dương** — `MAX(ABS(current))` với current < 0) |
+| `minDischargeCurrent` | number | có | Dòng xả thấp nhất khi đang xả (A, dương) |
+| `chargeSampleCount` | number (int) | không | Số mẫu chiều nạp đã tích lũy trong window |
+| `dischargeSampleCount` | number (int) | không | Số mẫu chiều xả đã tích lũy trong window |
+| `updatedAt` | string (ISO UTC) | không | Thời điểm cập nhật cuối |
+
+**Hành vi (khi wire):**
+- Chỉ tính trên reading **`primary`** (null/empty coi như primary — cùng quy ước coalescer §5.4). Sample `current == 0` (idle) bỏ qua.
+- Field min/max **null** khi window chưa có mẫu chiều đó. Field null bị lược khỏi JSON (như §5.3).
+- `Realtime:Enabled=false` → không có event `stats` (giống `reading`/`summary`).
+- Backfill khi mở màn: dùng REST `/aggregate` (đã có min/max per bucket) — `stats` chỉ đẩy incremental.
 
 ### 5.4. Đa nguồn cùng 1 pin
 

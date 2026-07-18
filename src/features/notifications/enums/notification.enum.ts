@@ -16,7 +16,7 @@ export const NotificationTypeEnum = {
   AccountActivated: 12,
   AdminInvite: 13,
   IncidentDeclared: 14,
-  // 15 skip (theo BE)
+  CascadeRiskHigh: 15, // Sprint Bonus NS-14 (#658) — cascade risk >= 0.7 → notify Manager/Admin
   BatteryAlertEscalationPending: 16,
   AlertTicketSagaFailed: 17,
   IotDeviceWentOffline: 18,
