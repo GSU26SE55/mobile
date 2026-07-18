@@ -17,7 +17,7 @@ import { useSessionStore } from '../../../src/stores/sessionStore';
 import { PopularKbSection } from '../../../src/features/kb/components/PopularKbSection';
 import { BadgeColors, Colors } from '../../../src/lib/theme';
 import { HomeHeader } from '../../../src/shared/components/HomeHeader';
-import { StatTrio } from '../../../src/shared/components/StatTrio';
+import { FleetOverview, Tone } from '../../../src/shared/components/StatTrio';
 import { ProgressListItem } from '../../../src/shared/components/ProgressListItem';
 
 // Màu theo mức SOC — giữ palette hiện tại (xanh primary / cam warning / đỏ danger).
@@ -28,7 +28,15 @@ function socColor(soc: number | null): string {
   return Colors.danger;
 }
 
-// Trạng thái sức khỏe pin → badge + màu chấm/thanh.
+// Tone sức khỏe 1 pin — nguồn chân lý duy nhất cho cả badge lẫn card overview.
+// crit: pin ngừng dùng | warn: nóng >45°C hoặc SOC <20% | ok: còn lại.
+function batteryTone(item: BatteryAssetDto, live?: LiveReadingDto): Tone {
+  if (item.status === 3) return 'crit';
+  if (live && (live.temperature > 45 || live.socPercent < 20)) return 'warn';
+  return 'ok';
+}
+
+// Trạng thái sức khỏe pin → badge + màu chấm/thanh (dùng cho list item).
 function batteryHealth(item: BatteryAssetDto, live?: LiveReadingDto) {
   if (item.status === 3)
     return { label: 'Ngừng dùng', bg: BadgeColors.crit.bg, text: BadgeColors.crit.text, color: Colors.danger };
@@ -39,8 +47,8 @@ function batteryHealth(item: BatteryAssetDto, live?: LiveReadingDto) {
   return { label: 'Tốt', bg: BadgeColors.ok.bg, text: BadgeColors.ok.text, color: Colors.primary };
 }
 
-const avg = (arr: number[]): number | null =>
-  arr.length ? arr.reduce((s, x) => s + x, 0) / arr.length : null;
+// Xếp hạng tone để so sánh "xấu nhất" và sort list.
+const TONE_RANK: Record<Tone, number> = { crit: 0, warn: 1, ok: 2 };
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
@@ -59,13 +67,42 @@ export default function DashboardScreen() {
 
   const openAlertsCount = alerts.filter((a) => a.status === AlertStatusEnum.Open).length;
 
-  // Tổng hợp telemetry toàn hệ thống pin (chỉ từ những pin có reading live).
-  const lives = batteries
-    .map((b) => liveByAsset.get(b.id))
-    .filter((l): l is LiveReadingDto => !!l);
-  const avgSoc = avg(lives.map((l) => l.socPercent));
-  const avgVolt = avg(lives.map((l) => l.voltage));
-  const avgTemp = avg(lives.map((l) => l.temperature));
+  // Tổng quan đội pin — "đèn báo trạng thái" theo pin xấu nhất, thay cho trung bình cộng.
+  const overview = useMemo(() => {
+    const withTone = batteries.map((b) => {
+      const live = liveByAsset.get(b.id);
+      return { battery: b, live, tone: batteryTone(b, live) };
+    });
+    const lives = withTone
+      .map((x) => x.live)
+      .filter((l): l is LiveReadingDto => !!l);
+
+    const goodCount = withTone.filter((x) => x.tone === 'ok').length;
+    const cardTone: Tone = withTone.reduce<Tone>(
+      (worst, x) => (TONE_RANK[x.tone] < TONE_RANK[worst] ? x.tone : worst),
+      'ok',
+    );
+
+    // Cực trị: pin yếu nhất (min SOC) + pin nóng nhất (max temp) — cái đáng lo nằm ở cực trị.
+    const minSoc = lives.length ? Math.min(...lives.map((l) => l.socPercent)) : null;
+    const maxTemp = lives.length ? Math.max(...lives.map((l) => l.temperature)) : null;
+
+    const critCount = withTone.filter((x) => x.tone === 'crit').length;
+    const warnCount = withTone.filter((x) => x.tone === 'warn').length;
+    const statusLabel =
+      critCount > 0
+        ? `${critCount} pin cần xử lý ngay`
+        : warnCount > 0
+          ? `${warnCount} pin cần kiểm tra`
+          : 'Hệ thống bình thường';
+
+    // Pin bất thường (tone xấu) lên đầu list.
+    const sorted = [...withTone]
+      .sort((a, b) => TONE_RANK[a.tone] - TONE_RANK[b.tone])
+      .map((x) => x.battery);
+
+    return { goodCount, cardTone, minSoc, maxTemp, statusLabel, sorted };
+  }, [batteries, liveByAsset]);
 
   if (profileLoading) {
     return (
@@ -80,7 +117,7 @@ export default function DashboardScreen() {
   return (
     <View style={styles.root}>
       <FlatList
-        data={batteries}
+        data={overview.sorted}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 10 }]}
         showsVerticalScrollIndicator={false}
@@ -94,16 +131,26 @@ export default function DashboardScreen() {
               onBellPress={() => router.push('/(customer)/(tabs)/alerts')}
             />
 
-            {/* Tổng quan hệ thống — vòng dung lượng + điện áp + nhiệt độ */}
-            <StatTrio
-              left={{ value: avgVolt != null ? `${avgVolt.toFixed(1)}V` : '—', label: 'Điện áp' }}
-              center={{
-                percent: avgSoc ?? 0,
-                value: avgSoc != null ? `${Math.round(avgSoc)}%` : '—',
-                label: 'Tổng dung lượng',
-                color: socColor(avgSoc),
-              }}
-              right={{ value: avgTemp != null ? `${Math.round(avgTemp)}°C` : '—', label: 'Nhiệt độ' }}
+            {/* Tổng quan hệ thống — đèn báo trạng thái theo pin xấu nhất */}
+            <FleetOverview
+              tone={overview.cardTone}
+              gauge={{ goodCount: overview.goodCount, total: batteries.length }}
+              boxes={[
+                {
+                  icon: 'battery-half-outline',
+                  label: 'Pin yếu nhất',
+                  value: overview.minSoc != null ? `${Math.round(overview.minSoc)}%` : '—',
+                  color: overview.minSoc != null && overview.minSoc < 20 ? Colors.warning : undefined,
+                  barPercent: overview.minSoc ?? undefined,
+                },
+                {
+                  icon: 'thermometer-outline',
+                  label: 'Nhiệt cao nhất',
+                  value: overview.maxTemp != null ? `${Math.round(overview.maxTemp)}°C` : '—',
+                  color: overview.maxTemp != null && overview.maxTemp > 45 ? Colors.warning : undefined,
+                },
+              ]}
+              statusLabel={overview.statusLabel}
             />
 
             {/* Sites overview — ẩn nếu customer chưa có site nào */}
