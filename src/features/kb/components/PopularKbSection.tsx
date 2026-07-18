@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Colors } from '../../../lib/theme';
+import { Colors, Solar } from '../../../lib/theme';
 import { usePopularKb } from '../hooks/usePopularKb';
 import { KbArticleCard } from './KbArticleCard';
 
@@ -27,14 +27,14 @@ export function PopularKbSection({ limit = 5 }: Props) {
           style={styles.viewAllBtn}
         >
           <Text style={styles.viewAllText}>Xem tất cả</Text>
-          <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
+          <Ionicons name="chevron-forward" size={14} color={Solar.yellowDeep} />
         </Pressable>
       </View>
 
       {isLoading ? (
         <ActivityIndicator
           size="small"
-          color={Colors.primary}
+          color={Solar.yellowDeep}
           style={{ marginVertical: 12 }}
         />
       ) : (
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 13,
     fontWeight: '600',
-    color: Colors.primary,
+    color: Solar.yellowDeep,
   },
   row: {
     paddingRight: 12,

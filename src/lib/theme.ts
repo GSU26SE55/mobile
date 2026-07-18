@@ -61,6 +61,24 @@ export const Colors = {
   stEscalated:  '#DC4F3D',
 } as const;
 
+// Palette "Solar" — lấy từ design mới (nền kem, accent vàng năng lượng mặt trời).
+export const Solar = {
+  bg:          '#FAF4DF', // nền kem toàn màn
+  bgDeep:      '#F4EDD2',
+  card:        '#FFFEF8', // card trắng-kem
+  cardCream:   '#FBF6E4', // card kem đậm hơn (khối chart)
+  tile:        '#F3EDD6', // ô/segment chưa fill
+  yellow:      '#F6C93F', // vàng chính (nút, chip active, progress)
+  yellowDeep:  '#D9A800', // vàng đậm cho icon/text trên nền sáng
+  yellowSoft:  '#FBF0C8', // nền pill vàng nhạt
+  ink:         '#1C1B16', // chữ chính
+  ink2:        '#4C4737',
+  mute:        '#8E8871', // chữ phụ
+  faint:       '#BBB49B',
+  border:      '#EEE6CB',
+  white:       '#FFFFFF',
+} as const;
+
 export const BadgeColors = {
   orange:   { bg: '#FFE5DA', text: '#EF5128' },
   yellow:   { bg: '#FFF1B8', text: '#9C7800' },

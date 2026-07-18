@@ -3,21 +3,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { Platform, StyleSheet, View, Pressable } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming, FadeIn, FadeOut, useSharedValue, interpolateColor } from 'react-native-reanimated';
-import { Colors, ShadowLg } from '../../../src/lib/theme';
+import { ShadowLg, Solar } from '../../../src/lib/theme';
 
 function AnimatedTabIcon({ focused, activeIcon, inactiveIcon, label }: { focused: boolean; activeIcon: any; inactiveIcon: any; label: string }) {
   const isFocusedSV = useSharedValue(focused ? 1 : 0);
 
   React.useEffect(() => {
     isFocusedSV.value = withTiming(focused ? 1 : 0, { duration: 250 });
-  }, [focused]);
+  }, [focused, isFocusedSV]);
 
   const animatedStyle = useAnimatedStyle(() => {
     const width = 44 + isFocusedSV.value * (110 - 44);
     const backgroundColor = interpolateColor(
       isFocusedSV.value,
       [0, 1],
-      ['rgba(17, 24, 39, 0)', '#111827']
+      ['rgba(246, 201, 63, 0)', Solar.yellow]
     );
 
     return {
@@ -31,7 +31,7 @@ function AnimatedTabIcon({ focused, activeIcon, inactiveIcon, label }: { focused
       <Ionicons
         name={focused ? activeIcon : inactiveIcon}
         size={18}
-        color={focused ? '#FFFFFF' : '#64748B'}
+        color={focused ? Solar.ink : Solar.mute}
       />
       {focused && (
         <Animated.Text
@@ -118,11 +118,11 @@ const styles = StyleSheet.create({
     bottom: Platform.OS === 'ios' ? 30 : 20,
     alignSelf: 'center',
     width: 230,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Solar.white,
     borderRadius: 28,
     height: 56,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Solar.border,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   tabLabel: {
-    color: '#FFFFFF',
+    color: Solar.ink,
     fontSize: 12,
     fontWeight: '700',
     marginLeft: 5,
