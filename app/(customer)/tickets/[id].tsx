@@ -33,6 +33,7 @@ import { useRateTicket } from '../../../src/features/tickets/hooks/useRateTicket
 import { useReopenTicket } from '../../../src/features/tickets/hooks/useReopenTicket';
 import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/useUploadCommentAttachment';
 import { useTicketDetail } from '../../../src/features/tickets/hooks/useTicketDetail';
+import { MentionSuggestionsPopup } from '../../../src/features/tickets/components/MentionSuggestionsPopup';
 import { useTicketChatsCursor } from '../../../src/features/tickets/hooks/useTicketChatsCursor';
 import { useAddReaction, useRemoveReaction } from '../../../src/features/tickets/hooks/useChatReactions';
 import { useDownloadChatAttachment } from '../../../src/features/tickets/hooks/useDownloadChatAttachment';
@@ -638,6 +639,16 @@ function TicketDetailScreenInner() {
               <Text style={styles.fieldError}>{commentError}</Text>
             </View>
           ) : null}
+
+          {/* Autocomplete Popup @Mention khi gõ @ */}
+          <MentionSuggestionsPopup
+            text={commentText}
+            ticketId={id}
+            onSelectMention={(tag) => {
+              const newText = commentText.replace(/@([a-zA-Z0-9_.-]*)$/, `${tag} `);
+              setCommentText(newText);
+            }}
+          />
 
           {/* "Đang nhập" — ngay trên ô input, nền transparent */}
           <TypingIndicator names={typingUsers.map((u) => u.displayName)} />

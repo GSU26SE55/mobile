@@ -43,6 +43,7 @@ import { useTicketChatsCursor } from '../../../src/features/tickets/hooks/useTic
 import { useAddReaction, useRemoveReaction } from '../../../src/features/tickets/hooks/useChatReactions';
 import { useDownloadChatAttachment } from '../../../src/features/tickets/hooks/useDownloadChatAttachment';
 import { useTicketUnreadCount } from '../../../src/features/tickets/hooks/useTicketUnreadCount';
+import { MentionSuggestionsPopup } from '../../../src/features/tickets/components/MentionSuggestionsPopup';
 import { useTicketActivities } from '../../../src/features/tickets/hooks/useTicketActivities';
 import { useTicketCommentsRealtime } from '../../../src/features/tickets/hooks/useTicketCommentsRealtime';
 import {
@@ -416,6 +417,16 @@ function StaffTicketDetailScreenInner() {
             ticketId={ticketId}
             disabled={ticketClosed}
             onSuggestions={setAiSuggestions}
+          />
+
+          {/* Autocomplete Popup @Mention khi gõ @ */}
+          <MentionSuggestionsPopup
+            text={commentText}
+            ticketId={ticketId}
+            onSelectMention={(tag) => {
+              const newText = commentText.replace(/@([a-zA-Z0-9_.-]*)$/, `${tag} `);
+              setCommentText(newText);
+            }}
           />
 
           {/* "Đang nhập" — ngay trên ô input, nền transparent */}

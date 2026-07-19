@@ -85,6 +85,18 @@ export interface TicketChatMentionDTO {
   createdAt: string;
 }
 
+export interface TicketParticipantDTO {
+  id: string;
+  ticketId: string;
+  userId: string;
+  userRole: ActorRoleEnum;
+  participantType: number;
+  canPost: boolean;
+  canViewInternal: boolean;
+  addedByUserId: string;
+  addedAt: string;
+}
+
 // GH-68 — attachment đầy đủ (chỉ điền khi GetById; list dùng attachmentFileIds).
 export interface TicketAttachmentDTO {
   id: string;
@@ -127,6 +139,7 @@ export interface TicketDTO {
   code: string;
   batteryAssetId: string | null;
   customerId: string;
+  customerName?: string | null;
   assignedStaffId: string | null;
   assignedStaffName?: string | null;
   title: string;
