@@ -15,7 +15,8 @@ type ToolRow = {
     | '/(staff)/tools/calibration'
     | '/(staff)/tools/permissions'
     | '/(staff)/chats'
-    | '/(staff)/chats/mentions';
+    | '/(staff)/chats/mentions'
+    | '/(staff)/blog';
 };
 
 const ROWS: ToolRow[] = [
@@ -48,6 +49,12 @@ const ROWS: ToolRow[] = [
     title: 'Danh mục quyền',
     desc: 'Tra cứu toàn bộ permission hệ thống',
     href: '/(staff)/tools/permissions',
+  },
+  {
+    icon: 'newspaper-outline',
+    title: 'Tin tức',
+    desc: 'Bài viết đã xuất bản từ hệ thống',
+    href: '/(staff)/blog',
   },
 ];
 

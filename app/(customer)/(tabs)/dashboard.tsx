@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -217,7 +217,25 @@ export default function DashboardScreen() {
             </View>
           ) : null
         }
-        ListFooterComponent={<PopularKbSection limit={5} />}
+        ListFooterComponent={
+          <>
+            <PopularKbSection limit={5} />
+            {/* GH-78 — điểm vào Blog cho Customer. */}
+            <Pressable
+              style={styles.blogEntry}
+              onPress={() => router.push('/(customer)/blog' as never)}
+            >
+              <View style={styles.blogIcon}>
+                <Ionicons name="newspaper-outline" size={20} color={Colors.primary} />
+              </View>
+              <View style={styles.blogBody}>
+                <Text style={styles.blogTitle}>Tin tức</Text>
+                <Text style={styles.blogDesc}>Bài viết mới từ hệ thống</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={Colors.gray} />
+            </Pressable>
+          </>
+        }
       />
     </View>
   );
@@ -232,6 +250,29 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: '800', color: Colors.accent },
   sectionCount: { fontSize: 13, color: Colors.gray, fontWeight: '600' },
 
+  // GH-78 — hàng điểm vào Blog, đặt dưới PopularKbSection.
+  blogEntry: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 14,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
+  },
+  blogIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  blogBody: { flex: 1 },
+  blogTitle: { fontSize: 15, fontWeight: '800', color: Colors.accent },
+  blogDesc: { fontSize: 12, color: Colors.gray, marginTop: 2 },
   emptyState: { alignItems: 'center', paddingVertical: 40 },
   emptyTitle: { fontSize: 16, fontWeight: '800', color: Colors.accent, marginTop: 12 },
   emptySub: { fontSize: 13, color: Colors.gray, textAlign: 'center', marginTop: 6, paddingHorizontal: 40 },

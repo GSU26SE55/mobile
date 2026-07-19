@@ -170,6 +170,12 @@ export const ENDPOINTS = {
     HELPFUL: (id: string) => `/api/knowledge-base/${id}/helpful`,
     SUGGEST: '/api/knowledge-base/suggest', // GH-44 #7 — GET ?TicketId=
   },
+  // GH-78 — Blog read-only. Public controller chỉ trả bài Published;
+  // bài Draft/Archived → 404 (không phải 403). KHÔNG gửi param Status.
+  BLOG: {
+    LIST:   '/api/blog',                              // GET ?PageNumber&PageSize&Origin
+    DETAIL: (id: string) => `/api/blog/${id}`,
+  },
   KB_REFERENCES: {
     LIST: '/api/knowledge-base/references',                          // GET ?ticketId= + POST
     ITEM: (refId: string) => `/api/knowledge-base/references/${refId}`, // GH-44 #6 — DELETE

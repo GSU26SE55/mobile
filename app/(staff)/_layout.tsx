@@ -37,6 +37,13 @@ export default function StaffLayout() {
       <Stack.Screen name="tools/permissions" />
       <Stack.Screen name="chats/index" />
       <Stack.Screen name="chats/mentions" />
+      {/* GH-78 — 4 route dưới đây đã tồn tại nhưng trước giờ thiếu khai báo. */}
+      <Stack.Screen name="kb/index" />
+      <Stack.Screen name="kb/[id]" />
+      <Stack.Screen name="maintenance-history" />
+      <Stack.Screen name="sites/[id]" />
+      <Stack.Screen name="blog/index" />
+      <Stack.Screen name="blog/[id]" />
       <Stack.Screen name="index" />
     </Stack>
   );
