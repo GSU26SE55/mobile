@@ -104,6 +104,7 @@ export const ENDPOINTS = {
     CUSTOMER_LIST:   '/api/customer/tickets/me',
     CUSTOMER_CREATE: '/api/customer/tickets',
     DETAIL:          (id: string) => `/api/tickets/${id}`,
+    PARTICIPANTS:    (id: string) => `/api/tickets/${id}/participants`,
     CHATS:           (id: string) => `/api/tickets/${id}/chats`,   // GET list (?page&pageSize) + POST (BE migration 20260622)
     CHAT_DETAIL:     (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}`, // PUT (edit) / DELETE
     CHAT_MARK_READ:  (tid: string) => `/api/tickets/${tid}/chats/mark-read`, // POST { chatIds }

@@ -40,11 +40,7 @@ export default function CustomerLayout() {
           headerTitleStyle: { fontWeight: '600', color: Colors.text },
         }}
       />
-      <Stack.Screen name="settings" options={{ headerShown: false }} />
-      <Stack.Screen name="kb" options={{ headerShown: false }} />
       <Stack.Screen name="blog" options={{ headerShown: false }} /> {/* GH-78 */}
-      <Stack.Screen name="chats" options={{ headerShown: false }} />
-      <Stack.Screen name="incidents/[id]" />
     </Stack>
   );
 }
