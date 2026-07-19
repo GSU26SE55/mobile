@@ -10,10 +10,10 @@ const REACTIONS: {
   emoji: string;
 }[] = [
   { type: ReactionTypeEnum.ThumbsUp, key: 'thumbsUp', emoji: '👍' },
-  { type: ReactionTypeEnum.Acknowledged, key: 'acknowledged', emoji: '✅' },
-  { type: ReactionTypeEnum.Resolved, key: 'resolved', emoji: '🔧' },
-  { type: ReactionTypeEnum.NeedMoreInfo, key: 'needMoreInfo', emoji: '❓' },
-  { type: ReactionTypeEnum.Disagree, key: 'disagree', emoji: '❌' },
+  { type: ReactionTypeEnum.Acknowledged, key: 'acknowledged', emoji: '🫡' },
+  { type: ReactionTypeEnum.Resolved, key: 'resolved', emoji: '😀' },
+  { type: ReactionTypeEnum.NeedMoreInfo, key: 'needMoreInfo', emoji: '🤔' },
+  { type: ReactionTypeEnum.Disagree, key: 'disagree', emoji: '🙄' },
 ];
 
 interface ReactionBarProps {

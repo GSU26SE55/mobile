@@ -40,6 +40,7 @@ export default function CustomerLayout() {
           headerTitleStyle: { fontWeight: '600', color: Colors.text },
         }}
       />
+      <Stack.Screen name="blog" options={{ headerShown: false }} /> {/* GH-78 */}
     </Stack>
   );
 }

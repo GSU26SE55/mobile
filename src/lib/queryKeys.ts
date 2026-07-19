@@ -16,6 +16,7 @@ export const KEY = {
   notificationPreferences: ['notificationPreferences'] as const,
   files:         ['files'] as const,
   kb:            ['kb'] as const,
+  blog:          ['blog'] as const,          // GH-78
   permissions:   ['permissions'] as const, // GH-47
   batteryTypes:  ['batteryTypes'] as const, // GH-56
   iotDevices:    ['iotDevices'] as const,   // GH-56
@@ -106,6 +107,10 @@ export const QUERY_KEY = {
     detail:   (id: string) => [...KEY.kb, 'detail', id] as const,
     related:  (ticketId: string) => [...KEY.kb, 'related', ticketId] as const,
     suggest:  (ticketId: string) => [...KEY.kb, 'suggest', ticketId] as const, // GH-44 #7
+  },
+  blog: { // GH-78
+    infinite: (params?: Record<string, unknown>) => [...KEY.blog, 'infinite', params] as const,
+    detail:   (id: string) => [...KEY.blog, 'detail', id] as const,
   },
   permissions: {
     me:      () => [...KEY.permissions, 'me'] as const, // GH-47

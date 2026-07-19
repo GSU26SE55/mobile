@@ -30,6 +30,7 @@ import { LiveReadingDto } from '../../../src/features/batteries/types/live-readi
 import { useSessionStore } from '../../../src/stores/sessionStore';
 import { Colors, Solar } from '../../../src/lib/theme';
 import { EnergyBackdrop, GlassSurface } from '../../../src/features/batteries/components/EnergyBackdrop';
+import { PopularKbSection } from '../../../src/features/kb/components/PopularKbSection';
 
 const BATTERY_IMAGE = require('../../../assets/images/battery-storage-3d.png');
 
@@ -399,6 +400,22 @@ export default function DashboardScreen() {
             }}
           />
         )}
+
+        {/* GH-78 — KB phổ biến + điểm vào Blog cho Customer. */}
+        <PopularKbSection limit={5} />
+        <Pressable
+          style={styles.blogEntry}
+          onPress={() => router.push('/(customer)/blog' as never)}
+        >
+          <View style={styles.blogIcon}>
+            <Ionicons name="newspaper-outline" size={20} color={Colors.primary} />
+          </View>
+          <View style={styles.blogBody}>
+            <Text style={styles.blogTitle}>Tin tức</Text>
+            <Text style={styles.blogDesc}>Bài viết mới từ hệ thống</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.gray} />
+        </Pressable>
       </ScrollView>
     </View>
   );
@@ -498,6 +515,30 @@ const styles = StyleSheet.create({
   waveEmpty: { height: 95, justifyContent: 'center', alignItems: 'center' },
   waveEmptyText: { fontSize: 12, color: Solar.mute, fontWeight: '600' },
 
+  // GH-78 — hàng điểm vào Blog, đặt dưới PopularKbSection.
+  blogEntry: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 14,
+    marginTop: 8,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
+  },
+  blogIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  blogBody: { flex: 1 },
+  blogTitle: { fontSize: 15, fontWeight: '800', color: Colors.accent },
+  blogDesc: { fontSize: 12, color: Colors.gray, marginTop: 2 },
   statStrip: {
     flexDirection: 'row',
     gap: 8,
