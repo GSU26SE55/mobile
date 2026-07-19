@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, usePathname } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -33,6 +33,8 @@ export default function KbListScreen() {
 
 function KbListScreenInner() {
   const insets = useSafeAreaInsets();
+  const pathname = usePathname();
+  const isTabRoute = pathname.endsWith('/knowledge');
   const params = useLocalSearchParams<{ tag?: string }>();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<TicketCategoryEnum | null>(null);
@@ -63,13 +65,17 @@ function KbListScreenInner() {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          style={styles.backBtn}
-          hitSlop={8}
-        >
-          <Ionicons name="chevron-back" size={22} color={Colors.text} />
-        </Pressable>
+        {isTabRoute ? (
+          <View style={styles.headerSpacer} />
+        ) : (
+          <Pressable
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            hitSlop={8}
+          >
+            <Ionicons name="chevron-back" size={22} color={Colors.text} />
+          </Pressable>
+        )}
         <Text style={styles.headerTitle}>Bài hướng dẫn</Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -91,7 +97,7 @@ function KbListScreenInner() {
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, isTabRoute && styles.tabList]}
         renderItem={({ item }) => (
           <KbArticleCard
             article={item}
@@ -186,6 +192,9 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 32,
     flexGrow: 1,
+  },
+  tabList: {
+    paddingBottom: 118,
   },
   center: {
     flex: 1,

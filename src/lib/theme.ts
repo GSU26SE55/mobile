@@ -1,14 +1,14 @@
 import { Platform, StyleSheet } from 'react-native';
 
 export const Colors = {
-  primary:      '#34C759',
-  primaryDark:  '#248A3D',
-  primaryLight: '#E8F8EE',
-  primaryGlow:  'rgba(52, 199, 89, 0.22)',
-  accent:       '#1A1A1A',
-  yellow:       '#FFB703',
-  yellowSoft:   '#FFF1B8',
-  yellowDark:   '#9C7800',
+  primary:      '#FFD500',
+  primaryDark:  '#D9A000',
+  primaryLight: '#FFF6D6',
+  primaryGlow:  'rgba(255, 213, 0, 0.22)',
+  accent:       '#1C1C1E',
+  yellow:       '#FFD500',
+  yellowSoft:   '#FFF6D6',
+  yellowDark:   '#D9A000',
 
   success:      '#34C759',
   successLight: '#E8F8EE',
@@ -24,22 +24,22 @@ export const Colors = {
   infoDark:     '#0055B3',
 
   white:        '#FFFFFF',
-  bg:           '#F9F9F9',
-  bg2:          '#F2F2F2',
+  bg:           '#FAF6E9',
+  bg2:          '#F4EEDC',
   card:         '#FFFFFF',
-  card2:        '#F5F5F5',
-  card3:        '#EEEEEE',
+  card2:        '#F7F3E6',
+  card3:        '#EFE8D6',
   gray:         '#8E8E93',
   graySoft:     '#C7C7CC',
 
-  border:       'rgba(0,0,0,0.06)',
-  borderStrong: 'rgba(0,0,0,0.12)',
+  border:       'rgba(235,230,215,0.7)',
+  borderStrong: 'rgba(215,205,180,0.8)',
   overlay:      'rgba(20,15,5,0.35)',
 
-  text:         '#1A1A1C',
-  text2:        '#45464A',
-  textMute:     '#7A7872',
-  textFaint:    '#B0AEA6',
+  text:         '#1C1C1E',
+  text2:        '#3A3A3C',
+  textMute:     '#7C7C80',
+  textFaint:    '#C4BFB0',
 
   // Legacy aliases
   textSecondary:'#45464A',
@@ -61,21 +61,21 @@ export const Colors = {
   stEscalated:  '#DC4F3D',
 } as const;
 
-// Palette "Solar" — lấy từ design mới (nền kem, accent vàng năng lượng mặt trời).
+// Palette "Solar" — lấy từ design chuẩn (nền kem sáng, accent vàng năng lượng mặt trời).
 export const Solar = {
-  bg:          '#FAF4DF', // nền kem toàn màn
-  bgDeep:      '#F4EDD2',
-  card:        '#FFFEF8', // card trắng-kem
-  cardCream:   '#FBF6E4', // card kem đậm hơn (khối chart)
-  tile:        '#F3EDD6', // ô/segment chưa fill
-  yellow:      '#F6C93F', // vàng chính (nút, chip active, progress)
-  yellowDeep:  '#D9A800', // vàng đậm cho icon/text trên nền sáng
-  yellowSoft:  '#FBF0C8', // nền pill vàng nhạt
-  ink:         '#1C1B16', // chữ chính
-  ink2:        '#4C4737',
-  mute:        '#8E8871', // chữ phụ
-  faint:       '#BBB49B',
-  border:      '#EEE6CB',
+  bg:          '#FAF6E9', // nền kem sáng toàn màn
+  bgDeep:      '#F3ECCF',
+  card:        '#FFFFFF', // card trắng tinh khiết
+  cardCream:   '#FFFBEA', // card kem ấm nhạt (khối performance/chart)
+  tile:        '#EFECE1', // ô/segment chưa fill
+  yellow:      '#FFD500', // vàng chói năng lượng chuẩn thiết kế
+  yellowDeep:  '#D9A000', // vàng đậm cho icon/text trên nền sáng
+  yellowSoft:  '#FFF6D6', // nền pill vàng nhạt
+  ink:         '#1C1C1E', // chữ chính sắc nét
+  ink2:        '#484742',
+  mute:        '#7C7C80', // chữ phụ xám mờ
+  faint:       '#C4BFB0',
+  border:      '#EFE8D6',
   white:       '#FFFFFF',
 } as const;
 
