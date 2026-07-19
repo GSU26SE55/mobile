@@ -6,6 +6,7 @@ import {
   SensorReadingHistoryParams,
   SensorReadingHistoryResponseDto,
   SensorReadingAggregateParams,
+  SensorReadingAggregateHourlyParams,
   SensorReadingAggregateDto,
 } from '../types/sensor-reading.types';
 
@@ -22,6 +23,12 @@ export const sensorReadingService = {
   getAggregate: (assetId: string, params?: SensorReadingAggregateParams) =>
     axiosInstance.get<CommonResponse<SensorReadingAggregateDto[]>>(
       ENDPOINTS.SENSOR_READINGS.AGGREGATE(assetId),
+      { params },
+    ),
+  // GH-74 — bucket 1h cố định (continuous aggregate). KHÔNG nhận `interval`.
+  getAggregateHourly: (assetId: string, params?: SensorReadingAggregateHourlyParams) =>
+    axiosInstance.get<CommonResponse<SensorReadingAggregateDto[]>>(
+      ENDPOINTS.SENSOR_READINGS.AGGREGATE_HOURLY(assetId),
       { params },
     ),
 };

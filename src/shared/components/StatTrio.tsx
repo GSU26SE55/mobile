@@ -1,10 +1,13 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { Colors, Shadow } from '../../lib/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { BadgeColors, Colors, Shadow } from '../../lib/theme';
 
-// Layout chữ ký của Home mới: 2 tile tròn hai bên + 1 vòng tiến độ lớn ở giữa.
-// Màu giữ nguyên palette hiện tại (xanh primary / cam warning), chỉ đổi bố cục.
+// Hai component card tổng quan:
+//  - StatTrio     : layout 3-cột (2 tile tròn + 1 vòng giữa) — staff dashboard vẫn dùng.
+//  - FleetOverview: layout "đèn báo trạng thái" (gauge trái + 2 khung phải) — customer dashboard.
+// Cùng chia sẻ RingStat (vòng SVG) + palette hiện tại.
 
 interface RingProps {
   percent: number; // 0-100
@@ -12,7 +15,7 @@ interface RingProps {
   strokeWidth?: number;
   color?: string;
   trackColor?: string;
-  value?: string; // text lớn giữa vòng (mặc định `${percent}%`)
+  value?: string; // text lớn giữa vòng
   label?: string; // caption nhỏ dưới value
 }
 
@@ -54,13 +57,17 @@ export function RingStat({
   );
 }
 
+// ============================================================================
+// StatTrio — 3-cột (giữ nguyên cho staff dashboard: đang xử lý / tiến độ / hoàn thành)
+// ============================================================================
+
 function SideTile({ value, label }: { value: string; label: string }) {
   return (
-    <View style={styles.tile}>
-      <Text style={styles.tileValue} numberOfLines={1} adjustsFontSizeToFit>
+    <View style={styles.sideTile}>
+      <Text style={styles.sideTileValue} numberOfLines={1} adjustsFontSizeToFit>
         {value}
       </Text>
-      <Text style={styles.tileLabel} numberOfLines={1}>
+      <Text style={styles.sideTileLabel} numberOfLines={1}>
         {label}
       </Text>
     </View>
@@ -75,7 +82,7 @@ interface TrioProps {
 
 export function StatTrio({ left, center, right }: TrioProps) {
   return (
-    <View style={[styles.card, Shadow]}>
+    <View style={[styles.trioCard, Shadow]}>
       <SideTile value={left.value} label={left.label} />
       <RingStat percent={center.percent} value={center.value} label={center.label} color={center.color} />
       <SideTile value={right.value} label={right.label} />
@@ -83,22 +90,107 @@ export function StatTrio({ left, center, right }: TrioProps) {
   );
 }
 
+// ============================================================================
+// FleetOverview — "đèn báo trạng thái" cho customer dashboard
+// Gauge (số pin tốt / tổng) dồn trái; 2 khung metric xếp dọc phải; nền đổi màu theo tone.
+// ============================================================================
+
+export type Tone = 'ok' | 'warn' | 'crit';
+
+// Palette theo tone — lấy từ theme tokens, không hardcode giá trị mới.
+const TONE = {
+  ok: { bg: Colors.primaryLight, accent: Colors.primary, chip: BadgeColors.ok },
+  warn: { bg: Colors.warningLight, accent: Colors.warning, chip: BadgeColors.warn },
+  crit: { bg: Colors.dangerLight, accent: Colors.danger, chip: BadgeColors.crit },
+} as const;
+
+export interface MetricBox {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: string;
+  color?: string; // màu số (mặc định accent tối)
+  barPercent?: number; // có → render mini bar 0-100
+}
+
+function MetricTile({ box, accent }: { box: MetricBox; accent: string }) {
+  const valueColor = box.color ?? Colors.accent;
+  return (
+    <View style={styles.tile}>
+      <View style={styles.tileHead}>
+        <Ionicons name={box.icon} size={13} color={Colors.gray} />
+        <Text style={styles.tileLabel} numberOfLines={1}>
+          {box.label}
+        </Text>
+      </View>
+      <Text style={[styles.tileValue, { color: valueColor }]} numberOfLines={1} adjustsFontSizeToFit>
+        {box.value}
+      </Text>
+      {box.barPercent != null ? (
+        <View style={styles.barTrack}>
+          <View
+            style={[
+              styles.barFill,
+              { width: `${Math.max(0, Math.min(100, box.barPercent))}%`, backgroundColor: accent },
+            ]}
+          />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+interface FleetOverviewProps {
+  tone: Tone;
+  gauge: { goodCount: number; total: number };
+  boxes: [MetricBox, MetricBox];
+  statusLabel: string;
+}
+
+export function FleetOverview({ tone, gauge, boxes, statusLabel }: FleetOverviewProps) {
+  const t = TONE[tone];
+  const ringPercent = gauge.total > 0 ? (gauge.goodCount / gauge.total) * 100 : 0;
+
+  return (
+    <View style={[styles.card, { backgroundColor: t.bg }, Shadow]}>
+      <View style={styles.body}>
+        <RingStat
+          percent={ringPercent}
+          size={118}
+          color={t.accent}
+          trackColor={Colors.white}
+          value={`${gauge.goodCount}/${gauge.total}`}
+          label="pin tốt"
+        />
+        <View style={styles.boxes}>
+          <MetricTile box={boxes[0]} accent={t.accent} />
+          <MetricTile box={boxes[1]} accent={t.accent} />
+        </View>
+      </View>
+
+      <View style={[styles.statusRow, { backgroundColor: t.chip.bg }]}>
+        <View style={[styles.statusDot, { backgroundColor: t.accent }]} />
+        <Text style={[styles.statusText, { color: t.chip.text }]}>{statusLabel}</Text>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  card: {
+  ringValue: { fontSize: 26, fontWeight: '800', color: Colors.accent },
+  ringLabel: { fontSize: 11, color: Colors.gray, fontWeight: '600', marginTop: 2, textAlign: 'center' },
+
+  // --- StatTrio (3-cột) ---
+  trioCard: {
     backgroundColor: Colors.white,
     borderRadius: 28,
     paddingVertical: 22,
     paddingHorizontal: 12,
     marginBottom: 24,
     flexDirection: 'row',
-    // Tile hai bên hạ thấp xuống (căn đáy theo vòng ở giữa) thay vì căn giữa.
     alignItems: 'flex-end',
     justifyContent: 'space-between',
   },
-  ringValue: { fontSize: 28, fontWeight: '800', color: Colors.accent },
-  ringLabel: { fontSize: 11, color: Colors.gray, fontWeight: '600', marginTop: 2, textAlign: 'center' },
-
-  tile: {
+  sideTile: {
     width: 74,
     height: 74,
     borderRadius: 37,
@@ -110,6 +202,58 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     marginBottom: 12,
   },
-  tileValue: { fontSize: 15, fontWeight: '800', color: Colors.accent },
-  tileLabel: { fontSize: 10, color: Colors.gray, fontWeight: '600', marginTop: 3, textAlign: 'center' },
+  sideTileValue: { fontSize: 15, fontWeight: '800', color: Colors.accent },
+  sideTileLabel: { fontSize: 10, color: Colors.gray, fontWeight: '600', marginTop: 3, textAlign: 'center' },
+
+  // --- FleetOverview ---
+  card: {
+    borderRadius: 28,
+    padding: 18,
+    marginBottom: 24,
+  },
+  body: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  boxes: {
+    flex: 1,
+    gap: 10,
+  },
+  tile: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  tileHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 4,
+  },
+  tileLabel: { fontSize: 11, color: Colors.gray, fontWeight: '600' },
+  tileValue: { fontSize: 20, fontWeight: '800', color: Colors.accent },
+
+  barTrack: {
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: Colors.card3,
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  barFill: { height: '100%', borderRadius: 3 },
+
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginTop: 16,
+  },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  statusText: { fontSize: 13, fontWeight: '700' },
 });

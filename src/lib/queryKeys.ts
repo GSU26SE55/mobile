@@ -56,6 +56,12 @@ export const QUERY_KEY = {
       [...KEY.sensorReadings, 'history', assetId, params] as const,
     aggregate: (assetId: string, params?: Record<string, unknown>) =>
       [...KEY.sensorReadings, 'aggregate', assetId, params] as const,
+    // GH-74 — key TÁCH RIÊNG khỏi `aggregate` để 2 endpoint không đè cache nhau.
+    aggregateHourly: (assetId: string, params?: Record<string, unknown>) =>
+      [...KEY.sensorReadings, 'aggregate-hourly', assetId, params] as const,
+    // GH-74 — stats realtime từ SSE (§5.3bis). Key theo (assetId, window) — BE đẩy 2 window độc lập.
+    stats: (assetId: string, window: string) =>
+      [...KEY.sensorReadings, 'stats', assetId, window] as const,
   },
   alerts: {
     list:   (params?: Record<string, unknown>) => [...KEY.alerts, 'list', params] as const,

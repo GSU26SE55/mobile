@@ -38,6 +38,7 @@ export const ANOMALY_LABEL: Record<AnomalyTypeEnum, string> = {
   [AnomalyTypeEnum.CellImbalance]: 'Mất cân bằng cell',
   [AnomalyTypeEnum.EnvironmentalIncident]: 'Sự cố môi trường',
   [AnomalyTypeEnum.SensorMismatch]: 'Lệch cảm biến',
+  [AnomalyTypeEnum.Undertemp]: 'Nhiệt độ thấp',
 };
 
 function shortTime(iso: string): string {

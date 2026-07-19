@@ -25,7 +25,6 @@ import { useBatteryFleetStream } from '../../../src/features/batteries/hooks/use
 import { buildFleetScope } from '../../../src/features/batteries/utils/buildFleetScope';
 import { useMySites } from '../../../src/features/sites/hooks/useMySites';
 import { useAmbientLatest } from '../../../src/features/ambient/hooks/useAmbientLatest';
-import { SiteCard } from '../../../src/features/sites/components/SiteCard';
 import { AlertStatusEnum } from '../../../src/shared/enums/alert.enum';
 import { LiveReadingDto } from '../../../src/features/batteries/types/live-reading.types';
 import { useSessionStore } from '../../../src/stores/sessionStore';

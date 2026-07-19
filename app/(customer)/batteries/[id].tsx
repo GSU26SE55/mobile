@@ -13,6 +13,7 @@ import { useCascadeRisk } from '../../../src/features/batteries/hooks/useCascade
 import { BatteryInfoCard } from '../../../src/features/batteries/components/BatteryInfoCard';
 import { CascadeRiskBadge } from '../../../src/features/batteries/components/CascadeRiskBadge';
 import { SensorChart } from '../../../src/features/batteries/components/SensorChart';
+import { ChargeDischargeChart } from '../../../src/features/batteries/components/ChargeDischargeChart';
 import { AssetAlertList } from '../../../src/features/batteries/components/AssetAlertList';
 import { EnergyBackdrop, GlassSurface } from '../../../src/features/batteries/components/EnergyBackdrop';
 import { ChargingStateEnum } from '../../../src/features/batteries/enums/battery.enum';
@@ -251,6 +252,7 @@ function BatteryDetailScreenInner() {
         <Text style={styles.sectionTitle}>Biểu đồ</Text>
         <View style={{ height: 10 }} />
         <SensorChart assetId={assetId} />
+        <ChargeDischargeChart assetId={assetId} />
 
         <Text style={styles.sectionTitle}>Thông tin</Text>
         <View style={{ height: 10 }} />

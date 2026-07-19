@@ -4,11 +4,24 @@ import { BASE_URL } from '../../../lib/axios';
 import { getAccessToken } from '../../../lib/secureStore';
 import { ENDPOINTS } from '../../../lib/endpoints';
 import { BatterySummaryDto, LiveReadingDto } from '../types/live-reading.types';
+import {
+  BatteryStatsDto,
+  BatteryStatsView,
+  StatsWindow,
+  statsDtoToView,
+} from '../types/sensor-reading.types';
 
 // GH-58 — SSE telemetry live cho NHIỀU pin cùng lúc (event `summary`).
 // Reuse pattern GH-57 (useBatterySensorStream) nhưng scope nhiều pin → trả Map<assetId, reading>.
 // Reusable: scope `customer:{accountId}` (Customer) hoặc `assets:{ids}` (Staff) — dựng qua buildFleetScope.
-type StreamEvent = 'summary' | 'ping';
+// GH-74 — thêm event `stats` (§5.3bis) → Map<assetId, {window → stats}>, cùng pattern với liveByAsset.
+type StreamEvent = 'summary' | 'stats' | 'ping';
+
+// BE chốt ĐÚNG 2 window (§5.3bis). Window lạ → bỏ qua.
+const VALID_WINDOWS: StatsWindow[] = ['1h', 'today'];
+
+/** stats của 1 pin, khoá theo window. */
+export type AssetStats = Partial<Record<StatsWindow, BatteryStatsView>>;
 
 // react-native-sse 'error' event có thể mang HTTP status khi lỗi TRƯỚC lúc mở stream (§8 SSE).
 interface SseErrorEvent {
@@ -26,17 +39,24 @@ function isPrimary(code?: string | null): boolean {
 export interface FleetStreamState {
   /** Map batteryAssetId → reading mới nhất (chỉ primary). Field nullable có thể VẮNG. */
   liveByAsset: Map<string, LiveReadingDto>;
+  /** GH-74 — Map batteryAssetId → min/max nạp-xả theo window. Rỗng cho tới khi có event `stats`. */
+  statsByAsset: Map<string, AssetStats>;
   isConnected: boolean;
   /** true khi SSE bị từ chối (401/403 — sai auth/scope). UI vẫn show giá trị tĩnh. */
   streamError: boolean;
 }
 
 /**
- * Mở 1 SSE connection theo `scope` (summary). `null` → không mở (caller chưa đủ dữ liệu).
+ * Mở 1 SSE connection theo `scope` (summary + stats). `null` → không mở (caller chưa đủ dữ liệu).
  * KHÔNG quản state bằng TanStack Query (SSE là push, không phải query).
+ *
+ * GH-74 — `stats` cũng đi qua Map local như `liveByAsset`, KHÔNG qua query cache như
+ * `useBatterySensorStream` làm. Lý do: consumer (dashboard) render pin trong `renderItem` —
+ * là callback chứ không phải component → gọi `useQuery` per-pin ở đó sẽ vỡ rules-of-hooks.
  */
 export function useBatteryFleetStream(scope: string | null): FleetStreamState {
   const [liveByAsset, setLiveByAsset] = useState<Map<string, LiveReadingDto>>(new Map());
+  const [statsByAsset, setStatsByAsset] = useState<Map<string, AssetStats>>(new Map());
   const [isConnected, setIsConnected] = useState(false);
   const [streamError, setStreamError] = useState(false);
   const esRef = useRef<EventSource<StreamEvent> | null>(null);
@@ -92,6 +112,26 @@ export function useBatteryFleetStream(scope: string | null): FleetStreamState {
         });
       });
 
+      es.addEventListener('stats', (event) => {
+        if (cancelled || !event.data) return;
+        let dto: BatteryStatsDto;
+        try {
+          dto = JSON.parse(event.data) as BatteryStatsDto;
+        } catch {
+          return; // payload lỗi → bỏ qua, giữ Map cũ
+        }
+        // Window lạ (BE thêm window thứ 3) → bỏ qua.
+        if (!VALID_WINDOWS.includes(dto.window)) return;
+
+        setStatsByAsset((prev) => {
+          const next = new Map(prev);
+          // Route bằng batteryAssetId, KHÔNG dùng scopeType (giống `summary`).
+          const cur = next.get(dto.batteryAssetId) ?? {};
+          next.set(dto.batteryAssetId, { ...cur, [dto.window]: statsDtoToView(dto) });
+          return next;
+        });
+      });
+
       // 'ping' (keepalive) → bỏ qua. 'error' → KHÔNG nuốt im lặng: log status (§8).
       es.addEventListener('error', (event) => {
         if (cancelled) return;
@@ -119,5 +159,5 @@ export function useBatteryFleetStream(scope: string | null): FleetStreamState {
     };
   }, [scope]);
 
-  return { liveByAsset, isConnected, streamError };
+  return { liveByAsset, statsByAsset, isConnected, streamError };
 }
