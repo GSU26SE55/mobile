@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Shadow } from '../../../lib/theme';
+import { Colors, Radius, Shadow, Solar } from '../../../lib/theme';
 import { AlertDto } from '../types/alert.types';
 import {
   AlertSeverityEnum,
@@ -145,13 +145,13 @@ export function AssetAlertList({
       {hidden > 0 && (
         <Pressable style={styles.seeAll} onPress={() => setShowAll(true)}>
           <Text style={styles.seeAllText}>Xem tất cả {alerts.length} cảnh báo</Text>
-          <Ionicons name="chevron-down" size={15} color={Colors.primary} />
+          <Ionicons name="chevron-down" size={15} color={Solar.yellowDeep} />
         </Pressable>
       )}
       {canCollapse && (
         <Pressable style={styles.seeAll} onPress={() => setShowAll(false)}>
           <Text style={styles.seeAllText}>Thu gọn</Text>
-          <Ionicons name="chevron-up" size={15} color={Colors.primary} />
+          <Ionicons name="chevron-up" size={15} color={Solar.yellowDeep} />
         </Pressable>
       )}
     </View>
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     paddingVertical: 12,
   },
-  seeAllText: { fontSize: 13, fontWeight: '800', color: Colors.primary },
+  seeAllText: { fontSize: 13, fontWeight: '800', color: Solar.yellowDeep },
 
   empty: {
     backgroundColor: Colors.white,

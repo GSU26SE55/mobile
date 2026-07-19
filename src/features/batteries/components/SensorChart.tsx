@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
-import { Colors, Radius, Shadow } from '../../../lib/theme';
+import { Colors, Radius, Shadow, Solar } from '../../../lib/theme';
 import { useSensorReadingAggregate } from '../hooks/useSensorReadingAggregate';
 import { SensorReadingAggregateDto, SensorReadingInterval } from '../types/sensor-reading.types';
 
@@ -62,7 +62,7 @@ export function SensorChart({ assetId }: { assetId: string }) {
     if (isLoading) {
       return (
         <View style={styles.empty}>
-          <ActivityIndicator color={Colors.primary} />
+          <ActivityIndicator color={Solar.yellowDeep} />
           <Text style={styles.emptyText}>Đang tải dữ liệu…</Text>
         </View>
       );
@@ -86,16 +86,16 @@ export function SensorChart({ assetId }: { assetId: string }) {
             adjustToWidth
             initialSpacing={12}
             endSpacing={12}
-            color={Colors.primary}
+            color={Solar.yellow}
             thickness={2.5}
             curved
             areaChart
-            startFillColor={Colors.primary}
+            startFillColor={Solar.yellow}
             endFillColor={Colors.white}
-            startOpacity={0.25}
+            startOpacity={0.3}
             endOpacity={0.02}
             hideDataPoints={chartPoints.length > 16}
-            dataPointsColor={Colors.primary}
+            dataPointsColor={Solar.yellowDeep}
             dataPointsRadius={3}
             yAxisTextStyle={styles.axisTickText}
             xAxisLabelTextStyle={styles.axisTickText}
@@ -109,7 +109,7 @@ export function SensorChart({ assetId }: { assetId: string }) {
             pointerConfig={{
               pointerStripHeight: CHART_HEIGHT,
               pointerStripColor: Colors.border,
-              pointerColor: Colors.primary,
+              pointerColor: Solar.yellow,
               radius: 5,
               pointerLabelWidth: 110,
               pointerLabelHeight: 44,
@@ -194,9 +194,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: Colors.bg,
   },
-  tabActive: { backgroundColor: Colors.primaryLight },
+  tabActive: { backgroundColor: Solar.yellowSoft },
   tabText: { fontSize: 12, fontWeight: '700', color: Colors.textMute },
-  tabTextActive: { color: Colors.primaryDark },
+  tabTextActive: { color: Solar.yellowDeep },
   empty: { height: CHART_HEIGHT, alignItems: 'center', justifyContent: 'center', gap: 8 },
   emptyText: { fontSize: 13, color: Colors.textMute },
   axisTickText: { fontSize: 10, color: Colors.textFaint, fontWeight: '600' },

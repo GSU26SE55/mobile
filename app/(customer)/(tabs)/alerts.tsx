@@ -3,7 +3,7 @@ import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Colors, Shadow } from '../../../src/lib/theme';
+import { Colors, Solar } from '../../../src/lib/theme';
 import { useMyAlerts } from '../../../src/features/batteries/hooks/useMyAlerts';
 import { AlertDto, formatMeasure } from '../../../src/features/batteries/types/alert.types';
 import {
@@ -13,13 +13,14 @@ import {
 import { ANOMALY_LABEL } from '../../../src/features/batteries/components/AssetAlertList';
 import { useMyIncidents } from '../../../src/features/incidents/hooks/useMyIncidents';
 import { IncidentList } from '../../../src/features/incidents/components/IncidentList';
+import { EnergyBackdrop, GlassSurface } from '../../../src/features/batteries/components/EnergyBackdrop';
 
 type FilterKey = 'all' | AlertSeverityEnum;
 type Segment = 'alerts' | 'incidents';
 
 const SEVERITY_COLORS: Record<AlertSeverityEnum, { label: string; bg: string; iconColor: string; badgeBg: string; badgeText: string }> = {
   [AlertSeverityEnum.Critical]: { label: 'CRITICAL', bg: '#FFEBEA', iconColor: '#DC4F3D', badgeBg: '#FFE5E3', badgeText: '#B73221' },
-  [AlertSeverityEnum.Warning]: { label: 'WARNING', bg: '#FFF3E3', iconColor: '#FFB703', badgeBg: '#FFF1B8', badgeText: '#9C7800' },
+  [AlertSeverityEnum.Warning]: { label: 'WARNING', bg: '#FFF6D6', iconColor: '#D9A000', badgeBg: '#FFF1B8', badgeText: '#9C7800' },
   [AlertSeverityEnum.Info]: { label: 'INFO', bg: '#EBF3FF', iconColor: '#5081C7', badgeBg: '#DCE6F5', badgeText: '#2A538A' },
 };
 
@@ -60,50 +61,55 @@ export default function AlertsScreen() {
 
     return (
       <Pressable
-        style={[styles.card, Shadow]}
         onPress={() => router.push({ pathname: '/(customer)/alerts/[id]', params: { id: item.id } })}
       >
-        <View style={styles.cardHeader}>
-          <View style={[styles.iconWrap, { backgroundColor: colors.bg }]}>
-            <Ionicons name="alert-circle-outline" size={20} color={colors.iconColor} />
-          </View>
-          <View style={styles.headerInfo}>
-            <View style={styles.tagRow}>
-              <View style={[styles.typeBadge, { backgroundColor: colors.badgeBg }]}>
-                <View style={[styles.badgeDot, { backgroundColor: colors.badgeText }]} />
-                <Text style={[styles.typeBadgeText, { color: colors.badgeText }]}>{colors.label}</Text>
+        {({ pressed }) => (
+          <GlassSurface style={[styles.card, pressed && styles.pressed]}>
+            <View style={styles.cardHeader}>
+              <View style={[styles.iconWrap, { backgroundColor: colors.bg }]}>
+                <Ionicons name="alert-circle-outline" size={20} color={colors.iconColor} />
               </View>
-              {item.status === AlertStatusEnum.Open && <View style={styles.unreadDot} />}
+              <View style={styles.headerInfo}>
+                <View style={styles.tagRow}>
+                  <View style={[styles.typeBadge, { backgroundColor: colors.badgeBg }]}>
+                    <View style={[styles.badgeDot, { backgroundColor: colors.badgeText }]} />
+                    <Text style={[styles.typeBadgeText, { color: colors.badgeText }]}>{colors.label}</Text>
+                  </View>
+                  {item.status === AlertStatusEnum.Open && <View style={styles.unreadDot} />}
+                </View>
+                <Text style={styles.alertTitle}>{ANOMALY_LABEL[item.anomalyType] ?? 'Cảnh báo'}</Text>
+                <Text style={styles.alertMeta}>
+                  {item.batterySerialNumber} · {STATUS_LABEL[item.status] ?? ''}
+                </Text>
+              </View>
+              <View style={styles.valueWrap}>
+                <Text style={[styles.valText, { color: colors.badgeText }]}>
+                  {formatMeasure(item.actualValue, item.unit)}
+                </Text>
+                <Text style={styles.thrText}>
+                  thr {formatMeasure(item.thresholdValue, item.unit)}
+                </Text>
+              </View>
             </View>
-            <Text style={styles.alertTitle}>{ANOMALY_LABEL[item.anomalyType] ?? 'Cảnh báo'}</Text>
-            <Text style={styles.alertMeta}>
-              {item.batterySerialNumber} · {STATUS_LABEL[item.status] ?? ''}
-            </Text>
-          </View>
-          <View style={styles.valueWrap}>
-            <Text style={[styles.valText, { color: colors.badgeText }]}>
-              {formatMeasure(item.actualValue, item.unit)}
-            </Text>
-            <Text style={styles.thrText}>
-              thr {formatMeasure(item.thresholdValue, item.unit)}
-            </Text>
-          </View>
-        </View>
+          </GlassSurface>
+        )}
       </Pressable>
     );
   };
 
   return (
     <View style={styles.container}>
+      <EnergyBackdrop />
+
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         {router.canGoBack() && (
-          <Pressable onPress={() => router.back()} style={[styles.backBtn, Shadow]} hitSlop={8}>
-            <Ionicons name="chevron-back" size={18} color={Colors.accent} />
+          <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
+            <Ionicons name="chevron-back" size={20} color={Solar.ink} />
           </Pressable>
         )}
         <View style={styles.headerLeft}>
-          <Text style={styles.title}>Cảnh báo</Text>
+          <Text style={styles.title}>Cảnh báo & Sự cố</Text>
           <Text style={styles.subtitle}>
             {openCount} đang mở · {totalCount} tổng
           </Text>
@@ -111,23 +117,25 @@ export default function AlertsScreen() {
       </View>
 
       {/* Segment: Cảnh báo | Sự cố */}
-      <View style={styles.segmentRow}>
-        <Pressable
-          style={[styles.segmentTab, segment === 'alerts' && styles.segmentTabActive]}
-          onPress={() => setSegment('alerts')}
-        >
-          <Text style={[styles.segmentText, segment === 'alerts' && styles.segmentTextActive]}>
-            Cảnh báo
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.segmentTab, segment === 'incidents' && styles.segmentTabActive]}
-          onPress={() => setSegment('incidents')}
-        >
-          <Text style={[styles.segmentText, segment === 'incidents' && styles.segmentTextActive]}>
-            Sự cố
-          </Text>
-        </Pressable>
+      <View style={styles.segmentRowWrap}>
+        <GlassSurface style={styles.segmentRow}>
+          <Pressable
+            style={[styles.segmentTab, segment === 'alerts' && styles.segmentTabActive]}
+            onPress={() => setSegment('alerts')}
+          >
+            <Text style={[styles.segmentText, segment === 'alerts' && styles.segmentTextActive]}>
+              Cảnh báo
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.segmentTab, segment === 'incidents' && styles.segmentTabActive]}
+            onPress={() => setSegment('incidents')}
+          >
+            <Text style={[styles.segmentText, segment === 'incidents' && styles.segmentTextActive]}>
+              Sự cố
+            </Text>
+          </Pressable>
+        </GlassSurface>
       </View>
 
       {segment === 'alerts' ? (
@@ -162,14 +170,16 @@ export default function AlertsScreen() {
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Ionicons
-                  name={isLoading ? 'hourglass-outline' : 'notifications-off-outline'}
-                  size={48}
-                  color={Colors.textFaint}
-                />
-                <Text style={styles.emptyText}>
-                  {isLoading ? 'Đang tải…' : 'Không có cảnh báo nào'}
-                </Text>
+                <GlassSurface style={styles.emptyCard}>
+                  <Ionicons
+                    name={isLoading ? 'hourglass-outline' : 'notifications-off-outline'}
+                    size={45}
+                    color={Solar.faint}
+                  />
+                  <Text style={styles.emptyText}>
+                    {isLoading ? 'Đang tải…' : 'Không có cảnh báo nào'}
+                  </Text>
+                </GlassSurface>
               </View>
             }
           />
@@ -189,7 +199,7 @@ export default function AlertsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg },
+  container: { flex: 1, backgroundColor: Solar.bg },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -199,52 +209,61 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flex: 1 },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 13,
-    backgroundColor: Colors.white,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    shadowColor: '#8C7A4B',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  title: { fontSize: 22, fontWeight: '800', color: Colors.text, letterSpacing: -0.5 },
-  subtitle: { fontSize: 12, color: Colors.textMute, marginTop: 2 },
+  title: { fontSize: 24, fontWeight: '900', color: Solar.ink, letterSpacing: -0.5 },
+  subtitle: { fontSize: 12, color: Solar.mute, marginTop: 2, fontWeight: '600' },
+  segmentRowWrap: {
+    paddingHorizontal: 20,
+    marginBottom: 14,
+  },
   segmentRow: {
     flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: 14,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 18,
     padding: 4,
     gap: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
   },
-  segmentTab: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center' },
-  segmentTabActive: { backgroundColor: '#34C759' },
-  segmentText: { fontSize: 13, fontWeight: '700', color: Colors.textMute },
-  segmentTextActive: { color: '#FFFFFF' },
+  segmentTab: { flex: 1, paddingVertical: 9, borderRadius: 14, alignItems: 'center' },
+  segmentTabActive: {
+    backgroundColor: Solar.yellow,
+    shadowColor: Solar.yellowDeep,
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  segmentText: { fontSize: 13, fontWeight: '700', color: Solar.mute },
+  segmentTextActive: { color: Solar.ink, fontWeight: '900' },
   filterContainer: { marginBottom: 14 },
   filterScroll: { paddingHorizontal: 20, gap: 8 },
   filterTab: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.02)',
+    borderColor: 'rgba(235, 230, 215, 0.7)',
   },
-  filterTabActive: { backgroundColor: '#34C759' },
-  filterText: { fontSize: 12, fontWeight: '700', color: Colors.textMute },
-  filterTextActive: { color: '#FFFFFF' },
+  filterTabActive: {
+    backgroundColor: Solar.yellow,
+    borderWidth: 0,
+  },
+  filterText: { fontSize: 12, fontWeight: '700', color: Solar.mute },
+  filterTextActive: { color: Solar.ink, fontWeight: '900' },
   list: { paddingHorizontal: 20, paddingBottom: 110 },
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center' },
   iconWrap: {
@@ -267,12 +286,14 @@ const styles = StyleSheet.create({
   },
   badgeDot: { width: 4, height: 4, borderRadius: 2 },
   typeBadgeText: { fontSize: 8, fontWeight: '700', letterSpacing: 0.3 },
-  unreadDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#34C759' },
-  alertTitle: { fontSize: 14, fontWeight: '800', color: Colors.text },
-  alertMeta: { fontSize: 11, color: Colors.textMute, marginTop: 3 },
+  unreadDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.danger },
+  alertTitle: { fontSize: 14, fontWeight: '900', color: Solar.ink },
+  alertMeta: { fontSize: 11, color: Solar.mute, marginTop: 3, fontWeight: '600' },
   valueWrap: { alignItems: 'flex-end', marginLeft: 12 },
-  valText: { fontSize: 14, fontWeight: '800' },
-  thrText: { fontSize: 10, color: Colors.textMute, marginTop: 3 },
-  emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, gap: 10 },
-  emptyText: { fontSize: 13, color: Colors.textMute },
+  valText: { fontSize: 14, fontWeight: '900' },
+  thrText: { fontSize: 10, color: Solar.mute, marginTop: 3, fontWeight: '600' },
+  emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40, width: '100%' },
+  emptyCard: { borderRadius: 24, padding: 30, alignItems: 'center', width: '100%' },
+  emptyText: { fontSize: 13, color: Solar.mute, fontWeight: '600', marginTop: 8 },
+  pressed: { opacity: 0.8, transform: [{ scale: 0.98 }] },
 });
