@@ -510,6 +510,14 @@ function TicketDetailScreenInner() {
               <Text style={styles.sectionH}>Mô tả ban đầu</Text>
               <Text style={styles.descText}>{ticket.description}</Text>
 
+              {/* Thời điểm phát hiện — Customer đã nhập khi tạo ticket. */}
+              {ticket.detectedAt ? (
+                <Text style={styles.detectedInfo}>
+                  Phát hiện lúc:{' '}
+                  {new Date(ticket.detectedAt).toLocaleString('vi-VN')}
+                </Text>
+              ) : null}
+
               {/* Attachments — BE trả mảng FileId (string[]) */}
               {(ticket.attachmentFileIds?.length ?? 0) > 0 && (
                 <>
@@ -959,6 +967,7 @@ const styles = StyleSheet.create({
   descCard:       { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, gap: 10, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
   sectionH:       { fontSize: 14, fontWeight: '800', color: Colors.text },
   descText:       { fontSize: 13, color: Colors.text2, lineHeight: 22, fontWeight: '500' },
+  detectedInfo:   { fontSize: 12, color: Colors.textMute, marginTop: 10, fontWeight: '600' },
   attachRow:      { gap: 8 },
   attachCard:     {
     width: 80,

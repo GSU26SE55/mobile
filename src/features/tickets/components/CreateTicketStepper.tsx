@@ -33,17 +33,72 @@ const BATTERY_STATUS_MAP: Record<number, { label: string; color: string; bg: str
 interface Props {
   step: number;
   setStep: (step: number | ((s: number) => number)) => void;
-  selectedBatteryId: string | null;
-  setSelectedBatteryId: (id: string | null) => void;
+  // Ticket có thể gắn nhiều pin — mảng id đã chọn.
+  selectedBatteryIds: string[];
+  setSelectedBatteryIds: (ids: string[]) => void;
   category: TicketCategoryEnum | '';
   setCategory: (c: TicketCategoryEnum | '') => void;
   description: string;
   setDescription: (desc: string) => void;
+  /** Label chip phát hiện đã chọn ('Vừa xong'...) hoặc '' nếu chưa chọn. */
+  detectedLabel: string;
+  setDetectedLabel: (label: string) => void;
   attachedFiles: UploadedTicketAttachment[];
   setAttachedFiles: React.Dispatch<React.SetStateAction<UploadedTicketAttachment[]>>;
   onSubmit: () => void;
   isLoading: boolean;
   onCancel: () => void;
+}
+
+// Lựa chọn nhanh "phát hiện lúc nào" — tránh thêm datetime picker lib (rule mobile).
+// State lưu `label` (định danh ổn định) — KHÔNG lưu ISO trong state vì Date.now()
+// đổi mỗi render → so sánh ISO sẽ luôn false (chip không chọn được). ISO tính khi submit.
+const DETECTED_OPTIONS: { label: string; minutesAgo: number }[] = [
+  { label: 'Vừa xong', minutesAgo: 0 },
+  { label: '1 giờ trước', minutesAgo: 60 },
+  { label: 'Sáng nay', minutesAgo: 60 * 6 },
+  { label: 'Hôm qua', minutesAgo: 60 * 24 },
+];
+
+// Parse chuỗi Customer gõ tay "dd/MM/yyyy HH:mm" (hoặc "dd/MM/yyyy HH:mm:ss") → Date.
+// Không dùng datetime picker lib (rule mobile) — parse thủ công + validate từng phần.
+// Trả null nếu sai format / ngày không hợp lệ / ở tương lai.
+export function parseDetectedInput(text: string): Date | null {
+  const m = text
+    .trim()
+    .match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!m) return null;
+  const [, dd, mm, yyyy, hh, min, ss] = m;
+  const day = +dd;
+  const month = +mm;
+  const year = +yyyy;
+  const hour = +hh;
+  const minute = +min;
+  const second = ss ? +ss : 0;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  if (hour > 23 || minute > 59 || second > 59) return null;
+  const d = new Date(year, month - 1, day, hour, minute, second);
+  // Reject ngày tràn (vd 31/02 → JS auto-rollover sang tháng sau) + thời điểm tương lai.
+  if (
+    d.getFullYear() !== year ||
+    d.getMonth() !== month - 1 ||
+    d.getDate() !== day ||
+    d.getTime() > Date.now()
+  )
+    return null;
+  return d;
+}
+
+/**
+ * Map label đã chọn → ISO UTC (tính tại thời điểm gọi). '' nếu không chọn.
+ * - Là 1 chip nhanh → tính từ minutesAgo.
+ * - Ngược lại coi là chuỗi Customer gõ tay "dd/MM/yyyy HH:mm" → parse.
+ */
+export function detectedLabelToIso(label: string): string {
+  const opt = DETECTED_OPTIONS.find((o) => o.label === label);
+  if (opt) return new Date(Date.now() - opt.minutesAgo * 60_000).toISOString();
+  const custom = parseDetectedInput(label);
+  return custom ? custom.toISOString() : '';
 }
 
 const CATEGORIES: { value: TicketCategoryEnum; label: string; sub: string; icon: keyof typeof Ionicons.glyphMap; iconColor: string; iconBg: string }[] = [
@@ -102,12 +157,14 @@ const getAssetUploadFile = (asset: ImagePicker.ImagePickerAsset) => {
 export function CreateTicketStepper({
   step,
   setStep,
-  selectedBatteryId,
-  setSelectedBatteryId,
+  selectedBatteryIds,
+  setSelectedBatteryIds,
   category,
   setCategory,
   description,
   setDescription,
+  detectedLabel,
+  setDetectedLabel,
   attachedFiles,
   setAttachedFiles,
   onSubmit,
@@ -117,7 +174,9 @@ export function CreateTicketStepper({
   const insets = useSafeAreaInsets();
 
   const { data: batteries = [] } = useMyBatteryAssets();
-  const selectedBattery = batteries.find((b: BatteryAssetDto) => b.id === selectedBatteryId);
+  const selectedBatteries = batteries.filter((b: BatteryAssetDto) =>
+    selectedBatteryIds.includes(b.id),
+  );
   const uploadTicketAttachment = useUploadTicketAttachment();
   const isUploadingImage = uploadTicketAttachment.isPending;
 
@@ -246,7 +305,10 @@ export function CreateTicketStepper({
           <ScrollView style={styles.stepScroll} showsVerticalScrollIndicator={false}>
             <Text style={styles.stepNum}>BƯỚC 01</Text>
             <Text style={styles.stepTitle}>Chọn thiết bị</Text>
-            <Text style={styles.stepSub}>Ticket gắn với 1 battery (BR-01)</Text>
+            <Text style={styles.stepSub}>
+              Chọn 1 hoặc nhiều pin gặp sự cố
+              {selectedBatteryIds.length > 0 ? ` · đã chọn ${selectedBatteryIds.length}` : ''}
+            </Text>
 
             <View style={styles.batteryList}>
               {batteries.length === 0 && (
@@ -256,13 +318,20 @@ export function CreateTicketStepper({
                 </View>
               )}
               {batteries.map((battery: BatteryAssetDto) => {
-                const isSelected = selectedBatteryId === battery.id;
+                const isSelected = selectedBatteryIds.includes(battery.id);
                 const statusInfo = BATTERY_STATUS_MAP[battery.status] ?? { label: 'Unknown', color: Colors.gray, bg: '#F3F4F6' };
                 return (
                   <Pressable
                     key={battery.id}
                     style={[styles.batteryCard, isSelected && styles.batteryCardSelected, Shadow]}
-                    onPress={() => setSelectedBatteryId(battery.id)}
+                    // Multi-select: toggle pin vào/khỏi danh sách.
+                    onPress={() =>
+                      setSelectedBatteryIds(
+                        isSelected
+                          ? selectedBatteryIds.filter((id) => id !== battery.id)
+                          : [...selectedBatteryIds, battery.id],
+                      )
+                    }
                   >
                     <View style={[styles.batteryIconWrap, { backgroundColor: statusInfo.bg }]}>
                       <Ionicons name="battery-charging" size={20} color={statusInfo.color} />
@@ -276,8 +345,9 @@ export function CreateTicketStepper({
                     <View style={styles.batteryStatusCol}>
                       <Text style={[styles.batteryStatusLabel, { color: statusInfo.color }]}>{statusInfo.label}</Text>
                     </View>
-                    <View style={styles.radioOutline}>
-                      {isSelected && <View style={styles.radioSelected} />}
+                    {/* Checkbox (multi-select) thay radio (single). */}
+                    <View style={[styles.checkboxOutline, isSelected && styles.checkboxChecked]}>
+                      {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
                     </View>
                   </Pressable>
                 );
@@ -333,6 +403,62 @@ export function CreateTicketStepper({
               <Text style={styles.minCharLabel}>Tối thiểu 10 ký tự</Text>
               <Text style={styles.countText}>{description.length}/500</Text>
             </View>
+
+            {/* Thời điểm phát hiện — chip nhanh HOẶC nhập giờ cụ thể. Không cần datetime picker lib. */}
+            <Text style={styles.descLabel}>Phát hiện lúc nào? (không bắt buộc)</Text>
+            <View style={styles.detectedRow}>
+              {DETECTED_OPTIONS.map((opt) => {
+                const isSelected = detectedLabel === opt.label;
+                return (
+                  <Pressable
+                    key={opt.label}
+                    style={[
+                      styles.detectedChip,
+                      isSelected && styles.detectedChipSelected,
+                    ]}
+                    onPress={() =>
+                      setDetectedLabel(isSelected ? '' : opt.label)
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.detectedChipText,
+                        isSelected && styles.detectedChipTextSelected,
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Nhập giờ cụ thể — label KHÔNG khớp chip nào nghĩa là Customer đang gõ tay. */}
+            {(() => {
+              const isChip = DETECTED_OPTIONS.some((o) => o.label === detectedLabel);
+              const customText = isChip ? '' : detectedLabel;
+              const invalid =
+                customText.trim().length > 0 && parseDetectedInput(customText) === null;
+              return (
+                <>
+                  <Text style={styles.detectedOrLabel}>Hoặc nhập chính xác:</Text>
+                  <TextInput
+                    style={[styles.detectedInput, invalid && styles.detectedInputError]}
+                    placeholder="dd/mm/yyyy hh:mm  (VD: 22/07/2026 09:30)"
+                    placeholderTextColor={Colors.textFaint}
+                    value={customText}
+                    onChangeText={setDetectedLabel}
+                    keyboardType="numbers-and-punctuation"
+                    autoCapitalize="none"
+                  />
+                  {invalid && (
+                    <Text style={styles.detectedInputHint}>
+                      Định dạng chưa đúng hoặc thời điểm ở tương lai — VD 22/07/2026 09:30.
+                    </Text>
+                  )}
+                </>
+              );
+            })()}
 
             <View style={[styles.infoBanner, { marginBottom: 40 }]}>
               <Ionicons name="information-circle-outline" size={16} color="#2A538A" style={{ marginRight: 8, marginTop: 1 }} />
@@ -410,8 +536,12 @@ export function CreateTicketStepper({
             <View style={[styles.reviewTable, Shadow]}>
               <View style={styles.reviewRow}>
                 <Text style={styles.reviewRowLabel}>Thiết bị</Text>
-                <Text style={styles.reviewRowValue} numberOfLines={1}>
-                  {selectedBattery ? `${selectedBattery.batteryTypeName} · ${selectedBattery.serialNumber}` : 'Không chọn'}
+                <Text style={styles.reviewRowValue} numberOfLines={2}>
+                  {selectedBatteries.length === 0
+                    ? 'Không chọn'
+                    : selectedBatteries.length === 1
+                      ? `${selectedBatteries[0].batteryTypeName} · ${selectedBatteries[0].serialNumber}`
+                      : `${selectedBatteries.length} thiết bị: ${selectedBatteries.map((b) => b.serialNumber).join(', ')}`}
                 </Text>
               </View>
               <View style={styles.reviewDivider} />
@@ -441,7 +571,7 @@ export function CreateTicketStepper({
   };
 
   const isNextDisabled = () => {
-    if (step === 1) return !selectedBatteryId;
+    if (step === 1) return selectedBatteryIds.length === 0;
     if (step === 2) return !category || description.length < 10;
     if (step === 3) return isUploadingImage;
     return false;
@@ -550,6 +680,8 @@ const styles = StyleSheet.create({
   batteryStatusLabel: { fontSize: 9, fontWeight: '600', marginTop: 1 },
   radioOutline: { width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
   radioSelected: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#EF5128' },
+  checkboxOutline: { width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
+  checkboxChecked: { backgroundColor: '#EF5128', borderColor: '#EF5128' },
 
   // Category
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
@@ -564,6 +696,35 @@ const styles = StyleSheet.create({
 
   // Description
   descLabel: { fontSize: 13, fontWeight: '600', color: Colors.text, marginBottom: 10 },
+  detectedRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
+  detectedChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.card2,
+  },
+  detectedChipSelected: {
+    borderColor: Colors.primaryDark,
+    backgroundColor: Colors.primaryLight,
+  },
+  detectedChipText: { fontSize: 13, color: Colors.textMute, fontWeight: '500' },
+  detectedChipTextSelected: { color: Colors.text, fontWeight: '700' },
+  detectedOrLabel: { fontSize: 12, color: Colors.textMute, marginBottom: 6, marginTop: -8 },
+  detectedInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: Colors.text,
+    marginBottom: 20,
+  },
+  detectedInputError: { borderColor: '#DC4F3D' },
+  detectedInputHint: { fontSize: 12, color: '#DC4F3D', marginTop: -14, marginBottom: 16 },
   inputWrapper: {
     backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.06)', paddingHorizontal: 14, paddingVertical: 12, marginBottom: 8,

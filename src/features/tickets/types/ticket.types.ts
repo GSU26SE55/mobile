@@ -178,6 +178,10 @@ export interface MaintenanceLogDTO {
 
 export interface TicketDetailDTO extends TicketDTO {
   description: string | null;
+  /** Thời điểm Customer phát hiện pin bất thường (Customer nhập khi tạo ticket). */
+  detectedAt: string | null;
+  /** Serial pin snapshot (BE denormalize) — hiển thị nếu không load được battery. */
+  batterySerialNumber: string | null;
   resolutionSummary: string | null;
   resolvedAt: string | null;
   resolvedByStaffId: string | null;
@@ -216,7 +220,10 @@ export interface CreateTicketPayload {
   title: string;
   description: string;
   category: TicketCategoryEnum;
-  batteryAssetId?: string;
+  /** BE nhận MẢNG batteryAssetIds (khớp TicketCreateCommand.BatteryAssetIds). */
+  batteryAssetIds?: string[];
+  /** Thời điểm Customer phát hiện pin bất thường (ISO UTC). BE dùng để AI đối chiếu sensor. */
+  detectedAt?: string;
   attachments?: CommentAttachmentPayload[];
 }
 
