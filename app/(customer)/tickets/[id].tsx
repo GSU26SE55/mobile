@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  Image,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -54,12 +53,9 @@ import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/us
 import { AuthImage } from '../../../src/features/file-storage/components/AuthImage';
 import { AttachmentForm } from '../../../src/features/tickets/schemas/comment.schema';
 import { RatePayload, ReopenPayload, TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
-import { BASE_URL } from '../../../src/lib/axios';
-import { ENDPOINTS } from '../../../src/lib/endpoints';
 import { BadgeColors, Colors, Shadow, ShadowPrimary } from '../../../src/lib/theme';
 import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
 import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
-import { KbRelatedSection } from '../../../src/features/kb/components/KbRelatedSection';
 import { useSessionStore } from '../../../src/stores/sessionStore';
 
 const PRIORITY_MAP: Record<string, { label: string; badge: keyof typeof BadgeColors }> = {
@@ -76,6 +72,19 @@ const CATEGORY_LABEL: Record<string, string> = {
   Repair: 'Sửa chữa',
   Other: 'Khác',
 };
+
+/**
+ * `toLocaleString('vi-VN')` cho ra "13:31:16 13/7/2026" — giây là nhiễu và ngày
+ * không pad 0 nên độ dài nhảy lung tung giữa các dòng. Cố định "HH:mm dd/MM/yyyy".
+ */
+const fmtDateTime = (iso: string) =>
+  new Date(iso).toLocaleString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 
 function PriorityBadge({ priority }: { priority: string | null }) {
   // priority null khi ticket chưa triage — hiển thị nhãn trung tính, không nhầm P3.
@@ -389,14 +398,9 @@ function TicketDetailScreenInner() {
           <Ionicons name="chevron-back" size={18} color={Colors.text} />
         </Pressable>
         <Text style={styles.topCode} numberOfLines={1}>{ticket.code}</Text>
-        <View style={styles.unreadSlot}>
-          {unreadCount > 0 && (
-            <View style={styles.unreadBadge}>
-              <Ionicons name="chatbubble" size={11} color="#FFF" />
-              <Text style={styles.unreadText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-            </View>
-          )}
-        </View>
+        {/* Spacer giữ mã ticket ở giữa. Badge chưa đọc nằm trên tab "Trao đổi",
+            không lặp lại ở đây để tránh 2 chỗ cùng báo một con số. */}
+        <View style={styles.unreadSlot} />
       </View>
 
       {/* Tab bar */}
@@ -412,9 +416,14 @@ function TicketDetailScreenInner() {
           onPress={() => setActiveTab('chat')}
         >
           <Text style={[styles.tabText, activeTab === 'chat' && styles.tabTextActive]}>Trao đổi</Text>
-          {comments.length > 0 && (
+          {/* Số CHƯA ĐỌC, không phải tổng số tin. Ẩn khi đang mở chính tab này:
+              tin mới về qua SignalR làm badge nháy lên trước khi thread kịp
+              mark-read, mà user thì đang đọc ngay tin đó. */}
+          {activeTab !== 'chat' && unreadCount > 0 && (
             <View style={styles.tabBadge}>
-              <Text style={styles.tabBadgeText}>{comments.length}</Text>
+              <Text style={styles.tabBadgeText}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </Text>
             </View>
           )}
         </Pressable>
@@ -430,10 +439,20 @@ function TicketDetailScreenInner() {
               <TicketStatusBadge status={ticket.status} />
             </View>
             <Text style={styles.title}>{ticket.title}</Text>
+            {/* Trước đây ngày + danh mục dồn vào MỘT dòng xám chạy dài, mắt phải
+                tự tách. Tách thành 2 mẩu có icon → quét nhanh hơn. */}
             <View style={styles.metaRow}>
-              <Text style={styles.metaText}>
-                {new Date(ticket.createdAt).toLocaleString('vi-VN')} · {CATEGORY_LABEL[ticket.category] ?? ticket.category}
-              </Text>
+              <View style={styles.metaItem}>
+                <Ionicons name="time-outline" size={12} color={Colors.textMute} />
+                <Text style={styles.metaText}>{fmtDateTime(ticket.createdAt)}</Text>
+              </View>
+              <View style={styles.metaDivider} />
+              <View style={styles.metaItem}>
+                <Ionicons name="pricetag-outline" size={12} color={Colors.textMute} />
+                <Text style={styles.metaText}>
+                  {CATEGORY_LABEL[ticket.category] ?? ticket.category}
+                </Text>
+              </View>
               <View style={{ flex: 1 }} />
               {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} />}
             </View>
@@ -456,11 +475,21 @@ function TicketDetailScreenInner() {
               <Ionicons name="battery-charging" size={18} color="#34C759" />
             </View>
             <View style={styles.batteryLinkInfo}>
-              <Text style={styles.batteryLinkTitle}>
-                {battery ? battery.batteryTypeName : `Thiết bị ${ticket.batteryAssetId ? '...' : 'Chưa liên kết'}`}
+              {/* Trước đây khi chưa tải xong pin thì render đúng chữ "Thiết bị ..."
+                  — trông như lỗi tràn chữ. Nói rõ đang tải / chưa liên kết. */}
+              <Text style={styles.batteryLinkTitle} numberOfLines={1}>
+                {battery
+                  ? battery.batteryTypeName
+                  : ticket.batteryAssetId
+                    ? 'Đang tải thiết bị…'
+                    : 'Chưa liên kết thiết bị'}
               </Text>
-              <Text style={styles.batteryLinkSub}>
-                {battery ? battery.serialNumber : ''}{battery?.siteName ? ` · ${battery.siteName}` : ''}
+              <Text style={styles.batteryLinkSub} numberOfLines={1}>
+                {battery
+                  ? `${battery.serialNumber}${battery.siteName ? ` · ${battery.siteName}` : ''}`
+                  : ticket.batteryAssetId
+                    ? 'Chạm để xem chi tiết'
+                    : 'Ticket không gắn với pin cụ thể'}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
@@ -469,8 +498,12 @@ function TicketDetailScreenInner() {
           {/* Assignment info row */}
           {(() => {
             const assignActivity = ticket.activities?.find((a) => a.action === 'StaffAssigned' || a.action === 'StaffReassigned');
-            const staffName = ticket.assignedStaffName ?? ticket.assignedStaffId;
-            if (!staffName && !assignActivity) return null;
+            // #697 — trạng thái phân công suy ra từ `assignments`, không phải
+            // `assignedStaffId` (BE đã bỏ field đó).
+            const assignments = ticket.assignments ?? [];
+            const hasPrimary = assignments.some((a) => a.role === 'PrimaryHandler');
+            const supporterCount = assignments.filter((a) => a.role === 'Supporter').length;
+            if (!hasPrimary && !assignActivity) return null;
             return (
               <View style={[styles.assignCard, Shadow]}>
                 <View style={styles.assignRow}>
@@ -480,7 +513,12 @@ function TicketDetailScreenInner() {
                   <View style={styles.assignInfo}>
                     <Text style={styles.assignLabel}>Kỹ thuật viên</Text>
                     <Text style={styles.assignValue}>
-                      {ticket.assignedStaffName ?? (ticket.assignedStaffId ? 'Đã phân công' : 'Chưa phân công')}
+                      {hasPrimary ? 'Đã phân công' : 'Chưa phân công'}
+                      {supporterCount > 0 && (
+                        <Text style={styles.assignTime}>
+                          {` · +${supporterCount} hỗ trợ`}
+                        </Text>
+                      )}
                     </Text>
                   </View>
                 </View>
@@ -494,7 +532,7 @@ function TicketDetailScreenInner() {
                       <Text style={styles.assignValue}>
                         {assignActivity.actorDisplayName ?? assignActivity.actorRole}
                         <Text style={styles.assignTime}>
-                          {' · '}{new Date(assignActivity.createdAt).toLocaleString('vi-VN')}
+                          {' · '}{fmtDateTime(assignActivity.createdAt)}
                         </Text>
                       </Text>
                     </View>
@@ -514,7 +552,7 @@ function TicketDetailScreenInner() {
               {ticket.detectedAt ? (
                 <Text style={styles.detectedInfo}>
                   Phát hiện lúc:{' '}
-                  {new Date(ticket.detectedAt).toLocaleString('vi-VN')}
+                  {fmtDateTime(ticket.detectedAt)}
                 </Text>
               ) : null}
 
@@ -571,9 +609,6 @@ function TicketDetailScreenInner() {
               <Text style={styles.closedText}>Ticket đã được đóng hoàn toàn</Text>
             </View>
           )}
-
-          {/* Related KB articles */}
-          <KbRelatedSection ticket={ticket} />
 
           {/* Historical activities timeline — GH-44: GET /activities standalone */}
           {activities.length > 0 && (
@@ -809,7 +844,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   tabBadge: {
-    backgroundColor: '#34C759',
+    backgroundColor: Colors.danger, // đỏ = chưa đọc, thống nhất với web
+
     borderRadius: 10,
     minWidth: 18,
     height: 18,
@@ -828,29 +864,31 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bg,
   },
 
-  scroll:         { padding: 20, gap: 14, paddingBottom: 40 },
+  scroll:         { padding: 16, gap: 12, paddingBottom: 40 },
 
-  titleCard:      { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, gap: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
+  titleCard:      { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, gap: 10, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
   badgeRow:       { flexDirection: 'row', gap: 8 },
   badge:          { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   badgeDot:       { width: 6, height: 6, borderRadius: 3 },
   badgeLabel:     { fontSize: 11, fontWeight: '700' },
   title:          { fontSize: 18, fontWeight: '800', color: Colors.text, lineHeight: 26, letterSpacing: -0.3 },
-  metaRow:        { flexDirection: 'row', alignItems: 'center' },
-  metaText:       { fontSize: 12, color: Colors.textMute, fontWeight: '600' },
+  metaRow:        { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  metaItem:       { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaDivider:    { width: 1, height: 10, backgroundColor: 'rgba(0,0,0,0.10)' },
+  metaText:       { fontSize: 11.5, color: Colors.textMute, fontWeight: '600' },
 
   stepperContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 20,
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.03)',
   },
   stepperTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
     color: Colors.text,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   stepperRow: {
     flexDirection: 'row',
@@ -907,10 +945,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#C9C7BF',
   },
   stepLabel: {
-    fontSize: 9.5,
+    fontSize: 11,
     fontWeight: '600',
     color: Colors.textMute,
-    marginTop: 8,
+    marginTop: 6,
     textAlign: 'center',
   },
   stepLabelActive: {
@@ -927,7 +965,7 @@ const styles = StyleSheet.create({
 
   batteryLinkCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -957,25 +995,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  assignCard:     { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 16, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
+  assignCard:     { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
   assignRow:      { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   assignIconWrap: { width: 32, height: 32, borderRadius: 10, backgroundColor: '#E8F8EE', alignItems: 'center', justifyContent: 'center', marginTop: 2 },
   assignInfo:     { flex: 1 },
   assignLabel:    { fontSize: 11, color: Colors.textMute, fontWeight: '500', marginBottom: 2 },
   assignValue:    { fontSize: 13, color: Colors.text, fontWeight: '700' },
   assignTime:     { fontSize: 11, color: Colors.textMute, fontWeight: '400' },
-  descCard:       { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, gap: 10, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
-  sectionH:       { fontSize: 14, fontWeight: '800', color: Colors.text },
+  descCard:       { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, gap: 10, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
+  sectionH:       { fontSize: 13, fontWeight: '800', color: Colors.text, letterSpacing: -0.1 },
   descText:       { fontSize: 13, color: Colors.text2, lineHeight: 22, fontWeight: '500' },
   detectedInfo:   { fontSize: 12, color: Colors.textMute, marginTop: 10, fontWeight: '600' },
   attachRow:      { gap: 8 },
   attachCard:     {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
+    width: 84,
+    height: 84,
+    borderRadius: 14,
+    backgroundColor: Colors.bg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
+    borderColor: 'rgba(0,0,0,0.08)',
   },
   attachImage:    {
     width: '100%',
@@ -983,13 +1022,13 @@ const styles = StyleSheet.create({
   },
 
   resolvedCard:   {
-    backgroundColor: '#E8F5E9', borderRadius: 24,
+    backgroundColor: '#E8F5E9', borderRadius: 16,
     padding: 16, alignItems: 'center', flexDirection: 'row', gap: 12,
   },
   resolvedTitle:  { fontSize: 14, fontWeight: '800', color: '#2F7A2F' },
   resolvedSub:    { fontSize: 11, color: '#2F7A2F', opacity: 0.8, marginTop: 2 },
 
-  actionCard:     { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, gap: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
+  actionCard:     { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 18, gap: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
   rateBtn:        {
     backgroundColor: '#34C759', borderRadius: 16,
     padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -999,12 +1038,12 @@ const styles = StyleSheet.create({
   reopenLinkText: { color: '#34C759', fontSize: 13, fontWeight: '700' },
 
   closedCard:     {
-    backgroundColor: Colors.card2, borderRadius: 24,
+    backgroundColor: Colors.card2, borderRadius: 16,
     padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
   closedText:     { fontSize: 13, fontWeight: '700', color: Colors.textMute },
 
-  timelineCard:   { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18, gap: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
+  timelineCard:   { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, gap: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
 
   composer:       {
     flexDirection: 'row', alignItems: 'center', gap: 8,

@@ -63,14 +63,10 @@ export function useMentionTargets(ticketId?: string, enabled: boolean = true) {
       }
     });
 
-    // 2. Assigned staff
-    if (ticket?.assignedStaffName) {
-      list.push({
-        id: ticket.assignedStaffId ?? 'assigned-staff',
-        tag: `@${ticket.assignedStaffName.replace(/\s+/g, '_')}`,
-        name: ticket.assignedStaffName,
-      });
-    }
+    // 2. Assigned staff — #697: BE bỏ `assignedStaffName`; `assignments` chỉ có
+    // staffId (UUID) nên không dựng được tag `@Tên`. Staff nào đã nhắn trong
+    // ticket vẫn xuất hiện ở nhóm (1) qua `authorDisplayName`, nên vẫn mention
+    // được người đang thực sự trao đổi.
 
     // 3. Customer
     if (ticket?.customerName) {

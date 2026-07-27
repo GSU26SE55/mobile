@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BadgeColors, Colors } from '../../../src/lib/theme';
+import { BadgeColors, Colors, Solar } from '../../../src/lib/theme';
 import { useStaffTickets } from '../../../src/features/staff/hooks/useStaffTickets';
 import { useStaffDashboardStats } from '../../../src/features/staff/hooks/useStaffDashboardStats';
 import { useStaffProfile } from '../../../src/features/staff/hooks/useStaffProfile';
@@ -184,11 +184,11 @@ export default function StaffDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
+  root: { flex: 1, backgroundColor: Solar.bg },
   headerWrap: { paddingHorizontal: 20 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   sectionHeader: { marginBottom: 14 },
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: Colors.accent },
+  sectionTitle: { fontSize: 18, fontWeight: '900', color: Solar.ink, letterSpacing: -0.4 },
   filterRow: {
     flexDirection: 'row',
     gap: 6,
@@ -197,20 +197,29 @@ const styles = StyleSheet.create({
   filterTab: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 16,
-    backgroundColor: Colors.card2,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(235,230,215,0.7)',
   },
   filterTabActive: {
-    backgroundColor: Colors.text,
+    backgroundColor: Solar.yellow,
+    borderColor: Solar.yellow,
+    shadowColor: Solar.yellowDeep,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   filterText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: Colors.textMute,
+    fontWeight: '600',
+    color: Solar.mute,
   },
   filterTextActive: {
-    color: '#FFFFFF',
+    color: Solar.ink,
+    fontWeight: '800',
   },
   list: {
     paddingHorizontal: 20,
@@ -224,19 +233,19 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: Colors.textFaint,
+    color: Solar.faint,
     fontWeight: '600',
   },
   retryBtn: {
     marginTop: 12,
     paddingVertical: 10,
     paddingHorizontal: 20,
-    borderRadius: 12,
-    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    backgroundColor: Solar.yellow,
   },
   retryText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#fff',
+    fontWeight: '800',
+    color: Solar.ink,
   },
 });

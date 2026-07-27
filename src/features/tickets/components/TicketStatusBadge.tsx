@@ -3,21 +3,25 @@ import { StyleSheet, Text, View } from 'react-native';
 import { BadgeColors } from '../../../lib/theme';
 import { TicketStatusEnum } from '../types/ticket.types';
 
+// Nhãn tiếng Việt — khớp nguyên văn web (`shared/components/ticket/TicketStatusBadge`).
+// Trước đây mobile để tiếng Anh viết hoa ('APPROVED', 'IN PROGRESS') giữa một
+// màn hình toàn tiếng Việt, và 3 trạng thái Waiting gộp chung thành 'WAITING'
+// nên khách không biết mình đang chờ gì.
 const STATUS_CONFIG: Record<TicketStatusEnum, { label: string; badge: keyof typeof BadgeColors }> = {
-  New:                    { label: 'NEW',            badge: 'new' },
-  Open:                   { label: 'OPEN',           badge: 'open' },
-  Approved:               { label: 'APPROVED',       badge: 'ok' },
-  Assigned:               { label: 'ASSIGNED',       badge: 'assigned' },
-  InProgress:             { label: 'IN PROGRESS',    badge: 'progress' },
-  WaitingCustomer:        { label: 'WAITING',        badge: 'waiting' },
-  WaitingParts:           { label: 'WAITING',        badge: 'waiting' },
-  WaitingOnsiteSchedule:  { label: 'WAITING',        badge: 'waiting' },
-  Resolved:               { label: 'RESOLVED',       badge: 'resolved' },
-  Escalated:              { label: 'ESCALATED',      badge: 'escalated' },
-  ClosedPendingRate:      { label: 'PENDING RATE',   badge: 'closed' },
-  Closed:                 { label: 'CLOSED',         badge: 'closed' },
-  ClosedRejected:         { label: 'REJECTED',       badge: 'crit' },
-  Incident:               { label: 'INCIDENT',       badge: 'crit' },
+  New:                    { label: 'Mới',            badge: 'new' },
+  Open:                   { label: 'Chờ triage',     badge: 'open' },
+  Approved:               { label: 'Đã duyệt',       badge: 'ok' },
+  Assigned:               { label: 'Đã gán',         badge: 'assigned' },
+  InProgress:             { label: 'Đang xử lý',     badge: 'progress' },
+  WaitingCustomer:        { label: 'Chờ khách hàng', badge: 'waiting' },
+  WaitingParts:           { label: 'Chờ linh kiện',  badge: 'waiting' },
+  WaitingOnsiteSchedule:  { label: 'Chờ lịch hẹn',   badge: 'waiting' },
+  Resolved:               { label: 'Đã xử lý',       badge: 'resolved' },
+  Escalated:              { label: 'Đã chuyển cấp',  badge: 'escalated' },
+  ClosedPendingRate:      { label: 'Chờ đánh giá',   badge: 'closed' },
+  Closed:                 { label: 'Đã đóng',        badge: 'closed' },
+  ClosedRejected:         { label: 'Bị từ chối',     badge: 'crit' },
+  Incident:               { label: 'Sự cố',          badge: 'crit' },
 };
 
 interface Props {

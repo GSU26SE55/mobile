@@ -55,6 +55,7 @@ import {
   usePinChat,
   useUnpinChat,
 } from '../../../src/features/tickets/hooks/useTicketChatActions';
+import { isPrimaryHandler } from '../../../src/features/tickets/utils/assignments';
 import { useVoiceRecorder } from '../../../src/features/tickets/hooks/useVoiceRecorder';
 import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
 import { AuthImage } from '../../../src/features/file-storage/components/AuthImage';
@@ -97,7 +98,16 @@ const PRIORITY_LABELS: Record<string, string> = {
   P3Normal:   'P3 Normal',
 };
 
-function TabsRow({ activeTab, onChange }: { activeTab: TabKey; onChange: (key: TabKey) => void }) {
+function TabsRow({
+  activeTab,
+  onChange,
+  unreadCount = 0,
+}: {
+  activeTab: TabKey;
+  onChange: (key: TabKey) => void;
+  /** Số chat CHƯA ĐỌC — chỉ gắn lên tab "Trao đổi", không phải tổng số tin. */
+  unreadCount?: number;
+}) {
   return (
     <View style={styles.tabRow}>
       {TABS.map((tab) => (
@@ -108,6 +118,15 @@ function TabsRow({ activeTab, onChange }: { activeTab: TabKey; onChange: (key: T
         >
           <Ionicons name={tab.icon} size={16} color={activeTab === tab.key ? Colors.primary : Colors.textMute} />
           <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>{tab.label}</Text>
+          {/* Ẩn khi chính tab này đang mở — tin mới về làm badge nháy lên trước
+              khi thread kịp mark-read, mà user thì đang đọc ngay tin đó. */}
+          {tab.key === 'comments' && activeTab !== 'comments' && unreadCount > 0 && (
+            <View style={styles.tabBadge}>
+              <Text style={styles.tabBadgeText}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </Text>
+            </View>
+          )}
         </Pressable>
       ))}
     </View>
@@ -347,20 +366,15 @@ function StaffTicketDetailScreenInner() {
           <Text style={styles.headerCode}>{ticket.code}</Text>
           <TicketStatusBadge status={ticket.status} />
         </View>
-        <View style={styles.unreadSlot}>
-          {unreadCount > 0 && (
-            <View style={styles.unreadBadge}>
-              <Ionicons name="chatbubble" size={10} color="#FFF" />
-              <Text style={styles.unreadText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-            </View>
-          )}
-        </View>
+        {/* Spacer giữ header cân. Badge chưa đọc nằm trên tab "Trao đổi",
+            không lặp lại ở đây để tránh 2 chỗ cùng báo một con số. */}
+        <View style={styles.unreadSlot} />
       </View>
 
       {activeTab === 'comments' ? (
         <View style={styles.chatScreen}>
           <View style={styles.chatTabRowWrap}>
-            <TabsRow activeTab={activeTab} onChange={setActiveTab} />
+            <TabsRow activeTab={activeTab} onChange={setActiveTab} unreadCount={unreadCount} />
           </View>
 
           <CommentThread
@@ -571,7 +585,7 @@ function StaffTicketDetailScreenInner() {
           <MaintenanceLogForm onSubmit={handleAddLog} isLoading={isAddingLog} />
         )}
 
-        <TabsRow activeTab={activeTab} onChange={setActiveTab} />
+        <TabsRow activeTab={activeTab} onChange={setActiveTab} unreadCount={unreadCount} />
 
         {activeTab === 'activities' && (
           <View style={styles.tabContent}>
@@ -619,7 +633,7 @@ function StaffTicketDetailScreenInner() {
         {activeTab === 'kb' && (
           <View style={styles.tabContent}>
             {/* Gán bài KB — chỉ Staff được phân công + ticket chưa đóng (BE chặn 403 nếu vi phạm) */}
-            {!ticketClosed && !!accountId && ticket.assignedStaffId === accountId && (
+            {!ticketClosed && !!accountId && isPrimaryHandler(ticket.assignments, accountId) && (
               <Pressable style={styles.kbAssignBtn} onPress={() => setShowKbPicker(true)}>
                 <Ionicons name="add-circle-outline" size={18} color="#FFF" />
                 <Text style={styles.kbAssignText}>Gán bài viết KB</Text>
@@ -644,7 +658,7 @@ function StaffTicketDetailScreenInner() {
                   <View style={styles.kbRefTop}>
                     <Ionicons name="book-outline" size={16} color={Colors.primary} />
                     <Text style={styles.kbRefCode}>{ref.kbArticleCode}</Text>
-                    {!ticketClosed && !!accountId && ticket.assignedStaffId === accountId ? (
+                    {!ticketClosed && !!accountId && isPrimaryHandler(ticket.assignments, accountId) ? (
                       <Pressable
                         style={styles.kbRefDeleteBtn}
                         onPress={() => handleRemoveRef(ref.id)}
@@ -799,6 +813,18 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: Colors.primaryLight },
   tabText: { fontSize: 12, fontWeight: '700', color: Colors.textMute },
   tabTextActive: { color: Colors.primaryDark },
+  // Badge chưa đọc trên tab "Trao đổi" — cùng kiểu với màn Customer.
+  tabBadge: {
+    backgroundColor: Colors.danger, // đỏ = chưa đọc, thống nhất với web
+
+    borderRadius: 9,
+    minWidth: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  tabBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
 
   chatScreen: { flex: 1, backgroundColor: Colors.bg },
   chatTabRowWrap: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },

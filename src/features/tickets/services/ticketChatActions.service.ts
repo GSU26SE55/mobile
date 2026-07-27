@@ -22,9 +22,6 @@ export interface ChatCursorParams {
   cursor?: string;
   limit?: number;
 }
-export interface ChatUnreadCountDTO {
-  unreadCount: number;
-}
 
 // Edit/Delete/Mark-read/Translate/Voice cho ticket chat — cùng endpoint
 // /api/tickets/{id}/chats mà staff đã gọi để list/add comment.
@@ -105,8 +102,10 @@ export const ticketChatActionsService = {
       { params },
     ),
 
+  // BE trả CommonResponse<int> — data là SỐ THUẦN, không phải object.
+  // (TicketUnreadCountResponse : CommonResponse<int>). Đừng bọc lại thành DTO.
   getUnreadCount: (ticketId: string) =>
-    axiosInstance.get<CommonResponse<ChatUnreadCountDTO>>(
+    axiosInstance.get<CommonResponse<number>>(
       ENDPOINTS.TICKETS.CHAT_UNREAD_COUNT(ticketId),
     ),
 

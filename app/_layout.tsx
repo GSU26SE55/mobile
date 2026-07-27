@@ -4,7 +4,6 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from '../src/context/authContext';
 import { PermissionsSync } from '../src/features/auth/components/PermissionsSync';
-import { useAuthGuard } from '../src/hooks/useAuthGuard';
 import { configureGoogleSignin } from '../src/config/googleAuth';
 
 // Cấu hình Google Sign-In 1 lần khi app boot.
@@ -21,9 +20,11 @@ const queryClient = new QueryClient({
   },
 });
 
+// Guard auth là KHAI BÁO (<Redirect> ở app/index.tsx + (customer)/(staff) layout).
+// KHÔNG thêm router.replace() theo auth state ở đây: nó chạy trong effect nên bắn
+// cùng commit với <Redirect>, hai lệnh điều hướng chồng nhau lúc hydrate xong làm
+// Fabric crash `addViewAt: The specified child already has a parent`.
 function RootLayoutNav() {
-  useAuthGuard();
-
   return (
     <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
       <Stack.Screen name="index" />

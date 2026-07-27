@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Colors, Shadow } from '../../../src/lib/theme';
+import { Colors, Shadow, Solar } from '../../../src/lib/theme';
 import { StaffHeader } from '../../../src/features/staff/components/StaffHeader';
 import { useStaffProfile } from '../../../src/features/staff/hooks/useStaffProfile';
 import { useSessionStore } from '../../../src/stores/sessionStore';
@@ -163,9 +163,9 @@ export default function StaffProfileScreen() {
         style={[styles.settingsBtn, Shadow]}
         onPress={() => router.push('/(staff)/notification-preferences')}
       >
-        <Ionicons name="notifications-outline" size={18} color={Colors.text} />
+        <Ionicons name="notifications-outline" size={18} color={Solar.ink} />
         <Text style={styles.settingsText}>Cài đặt thông báo</Text>
-        <Ionicons name="chevron-forward" size={18} color={Colors.textMute} />
+        <Ionicons name="chevron-forward" size={18} color={Solar.mute} />
       </Pressable>
 
       <Pressable style={styles.logoutBtn} onPress={handleLogout}>
@@ -178,74 +178,78 @@ export default function StaffProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
+  root: { flex: 1, backgroundColor: Solar.bg },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 },
-  errText: { fontSize: 14, color: Colors.textFaint, fontWeight: '600' },
-  retryBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12, backgroundColor: Colors.primary },
-  retryText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  errText: { fontSize: 14, color: Solar.mute, fontWeight: '600' },
+  retryBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 14, backgroundColor: Solar.yellow },
+  retryText: { fontSize: 14, fontWeight: '800', color: Solar.ink },
   content: { paddingHorizontal: 20, paddingBottom: 120, gap: 14 },
 
   profileCard: {
     backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24,
-    alignItems: 'center', gap: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)',
+    alignItems: 'center', gap: 8, borderWidth: 1, borderColor: 'rgba(235,230,215,0.7)',
   },
   avatarCircle: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: Colors.primaryLight,
+    width: 68, height: 68, borderRadius: 34,
+    backgroundColor: Solar.yellow,
     alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+    shadowColor: Solar.yellowDeep,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
   },
-  avatarText: { fontSize: 26, fontWeight: '800', color: Colors.primaryDark },
-  name: { fontSize: 18, fontWeight: '800', color: Colors.text },
-  code: { fontSize: 13, fontWeight: '600', color: Colors.textMute },
+  avatarText: { fontSize: 28, fontWeight: '900', color: Solar.ink },
+  name: { fontSize: 19, fontWeight: '900', color: Solar.ink },
+  code: { fontSize: 13, fontWeight: '600', color: Solar.mute },
   tierBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, marginTop: 4,
   },
   tierAvailable: { backgroundColor: Colors.successLight },
-  tierUnavailable: { backgroundColor: Colors.card2 },
+  tierUnavailable: { backgroundColor: Solar.yellowSoft },
   availDot: { width: 7, height: 7, borderRadius: 4 },
-  tierText: { fontSize: 12, fontWeight: '700', color: Colors.text },
+  tierText: { fontSize: 12, fontWeight: '700', color: Solar.ink },
 
   statsCard: {
     backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18,
     flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)',
+    borderWidth: 1, borderColor: 'rgba(235,230,215,0.7)',
   },
   statItem: { flex: 1, alignItems: 'center', gap: 2 },
-  statNum: { fontSize: 22, fontWeight: '800', color: Colors.text },
-  statLabel: { fontSize: 11, fontWeight: '600', color: Colors.textMute },
-  statDivider: { width: 1, height: 30, backgroundColor: Colors.border },
+  statNum: { fontSize: 22, fontWeight: '900', color: Solar.ink },
+  statLabel: { fontSize: 11, fontWeight: '600', color: Solar.mute },
+  statDivider: { width: 1, height: 30, backgroundColor: 'rgba(235,230,215,0.7)' },
 
   infoCard: {
     backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, gap: 16,
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)',
+    borderWidth: 1, borderColor: 'rgba(235,230,215,0.7)',
   },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   infoContent: { flex: 1 },
-  infoLabel: { fontSize: 11, fontWeight: '600', color: Colors.textFaint },
-  infoValue: { fontSize: 14, fontWeight: '600', color: Colors.text, marginTop: 1 },
+  infoLabel: { fontSize: 11, fontWeight: '600', color: Solar.mute },
+  infoValue: { fontSize: 14, fontWeight: '700', color: Solar.ink, marginTop: 1 },
 
   skillsCard: {
     backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, gap: 10,
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)',
+    borderWidth: 1, borderColor: 'rgba(235,230,215,0.7)',
   },
-  sectionTitle: { fontSize: 14, fontWeight: '800', color: Colors.text },
+  sectionTitle: { fontSize: 14, fontWeight: '800', color: Solar.ink },
   skillsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   skillChip: {
-    backgroundColor: Colors.primaryLight, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10,
+    backgroundColor: Solar.yellowSoft, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10,
   },
-  skillText: { fontSize: 12, fontWeight: '700', color: Colors.primaryDark },
+  skillText: { fontSize: 12, fontWeight: '800', color: Solar.yellowDeep },
 
   settingsBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 14, paddingHorizontal: 16, borderRadius: 14,
-    backgroundColor: Colors.card,
+    paddingVertical: 14, paddingHorizontal: 16, borderRadius: 16,
+    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'rgba(235,230,215,0.7)',
   },
-  settingsText: { flex: 1, fontSize: 15, fontWeight: '600', color: Colors.text },
+  settingsText: { flex: 1, fontSize: 15, fontWeight: '700', color: Solar.ink },
   logoutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    paddingVertical: 14, borderRadius: 14,
+    paddingVertical: 14, borderRadius: 16,
     backgroundColor: Colors.dangerLight, marginTop: 8,
   },
-  logoutText: { fontSize: 14, fontWeight: '700', color: Colors.danger },
+  logoutText: { fontSize: 14, fontWeight: '800', color: Colors.danger },
 });

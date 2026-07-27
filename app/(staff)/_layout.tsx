@@ -2,6 +2,7 @@ import { Stack, Redirect } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuthContext } from '../../src/context/authContext';
 import { useSessionStore } from '../../src/stores/sessionStore';
+import { Colors } from '../../src/lib/theme';
 
 export default function StaffLayout() {
   const { isHydrating } = useAuthContext();
@@ -9,8 +10,8 @@ export default function StaffLayout() {
 
   if (isHydrating) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color="#2563eb" />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bg }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
@@ -20,7 +21,13 @@ export default function StaffLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: Colors.bg },
+        animation: 'slide_from_right',
+      }}
+    >
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="tickets/[id]" />
       <Stack.Screen name="customers/[customerId]" />

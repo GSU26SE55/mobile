@@ -14,6 +14,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import DateTimePicker, {
+  type DateTimePickerEvent,
+} from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TicketCategoryEnum } from '../types/ticket.types';
 import type { UploadedTicketAttachment } from '../types/ticket.types';
@@ -101,6 +104,12 @@ export function detectedLabelToIso(label: string): string {
   return custom ? custom.toISOString() : '';
 }
 
+// Date → "dd/MM/yyyy HH:mm" (khớp format parseDetectedInput dùng lại được).
+export function formatDetected(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 const CATEGORIES: { value: TicketCategoryEnum; label: string; sub: string; icon: keyof typeof Ionicons.glyphMap; iconColor: string; iconBg: string }[] = [
   {
     value: 'Charging',
@@ -179,6 +188,33 @@ export function CreateTicketStepper({
   );
   const uploadTicketAttachment = useUploadTicketAttachment();
   const isUploadingImage = uploadTicketAttachment.isPending;
+
+  // Date/time picker cho "Phát hiện lúc nào" — chọn ngày rồi giờ, lưu về format cũ.
+  const [pickerStage, setPickerStage] = React.useState<'idle' | 'date' | 'time'>('idle');
+  const [pendingDate, setPendingDate] = React.useState<Date | null>(null);
+
+  const onDetectedChange = (event: DateTimePickerEvent, selected?: Date) => {
+    if (event.type === 'dismissed' || !selected) {
+      setPickerStage('idle');
+      return;
+    }
+    if (pickerStage === 'date') {
+      const base = pendingDate ?? new Date();
+      const next = new Date(selected);
+      next.setHours(base.getHours(), base.getMinutes(), 0, 0);
+      setPendingDate(next);
+      setPickerStage('time');
+      return;
+    }
+    // pickerStage === 'time'
+    const base = pendingDate ?? new Date();
+    const final = new Date(base);
+    final.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+    // Không cho vượt hiện tại (giờ có thể đẩy quá now dù ngày = hôm nay).
+    const clamped = final.getTime() > Date.now() ? new Date() : final;
+    setDetectedLabel(formatDetected(clamped));
+    setPickerStage('idle');
+  };
 
   const uploadPickedAssets = async (assets: ImagePicker.ImagePickerAsset[]) => {
     const uploadedFiles: UploadedTicketAttachment[] = [];
@@ -433,28 +469,56 @@ export function CreateTicketStepper({
               })}
             </View>
 
-            {/* Nhập giờ cụ thể — label KHÔNG khớp chip nào nghĩa là Customer đang gõ tay. */}
+            {/* Chọn giờ cụ thể qua picker — label KHÔNG khớp chip nào = giá trị tự chọn. */}
             {(() => {
               const isChip = DETECTED_OPTIONS.some((o) => o.label === detectedLabel);
               const customText = isChip ? '' : detectedLabel;
-              const invalid =
-                customText.trim().length > 0 && parseDetectedInput(customText) === null;
+              const hasCustom =
+                customText.trim().length > 0 && parseDetectedInput(customText) !== null;
               return (
                 <>
-                  <Text style={styles.detectedOrLabel}>Hoặc nhập chính xác:</Text>
-                  <TextInput
-                    style={[styles.detectedInput, invalid && styles.detectedInputError]}
-                    placeholder="dd/mm/yyyy hh:mm  (VD: 22/07/2026 09:30)"
-                    placeholderTextColor={Colors.textFaint}
-                    value={customText}
-                    onChangeText={setDetectedLabel}
-                    keyboardType="numbers-and-punctuation"
-                    autoCapitalize="none"
-                  />
-                  {invalid && (
-                    <Text style={styles.detectedInputHint}>
-                      Định dạng chưa đúng hoặc thời điểm ở tương lai — VD 22/07/2026 09:30.
-                    </Text>
+                  <Text style={styles.detectedOrLabel}>Hoặc chọn chính xác:</Text>
+                  <View style={styles.detectedPickerRow}>
+                    <Pressable
+                      style={styles.detectedPickerBtn}
+                      onPress={() => {
+                        setPendingDate(parseDetectedInput(customText) ?? new Date());
+                        setPickerStage('date');
+                      }}
+                    >
+                      <Ionicons
+                        name="calendar-outline"
+                        size={18}
+                        color={Colors.textMute}
+                        style={{ marginRight: 8 }}
+                      />
+                      <Text
+                        style={[
+                          styles.detectedPickerText,
+                          !hasCustom && { color: Colors.textFaint },
+                        ]}
+                      >
+                        {hasCustom ? customText : 'Chọn ngày & giờ'}
+                      </Text>
+                    </Pressable>
+                    {hasCustom && (
+                      <Pressable
+                        style={styles.detectedClearBtn}
+                        onPress={() => setDetectedLabel('')}
+                        hitSlop={8}
+                      >
+                        <Ionicons name="close-circle" size={20} color={Colors.textMute} />
+                      </Pressable>
+                    )}
+                  </View>
+                  {pickerStage !== 'idle' && (
+                    <DateTimePicker
+                      value={pendingDate ?? new Date()}
+                      mode={pickerStage}
+                      is24Hour
+                      maximumDate={new Date()}
+                      onChange={onDetectedChange}
+                    />
                   )}
                 </>
               );
@@ -712,6 +776,20 @@ const styles = StyleSheet.create({
   detectedChipText: { fontSize: 13, color: Colors.textMute, fontWeight: '500' },
   detectedChipTextSelected: { color: Colors.text, fontWeight: '700' },
   detectedOrLabel: { fontSize: 12, color: Colors.textMute, marginBottom: 6, marginTop: -8 },
+  detectedPickerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  detectedPickerBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: Colors.card,
+  },
+  detectedPickerText: { fontSize: 14, color: Colors.text, fontWeight: '500' },
+  detectedClearBtn: { padding: 4 },
   detectedInput: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
