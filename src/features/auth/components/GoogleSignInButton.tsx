@@ -1,6 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text } from 'react-native';
 import {
   GoogleSignin,
   statusCodes,
@@ -9,6 +8,8 @@ import {
 import { Colors } from '../../../lib/theme';
 import { HttpError } from '../../../lib/errors';
 import { useGoogleLogin } from '../hooks/useGoogleLogin';
+
+const GOOGLE_LOGO = require('../../../../assets/images/google.png');
 
 export function GoogleSignInButton() {
   const { mutateAsync, isPending } = useGoogleLogin();
@@ -39,7 +40,18 @@ export function GoogleSignInButton() {
         Alert.alert('Đăng nhập thất bại', error.message);
         return;
       }
-      Alert.alert('Lỗi', 'Không thể đăng nhập bằng Google. Vui lòng thử lại.');
+      if (isErrorWithCode(error) && error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        Alert.alert('Lỗi', 'Thiết bị thiếu Google Play Services (cần bản có GMS).');
+        return;
+      }
+      // Surface mã lỗi thật để chẩn đoán (VD DEVELOPER_ERROR = SHA-1/clientId chưa đăng ký).
+      const code = isErrorWithCode(error) ? error.code : undefined;
+      Alert.alert(
+        'Lỗi đăng nhập Google',
+        code
+          ? `Mã lỗi: ${code}. Nếu là DEVELOPER_ERROR → SHA-1/OAuth client chưa đăng ký hoặc dev build cũ (build lại).`
+          : 'Không thể đăng nhập bằng Google. Vui lòng thử lại.',
+      );
     }
   };
 
@@ -53,7 +65,7 @@ export function GoogleSignInButton() {
         <ActivityIndicator color={Colors.text} />
       ) : (
         <>
-          <Ionicons name="logo-google" size={18} color="#EA4335" />
+          <Image source={GOOGLE_LOGO} style={styles.logo} resizeMode="contain" />
           <Text style={styles.buttonText}>Đăng nhập với Google</Text>
         </>
       )}
@@ -72,6 +84,10 @@ const styles = StyleSheet.create({
     borderColor: '#EBEBEB',
     borderRadius: 28,
     height: 54,
+  },
+  logo: {
+    width: 20,
+    height: 20,
   },
   buttonDisabled: { opacity: 0.55 },
   buttonPressed: { opacity: 0.85 },

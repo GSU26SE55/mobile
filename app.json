@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "code",
-    "slug": "code",
+    "name": "Sonari",
+    "slug": "sonari",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
-    "scheme": "code",
+    "scheme": "sonari",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -59,7 +59,8 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.85758470906-f314b54brseebe2ed2us1e8b03ip62j6"
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

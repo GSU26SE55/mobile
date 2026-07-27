@@ -66,11 +66,20 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
 
     // Event "ChatAdded" khớp BE (SignalRTicketChatNotifier.cs:33). Customer join được
     // public group; comment public gửi lên → BE broadcast ChatAdded về group → prepend.
+    // Badge chưa đọc ở header đọc key riêng — tin đến/bị xóa đều làm số đổi, phải
+    // invalidate kèm, không thì badge chỉ đúng lúc mở màn hình rồi đứng yên.
+    const invalidateUnread = () => {
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEY.tickets.chatUnreadCount(ticketId),
+      });
+    };
+
     connection.on('ChatAdded', (dto: TicketCommentDTO) => {
       queryClient.setQueryData<InfiniteData<CommentsPage>>(
         QUERY_KEY.tickets.chats(ticketId),
         (data) => prependComment(data, dto),
       );
+      invalidateUnread();
     });
 
     // Sửa/xóa tin nhắn (BE: "ChatEdited"/"ChatDeleted") — không có payload dùng được để
@@ -79,7 +88,10 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY.tickets.chats(ticketId) });
     };
     connection.on('ChatEdited', invalidateChats);
-    connection.on('ChatDeleted', invalidateChats);
+    connection.on('ChatDeleted', () => {
+      invalidateChats();
+      invalidateUnread();
+    });
 
     // Reaction realtime (BE: "ReactionChanged", payload { chatId, reactions }). Mobile
     // hiển thị reactions NHÚNG trong comment của list chats(id) (comment.reactions), KHÔNG

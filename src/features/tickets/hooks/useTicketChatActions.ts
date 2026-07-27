@@ -33,12 +33,19 @@ export function useDeleteTicketChat(ticketId: string) {
   });
 }
 
-// Housekeeping — báo đã đọc, không có unread badge trên mobile để wire nên lỗi
-// chỉ nuốt (không Alert), tránh làm phiền người dùng vì 1 tác vụ nền.
+// Báo đã đọc — tác vụ nền nên lỗi chỉ nuốt (không Alert), tránh làm phiền user.
+// Thành công thì phải invalidate unread count: badge ở header ticket detail đọc
+// key này, không invalidate thì số treo nguyên dù user đã xem hết tin.
 export function useMarkTicketChatsRead(ticketId: string) {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (chatIds: string[]) =>
       ticketChatActionsService.markRead(ticketId, { chatIds }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEY.tickets.chatUnreadCount(ticketId),
+      });
+    },
     onError: () => {},
   });
 }

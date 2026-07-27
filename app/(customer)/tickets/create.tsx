@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, View, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { CreateTicketStepper } from '../../../src/features/tickets/components/CreateTicketStepper';
+import { CreateTicketStepper, detectedLabelToIso } from '../../../src/features/tickets/components/CreateTicketStepper';
 import { CreateTicketSuccess } from '../../../src/features/tickets/components/CreateTicketSuccess';
 import { useCreateTicket } from '../../../src/features/tickets/hooks/useCreateTicket';
 import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
@@ -26,9 +26,10 @@ function CreateTicketScreenInner() {
   const { data: batteries = [] } = useMyBatteryAssets();
 
   const [step, setStep] = useState(1);
-  const [selectedBatteryId, setSelectedBatteryId] = useState<string | null>(null);
+  const [selectedBatteryIds, setSelectedBatteryIds] = useState<string[]>([]);
   const [category, setCategory] = useState<TicketCategoryEnum | ''>('');
   const [description, setDescription] = useState('');
+  const [detectedLabel, setDetectedLabel] = useState(''); // label chip hoặc '' nếu không nêu
   const [attachedFiles, setAttachedFiles] = useState<UploadedTicketAttachment[]>([]);
 
   const [createdTicketCode, setCreatedTicketCode] = useState<string>('');
@@ -60,15 +61,23 @@ function CreateTicketScreenInner() {
     };
 
     const catLabel = categoryLabels[category as TicketCategoryEnum] ?? 'Support Request';
-    const battery = batteries.find((b) => b.id === selectedBatteryId);
-    const title = battery ? `${catLabel} - ${battery.serialNumber}` : catLabel;
+    // Title theo pin: 1 pin → "Loại - SERIAL"; nhiều pin → "Loại - SERIAL +N".
+    const firstBattery = batteries.find((b) => b.id === selectedBatteryIds[0]);
+    const extra = selectedBatteryIds.length - 1;
+    const title = firstBattery
+      ? `${catLabel} - ${firstBattery.serialNumber}${extra > 0 ? ` +${extra}` : ''}`
+      : catLabel;
 
     try {
       const res = await mutateAsync({
         title,
         description,
         category: category as TicketCategoryEnum,
-        batteryAssetId: selectedBatteryId ?? undefined,
+        // BE nhận MẢNG batteryAssetIds — gửi danh sách pin đã chọn.
+        batteryAssetIds:
+          selectedBatteryIds.length > 0 ? selectedBatteryIds : undefined,
+        // ISO tính tại thời điểm submit (label ổn định trong state).
+        detectedAt: detectedLabelToIso(detectedLabel) || undefined,
         attachments: attachedFiles.length > 0
           ? attachedFiles.map((file) => ({
               fileId: file.fileId,
@@ -120,12 +129,14 @@ function CreateTicketScreenInner() {
         <CreateTicketStepper
           step={step}
           setStep={setStep}
-          selectedBatteryId={selectedBatteryId}
-          setSelectedBatteryId={setSelectedBatteryId}
+          selectedBatteryIds={selectedBatteryIds}
+          setSelectedBatteryIds={setSelectedBatteryIds}
           category={category}
           setCategory={setCategory}
           description={description}
           setDescription={setDescription}
+          detectedLabel={detectedLabel}
+          setDetectedLabel={setDetectedLabel}
           attachedFiles={attachedFiles}
           setAttachedFiles={setAttachedFiles}
           onSubmit={handleSubmit}

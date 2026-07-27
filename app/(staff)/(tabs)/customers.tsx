@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useStaffTickets } from '../../../src/features/staff/hooks/useStaffTickets';
 import { TicketDTO, TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
-import { Colors } from '../../../src/lib/theme';
+import { BadgeColors, Colors, Shadow, Solar } from '../../../src/lib/theme';
 import { P } from '../../../src/lib/authz';
 import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
 import { StaffHeader } from '../../../src/features/staff/components/StaffHeader';
@@ -104,11 +104,11 @@ function CustomersScreenInner() {
 
       {isLoading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={Colors.primary} size="large" />
+          <ActivityIndicator color={Solar.yellowDeep} size="large" />
         </View>
       ) : isError ? (
         <View style={styles.center}>
-          <Ionicons name="alert-circle-outline" size={40} color={Colors.textFaint} />
+          <Ionicons name="alert-circle-outline" size={40} color={Solar.faint} />
           <Text style={styles.errMsg}>Không thể tải dữ liệu</Text>
           <Pressable style={styles.retryBtn} onPress={() => refetch()}>
             <Text style={styles.retryText}>Thử lại</Text>
@@ -125,13 +125,12 @@ function CustomersScreenInner() {
             <RefreshControl
               refreshing={isRefetching}
               onRefresh={refetch}
-              tintColor={Colors.primary}
+              tintColor={Solar.yellowDeep}
             />
           }
-          ItemSeparatorComponent={() => <View style={styles.sep} />}
           ListEmptyComponent={
             <View style={styles.center}>
-              <Ionicons name="people-outline" size={48} color={Colors.textFaint} />
+              <Ionicons name="people-outline" size={48} color={Solar.faint} />
               <Text style={styles.errMsg}>Chưa có khách hàng nào</Text>
             </View>
           }
@@ -147,7 +146,7 @@ function CustomerRow({ group }: { group: CustomerGroup }) {
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.row, pressed && { opacity: 0.65 }]}
+      style={({ pressed }) => [styles.card, Shadow, pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }]}
       onPress={() =>
         router.push({
           pathname: '/(staff)/customers/[customerId]',
@@ -187,33 +186,42 @@ function CustomerRow({ group }: { group: CustomerGroup }) {
 }
 
 const styles = StyleSheet.create({
-  root:    { flex: 1, backgroundColor: Colors.bg },
+  root:    { flex: 1, backgroundColor: Solar.bg },
   center:  { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingBottom: 80 },
-  errMsg:  { color: Colors.textMute, fontSize: 13 },
-  retryBtn:{ backgroundColor: Colors.primary, borderRadius: 14, paddingHorizontal: 24, paddingVertical: 10, marginTop: 4 },
-  retryText:{ color: '#fff', fontWeight: '700', fontSize: 13 },
+  errMsg:  { color: Solar.mute, fontSize: 13, fontWeight: '500' },
+  retryBtn:{ backgroundColor: Solar.yellow, borderRadius: 14, paddingHorizontal: 24, paddingVertical: 10, marginTop: 4 },
+  retryText:{ color: Solar.ink, fontWeight: '800', fontSize: 13 },
 
-  list:  { paddingHorizontal: 16, paddingBottom: 100 },
-  sep:   { height: 1, backgroundColor: Colors.border, marginLeft: 82 },
+  list:  { paddingHorizontal: 20, paddingBottom: 100 },
 
-  row:   { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 4, paddingVertical: 13 },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(235,230,215,0.7)',
+  },
 
-  avatar:     { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#fff', fontSize: 17, fontWeight: '800' },
+  avatar:     { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#fff', fontSize: 16, fontWeight: '800' },
   badge: {
     position: 'absolute', top: -2, right: -2,
     minWidth: 18, height: 18, borderRadius: 9,
     backgroundColor: Colors.danger, alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 4, borderWidth: 2, borderColor: Colors.bg,
+    paddingHorizontal: 4, borderWidth: 2, borderColor: '#FFFFFF',
   },
   badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
 
   info:    { flex: 1 },
   infoTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 },
   infoBot: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  name:    { flex: 1, fontSize: 15, fontWeight: '700', color: Colors.text },
-  time:    { fontSize: 12, color: Colors.textFaint },
-  preview: { flex: 1, fontSize: 13, color: Colors.textMute },
-  countPill: { backgroundColor: Colors.card3, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
-  countText: { fontSize: 11, color: Colors.textFaint, fontWeight: '600' },
+  name:    { flex: 1, fontSize: 15, fontWeight: '800', color: Solar.ink },
+  time:    { fontSize: 11, color: Solar.mute, fontWeight: '600' },
+  preview: { flex: 1, fontSize: 13, color: Solar.mute },
+  countPill: { backgroundColor: Solar.yellowSoft, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+  countText: { fontSize: 11, color: Solar.yellowDeep, fontWeight: '800' },
 });

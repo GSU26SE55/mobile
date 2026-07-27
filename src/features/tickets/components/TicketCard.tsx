@@ -3,6 +3,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BadgeColors, Solar } from '../../../lib/theme';
 import { TicketDTO } from '../types/ticket.types';
+import { getPrimaryHandlerId } from '../utils/assignments';
 import { SlaCountdown } from './SlaCountdown';
 import { TicketStatusBadge } from './TicketStatusBadge';
 import { GlassSurface } from '../../../features/batteries/components/EnergyBackdrop';
@@ -40,7 +41,11 @@ export function TicketCard({ ticket, onPress }: Props) {
     ? (PRIORITY_LABEL[ticket.priority] ?? ticket.priority)
     : 'Chưa phân loại';
 
-  const technicianName = ticket.assignedStaffName ?? (ticket.assignedStaffId ? 'Đã phân công' : 'Chưa phân công');
+  // #697 — BE không còn trả tên/ID staff trên ticket, chỉ có `assignments`.
+  // App khách hàng không được đọc danh bạ nhân sự nên chỉ hiện TRẠNG THÁI.
+  const technicianName = getPrimaryHandlerId(ticket.assignments)
+    ? 'Đã phân công'
+    : 'Chưa phân công';
 
   return (
     <Pressable onPress={onPress}>

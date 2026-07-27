@@ -30,7 +30,6 @@ import { LiveReadingDto } from '../../../src/features/batteries/types/live-readi
 import { useSessionStore } from '../../../src/stores/sessionStore';
 import { Colors, Solar } from '../../../src/lib/theme';
 import { EnergyBackdrop, GlassSurface } from '../../../src/features/batteries/components/EnergyBackdrop';
-import { PopularKbSection } from '../../../src/features/kb/components/PopularKbSection';
 
 const BATTERY_IMAGE = require('../../../assets/images/battery-storage-3d.png');
 
@@ -401,8 +400,7 @@ export default function DashboardScreen() {
           />
         )}
 
-        {/* GH-78 — KB phổ biến + điểm vào Blog cho Customer. */}
-        <PopularKbSection limit={5} />
+        {/* GH-78 — điểm vào Blog cho Customer. */}
         <Pressable
           style={styles.blogEntry}
           onPress={() => router.push('/(customer)/blog' as never)}

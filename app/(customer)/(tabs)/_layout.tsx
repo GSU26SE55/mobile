@@ -14,7 +14,6 @@ const tabMeta: Record<string, {
 }> = {
   dashboard: { active: 'home', inactive: 'home-outline' },
   tickets: { active: 'pie-chart', inactive: 'pie-chart-outline' },
-  knowledge: { active: 'layers', inactive: 'layers-outline' },
   profile: { active: 'person', inactive: 'person-outline' },
 };
 
@@ -66,7 +65,7 @@ export default function CustomerTabsLayout() {
     <Tabs tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="dashboard" />
       <Tabs.Screen name="tickets" />
-      <Tabs.Screen name="knowledge" />
+      <Tabs.Screen name="knowledge" options={{ href: null }} />
       <Tabs.Screen name="profile" />
       <Tabs.Screen name="alerts" options={{ href: null }} />
     </Tabs>

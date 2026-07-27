@@ -9,9 +9,13 @@ export function useTicketUnreadCount(ticketId: string | undefined) {
     queryKey: QUERY_KEY.tickets.chatUnreadCount(ticketId ?? ''),
     queryFn: async () => {
       const res = await ticketChatActionsService.getUnreadCount(ticketId!);
-      return res.data.data?.unreadCount ?? 0;
+      // data là số thuần từ CommonResponse<int>. Trước đây đọc `.unreadCount`
+      // trên một number → luôn undefined → badge vĩnh viễn 0.
+      return res.data.data ?? 0;
     },
     enabled: !!ticketId,
-    staleTime: 30 * 1000,
+    // staleTime 0: mark-read và realtime chủ động invalidate key này, không cần
+    // giữ cache 30s (giữ lại thì badge treo số cũ sau khi đã đọc).
+    staleTime: 0,
   });
 }

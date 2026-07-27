@@ -134,14 +134,29 @@ export interface TicketCommentDTO {
   attachments?: TicketAttachmentDTO[] | null;
 }
 
+/**
+ * #697 — 1 ticket có 1 PrimaryHandler + N Supporter.
+ * BE chỉ trả `staffId` (UUID), KHÔNG có tên: Customer không được phép đọc danh
+ * sách nhân sự nên đừng cố map ra tên ở app khách hàng.
+ */
+export type TicketAssignmentRole = 'PrimaryHandler' | 'Supporter';
+
+export interface TicketAssignmentDTO {
+  staffId: string;
+  role: TicketAssignmentRole;
+}
+
 export interface TicketDTO {
   id: string;
   code: string;
   batteryAssetId: string | null;
   customerId: string;
   customerName?: string | null;
-  assignedStaffId: string | null;
-  assignedStaffName?: string | null;
+  /**
+   * #697 — THAY cho `assignedStaffId`/`assignedStaffName` (BE đã bỏ hẳn; đọc 2
+   * field cũ luôn ra undefined nên card "Kỹ thuật viên" hiện sai "Chưa phân công").
+   */
+  assignments: TicketAssignmentDTO[];
   title: string;
   category: TicketCategoryEnum;
   // BE trả null khi ticket chưa triage (state New/Open) — gán tại bước triage.
@@ -178,6 +193,10 @@ export interface MaintenanceLogDTO {
 
 export interface TicketDetailDTO extends TicketDTO {
   description: string | null;
+  /** Thời điểm Customer phát hiện pin bất thường (Customer nhập khi tạo ticket). */
+  detectedAt: string | null;
+  /** Serial pin snapshot (BE denormalize) — hiển thị nếu không load được battery. */
+  batterySerialNumber: string | null;
   resolutionSummary: string | null;
   resolvedAt: string | null;
   resolvedByStaffId: string | null;
@@ -216,7 +235,10 @@ export interface CreateTicketPayload {
   title: string;
   description: string;
   category: TicketCategoryEnum;
-  batteryAssetId?: string;
+  /** BE nhận MẢNG batteryAssetIds (khớp TicketCreateCommand.BatteryAssetIds). */
+  batteryAssetIds?: string[];
+  /** Thời điểm Customer phát hiện pin bất thường (ISO UTC). BE dùng để AI đối chiếu sensor. */
+  detectedAt?: string;
   attachments?: CommentAttachmentPayload[];
 }
 

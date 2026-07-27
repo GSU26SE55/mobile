@@ -1,5 +1,4 @@
 import axios, { create as axiosCreate } from 'axios';
-import { router } from 'expo-router';
 import { Platform } from 'react-native';
 import { useSessionStore } from '../stores/sessionStore';
 import { getDeviceId } from './deviceId';
@@ -65,8 +64,10 @@ const tryRefresh = async (): Promise<string | null> => {
   } catch (err) {
     flushQueue(null, err);
     await clearTokens();
+    // Chỉ clear session — KHÔNG router.replace(). Interceptor chạy ngoài React nên
+    // lệnh điều hướng ở đây có thể rơi vào giữa một lần render, đá nhau với <Redirect>
+    // của guard. user = null là đủ: guard khai báo tự đưa về login ở commit kế tiếp.
     useSessionStore.getState().clearSession();
-    router.replace('/(auth)/login');
     return null;
   } finally {
     clearTimeout(timer);
@@ -167,10 +168,10 @@ axiosInstance.interceptors.response.use(
       const errorCode = payload?.data?.errorCode;
       const retryCount: number = err.config._retryCount ?? 0;
 
+      // clearSession() là đủ để guard khai báo đá về login — xem ghi chú ở tryRefresh.
       const logoutAndReject = async () => {
         await clearTokens();
         useSessionStore.getState().clearSession();
-        router.replace('/(auth)/login');
         return Promise.reject(new HttpError(status, makeFallbackPayload(status, payload?.message)));
       };
 
