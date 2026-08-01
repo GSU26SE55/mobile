@@ -135,8 +135,19 @@ export function VoiceMessageBubble({
         <Text style={[styles.time, { color: timeColor }]}>{timeLabel}</Text>
       </View>
 
-      {/* GH-83 — chỉ Failed mới báo. Pending/Processing im lặng: BE xử lý nền, hiện spinner ở đây
-          chỉ làm người dùng tưởng tin nhắn chưa gửi được. */}
+      {/* Luồng transcribe async: Pending/Processing hiện dòng chờ nhẹ (body còn rỗng) để user biết
+          lời thoại đang được xử lý, không tưởng tin lỗi. */}
+      {(transcriptionStatus === VoiceTranscriptionStatusEnum.Pending ||
+        transcriptionStatus === VoiceTranscriptionStatusEnum.Processing) && (
+        <View style={styles.failedRow}>
+          <Ionicons name="ellipsis-horizontal" size={13} color={timeColor} />
+          <Text style={[styles.processingText, { color: timeColor }]}>
+            Đang chuyển lời thoại thành văn bản…
+          </Text>
+        </View>
+      )}
+
+      {/* GH-83 — Failed: báo lỗi + nút thử lại (retry chỉ có nghĩa khi audio đã upload thành công). */}
       {transcriptionStatus === VoiceTranscriptionStatusEnum.Failed && (
         <View style={styles.failedRow}>
           <Ionicons name="alert-circle-outline" size={13} color={Colors.danger} />
@@ -201,6 +212,7 @@ const styles = StyleSheet.create({
   // GH-83 — khối báo transcribe thất bại + nút thử lại.
   failedRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
   failedText: { fontSize: 11.5, color: Colors.danger, flexShrink: 1 },
+  processingText: { fontSize: 11.5, flexShrink: 1, fontStyle: 'italic' },
   retryText: {
     fontSize: 11.5,
     fontWeight: '700',

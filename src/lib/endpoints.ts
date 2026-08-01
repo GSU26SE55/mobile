@@ -109,7 +109,7 @@ export const ENDPOINTS = {
     CHAT_DETAIL:     (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}`, // PUT (edit) / DELETE
     CHAT_MARK_READ:  (tid: string) => `/api/tickets/${tid}/chats/mark-read`, // POST { chatIds }
     CHAT_TRANSLATE:  (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}/translate`, // POST ?to=
-    CHAT_VOICE:      (tid: string) => `/api/tickets/${tid}/chats/voice`, // POST multipart — field "AudioFile"
+    CHAT_VOICE:      (tid: string) => `/api/tickets/${tid}/chats/voice`, // POST JSON ChatAttachmentInput (file audio đã upload FileStorage)
     // GH-83 — retry chuyển giọng nói → văn bản. POST, không body, trả 202 (BE xử lý bất đồng bộ).
     // 409 nếu chat chưa ở trạng thái Failed; 404 nếu chat không thuộc ticket.
     CHAT_VOICE_RETRY: (tid: string, chatId: string) =>

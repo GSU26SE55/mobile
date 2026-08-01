@@ -385,13 +385,16 @@ export function ChatBubble({
   const fileIds = (comment.attachmentFileIds ?? []).filter(isFileId);
   const body = comment.body?.trim();
   const hasBody = !!body;
-  // Voice message (BE tạo từ /chats/voice): body = transcript + đúng 1 attachment là file audio.
-  // Ứng viên = có body + đúng 1 attachment; hook hỏi metadata để chốt contentType audio,
-  // không phải audio thì render như media ảnh bình thường. Hook gọi TRƯỚC mọi early return
-  // để không vi phạm Rules of Hooks (System/tin-trống return bên dưới).
-  const voiceCandidateId = hasBody && fileIds.length === 1 ? fileIds[0] : undefined;
+  // Voice message (BE tạo từ /chats/voice): 1 attachment audio + transcript trong body.
+  // Luồng transcribe async: chat Pending/Processing/Failed có body RỖNG nhưng vẫn phải render
+  // như voice bubble (để hiện trạng thái + nút thử lại) → nhận diện qua voiceTranscriptionStatus
+  // HOẶC (có body + đúng 1 attachment). Hook hỏi metadata để chốt contentType audio khi chưa
+  // có status. Gọi TRƯỚC mọi early return để không vi phạm Rules of Hooks.
+  const voiceStatus = comment.voiceTranscriptionStatus ?? null;
+  const voiceCandidateId =
+    fileIds.length === 1 && (voiceStatus !== null || hasBody) ? fileIds[0] : undefined;
   const { isAudio } = useAudioAttachment(voiceCandidateId);
-  const isVoice = isAudio === true;
+  const isVoice = !!voiceCandidateId && (voiceStatus !== null || isAudio === true);
 
   if (comment.authorRole === 'System') {
     return (

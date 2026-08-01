@@ -17,6 +17,8 @@ import {
   TicketChatReactionsAggregateDTO,
   ReactionTypeEnum,
 } from '../types/ticket.types';
+import { fileStorageService } from '../../file-storage/services/file-storage.service';
+import { FilePurposeEnum } from '../../file-storage/enums/file-storage.enum';
 
 export interface ChatCursorParams {
   cursor?: string;
@@ -51,19 +53,38 @@ export const ticketChatActionsService = {
       { params: { to: targetLanguage } },
     ),
 
-  // RN: content-type PHẢI set cứng 'multipart/form-data' (không boundary) — xem
-  // ghi chú trong file-storage.service.ts (bug Android nếu để axios tự suy ra).
-  transcribeVoice: (ticketId: string, audioFile: { uri: string; name: string; type: string }) => {
-    const form = new FormData();
-    form.append('AudioFile', {
+  // Voice chat — 2 bước LIÊN TỤC:
+  //   1) upload file audio lên FileStorage → lấy metadata (fileId/fileName/contentType/size)
+  //   2) POST metadata (ChatAttachmentInput, JSON) xuống /chats/voice → BE tạo chat placeholder
+  //      rồi transcribe async. Endpoint KHÔNG còn nhận multipart audio trực tiếp.
+  // Nếu bước 1 lỗi → throw NGAY, KHÔNG gọi bước 2 (chưa có file trên server → không có gì để
+  // retry; user phải ghi/upload lại). Chỉ khi bước 1 xong (đã có fileId) mới tạo chat, và lúc đó
+  // retry transcribe (voice/retry) mới có ý nghĩa vì audio attachment đã tồn tại.
+  transcribeVoice: async (
+    ticketId: string,
+    audioFile: { uri: string; name: string; type: string },
+  ) => {
+    const upload = await fileStorageService.uploadFile({
       uri: audioFile.uri,
       name: audioFile.name,
       type: audioFile.type,
-    } as unknown as Blob);
+      purpose: FilePurposeEnum.TicketAttachment,
+    });
+    const meta = upload.data.data;
+    // BE ChatVoiceTranscribeCommand validate `Url` bắt buộc → thiếu publicUrl thì bước 2 chắc
+    // chắn 400. Chặn sớm với thông báo rõ thay vì để lỗi mơ hồ từ /chats/voice.
+    if (!meta?.fileId || !meta.publicUrl) {
+      throw new Error('Tải lên âm thanh thất bại — vui lòng ghi âm và gửi lại.');
+    }
     return axiosInstance.post<CommonResponse<ChatVoiceActionDTO>>(
       ENDPOINTS.TICKETS.CHAT_VOICE(ticketId),
-      form,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
+      {
+        fileId: meta.fileId,
+        fileName: meta.fileName,
+        contentType: meta.contentType,
+        sizeBytes: meta.size,
+        url: meta.publicUrl,
+      },
     );
   },
 
