@@ -38,6 +38,25 @@ export function useMarkNotificationRead() {
   });
 }
 
+/**
+ * GH-83 — đánh dấu user đã CHỦ ĐỘNG mở notification (bấm push / mở qua deep-link).
+ *
+ * BE tự set `ReadAt` khi chuyển sang `Opened` nên KHÔNG cần gọi kèm `markRead`.
+ * Lỗi được nuốt có chủ đích: đây là telemetry, hỏng thì không được chặn điều hướng của user.
+ */
+export function useMarkNotificationOpened() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => notificationService.markOpened(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: KEY.notifications });
+    },
+    onError: () => {
+      // Không toast: user đang chuyển màn, báo lỗi "không đánh dấu được đã mở" chỉ gây nhiễu.
+    },
+  });
+}
+
 export function useMarkAllRead() {
   const queryClient = useQueryClient();
   return useMutation({

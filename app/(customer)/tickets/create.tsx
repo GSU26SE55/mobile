@@ -76,8 +76,9 @@ function CreateTicketScreenInner() {
         // BE nhận MẢNG batteryAssetIds — gửi danh sách pin đã chọn.
         batteryAssetIds:
           selectedBatteryIds.length > 0 ? selectedBatteryIds : undefined,
+        // BE required (IncidentDetectedFrom) — user không chọn thì fallback về hiện tại.
         // ISO tính tại thời điểm submit (label ổn định trong state).
-        detectedAt: detectedLabelToIso(detectedLabel) || undefined,
+        incidentDetectedFrom: detectedLabelToIso(detectedLabel) || new Date().toISOString(),
         attachments: attachedFiles.length > 0
           ? attachedFiles.map((file) => ({
               fileId: file.fileId,

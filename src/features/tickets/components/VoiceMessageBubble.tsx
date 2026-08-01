@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { Colors } from '../../../lib/theme';
+import { VoiceTranscriptionStatusEnum } from '../enums/chat.enum';
 import { useLocalAudioUri } from '../hooks/useLocalAudioUri';
 
 const BAR_COUNT = 28;
@@ -37,6 +38,12 @@ interface Props {
   transcript?: string;
   /** Tin của mình (bên phải) — đổi màu icon/sóng cho hợp nền accent. */
   isMe?: boolean;
+  /** GH-83 — trạng thái transcribe. Chỉ `Failed` mới hiện khối báo lỗi + nút thử lại. */
+  transcriptionStatus?: VoiceTranscriptionStatusEnum | null;
+  /** Gọi khi bấm "Thử lại". Không truyền ⇒ ẩn nút (vd màn read-only). */
+  onRetry?: () => void;
+  /** Đang gửi request retry — khoá nút để không bắn trùng. */
+  retrying?: boolean;
 }
 
 /**
@@ -46,7 +53,14 @@ interface Props {
  * Tải file về local (useLocalAudioUri) rồi phát từ URI local — expo-audio đọc được TỔNG
  * THỜI LƯỢNG ngay (phát remote stream + Bearer header giữ duration=0 → "--:--").
  */
-export function VoiceMessageBubble({ fileId, transcript, isMe }: Props) {
+export function VoiceMessageBubble({
+  fileId,
+  transcript,
+  isMe,
+  transcriptionStatus,
+  onRetry,
+  retrying,
+}: Props) {
   const localUri = useLocalAudioUri(fileId);
   const player = useAudioPlayer(localUri ? { uri: localUri } : null, { updateInterval: 120 });
   const status = useAudioPlayerStatus(player);
@@ -121,6 +135,22 @@ export function VoiceMessageBubble({ fileId, transcript, isMe }: Props) {
         <Text style={[styles.time, { color: timeColor }]}>{timeLabel}</Text>
       </View>
 
+      {/* GH-83 — chỉ Failed mới báo. Pending/Processing im lặng: BE xử lý nền, hiện spinner ở đây
+          chỉ làm người dùng tưởng tin nhắn chưa gửi được. */}
+      {transcriptionStatus === VoiceTranscriptionStatusEnum.Failed && (
+        <View style={styles.failedRow}>
+          <Ionicons name="alert-circle-outline" size={13} color={Colors.danger} />
+          <Text style={styles.failedText}>Không nhận dạng được lời thoại</Text>
+          {onRetry && (
+            <Pressable onPress={onRetry} disabled={retrying} hitSlop={6}>
+              <Text style={[styles.retryText, retrying && styles.retryTextDisabled]}>
+                {retrying ? 'Đang thử…' : 'Thử lại'}
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+
       {!!transcript?.trim() && (
         <>
           <Pressable
@@ -168,4 +198,14 @@ const styles = StyleSheet.create({
   transcriptToggle: { flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start' },
   transcriptToggleText: { fontSize: 11, fontWeight: '600', textDecorationLine: 'underline' },
   transcript: { fontSize: 13.5, fontWeight: '500', lineHeight: 19 },
+  // GH-83 — khối báo transcribe thất bại + nút thử lại.
+  failedRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
+  failedText: { fontSize: 11.5, color: Colors.danger, flexShrink: 1 },
+  retryText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: Colors.danger,
+    textDecorationLine: 'underline',
+  },
+  retryTextDisabled: { opacity: 0.5, textDecorationLine: 'none' },
 });

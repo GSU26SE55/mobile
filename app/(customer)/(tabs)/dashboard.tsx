@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
   waveEmpty: { height: 95, justifyContent: 'center', alignItems: 'center' },
   waveEmptyText: { fontSize: 12, color: Solar.mute, fontWeight: '600' },
 
-  // GH-78 — hàng điểm vào Blog, đặt dưới PopularKbSection.
+  // GH-78 — hàng điểm vào Blog.
   blogEntry: {
     flexDirection: 'row',
     alignItems: 'center',

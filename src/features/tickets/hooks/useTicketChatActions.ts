@@ -70,6 +70,23 @@ export function useTranscribeVoiceChat(ticketId: string) {
   });
 }
 
+/**
+ * GH-83 — thử lại việc chuyển giọng nói → văn bản khi lần trước Failed.
+ *
+ * BE trả 202: nhận việc rồi xử lý nền, response không mang kết quả. Vì vậy chỉ invalidate danh sách
+ * chat để lấy trạng thái mới — không setQueryData từ response.
+ */
+export function useRetryVoiceChat(ticketId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (chatId: string) => ticketChatActionsService.retryVoice(ticketId, chatId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY.tickets.chats(ticketId) });
+    },
+    onError: (error) => handleErrorApi({ error }),
+  });
+}
+
 // ── GH-67 — Staff/Manager/Admin ──────────────────────────────────────────
 // Các hook AI/pin dưới KHÔNG cần check res.data.isSuccess: axios interceptor tự reject
 // 200+isSuccess:false (Gemini rate-limit, pin đủ 3...) → rơi vào onError → handleErrorApi.

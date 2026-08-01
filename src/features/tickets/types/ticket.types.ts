@@ -1,3 +1,7 @@
+// GH-83 — enum riêng của ticket chat (string-based, khác các enum int bên dưới).
+// Đặt ở dòng đầu file: import nằm sau `export ... from` sẽ dính eslint `import/first`.
+import type { VoiceTranscriptionStatusEnum } from '../enums/chat.enum';
+
 export {
   TicketStatusEnum,
   TicketPriorityEnum,
@@ -27,6 +31,10 @@ import type {
   ActorRoleEnum,
   ActivityActionEnum,
 } from '../../../shared/enums/ticket.enum';
+
+// GH-83 — enum riêng của ticket chat (string-based, khác các enum int ở trên).
+// Đặt SAU khối import: `export ... from` xen giữa các import làm eslint `import/first` kêu.
+export { VoiceTranscriptionStatusEnum } from '../enums/chat.enum';
 
 export interface SlaTimerDTO {
   id: string;
@@ -132,6 +140,13 @@ export interface TicketCommentDTO {
   reactions?: TicketChatReactionsAggregateDTO;
   mentions?: TicketChatMentionDTO[];
   attachments?: TicketAttachmentDTO[] | null;
+  /**
+   * GH-83 — trạng thái chuyển giọng nói → văn bản (chỉ có ở chat voice).
+   *
+   * ⚠️ TicketService bật `JsonStringEnumConverter` nên BE trả **CHUỖI** (`"Failed"`), không phải số.
+   * `null`/`undefined` = chat thường, không phải voice.
+   */
+  voiceTranscriptionStatus?: VoiceTranscriptionStatusEnum | null;
 }
 
 /**
@@ -237,8 +252,8 @@ export interface CreateTicketPayload {
   category: TicketCategoryEnum;
   /** BE nhận MẢNG batteryAssetIds (khớp TicketCreateCommand.BatteryAssetIds). */
   batteryAssetIds?: string[];
-  /** Thời điểm Customer phát hiện pin bất thường (ISO UTC). BE dùng để AI đối chiếu sensor. */
-  detectedAt?: string;
+  /** Thời điểm Customer phát hiện pin bất thường (ISO UTC). BE required (khớp TicketCreateCommand.IncidentDetectedFrom). Dùng để AI đối chiếu sensor. */
+  incidentDetectedFrom: string;
   attachments?: CommentAttachmentPayload[];
 }
 

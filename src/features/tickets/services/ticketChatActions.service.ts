@@ -67,6 +67,15 @@ export const ticketChatActionsService = {
     );
   },
 
+  // GH-83 — retry chuyển giọng nói → văn bản cho chat đang ở trạng thái Failed.
+  // Không body. BE trả **202 Accepted** (xử lý bất đồng bộ) nên response CHƯA có kết quả —
+  // phải refetch danh sách chat mới thấy trạng thái đổi.
+  // 409 = chat chưa Failed (hoặc không có audio attachment); 404 = chat không thuộc ticket.
+  retryVoice: (ticketId: string, chatId: string) =>
+    axiosInstance.post<CommonResponse<ChatVoiceActionDTO>>(
+      ENDPOINTS.TICKETS.CHAT_VOICE_RETRY(ticketId, chatId),
+    ),
+
   // ── GH-67 — Staff/Manager/Admin ────────────────────────────────────────
   pin: (ticketId: string, chatId: string) =>
     axiosInstance.post<TicketActionResponse>(ENDPOINTS.TICKETS.CHAT_PIN(ticketId, chatId)),

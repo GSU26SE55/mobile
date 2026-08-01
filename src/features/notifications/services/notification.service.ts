@@ -22,6 +22,12 @@ export const notificationService = {
   markRead: (id: string) =>
     axiosInstance.patch<CommonResponse<string>>(NOTIFICATIONS.MARK_READ(id)),
 
+  // PATCH body rỗng — GH-83. Dùng khi user CHỦ ĐỘNG mở nội dung (bấm push, hoặc bấm dòng có
+  // deep-link). Bấm thường trong feed vẫn chỉ là markRead — tách 2 nhánh để open-rate không loãng.
+  // Idempotent: gọi lại khi mạng chập chờn vẫn 200.
+  markOpened: (id: string) =>
+    axiosInstance.patch<CommonResponse<string>>(NOTIFICATIONS.MARK_OPENED(id)),
+
   // POST body rỗng — data = số notification đã mark.
   markAllRead: () =>
     axiosInstance.post<CommonResponse<number>>(NOTIFICATIONS.MARK_ALL_READ),

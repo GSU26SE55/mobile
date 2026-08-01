@@ -9,9 +9,8 @@ import {
 const { NOTIFICATION_PREFERENCES } = ENDPOINTS;
 
 export const notificationPreferenceService = {
-  // GET — chưa cấu hình → BE trả default (không ghi DB).
-  get: () =>
-    axiosInstance.get<CommonResponse<NotificationPreferenceDto>>(NOTIFICATION_PREFERENCES.BASE),
+  // GH-83 — bỏ `get()`: màn cài đặt đọc từ `GET /matrix` (đã bao gồm `channels`).
+  // Giữ lại chỉ tạo nguồn thứ hai cho cùng dữ liệu, và không ai gọi nữa.
 
   // PUT — upsert; userId server lấy từ JWT (không gửi trong body).
   update: (payload: UpdateNotificationPreferencePayload) =>

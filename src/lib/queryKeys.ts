@@ -95,7 +95,11 @@ export const QUERY_KEY = {
     unreadCount: () => [...KEY.notifications, 'unread-count'] as const,
   },
   notificationPreferences: {
-    detail: () => [...KEY.notificationPreferences, 'detail'] as const,
+    // GH-83 — ma trận nhóm × kênh; chứa luôn `channels` nên đây là nguồn DUY NHẤT cho màn cài đặt.
+    // `detail()` cũ đã bỏ: giữ lại là tạo nguồn thứ hai cho cùng dữ liệu, và không ai đọc nữa.
+    matrix: () => [...KEY.notificationPreferences, 'matrix'] as const,
+    // Bảng tra cứu type → nhóm; gần như tĩnh nên staleTime dài.
+    categories: () => [...KEY.notificationPreferences, 'categories'] as const,
   },
   files: {
     metadata:     (id: string) => [...KEY.files, 'metadata', id] as const,

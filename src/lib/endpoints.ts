@@ -110,6 +110,10 @@ export const ENDPOINTS = {
     CHAT_MARK_READ:  (tid: string) => `/api/tickets/${tid}/chats/mark-read`, // POST { chatIds }
     CHAT_TRANSLATE:  (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}/translate`, // POST ?to=
     CHAT_VOICE:      (tid: string) => `/api/tickets/${tid}/chats/voice`, // POST multipart — field "AudioFile"
+    // GH-83 — retry chuyển giọng nói → văn bản. POST, không body, trả 202 (BE xử lý bất đồng bộ).
+    // 409 nếu chat chưa ở trạng thái Failed; 404 nếu chat không thuộc ticket.
+    CHAT_VOICE_RETRY: (tid: string, chatId: string) =>
+      `/api/tickets/${tid}/chats/${chatId}/voice/retry`,
     // GH-68 — Mọi role
     CHATS_CURSOR:        (tid: string) => `/api/tickets/${tid}/chats/cursor`,        // GET ?cursor&limit(≤100,def20)
     CHAT_UNREAD_COUNT:   (tid: string) => `/api/tickets/${tid}/chats/unread-count`,  // GET → { unreadCount } (per-ticket, KHÔNG bulk — ≠ NOTIFICATIONS.UNREAD_COUNT)
@@ -156,6 +160,9 @@ export const ENDPOINTS = {
   NOTIFICATIONS: {
     LIST: '/api/notifications',
     MARK_READ: (id: string) => `/api/notifications/${id}/read`, // PATCH — idempotent
+    // GH-83 — Sprint 6.3 NOTI3-14. PATCH, không body, idempotent. `Opened` MẠNH HƠN `Read`:
+    // gọi `/read` lên record đã `Opened` thì BE giữ nguyên `Opened`, không hạ cấp.
+    MARK_OPENED: (id: string) => `/api/notifications/${id}/opened`,
     MARK_ALL_READ: '/api/notifications/read-all', // POST — body rỗng
     UNREAD_COUNT: '/api/notifications/unread-count', // GET — badge
   },
@@ -164,6 +171,10 @@ export const ENDPOINTS = {
   },
   NOTIFICATION_PREFERENCES: {
     BASE: '/api/notification-preferences',
+    // GH-83 — Sprint 6.3 NOTI3-04. MATRIX: GET (ma trận nhóm × kênh) + PUT (vá từng dòng).
+    MATRIX: '/api/notification-preferences/matrix',
+    // Bảng tra cứu NotificationType → nhóm. KHÔNG nhân bản bảng này ở client — thêm type mới là lệch.
+    CATEGORIES: '/api/notification-preferences/categories',
   },
   KNOWLEDGE_BASE: {
     LIST:    '/api/knowledge-base',

@@ -20,6 +20,7 @@ import { ReactionTypeEnum, TicketCommentDTO } from '../types/ticket.types';
 import { VoiceMessageBubble } from './VoiceMessageBubble';
 import { ReactionBar } from './ReactionBar';
 import { isFileId, useAudioAttachment } from '../hooks/useAudioAttachment';
+import { useRetryVoiceChat } from '../hooks/useTicketChatActions';
 
 const ROLE_AVATAR: Record<string, { icon: keyof typeof Ionicons.glyphMap; iconColor: string; bg: string }> = {
   System:   { icon: 'server-outline',    iconColor: Colors.info,        bg: Colors.infoLight },
@@ -372,6 +373,9 @@ export function ChatBubble({
   const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
   const [editing, setEditing] = useState(false);
   const [editBody, setEditBody] = useState(comment.body);
+  // GH-83 — retry transcribe cho chat voice Failed. Đặt ở đây vì `comment` đã có sẵn `ticketId`,
+  // khỏi phải luồn thêm prop qua mọi màn đang render ChatBubble.
+  const retryVoice = useRetryVoiceChat(comment.ticketId);
   const [editReason, setEditReason] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
@@ -477,6 +481,9 @@ export function ChatBubble({
                 fileId={voiceCandidateId!}
                 transcript={displayBody}
                 isMe={isMe}
+                transcriptionStatus={comment.voiceTranscriptionStatus}
+                onRetry={() => retryVoice.mutate(comment.id)}
+                retrying={retryVoice.isPending}
               />
             </Pressable>
           ) : (
