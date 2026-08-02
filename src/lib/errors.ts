@@ -18,6 +18,22 @@ export class EntityError extends HttpError {
   }
 }
 
+/**
+ * Mã lỗi nghiệp vụ BE trả trong `message` (không có field errorCode riêng).
+ * Hiện thẳng mã lên Alert thì user đọc ra "CHAT_DUPLICATE_MESSAGE_LIMIT".
+ */
+const ERROR_CODE_MESSAGES: Record<string, string> = {
+  CHAT_DUPLICATE_MESSAGE_LIMIT:
+    'Bạn đã gửi tin nhắn này quá nhiều lần. Vui lòng đổi nội dung.',
+  CHAT_SPAM_CHECK_IN_PROGRESS:
+    'Hệ thống đang kiểm tra tin trước. Vui lòng thử lại sau giây lát.',
+};
+
+/** Đổi mã lỗi BE sang câu tiếng Việt; không phải mã thì giữ nguyên message. */
+export function toUserMessage(message: string): string {
+  return ERROR_CODE_MESSAGES[message] ?? message;
+}
+
 type SetFieldError = (field: string, message: string) => void;
 
 interface HandleErrorApiOptions {
@@ -46,7 +62,7 @@ export function handleErrorApi({ error, setFieldError }: HandleErrorApiOptions) 
   }
 
   if (error instanceof HttpError) {
-    Alert.alert('Lỗi', error.message);
+    Alert.alert('Lỗi', toUserMessage(error.message));
     return;
   }
 

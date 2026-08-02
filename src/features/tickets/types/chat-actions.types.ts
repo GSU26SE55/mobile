@@ -18,6 +18,8 @@ export interface ChatMarkReadPayload {
 export interface ChatReaderDTO {
   chatId: string;
   userId: string;
+  /** BE resolve từ CustomerAccounts/StaffAccounts; fallback userId nếu không thấy. */
+  displayName: string;
   role: ActorRoleEnum;
   readAt: string;
 }

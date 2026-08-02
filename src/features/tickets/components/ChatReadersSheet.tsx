@@ -41,7 +41,10 @@ export function ChatReadersSheet({ ticketId, chatId, onClose }: Props) {
           readers.map((r) => (
             <View key={`${r.userId}-${r.readAt}`} style={styles.row}>
               <Ionicons name="checkmark-done" size={16} color={Colors.primaryDark} />
-              <Text style={styles.role}>{ROLE_VI[r.role] ?? r.role}</Text>
+              <View style={styles.who}>
+                <Text style={styles.name} numberOfLines={1}>{r.displayName}</Text>
+                <Text style={styles.role}>{ROLE_VI[r.role] ?? r.role}</Text>
+              </View>
               <Text style={styles.time}>
                 {new Date(r.readAt).toLocaleString('vi-VN', {
                   day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
@@ -61,6 +64,8 @@ const styles = StyleSheet.create({
   loading: { paddingVertical: 20 },
   empty: { fontSize: 13, color: Colors.textMute, paddingVertical: 12 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
-  role: { flex: 1, fontSize: 13, fontWeight: '700', color: Colors.text },
+  who: { flex: 1, gap: 1 },
+  name: { fontSize: 13, fontWeight: '700', color: Colors.text },
+  role: { fontSize: 11, color: Colors.textMute },
   time: { fontSize: 11, color: Colors.textFaint },
 });
