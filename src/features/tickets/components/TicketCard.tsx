@@ -55,6 +55,17 @@ export function TicketCard({ ticket, onPress }: Props) {
           <View style={styles.topRow}>
             <Text style={styles.code}>{ticket.code}</Text>
 
+            {/* Chat chưa đọc — BE tính sẵn theo user hiện tại. Dùng icon thay chấm
+                trơn: hàng này đã có dot ưu tiên + 2 badge, thêm chấm nữa dễ lẫn. */}
+            {ticket.hasUnreadChat && (
+              <Ionicons
+                name="chatbubble-ellipses"
+                size={14}
+                color={Solar.yellowDeep}
+                accessibilityLabel="Có tin nhắn chưa đọc"
+              />
+            )}
+
             {/* Priority Badge */}
             <View style={[styles.priorityBadge, { backgroundColor: pColors.bg }]}>
               <View style={[styles.dot, { backgroundColor: pColors.text }]} />

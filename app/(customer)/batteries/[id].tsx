@@ -4,7 +4,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Solar } from '../../../src/lib/theme';
+import { Solar } from '../../../src/lib/theme';
 import { useBatteryAsset } from '../../../src/features/batteries/hooks/useBatteryAsset';
 import { useBatteryAssetRealtime } from '../../../src/features/batteries/hooks/useBatteryAssetRealtime';
 import { useBatterySensorStream } from '../../../src/features/batteries/hooks/useBatterySensorStream';
@@ -53,7 +53,7 @@ function BatteryDetailScreenInner() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const assetId = id ?? '';
 
-  const { data: battery, isLoading, isError, refetch } = useBatteryAsset(assetId);
+  const { data: battery, isLoading, isError } = useBatteryAsset(assetId);
   const { data: realtime } = useBatteryAssetRealtime(assetId);
   useBatterySensorStream(assetId);
   const { data: cascade } = useCascadeRisk(assetId);
@@ -87,8 +87,6 @@ function BatteryDetailScreenInner() {
     router.push({ pathname: '/(customer)/tickets/create', params: { batteryId: battery.id } });
 
   const soc = realtime?.socPercent ?? null;
-  const filledSegments =
-    soc != null ? Math.max(0, Math.min(SEGMENTS, Math.round((soc / 100) * SEGMENTS))) : 0;
 
   const statusPillLabel =
     realtime?.chargingState != null

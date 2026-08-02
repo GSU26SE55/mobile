@@ -31,8 +31,9 @@ export default function DangerZoneScreen() {
                 style: 'destructive',
                 onPress: () =>
                   eraseChat.mutate(undefined, {
+                    // BE trả data = null; số lượng đã xoá chỉ nằm trong message.
                     onSuccess: (res) =>
-                      Alert.alert('Đã xóa', `Đã xóa ${res.data.data?.erasedCount ?? 0} tin nhắn.`),
+                      Alert.alert('Đã xóa', res.data.message ?? 'Đã xóa dữ liệu chat.'),
                   }),
               },
             ]),

@@ -7,5 +7,4 @@ export const ChatAiIntentEnum = {
   Resolution: 'Resolution',         // Đề xuất giải pháp xử lý
   FollowUp: 'FollowUp',             // Theo dõi tiến độ
 } as const;
-// eslint-disable-next-line @typescript-eslint/no-redeclare
 export type ChatAiIntentEnum = (typeof ChatAiIntentEnum)[keyof typeof ChatAiIntentEnum];

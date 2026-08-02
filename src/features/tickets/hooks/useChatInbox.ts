@@ -19,7 +19,7 @@ export function useMyChats(params?: ChatInboxParams) {
   });
 }
 
-// GH-68 — @mention tới mình. unreadOnly để lọc chưa đọc.
+// GH-68 — @mention tới mình. GH-866: BE bỏ param unreadOnly và endpoint acknowledge.
 export function useMyMentions(params?: MentionListParams) {
   const merged: MentionListParams = { pageSize: 20, ...params };
   return useQuery({
@@ -28,17 +28,6 @@ export function useMyMentions(params?: MentionListParams) {
       const res = await chatInboxService.getMyMentions(merged);
       return res.data.data?.items ?? [];
     },
-  });
-}
-
-export function useAcknowledgeMention() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => chatInboxService.acknowledgeMention(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: KEY.chatMentions });
-    },
-    onError: (error) => handleErrorApi({ error }),
   });
 }
 

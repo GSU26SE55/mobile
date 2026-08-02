@@ -7,7 +7,7 @@ import { TicketCard } from '../../../src/features/tickets/components/TicketCard'
 import { useTickets } from '../../../src/features/tickets/hooks/useTickets';
 import { checkPermission, P } from '../../../src/lib/authz';
 import { useSessionStore } from '../../../src/stores/sessionStore';
-import { Colors, Solar } from '../../../src/lib/theme';
+import { Solar } from '../../../src/lib/theme';
 import { EnergyBackdrop, GlassSurface } from '../../../src/features/batteries/components/EnergyBackdrop';
 
 type FilterKey = 'all' | 'open' | 'closed';

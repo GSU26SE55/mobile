@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from '../src/context/authContext';
 import { PermissionsSync } from '../src/features/auth/components/PermissionsSync';
+import { PushResponseHandler } from '../src/features/notifications/components/PushResponseHandler';
 import { configureGoogleSignin } from '../src/config/googleAuth';
 
 // Cấu hình Google Sign-In 1 lần khi app boot.
@@ -41,6 +42,8 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <PermissionsSync />
+          {/* GH-83 — bấm push → PATCH /opened + deep-link. Không render gì, chỉ gắn listener. */}
+          <PushResponseHandler />
           <RootLayoutNav />
           <StatusBar style="dark" />
         </AuthProvider>

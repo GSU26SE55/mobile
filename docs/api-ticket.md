@@ -1080,6 +1080,12 @@ Base path: `/api/tickets/{ticketId}/chats`
 
 ---
 
+### `POST /api/tickets/{ticketId}/chats/{chatId}/voice/retry`
+
+**Auth:** user có quyền chat trên ticket. Không body. Chỉ retry chat có `voiceTranscriptionStatus = "Failed"`; response `202 Accepted`. `404` nếu chat không thuộc ticket; `409` nếu chat chưa failed hoặc không có audio attachment.
+
+---
+
 ### `GET /api/tickets/{ticketId}/chats/export-pdf`
 
 **Mục đích:** Export PDF toàn bộ chat thread của ticket. Customer chat nội bộ bị ẩn.
@@ -1170,6 +1176,39 @@ Base path: `/api/admin/tickets/{ticketId}/chats`
 **Request body:** Không cần
 
 **Response `200`:** `TicketActionResponse`
+
+---
+
+### `POST /api/admin/tickets/{ticketId}/re-prioritize`
+
+#### FE copy-paste — Re-prioritize ticket
+
+```ts
+export type TicketPriority = 'P1Critical' | 'P2High' | 'P3Normal';
+
+export interface ReprioritizeTicketRequest {
+  priority: TicketPriority;
+  reason: string;
+}
+
+export async function reprioritizeTicket(
+  ticketId: string,
+  request: ReprioritizeTicketRequest,
+) {
+  return api.post<TicketActionResponse>(
+    `/api/admin/tickets/${ticketId}/re-prioritize`,
+    request,
+  );
+}
+```
+
+**UI rules:** show this action only to Manager; require a non-empty reason (maximum 1000 characters); do not put `managerId`, `managerName`, current priority, SLA time, or ticket id in the JSON body. The server takes manager identity and display name from JWT and ticket id from the URL.
+
+**After `200`:** replace the ticket priority/status from `response.data`, refetch ticket detail to get SLA countdown/timer data, and refetch the activity timeline. Do not calculate the new SLA deadline in FE. A re-prioritize can automatically breach SLA or escalate an insufficiently skilled primary handler.
+
+**Error UI:** `400` show field errors; `401/403` hide/disable action and refresh authorization; `404` return to ticket list; `409` show `message` and refetch ticket because its state changed concurrently; `409`/concurrency response should never be retried automatically.
+
+**Auth:** `Manager` only. FE gửi `{ "priority": "P1Critical", "reason": "..." }`; không gửi `managerId`/`managerName` vì server lấy identity và display name từ JWT. Response `200`: cập nhật priority/SLA nhưng SLA không reset. Nếu deadline mới đã quá hạn, server breach SLA trong transaction. Lỗi: `400` (priority/reason; reason tối đa 1000 ký tự), `404` ticket không tồn tại, `409` trạng thái không cho phép (New/Resolved/Closed/Merged).
 
 ---
 

@@ -20,6 +20,7 @@ import { ReactionTypeEnum, TicketCommentDTO } from '../types/ticket.types';
 import { VoiceMessageBubble } from './VoiceMessageBubble';
 import { ReactionBar } from './ReactionBar';
 import { isFileId, useAudioAttachment } from '../hooks/useAudioAttachment';
+import { useRetryVoiceChat } from '../hooks/useTicketChatActions';
 
 const ROLE_AVATAR: Record<string, { icon: keyof typeof Ionicons.glyphMap; iconColor: string; bg: string }> = {
   System:   { icon: 'server-outline',    iconColor: Colors.info,        bg: Colors.infoLight },
@@ -181,14 +182,18 @@ interface ChatActionMenuProps {
   canDelete: boolean;
   canTranslate: boolean;
   canPin: boolean;
+  canShowReaders: boolean;
   isPinned: boolean;
   canDownload: boolean;
+  canSelectMany: boolean;
   translating: boolean;
   pinning: boolean;
   onEdit: () => void;
   onDeleteRequest: () => void;
+  onRequestSelectMode: () => void;
   onTranslate: (lang: string) => void;
   onTogglePin: () => void;
+  onShowReaders: () => void;
   onDownload: () => void;
 }
 
@@ -208,14 +213,18 @@ function ChatActionMenu({
   canDelete,
   canTranslate,
   canPin,
+  canShowReaders,
   isPinned,
   canDownload,
+  canSelectMany,
   translating,
   pinning,
   onEdit,
   onDeleteRequest,
+  onRequestSelectMode,
   onTranslate,
   onTogglePin,
+  onShowReaders,
   onDownload,
 }: ChatActionMenuProps) {
   const [showLangs, setShowLangs] = useState(false);
@@ -229,7 +238,7 @@ function ChatActionMenu({
 
   const rowCount = showLangs
     ? LANGUAGE_OPTIONS.length + 1
-    : Number(canEdit) + Number(canPin) + Number(canDownload) + Number(canTranslate) + Number(canDelete);
+    : Number(canEdit) + Number(canPin) + Number(canShowReaders) + Number(canDownload) + Number(canTranslate) + Number(canDelete) + Number(canSelectMany);
   const popupHeight = rowCount * MENU_ROW_HEIGHT + 12;
   const { width: screenW, height: screenH } = Dimensions.get('window');
 
@@ -265,6 +274,12 @@ function ChatActionMenu({
                   <Text style={styles.menuItemText}>{isPinned ? 'Bỏ ghim' : 'Ghim'}</Text>
                 </Pressable>
               )}
+              {canShowReaders && (
+                <Pressable style={styles.menuItem} onPress={() => { handleClose(); onShowReaders(); }}>
+                  <Ionicons name="checkmark-done-outline" size={18} color={Colors.text} />
+                  <Text style={styles.menuItemText}>Đã đọc bởi</Text>
+                </Pressable>
+              )}
               {canDownload && (
                 <Pressable style={styles.menuItem} onPress={() => { handleClose(); onDownload(); }}>
                   <Ionicons name="download-outline" size={18} color={Colors.text} />
@@ -282,6 +297,12 @@ function ChatActionMenu({
                 <Pressable style={styles.menuItem} onPress={() => { handleClose(); onDeleteRequest(); }}>
                   <Ionicons name="trash-outline" size={18} color={Colors.danger} />
                   <Text style={[styles.menuItemText, { color: Colors.danger }]}>Xóa</Text>
+                </Pressable>
+              )}
+              {canSelectMany && (
+                <Pressable style={styles.menuItem} onPress={() => { handleClose(); onRequestSelectMode(); }}>
+                  <Ionicons name="checkmark-circle-outline" size={18} color={Colors.text} />
+                  <Text style={styles.menuItemText}>Chọn nhiều</Text>
                 </Pressable>
               )}
             </>
@@ -315,6 +336,9 @@ export interface ChatBubbleProps {
   // Sửa/Xóa/Dịch — mặc định tắt (Customer screen không truyền → giữ nguyên hành vi cũ).
   canEdit?: boolean;
   canDelete?: boolean;
+  /** Hiện mục "Chọn nhiều" trong menu — chỉ bật cho tin của chính mình. */
+  canSelectMany?: boolean;
+  onRequestSelectMode?: () => void;
   editNeedsReason?: boolean;
   deleteNeedsReason?: boolean;
   editPending?: boolean;
@@ -330,8 +354,10 @@ export interface ChatBubbleProps {
 
   // GH-67 — Ghim (Staff/Manager/Admin). Customer screen không truyền → tắt.
   canPin?: boolean;
+  canShowReaders?: boolean;
   pinning?: boolean;
   onTogglePin?: () => void;
+  onShowReaders?: () => void;
 
   // GH-68 — Reactions + download attachment. Mọi role.
   currentUserId?: string | null;
@@ -349,6 +375,8 @@ export function ChatBubble({
   accentColor = Colors.primary,
   canEdit = false,
   canDelete = false,
+  canSelectMany = false,
+  onRequestSelectMode,
   editNeedsReason = false,
   deleteNeedsReason = false,
   editPending = false,
@@ -362,8 +390,10 @@ export function ChatBubble({
   showingOriginal = true,
   onToggleOriginal,
   canPin = false,
+  canShowReaders = false,
   pinning = false,
   onTogglePin,
+  onShowReaders,
   currentUserId = null,
   onToggleReaction,
   onDownloadAttachments,
@@ -372,6 +402,9 @@ export function ChatBubble({
   const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
   const [editing, setEditing] = useState(false);
   const [editBody, setEditBody] = useState(comment.body);
+  // GH-83 — retry transcribe cho chat voice Failed. Đặt ở đây vì `comment` đã có sẵn `ticketId`,
+  // khỏi phải luồn thêm prop qua mọi màn đang render ChatBubble.
+  const retryVoice = useRetryVoiceChat(comment.ticketId);
   const [editReason, setEditReason] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
@@ -381,13 +414,16 @@ export function ChatBubble({
   const fileIds = (comment.attachmentFileIds ?? []).filter(isFileId);
   const body = comment.body?.trim();
   const hasBody = !!body;
-  // Voice message (BE tạo từ /chats/voice): body = transcript + đúng 1 attachment là file audio.
-  // Ứng viên = có body + đúng 1 attachment; hook hỏi metadata để chốt contentType audio,
-  // không phải audio thì render như media ảnh bình thường. Hook gọi TRƯỚC mọi early return
-  // để không vi phạm Rules of Hooks (System/tin-trống return bên dưới).
-  const voiceCandidateId = hasBody && fileIds.length === 1 ? fileIds[0] : undefined;
+  // Voice message (BE tạo từ /chats/voice): 1 attachment audio + transcript trong body.
+  // Luồng transcribe async: chat Pending/Processing/Failed có body RỖNG nhưng vẫn phải render
+  // như voice bubble (để hiện trạng thái + nút thử lại) → nhận diện qua voiceTranscriptionStatus
+  // HOẶC (có body + đúng 1 attachment). Hook hỏi metadata để chốt contentType audio khi chưa
+  // có status. Gọi TRƯỚC mọi early return để không vi phạm Rules of Hooks.
+  const voiceStatus = comment.voiceTranscriptionStatus ?? null;
+  const voiceCandidateId =
+    fileIds.length === 1 && (voiceStatus !== null || hasBody) ? fileIds[0] : undefined;
   const { isAudio } = useAudioAttachment(voiceCandidateId);
-  const isVoice = isAudio === true;
+  const isVoice = !!voiceCandidateId && (voiceStatus !== null || isAudio === true);
 
   if (comment.authorRole === 'System') {
     return (
@@ -405,7 +441,7 @@ export function ChatBubble({
   if (!body && fileIds.length === 0) return null;
 
   const canDownload = !!onDownloadAttachments && fileIds.length > 0;
-  const canShowActions = canEdit || canDelete || canTranslate || canPin || canDownload;
+  const canShowActions = canEdit || canDelete || canTranslate || canPin || canShowReaders || canDownload || canSelectMany;
   const displayBody = showingOriginal || !translation ? body : translation.text;
 
   const time = new Date(comment.createdAt).toLocaleTimeString('vi-VN', {
@@ -477,6 +513,9 @@ export function ChatBubble({
                 fileId={voiceCandidateId!}
                 transcript={displayBody}
                 isMe={isMe}
+                transcriptionStatus={comment.voiceTranscriptionStatus}
+                onRetry={() => retryVoice.mutate(comment.id)}
+                retrying={retryVoice.isPending}
               />
             </Pressable>
           ) : (
@@ -574,14 +613,18 @@ export function ChatBubble({
         canDelete={canDelete}
         canTranslate={canTranslate}
         canPin={canPin}
+        canShowReaders={canShowReaders}
         isPinned={!!comment.isPinned}
         canDownload={canDownload}
+        canSelectMany={canSelectMany}
         translating={translating}
         pinning={pinning}
         onEdit={startEdit}
         onDeleteRequest={() => setConfirmingDelete(true)}
+        onRequestSelectMode={() => onRequestSelectMode?.()}
         onTranslate={(lang) => onTranslate?.(lang)}
         onTogglePin={() => onTogglePin?.()}
+        onShowReaders={() => onShowReaders?.()}
         onDownload={() => onDownloadAttachments?.(fileIds)}
       />
 

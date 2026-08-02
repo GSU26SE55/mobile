@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useStaffTickets } from '../../../src/features/staff/hooks/useStaffTickets';
 import { TicketDTO, TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
-import { BadgeColors, Colors, Shadow, Solar } from '../../../src/lib/theme';
+import { Colors, Shadow, Solar } from '../../../src/lib/theme';
 import { P } from '../../../src/lib/authz';
 import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
 import { StaffHeader } from '../../../src/features/staff/components/StaffHeader';

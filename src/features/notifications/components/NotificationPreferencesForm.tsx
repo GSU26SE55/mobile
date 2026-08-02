@@ -12,7 +12,9 @@ import {
 } from 'react-native';
 import { Colors, CommonStyles, Radius, Shadow, Spacing } from '../../../lib/theme';
 import { handleErrorApi } from '../../../lib/errors';
-import { useNotificationPreferences } from '../hooks/useNotificationPreferences';
+import { CategoryMatrixTable } from './CategoryMatrixTable';
+import { useNotificationMatrix } from '../hooks/useNotificationMatrix';
+import { useUpdateNotificationPreference } from '../hooks/useNotificationPreferences';
 import { notificationPreferenceSchema } from '../schemas/notificationPreference.schema';
 import { UpdateNotificationPreferencePayload } from '../types/notification-preference.types';
 
@@ -41,7 +43,11 @@ function ToggleRow({ label, desc, value, onValueChange }: ToggleRowProps) {
 }
 
 export function NotificationPreferencesForm() {
-  const { pref, updatePref } = useNotificationPreferences();
+  // GH-83 — nguồn dữ liệu là `GET /matrix` (trả cả `channels` lẫn `categories`) thay vì
+  // `GET /notification-preferences`. Một nguồn cho một dữ liệu; hai nguồn là cách chắc chắn để lệch.
+  // Ghi thì vẫn qua `PUT /notification-preferences` vì `PUT /matrix` chỉ nhận `items` (dòng nhóm).
+  const { matrix: pref } = useNotificationMatrix();
+  const updatePref = useUpdateNotificationPreference();
 
   const [pushEnabled, setPushEnabled] = useState(true);
   const [emailEnabled, setEmailEnabled] = useState(true);
@@ -51,11 +57,18 @@ export function NotificationPreferencesForm() {
   const [quietStart, setQuietStart] = useState('22:00');
   const [quietEnd, setQuietEnd] = useState('07:00');
   const [timeZone, setTimeZone] = useState('Asia/Ho_Chi_Minh');
+  // GH-83 — 3 tuỳ chọn chat (#570). Trước đây mobile không khai nên mỗi lần Lưu là BE ghi default đè lên.
+  const [notifyOnChat, setNotifyOnChat] = useState(true);
+  const [notifyOnMention, setNotifyOnMention] = useState(true);
+  const [notifyOnReaction, setNotifyOnReaction] = useState(false);
+  // Pass-through: giữ nguyên giá trị BE trả về, mobile chưa có UI Frequency.
+  const [digestWindowMinutes, setDigestWindowMinutes] = useState<number | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Load flow — fill form khi data về.
   useEffect(() => {
-    const d = pref.data;
+    // `/matrix` bọc công tắc toàn cục trong `channels`; phần `categories` do CategoryMatrixTable lo.
+    const d = pref.data?.channels;
     if (!d) return;
     setPushEnabled(d.pushEnabled);
     setEmailEnabled(d.emailEnabled);
@@ -66,6 +79,10 @@ export function NotificationPreferencesForm() {
     if (d.quietHoursStart) setQuietStart(d.quietHoursStart);
     if (d.quietHoursEnd) setQuietEnd(d.quietHoursEnd);
     setTimeZone(d.timeZone);
+    setNotifyOnChat(d.notifyOnChat);
+    setNotifyOnMention(d.notifyOnMention);
+    setNotifyOnReaction(d.notifyOnReaction);
+    setDigestWindowMinutes(d.digestWindowMinutes);
   }, [pref.data]);
 
   if (pref.isLoading) {
@@ -100,6 +117,10 @@ export function NotificationPreferencesForm() {
       quietHoursStart: quietEnabled ? quietStart.trim() : null,
       quietHoursEnd: quietEnabled ? quietEnd.trim() : null,
       timeZone: timeZone.trim(),
+      notifyOnChat,
+      notifyOnMention,
+      notifyOnReaction,
+      digestWindowMinutes,
     };
 
     const parsed = notificationPreferenceSchema.safeParse(payload);
@@ -130,6 +151,32 @@ export function NotificationPreferencesForm() {
         <ToggleRow label="SMS" value={smsEnabled} onValueChange={setSmsEnabled} />
         <ToggleRow label="Trong ứng dụng" desc="Hiển thị trong danh sách thông báo" value={inAppEnabled} onValueChange={setInAppEnabled} />
       </View>
+
+      <View style={[styles.card, Shadow]}>
+        <Text style={styles.cardTitle}>Trao đổi trên ticket</Text>
+        <ToggleRow
+          label="Bình luận mới"
+          desc="Có người bình luận trên ticket của bạn"
+          value={notifyOnChat}
+          onValueChange={setNotifyOnChat}
+        />
+        <ToggleRow
+          label="Khi được nhắc tên"
+          desc="Có người @nhắc bạn trong bình luận"
+          value={notifyOnMention}
+          onValueChange={setNotifyOnMention}
+        />
+        <ToggleRow
+          label="Cảm xúc bình luận"
+          desc="Có người thả cảm xúc vào bình luận của bạn"
+          value={notifyOnReaction}
+          onValueChange={setNotifyOnReaction}
+        />
+      </View>
+
+      {/* Ma trận nhóm × kênh — lưu ngay khi chạm ô (PUT /matrix), độc lập với nút Lưu bên dưới
+          (nút đó chỉ dành cho công tắc toàn cục qua PUT /notification-preferences). */}
+      <CategoryMatrixTable />
 
       <View style={[styles.card, Shadow]}>
         <ToggleRow

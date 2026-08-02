@@ -21,7 +21,7 @@ import {
   reactivateVerifySchema,
 } from '../../src/features/auth/schemas/reactivate.schema';
 import { handleErrorApi } from '../../src/lib/errors';
-import { Colors, Spacing } from '../../src/lib/theme';
+import { Colors } from '../../src/lib/theme';
 
 type Step = 1 | 2;
 

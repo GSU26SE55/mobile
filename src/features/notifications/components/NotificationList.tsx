@@ -7,6 +7,7 @@ import {
   useNotifications,
   useUnreadCount,
   useMarkNotificationRead,
+  useMarkNotificationOpened,
   useMarkAllRead,
 } from '../hooks/useNotifications';
 import { NotificationCard } from './NotificationCard';
@@ -23,15 +24,24 @@ export function NotificationList({ ticketHref }: Props) {
   const { data, isLoading, isError, refetch, isRefetching } = useNotifications();
   const { data: unreadCount = 0 } = useUnreadCount();
   const markRead = useMarkNotificationRead();
+  const markOpened = useMarkNotificationOpened();
   const markAllRead = useMarkAllRead();
 
   const items = data?.items ?? [];
 
   const handlePress = (n: NotificationDTO) => {
-    if (isUnread(n)) markRead.mutate(n.id);
-    if (n.entityType === 'Ticket' && n.entityId) {
-      router.push(ticketHref(n.entityId));
+    // GH-83 — deep-link = mở được nội dung thật, mới tính là "Opened" (bằng chứng user chủ động mở).
+    // Bấm dòng không dẫn đi đâu chỉ là "Read". Tách 2 nhánh để open-rate không bị loãng — đúng lý do
+    // BE tách /opened khỏi /read, và khớp với logic web (NotificationBell).
+    const deepLink = n.entityType === 'Ticket' && n.entityId ? ticketHref(n.entityId) : null;
+
+    if (isUnread(n)) {
+      // BE tự set ReadAt khi chuyển Opened ⇒ KHÔNG gọi kèm markRead, sẽ thừa một request.
+      if (deepLink) markOpened.mutate(n.id);
+      else markRead.mutate(n.id);
     }
+
+    if (deepLink) router.push(deepLink);
   };
 
   if (isLoading) {

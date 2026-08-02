@@ -10,7 +10,6 @@ import { TicketStatusEnum } from '../types/ticket.types';
 const STATUS_CONFIG: Record<TicketStatusEnum, { label: string; badge: keyof typeof BadgeColors }> = {
   New:                    { label: 'Mới',            badge: 'new' },
   Open:                   { label: 'Chờ triage',     badge: 'open' },
-  Approved:               { label: 'Đã duyệt',       badge: 'ok' },
   Assigned:               { label: 'Đã gán',         badge: 'assigned' },
   InProgress:             { label: 'Đang xử lý',     badge: 'progress' },
   WaitingCustomer:        { label: 'Chờ khách hàng', badge: 'waiting' },

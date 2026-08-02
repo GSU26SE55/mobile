@@ -102,7 +102,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   useScrollToTop(scrollRef);
-  const { data: account, isLoading: profileLoading } = useProfile();
+  const { isLoading: profileLoading } = useProfile();
   const { data: batteries = [], isLoading: batteriesLoading } = useMyBatteryAssets();
   const { data: alerts = [] } = useMyAlerts();
   const { data: sites = [] } = useMySites();
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
   waveEmpty: { height: 95, justifyContent: 'center', alignItems: 'center' },
   waveEmptyText: { fontSize: 12, color: Solar.mute, fontWeight: '600' },
 
-  // GH-78 — hàng điểm vào Blog, đặt dưới PopularKbSection.
+  // GH-78 — hàng điểm vào Blog.
   blogEntry: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -65,7 +65,6 @@ export default function CustomerTabsLayout() {
     <Tabs tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="dashboard" />
       <Tabs.Screen name="tickets" />
-      <Tabs.Screen name="knowledge" options={{ href: null }} />
       <Tabs.Screen name="profile" />
       <Tabs.Screen name="alerts" options={{ href: null }} />
     </Tabs>

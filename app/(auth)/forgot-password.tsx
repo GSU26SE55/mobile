@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ForgotPasswordStep1 } from '../../src/features/auth/components/ForgotPasswordStep1';
 import { ForgotPasswordStep2 } from '../../src/features/auth/components/ForgotPasswordStep2';
 import { ForgotPasswordStep3 } from '../../src/features/auth/components/ForgotPasswordStep3';
-import { Colors, Spacing } from '../../src/lib/theme';
 
 type Step = 1 | 2 | 3;
 

@@ -436,7 +436,7 @@ export function CreateTicketStepper({
               />
             </View>
             <View style={styles.charCountRow}>
-              <Text style={styles.minCharLabel}>Tối thiểu 10 ký tự</Text>
+              <Text style={styles.minCharLabel}>Tối thiểu 5 ký tự</Text>
               <Text style={styles.countText}>{description.length}/500</Text>
             </View>
 
@@ -636,7 +636,7 @@ export function CreateTicketStepper({
 
   const isNextDisabled = () => {
     if (step === 1) return selectedBatteryIds.length === 0;
-    if (step === 2) return !category || description.length < 10;
+    if (step === 2) return !category || description.trim().length < 5;
     if (step === 3) return isUploadingImage;
     return false;
   };

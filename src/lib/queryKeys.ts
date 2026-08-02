@@ -79,6 +79,7 @@ export const QUERY_KEY = {
     chats:          (id: string) => [...KEY.tickets, 'chats', id] as const,   // GH-44/GH-68 — infinite (cursor). Giữ key cho realtime prepend
     chatUnreadCount:(id: string) => [...KEY.tickets, 'chat-unread-count', id] as const, // GH-68
     chatReactions:  (tid: string, cid: string) => [...KEY.tickets, 'chat-reactions', tid, cid] as const, // GH-68
+    chatReaders:    (tid: string, cid: string) => [...KEY.tickets, 'chat-readers', tid, cid] as const, // Staff/Manager/Admin only
     activities:     (id: string) => [...KEY.tickets, 'activities', id] as const, // GH-44
   },
   staffProfile: {
@@ -95,7 +96,11 @@ export const QUERY_KEY = {
     unreadCount: () => [...KEY.notifications, 'unread-count'] as const,
   },
   notificationPreferences: {
-    detail: () => [...KEY.notificationPreferences, 'detail'] as const,
+    // GH-83 — ma trận nhóm × kênh; chứa luôn `channels` nên đây là nguồn DUY NHẤT cho màn cài đặt.
+    // `detail()` cũ đã bỏ: giữ lại là tạo nguồn thứ hai cho cùng dữ liệu, và không ai đọc nữa.
+    matrix: () => [...KEY.notificationPreferences, 'matrix'] as const,
+    // Bảng tra cứu type → nhóm; gần như tĩnh nên staleTime dài.
+    categories: () => [...KEY.notificationPreferences, 'categories'] as const,
   },
   files: {
     metadata:     (id: string) => [...KEY.files, 'metadata', id] as const,

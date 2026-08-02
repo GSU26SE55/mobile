@@ -1,3 +1,7 @@
+// GH-83 — enum riêng của ticket chat (string-based, khác các enum int bên dưới).
+// Đặt ở dòng đầu file: import nằm sau `export ... from` sẽ dính eslint `import/first`.
+import type { VoiceTranscriptionStatusEnum } from '../enums/chat.enum';
+
 export {
   TicketStatusEnum,
   TicketPriorityEnum,
@@ -12,6 +16,9 @@ export {
   ActorRoleEnum,
   ActivityActionEnum,
   ReactionTypeEnum,
+  ParticipantTypeEnum,
+  TicketVerifyStatusEnum,
+  TicketCloseReasonEnum,
 } from '../../../shared/enums/ticket.enum';
 
 import type {
@@ -26,7 +33,14 @@ import type {
   MaintenanceLogTypeEnum,
   ActorRoleEnum,
   ActivityActionEnum,
+  ParticipantTypeEnum,
+  TicketVerifyStatusEnum,
+  TicketCloseReasonEnum,
 } from '../../../shared/enums/ticket.enum';
+
+// GH-83 — enum riêng của ticket chat (string-based, khác các enum int ở trên).
+// Đặt SAU khối import: `export ... from` xen giữa các import làm eslint `import/first` kêu.
+export { VoiceTranscriptionStatusEnum } from '../enums/chat.enum';
 
 export interface SlaTimerDTO {
   id: string;
@@ -80,8 +94,8 @@ export interface TicketChatMentionDTO {
   mentionedUserId: string;
   mentionedUserRole: ActorRoleEnum;
   mentionedDisplayName: string | null;
-  isAcknowledged: boolean;
-  acknowledgedAt: string | null;
+  /** GH-866 — mention nằm trong chat nội bộ. Chọn view public/internal, KHÔNG phải authz. */
+  isInternal: boolean;
   createdAt: string;
 }
 
@@ -89,8 +103,11 @@ export interface TicketParticipantDTO {
   id: string;
   ticketId: string;
   userId: string;
+  /** BE resolve từ CustomerAccounts/StaffAccounts; fallback userId nếu không thấy. */
+  displayName: string;
   userRole: ActorRoleEnum;
-  participantType: number;
+  /** Serialize dạng chuỗi ('Owner' | 'PrimaryAssignee' | ...), KHÔNG phải số. */
+  participantType: ParticipantTypeEnum;
   canPost: boolean;
   canViewInternal: boolean;
   addedByUserId: string;
@@ -132,6 +149,13 @@ export interface TicketCommentDTO {
   reactions?: TicketChatReactionsAggregateDTO;
   mentions?: TicketChatMentionDTO[];
   attachments?: TicketAttachmentDTO[] | null;
+  /**
+   * GH-83 — trạng thái chuyển giọng nói → văn bản (chỉ có ở chat voice).
+   *
+   * ⚠️ TicketService bật `JsonStringEnumConverter` nên BE trả **CHUỖI** (`"Failed"`), không phải số.
+   * `null`/`undefined` = chat thường, không phải voice.
+   */
+  voiceTranscriptionStatus?: VoiceTranscriptionStatusEnum | null;
 }
 
 /**
@@ -149,7 +173,10 @@ export interface TicketAssignmentDTO {
 export interface TicketDTO {
   id: string;
   code: string;
+  /** Legacy — pin đầu tiên. BE trả `""` (không phải null) khi ticket không gắn pin. */
   batteryAssetId: string | null;
+  /** Danh sách đầy đủ ID pin — nguồn đúng từ GH-866 (ticket hỗ trợ nhiều pin). */
+  batteryAssetIds: string[];
   customerId: string;
   customerName?: string | null;
   /**
@@ -167,9 +194,26 @@ export interface TicketDTO {
   origin: TicketOriginEnum;
   reopenCount: number;
   isIncident: boolean;
+  /** BE tính sẵn theo user hiện tại (TicketQueryHelper) — có chat chưa đọc trên ticket này. */
+  hasUnreadChat: boolean;
   createdAt: string;
   updatedAt: string | null;
   slaTimer: SlaTimerDTO | null;
+
+  // ── BE trả sẵn ở CẢ list lẫn detail (docs xếp trong TicketDTO) ──
+  /** Thời điểm Customer khai báo phát hiện sự cố (`incidentDetectedAt` lúc tạo). */
+  detectedAt: string | null;
+  /** Serial pin snapshot lúc tạo ticket — hiển thị không cần gọi thêm API. */
+  batterySerialNumber: string | null;
+  /** Trạng thái AI verify tính hợp lệ của ticket. */
+  aiVerifyStatus: TicketVerifyStatusEnum;
+  aiVerifyScore: number | null;
+  aiVerifyReason: string | null;
+  suspectedDuplicateOfTicketId: string | null;
+  duplicateReason: string | null;
+  /** Khác null ⇒ ticket đã bị gộp vào ticket khác, đã đóng và ẩn khỏi queue. */
+  mergedIntoTicketId: string | null;
+  closeReason: TicketCloseReasonEnum | null;
 }
 
 export interface MaintenanceLogDTO {
@@ -193,10 +237,6 @@ export interface MaintenanceLogDTO {
 
 export interface TicketDetailDTO extends TicketDTO {
   description: string | null;
-  /** Thời điểm Customer phát hiện pin bất thường (Customer nhập khi tạo ticket). */
-  detectedAt: string | null;
-  /** Serial pin snapshot (BE denormalize) — hiển thị nếu không load được battery. */
-  batterySerialNumber: string | null;
   resolutionSummary: string | null;
   resolvedAt: string | null;
   resolvedByStaffId: string | null;
@@ -211,7 +251,12 @@ export interface TicketDetailDTO extends TicketDTO {
   escalationReason: EscalationReasonEnum | null;
   originAlertId: string | null;
   activities: TicketActivityDTO[] | null;
-  comments: TicketCommentDTO[] | null;
+  /**
+   * BE trả `chats` (TicketChatDTO[]) — KHÔNG còn `comments`.
+   * `TicketCommentsController` đã bị xoá; TicketCommentDTO ở file này chính là
+   * shape của TicketChatDTO (giữ tên cũ để không phải đổi toàn bộ call site).
+   */
+  chats: TicketCommentDTO[] | null;
   maintenanceLogs: MaintenanceLogDTO[] | null;
   // BE trả mảng FileId (string[]), KHÔNG phải mảng TicketAttachmentDTO.
   attachmentFileIds: string[] | null;
@@ -235,11 +280,17 @@ export interface CreateTicketPayload {
   title: string;
   description: string;
   category: TicketCategoryEnum;
-  /** BE nhận MẢNG batteryAssetIds (khớp TicketCreateCommand.BatteryAssetIds). */
-  batteryAssetIds?: string[];
-  /** Thời điểm Customer phát hiện pin bất thường (ISO UTC). BE dùng để AI đối chiếu sensor. */
-  detectedAt?: string;
-  attachments?: CommentAttachmentPayload[];
+  /**
+   * BE required: ít nhất 1 pin, không rỗng, không trùng lặp
+   * (khớp TicketCreateCommand.BatteryAssetIds).
+   */
+  batteryAssetIds: string[];
+  /**
+   * GH-866 — MỘT mốc thời gian Customer phát hiện sự cố (ISO UTC), thay cho cặp
+   * from/to cũ. BE required và reject nếu ở tương lai.
+   */
+  incidentDetectedAt: string;
+  attachments?: TicketAttachmentPayload[];
 }
 
 export interface UploadedTicketAttachment {
@@ -248,6 +299,21 @@ export interface UploadedTicketAttachment {
   fileName: string;
   contentType: string;
   sizeBytes: number;
+  /** publicUrl từ FileUploadResponse — BE ticket create bắt buộc có url. */
+  url: string;
+}
+
+/**
+ * Attachment gửi kèm khi TẠO ticket (POST /api/customer/tickets).
+ * Khác CommentAttachmentPayload: BE `TicketAttachmentInput` bắt buộc thêm `url`
+ * (required, tối đa 2000 ký tự) — thiếu sẽ bị 400.
+ */
+export interface TicketAttachmentPayload {
+  fileId: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  url: string;
 }
 
 export interface CommentAttachmentPayload {
@@ -257,9 +323,19 @@ export interface CommentAttachmentPayload {
   sizeBytes: number;
 }
 
+/**
+ * Mention gửi kèm chat — BE nhận qua field `mentions`, KHÔNG parse '@' từ body.
+ * Không gửi field này thì mention không được tạo dù text có '@Tên'.
+ */
+export interface ChatMentionInput {
+  userId: string;
+  displayName: string;
+}
+
 export interface AddCommentPayload {
   body: string;
   isInternal: false;
+  mentions?: ChatMentionInput[];
   attachments?: CommentAttachmentPayload[];
 }
 

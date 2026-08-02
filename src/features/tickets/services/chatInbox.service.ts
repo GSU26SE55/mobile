@@ -9,12 +9,8 @@ export interface ChatInboxParams {
   pageSize?: number;
 }
 export interface MentionListParams {
-  unreadOnly?: boolean;
   page?: number;
   pageSize?: number;
-}
-export interface EraseMyChatDataDTO {
-  erasedCount: number;
 }
 
 export const chatInboxService = {
@@ -31,10 +27,9 @@ export const chatInboxService = {
       { params },
     ),
 
-  acknowledgeMention: (id: string) =>
-    axiosInstance.patch<CommonResponse<object>>(ENDPOINTS.CHATS.MENTION_ACK(id)),
-
   // GDPR — overwrite body toàn bộ chat của mình bằng [ERASED].
+  // `data` LUÔN null — ChatEraseUserDataCommandHandler không set Data ở nhánh nào.
+  // Số lượng đã xoá chỉ nằm trong `message`, KHÔNG có field erasedCount.
   eraseMyData: () =>
-    axiosInstance.post<CommonResponse<EraseMyChatDataDTO>>(ENDPOINTS.CHATS.ERASE_MY_DATA),
+    axiosInstance.post<CommonResponse<null>>(ENDPOINTS.CHATS.ERASE_MY_DATA),
 };
