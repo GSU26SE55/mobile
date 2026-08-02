@@ -4,6 +4,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../lib/theme';
 import { BottomSheet } from '../../../shared/components/BottomSheet';
 import { useChatReaders } from '../hooks/useChatReaders';
+import type { ActorRoleEnum } from '../../../shared/enums/ticket.enum';
+
+const ROLE_VI: Record<ActorRoleEnum, string> = {
+  Admin: 'Quản trị viên',
+  Manager: 'Quản lý',
+  Staff: 'Kỹ thuật viên',
+  Customer: 'Khách hàng',
+  System: 'Hệ thống',
+};
 
 interface Props {
   ticketId: string;
@@ -32,7 +41,7 @@ export function ChatReadersSheet({ ticketId, chatId, onClose }: Props) {
           readers.map((r) => (
             <View key={`${r.userId}-${r.readAt}`} style={styles.row}>
               <Ionicons name="checkmark-done" size={16} color={Colors.primaryDark} />
-              <Text style={styles.role}>{r.role}</Text>
+              <Text style={styles.role}>{ROLE_VI[r.role] ?? r.role}</Text>
               <Text style={styles.time}>
                 {new Date(r.readAt).toLocaleString('vi-VN', {
                   day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',

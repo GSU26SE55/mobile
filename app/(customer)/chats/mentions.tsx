@@ -3,7 +3,8 @@ import { router } from 'expo-router';
 import { Colors } from '../../../src/lib/theme';
 import { useMyMentions } from '../../../src/features/tickets/hooks/useChatInbox';
 
-// GH-68 — @mention tới tôi (mọi ticket). GH-866: BE bỏ endpoint acknowledge; chấm vàng = chat nội bộ.
+// GH-68 — @mention tới tôi (mọi ticket). GH-866: BE bỏ endpoint acknowledge.
+// Không hiện chỉ báo isInternal: BE đã lọc mention nội bộ khỏi Customer nên luôn false.
 export default function MentionsScreen() {
   const { data: mentions = [], isLoading, refetch, isRefetching } = useMyMentions();
 
@@ -28,7 +29,7 @@ export default function MentionsScreen() {
           style={styles.row}
           onPress={() => item.ticketId && router.push(`/(customer)/tickets/${item.ticketId}`)}
         >
-          <View style={[styles.dot, item.isInternal && styles.dotInternal]} />
+          <View style={styles.dot} />
           <View style={styles.body}>
             <Text style={styles.name} numberOfLines={1}>
               {item.mentionedDisplayName ?? 'Bạn được nhắc đến'}
@@ -54,7 +55,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 12, marginBottom: 8,
   },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primary },
-  dotInternal: { backgroundColor: Colors.warning },
   body: { flex: 1, gap: 2 },
   name: { fontSize: 13.5, fontWeight: '700', color: Colors.text },
   time: { fontSize: 11, color: Colors.textFaint },

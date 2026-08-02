@@ -30,9 +30,13 @@ export default function StaffMentionsScreen() {
             >
               <View style={[styles.dot, item.isInternal && styles.dotInternal]} />
               <View style={styles.body}>
-                <Text style={styles.name} numberOfLines={1}>
-                  {item.mentionedDisplayName ?? 'Bạn được nhắc đến'}
-                </Text>
+                <View style={styles.nameRow}>
+                  <Text style={styles.name} numberOfLines={1}>
+                    {item.mentionedDisplayName ?? 'Bạn được nhắc đến'}
+                  </Text>
+                  {/* Nhãn chữ đi kèm chấm vàng — chỉ chấm màu thì không ai đoán ra nghĩa. */}
+                  {item.isInternal && <Text style={styles.internalTag}>Nội bộ</Text>}
+                </View>
                 <Text style={styles.time}>
                   {new Date(item.createdAt).toLocaleString('vi-VN', {
                     day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
@@ -59,6 +63,12 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primary },
   dotInternal: { backgroundColor: Colors.warning },
   body: { flex: 1, gap: 2 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  internalTag: {
+    fontSize: 10, fontWeight: '700', color: Colors.warning,
+    borderWidth: 1, borderColor: Colors.warning, borderRadius: 4,
+    paddingHorizontal: 4, paddingVertical: 1,
+  },
   name: { fontSize: 13.5, fontWeight: '700', color: Colors.text },
   time: { fontSize: 11, color: Colors.textFaint },
   empty: { fontSize: 13, color: Colors.textMute, textAlign: 'center', marginTop: 40 },

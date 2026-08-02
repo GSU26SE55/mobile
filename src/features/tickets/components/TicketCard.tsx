@@ -55,9 +55,15 @@ export function TicketCard({ ticket, onPress }: Props) {
           <View style={styles.topRow}>
             <Text style={styles.code}>{ticket.code}</Text>
 
-            {/* Chấm chat chưa đọc — BE tính sẵn theo user hiện tại. */}
+            {/* Chat chưa đọc — BE tính sẵn theo user hiện tại. Dùng icon thay chấm
+                trơn: hàng này đã có dot ưu tiên + 2 badge, thêm chấm nữa dễ lẫn. */}
             {ticket.hasUnreadChat && (
-              <View style={styles.unreadDot} accessibilityLabel="Có tin nhắn chưa đọc" />
+              <Ionicons
+                name="chatbubble-ellipses"
+                size={14}
+                color={Solar.yellowDeep}
+                accessibilityLabel="Có tin nhắn chưa đọc"
+              />
             )}
 
             {/* Priority Badge */}
@@ -107,10 +113,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-  },
-  unreadDot: {
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: Solar.yellowDeep, marginLeft: 6,
   },
   code: {
     fontSize: 11,
