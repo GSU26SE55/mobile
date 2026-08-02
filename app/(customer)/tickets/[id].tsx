@@ -53,6 +53,7 @@ import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/us
 import { AuthImage } from '../../../src/features/file-storage/components/AuthImage';
 import { AttachmentForm } from '../../../src/features/tickets/schemas/comment.schema';
 import { RatePayload, ReopenPayload, TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
+import type { ChatMentionInput } from '../../../src/features/tickets/types/ticket.types';
 import { BadgeColors, Colors, Shadow, ShadowPrimary } from '../../../src/lib/theme';
 import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
 import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
@@ -213,6 +214,8 @@ function TicketDetailScreenInner() {
     voiceRecorder.waveform.reduce((sum, v) => sum + v, 0) / voiceRecorder.waveform.length;
 
   const [commentText,     setCommentText]     = useState('');
+  // Mention đã chọn trong tin đang soạn — BE nhận qua field `mentions`, KHÔNG parse '@' từ body.
+  const [pickedMentions,  setPickedMentions]  = useState<ChatMentionInput[]>([]);
   const [commentError,    setCommentError]    = useState('');
   const [attachments,     setAttachments]     = useState<AttachmentForm[]>([]);
   const [showRateModal,   setShowRateModal]   = useState(false);
@@ -318,8 +321,17 @@ function TicketDetailScreenInner() {
     const trimmed = commentText.trim();
     if (!trimmed && attachments.length === 0) return;
     try {
-      await addComment({ body: trimmed, attachments: attachments.length > 0 ? attachments : undefined });
+      // Chỉ gửi mention còn hiện diện trong body (user có thể đã xoá tên đi).
+      const activeMentions = pickedMentions.filter((m) =>
+        trimmed.includes(`@${m.displayName.replace(/\s+/g, '_')}`),
+      );
+      await addComment({
+        body: trimmed,
+        mentions: activeMentions.length > 0 ? activeMentions : undefined,
+        attachments: attachments.length > 0 ? attachments : undefined,
+      });
       setCommentText('');
+      setPickedMentions([]);
       setAttachments([]);
       // Realtime là nguồn chính: hub đẩy ChatAdded (BE gửi tới cả người gửi) → setQueryData prepend.
       // Chỉ fallback refetch khi hub không kết nối (WS bị chặn / chưa connect).
@@ -687,9 +699,14 @@ function TicketDetailScreenInner() {
           <MentionSuggestionsPopup
             text={commentText}
             ticketId={id}
-            onSelectMention={(tag) => {
-              const newText = commentText.replace(/@([a-zA-Z0-9_.-]*)$/, `${tag} `);
+            onSelectMention={(target) => {
+              const newText = commentText.replace(/@([a-zA-Z0-9_.-]*)$/, `${target.tag} `);
               setCommentText(newText);
+              setPickedMentions((prev) =>
+                prev.some((m) => m.userId === target.id)
+                  ? prev
+                  : [...prev, { userId: target.id, displayName: target.displayName }],
+              );
             }}
           />
 

@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Colors, CommonStyles, Spacing } from '../../../lib/theme';
+import { Colors } from '../../../lib/theme';
 import { HttpError, EntityError } from '../../../lib/errors';
 import { useRegister } from '../hooks/useRegister';
 import { registerSchema } from '../schemas/register.schema';

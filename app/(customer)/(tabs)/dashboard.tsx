@@ -102,7 +102,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   useScrollToTop(scrollRef);
-  const { data: account, isLoading: profileLoading } = useProfile();
+  const { isLoading: profileLoading } = useProfile();
   const { data: batteries = [], isLoading: batteriesLoading } = useMyBatteryAssets();
   const { data: alerts = [] } = useMyAlerts();
   const { data: sites = [] } = useMySites();

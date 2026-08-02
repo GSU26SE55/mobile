@@ -1,10 +1,8 @@
-import * as ImagePicker from 'expo-image-picker';
 import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  Image,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -38,7 +36,6 @@ import { useEscalateTicket } from '../../../src/features/staff/hooks/useEscalate
 import { useStaffAddComment } from '../../../src/features/staff/hooks/useStaffAddComment';
 import { useAddMaintenanceLog } from '../../../src/features/staff/hooks/useAddMaintenanceLog';
 import { useUpdateMaintenanceLog } from '../../../src/features/staff/hooks/useUpdateMaintenanceLog';
-import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/useUploadCommentAttachment';
 import { useTicketChatsCursor } from '../../../src/features/tickets/hooks/useTicketChatsCursor';
 import { useAddReaction, useRemoveReaction } from '../../../src/features/tickets/hooks/useChatReactions';
 import { useDownloadChatAttachment } from '../../../src/features/tickets/hooks/useDownloadChatAttachment';
@@ -61,11 +58,12 @@ import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/us
 import { AuthImage } from '../../../src/features/file-storage/components/AuthImage';
 import { CommentThread, ChatTab } from '../../../src/features/tickets/components/CommentThread';
 import { ChatAiToolbar } from '../../../src/features/tickets/components/ChatAiToolbar';
+import { ChatReadersSheet } from '../../../src/features/tickets/components/ChatReadersSheet';
 import { VoiceRecordingModal } from '../../../src/features/tickets/components/VoiceRecordingModal';
 import { ProcessingDurationTimer } from '../../../src/features/staff/components/ProcessingDurationTimer';
-import { AttachmentForm } from '../../../src/features/tickets/schemas/comment.schema';
 import { MaintenanceLogPayload, UpdateMaintenanceLogPayload } from '../../../src/features/staff/types/staff.types';
 import { EscalationReasonEnum, PauseReasonEnum, TicketStatusEnum, MaintenanceLogDTO } from '../../../src/features/tickets/types/ticket.types';
+import type { ChatMentionInput } from '../../../src/features/tickets/types/ticket.types';
 import { AttachmentPicker, UploadedAttachment } from '../../../src/features/file-storage/components/AttachmentPicker';
 import { AttachmentPreviewStrip } from '../../../src/features/file-storage/components/AttachmentPreviewStrip';
 import { AttachmentThumbnails } from '../../../src/features/file-storage/components/AttachmentThumbnails';
@@ -158,7 +156,6 @@ function StaffTicketDetailScreenInner() {
   const { mutate: addComment, isPending: isSending } = useStaffAddComment(ticketId);
   const { mutate: addLog, isPending: isAddingLog } = useAddMaintenanceLog(ticketId);
   const { mutate: updateLog, isPending: isUpdatingLog } = useUpdateMaintenanceLog(ticketId);
-  const { mutateAsync: uploadAttachment, isPending: isUploading } = useUploadCommentAttachment();
   const { data: kbRefs, isLoading: kbRefsLoading } = useTicketKbRefs(ticketId || undefined);
   const { mutate: removeKbRef } = useRemoveKbRef(ticketId);
 
@@ -187,11 +184,14 @@ function StaffTicketDetailScreenInner() {
   const [activeTab, setActiveTab] = useState<TabKey>('comments');
   const [chatTab, setChatTab] = useState<ChatTab>('public');
   const [commentText, setCommentText] = useState('');
+  // Mention đã chọn trong tin đang soạn — BE nhận qua field `mentions`, KHÔNG parse '@' từ body.
+  const [pickedMentions, setPickedMentions] = useState<ChatMentionInput[]>([]);
   // GH-133 — gợi ý AI hiển thị dạng bong bóng cuối luồng chat (giống web). Bấm chọn →
   // đổ vào ô nhập, không xóa; chỉ xóa khi đã gửi tin (onSuccess) hoặc bấm bỏ qua.
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
-  const [attachments, setAttachments] = useState<AttachmentForm[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  // Chat đang xem "đã đọc bởi" — Staff-only, BE chặn Customer (403).
+  const [readersChatId, setReadersChatId] = useState<string | null>(null);
   const [commentAttachments, setCommentAttachments] = useState<UploadedAttachment[]>([]);
   const [uploadingComment, setUploadingComment] = useState(false);
   const [showHold, setShowHold] = useState(false);
@@ -235,45 +235,24 @@ function StaffTicketDetailScreenInner() {
   const ticketClosed = ['Resolved', 'ClosedPendingRate', 'Closed', 'ClosedRejected'].includes(ticket?.status ?? '');
   const canEditLog = (log: MaintenanceLogDTO) => !ticketClosed && !!accountId && log.staffId === accountId;
 
-  const handlePickImage = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Quyền truy cập', 'Cần quyền truy cập thư viện ảnh để đính kèm.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: false,
-      quality: 0.8,
-    });
-    if (result.canceled || !result.assets[0]) return;
-    const asset = result.assets[0];
-    const mimeType = asset.mimeType ?? 'image/jpeg';
-    const name = asset.fileName ?? `img_${Date.now()}.jpg`;
-    try {
-      const uploaded = await uploadAttachment({ uri: asset.uri, name, type: mimeType });
-      setAttachments((prev) => [...prev, uploaded]);
-    } catch {
-      Alert.alert('Lỗi', 'Không thể tải ảnh lên. Vui lòng thử lại.');
-    }
-  };
-
-  const handleRemoveAttachment = (fileId: string) => {
-    setAttachments((prev) => prev.filter((a) => a.fileId !== fileId));
-  };
-
   const handleSendComment = () => {
     const trimmed = commentText.trim();
     if (!trimmed && commentAttachments.length === 0) return;
+    // Chỉ gửi mention còn hiện diện trong body (user có thể đã xoá tên đi).
+    const activeMentions = pickedMentions.filter((m) =>
+      trimmed.includes(`@${m.displayName.replace(/\s+/g, '_')}`),
+    );
     addComment(
       {
         body: trimmed,
         isInternal: chatTab === 'internal',
+        mentions: activeMentions.length > 0 ? activeMentions : undefined,
         attachments: commentAttachments.length > 0 ? commentAttachments : undefined,
       },
       {
         onSuccess: () => {
           setCommentText('');
+          setPickedMentions([]);
           setCommentAttachments([]);
           setAiSuggestions([]);
           // Realtime đẩy CommentAdded về (cả người gửi) → setQueryData. Chỉ fallback khi mất kết nối.
@@ -399,6 +378,7 @@ function StaffTicketDetailScreenInner() {
             editPending={editChatPending}
             deletePending={deleteChatPending}
             onMarkRead={handleMarkRead}
+            onShowReaders={(comment) => setReadersChatId(comment.id)}
             onTranslate={handleTranslate}
             onPin={(comment) => pinChat(comment.id)}
             onUnpin={(comment) => unpinChat(comment.id)}
@@ -437,9 +417,15 @@ function StaffTicketDetailScreenInner() {
           <MentionSuggestionsPopup
             text={commentText}
             ticketId={ticketId}
-            onSelectMention={(tag) => {
-              const newText = commentText.replace(/@([a-zA-Z0-9_.-]*)$/, `${tag} `);
+            isInternal={chatTab === 'internal'}
+            onSelectMention={(target) => {
+              const newText = commentText.replace(/@([a-zA-Z0-9_.-]*)$/, `${target.tag} `);
               setCommentText(newText);
+              setPickedMentions((prev) =>
+                prev.some((m) => m.userId === target.id)
+                  ? prev
+                  : [...prev, { userId: target.id, displayName: target.displayName }],
+              );
             }}
           />
 
@@ -723,6 +709,13 @@ function StaffTicketDetailScreenInner() {
           </View>
         </View>
       </Modal>
+
+      {/* Ai đã đọc 1 chat — Staff/Manager/Admin only */}
+      <ChatReadersSheet
+        ticketId={ticketId}
+        chatId={readersChatId}
+        onClose={() => setReadersChatId(null)}
+      />
 
       {/* GH-44 #5/#7 — gán bài KB từ gợi ý */}
       <KbReferencePicker visible={showKbPicker} ticketId={ticketId} onClose={() => setShowKbPicker(false)} />

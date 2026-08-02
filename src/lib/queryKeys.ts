@@ -79,6 +79,7 @@ export const QUERY_KEY = {
     chats:          (id: string) => [...KEY.tickets, 'chats', id] as const,   // GH-44/GH-68 — infinite (cursor). Giữ key cho realtime prepend
     chatUnreadCount:(id: string) => [...KEY.tickets, 'chat-unread-count', id] as const, // GH-68
     chatReactions:  (tid: string, cid: string) => [...KEY.tickets, 'chat-reactions', tid, cid] as const, // GH-68
+    chatReaders:    (tid: string, cid: string) => [...KEY.tickets, 'chat-readers', tid, cid] as const, // Staff/Manager/Admin only
     activities:     (id: string) => [...KEY.tickets, 'activities', id] as const, // GH-44
   },
   staffProfile: {

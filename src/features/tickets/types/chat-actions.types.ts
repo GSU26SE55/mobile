@@ -1,6 +1,7 @@
 // Edit/Delete/Dịch/Ghi âm cho ticket chat — nhân bản types từ Web
 // (shared/types/chat.types.ts) vì mobile chưa có backend riêng, dùng chung endpoint.
 import type { ChatAiIntentEnum } from '../../../shared/enums/chat.enum';
+import type { ActorRoleEnum } from '../../../shared/enums/ticket.enum';
 
 export interface UpdateChatPayload {
   body: string;
@@ -10,6 +11,15 @@ export interface UpdateChatPayload {
 
 export interface ChatMarkReadPayload {
   chatIds: string[];
+}
+
+// GET /api/tickets/{tid}/chats/{cid}/readers — ai đã đọc 1 chat.
+// Auth: Staff/Manager/Admin ONLY — Customer gọi sẽ nhận 403.
+export interface ChatReaderDTO {
+  chatId: string;
+  userId: string;
+  role: ActorRoleEnum;
+  readAt: string;
 }
 
 // POST /api/tickets/{id}/chats/{id}/translate?to={languageCode}

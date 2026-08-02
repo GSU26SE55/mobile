@@ -86,6 +86,8 @@ interface CommentThreadProps {
   ) => Promise<{ translatedBody: string; targetLanguage: string } | undefined>;
   // GH-67 — Ghim (Staff/Manager/Admin). Có đủ onPin + onUnpin mới hiện menu ghim.
   onPin?: (comment: TicketCommentDTO) => void;
+  /** Staff/Manager/Admin only — mở danh sách "đã đọc bởi". Customer KHÔNG truyền (BE 403). */
+  onShowReaders?: (comment: TicketCommentDTO) => void;
   onUnpin?: (comment: TicketCommentDTO) => void;
   pinningId?: string | null;
   // GH-68 — Reactions + download attachment (Mọi role). Có prop là bật tính năng.
@@ -124,6 +126,7 @@ export function CommentThread({
   onMarkRead,
   onTranslate,
   onPin,
+  onShowReaders,
   onUnpin,
   pinningId,
   onToggleReaction,
@@ -285,6 +288,7 @@ export function CommentThread({
             const canEdit = !ticketClosed && (authorWindowOk || canEditAny) && !!onEdit;
             const canDelete = !ticketClosed && (isOwn || canDeleteAny) && !!onDelete;
             const canPin = !ticketClosed && !!onPin && !!onUnpin;
+            const canShowReaders = !!onShowReaders;
             const editNeedsReason = canEdit && !authorWindowOk;
             const deleteNeedsReason = canDelete && !isOwn;
 
@@ -310,6 +314,8 @@ export function CommentThread({
                 showingOriginal={!translations[comment.id] || showOriginalIds.has(comment.id)}
                 onToggleOriginal={() => toggleShowOriginal(comment.id)}
                 canPin={canPin}
+                canShowReaders={canShowReaders}
+                onShowReaders={() => onShowReaders?.(comment)}
                 pinning={pinningId === comment.id}
                 onTogglePin={() => (comment.isPinned ? onUnpin?.(comment) : onPin?.(comment))}
                 currentUserId={currentUserId}

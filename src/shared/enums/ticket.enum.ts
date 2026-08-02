@@ -99,6 +99,18 @@ export const ActorRoleEnum = {
 } as const;
 export type ActorRoleEnum = (typeof ActorRoleEnum)[keyof typeof ActorRoleEnum];
 
+// Vai trò tham gia ticket — GET /api/tickets/{id}/participants.
+export const ParticipantTypeEnum = {
+  Owner: 'Owner',
+  PrimaryAssignee: 'PrimaryAssignee',
+  Collaborator: 'Collaborator',
+  Watcher: 'Watcher',
+  Delegate: 'Delegate',
+  PreviousAssignee: 'PreviousAssignee',
+} as const;
+export type ParticipantTypeEnum =
+  (typeof ParticipantTypeEnum)[keyof typeof ParticipantTypeEnum];
+
 export const ActivityActionEnum = {
   Created: 'Created',
   StatusChanged: 'StatusChanged',

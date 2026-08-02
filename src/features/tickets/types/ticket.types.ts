@@ -16,6 +16,7 @@ export {
   ActorRoleEnum,
   ActivityActionEnum,
   ReactionTypeEnum,
+  ParticipantTypeEnum,
 } from '../../../shared/enums/ticket.enum';
 
 import type {
@@ -30,6 +31,7 @@ import type {
   MaintenanceLogTypeEnum,
   ActorRoleEnum,
   ActivityActionEnum,
+  ParticipantTypeEnum,
 } from '../../../shared/enums/ticket.enum';
 
 // GH-83 — enum riêng của ticket chat (string-based, khác các enum int ở trên).
@@ -97,8 +99,11 @@ export interface TicketParticipantDTO {
   id: string;
   ticketId: string;
   userId: string;
+  /** BE resolve từ CustomerAccounts/StaffAccounts; fallback userId nếu không thấy. */
+  displayName: string;
   userRole: ActorRoleEnum;
-  participantType: number;
+  /** Serialize dạng chuỗi ('Owner' | 'PrimaryAssignee' | ...), KHÔNG phải số. */
+  participantType: ParticipantTypeEnum;
   canPost: boolean;
   canViewInternal: boolean;
   addedByUserId: string;
@@ -182,6 +187,8 @@ export interface TicketDTO {
   origin: TicketOriginEnum;
   reopenCount: number;
   isIncident: boolean;
+  /** BE tính sẵn theo user hiện tại (TicketQueryHelper) — có chat chưa đọc trên ticket này. */
+  hasUnreadChat: boolean;
   createdAt: string;
   updatedAt: string | null;
   slaTimer: SlaTimerDTO | null;
@@ -293,9 +300,19 @@ export interface CommentAttachmentPayload {
   sizeBytes: number;
 }
 
+/**
+ * Mention gửi kèm chat — BE nhận qua field `mentions`, KHÔNG parse '@' từ body.
+ * Không gửi field này thì mention không được tạo dù text có '@Tên'.
+ */
+export interface ChatMentionInput {
+  userId: string;
+  displayName: string;
+}
+
 export interface AddCommentPayload {
   body: string;
   isInternal: false;
+  mentions?: ChatMentionInput[];
   attachments?: CommentAttachmentPayload[];
 }
 

@@ -8,6 +8,7 @@ import {
   ChatVoiceActionDTO,
   ChatSuggestDTO,
   ChatSummarizeDTO,
+  ChatReaderDTO,
 } from '../types/chat-actions.types';
 import { ChatAiIntentEnum } from '../../../shared/enums/chat.enum';
 import {
@@ -127,6 +128,12 @@ export const ticketChatActionsService = {
   getUnreadCount: (ticketId: string) =>
     axiosInstance.get<CommonResponse<number>>(
       ENDPOINTS.TICKETS.CHAT_UNREAD_COUNT(ticketId),
+    ),
+
+  // Ai đã đọc 1 chat — Staff/Manager/Admin ONLY. KHÔNG gọi từ màn Customer (403).
+  getReaders: (ticketId: string, chatId: string) =>
+    axiosInstance.get<CommonResponse<ChatReaderDTO[]>>(
+      ENDPOINTS.TICKETS.CHAT_READERS(ticketId, chatId),
     ),
 
   addReaction: (ticketId: string, chatId: string, reactionType: ReactionTypeEnum) =>

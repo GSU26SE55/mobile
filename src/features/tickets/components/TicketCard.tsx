@@ -55,6 +55,11 @@ export function TicketCard({ ticket, onPress }: Props) {
           <View style={styles.topRow}>
             <Text style={styles.code}>{ticket.code}</Text>
 
+            {/* Chấm chat chưa đọc — BE tính sẵn theo user hiện tại. */}
+            {ticket.hasUnreadChat && (
+              <View style={styles.unreadDot} accessibilityLabel="Có tin nhắn chưa đọc" />
+            )}
+
             {/* Priority Badge */}
             <View style={[styles.priorityBadge, { backgroundColor: pColors.bg }]}>
               <View style={[styles.dot, { backgroundColor: pColors.text }]} />
@@ -102,6 +107,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  unreadDot: {
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: Solar.yellowDeep, marginLeft: 6,
   },
   code: {
     fontSize: 11,

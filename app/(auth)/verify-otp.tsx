@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { OtpVerifyForm } from '../../src/features/auth/components/OtpVerifyForm';
-import { Colors, Spacing } from '../../src/lib/theme';
 
 export default function VerifyOtpScreen() {
   const { email } = useLocalSearchParams<{ email: string }>();

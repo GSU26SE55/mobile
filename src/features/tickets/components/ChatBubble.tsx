@@ -182,6 +182,7 @@ interface ChatActionMenuProps {
   canDelete: boolean;
   canTranslate: boolean;
   canPin: boolean;
+  canShowReaders: boolean;
   isPinned: boolean;
   canDownload: boolean;
   translating: boolean;
@@ -190,6 +191,7 @@ interface ChatActionMenuProps {
   onDeleteRequest: () => void;
   onTranslate: (lang: string) => void;
   onTogglePin: () => void;
+  onShowReaders: () => void;
   onDownload: () => void;
 }
 
@@ -209,6 +211,7 @@ function ChatActionMenu({
   canDelete,
   canTranslate,
   canPin,
+  canShowReaders,
   isPinned,
   canDownload,
   translating,
@@ -217,6 +220,7 @@ function ChatActionMenu({
   onDeleteRequest,
   onTranslate,
   onTogglePin,
+  onShowReaders,
   onDownload,
 }: ChatActionMenuProps) {
   const [showLangs, setShowLangs] = useState(false);
@@ -230,7 +234,7 @@ function ChatActionMenu({
 
   const rowCount = showLangs
     ? LANGUAGE_OPTIONS.length + 1
-    : Number(canEdit) + Number(canPin) + Number(canDownload) + Number(canTranslate) + Number(canDelete);
+    : Number(canEdit) + Number(canPin) + Number(canShowReaders) + Number(canDownload) + Number(canTranslate) + Number(canDelete);
   const popupHeight = rowCount * MENU_ROW_HEIGHT + 12;
   const { width: screenW, height: screenH } = Dimensions.get('window');
 
@@ -264,6 +268,12 @@ function ChatActionMenu({
                 <Pressable style={styles.menuItem} onPress={() => { handleClose(); onTogglePin(); }} disabled={pinning}>
                   <Ionicons name={isPinned ? 'bookmark' : 'bookmark-outline'} size={18} color={Colors.primaryDark} />
                   <Text style={styles.menuItemText}>{isPinned ? 'Bỏ ghim' : 'Ghim'}</Text>
+                </Pressable>
+              )}
+              {canShowReaders && (
+                <Pressable style={styles.menuItem} onPress={() => { handleClose(); onShowReaders(); }}>
+                  <Ionicons name="checkmark-done-outline" size={18} color={Colors.text} />
+                  <Text style={styles.menuItemText}>Đã đọc bởi</Text>
                 </Pressable>
               )}
               {canDownload && (
@@ -331,8 +341,10 @@ export interface ChatBubbleProps {
 
   // GH-67 — Ghim (Staff/Manager/Admin). Customer screen không truyền → tắt.
   canPin?: boolean;
+  canShowReaders?: boolean;
   pinning?: boolean;
   onTogglePin?: () => void;
+  onShowReaders?: () => void;
 
   // GH-68 — Reactions + download attachment. Mọi role.
   currentUserId?: string | null;
@@ -363,8 +375,10 @@ export function ChatBubble({
   showingOriginal = true,
   onToggleOriginal,
   canPin = false,
+  canShowReaders = false,
   pinning = false,
   onTogglePin,
+  onShowReaders,
   currentUserId = null,
   onToggleReaction,
   onDownloadAttachments,
@@ -412,7 +426,7 @@ export function ChatBubble({
   if (!body && fileIds.length === 0) return null;
 
   const canDownload = !!onDownloadAttachments && fileIds.length > 0;
-  const canShowActions = canEdit || canDelete || canTranslate || canPin || canDownload;
+  const canShowActions = canEdit || canDelete || canTranslate || canPin || canShowReaders || canDownload;
   const displayBody = showingOriginal || !translation ? body : translation.text;
 
   const time = new Date(comment.createdAt).toLocaleTimeString('vi-VN', {
@@ -584,6 +598,7 @@ export function ChatBubble({
         canDelete={canDelete}
         canTranslate={canTranslate}
         canPin={canPin}
+        canShowReaders={canShowReaders}
         isPinned={!!comment.isPinned}
         canDownload={canDownload}
         translating={translating}
@@ -592,6 +607,7 @@ export function ChatBubble({
         onDeleteRequest={() => setConfirmingDelete(true)}
         onTranslate={(lang) => onTranslate?.(lang)}
         onTogglePin={() => onTogglePin?.()}
+        onShowReaders={() => onShowReaders?.()}
         onDownload={() => onDownloadAttachments?.(fileIds)}
       />
 

@@ -117,6 +117,7 @@ export const ENDPOINTS = {
     // GH-68 — Mọi role
     CHATS_CURSOR:        (tid: string) => `/api/tickets/${tid}/chats/cursor`,        // GET ?cursor&limit(≤100,def20)
     CHAT_UNREAD_COUNT:   (tid: string) => `/api/tickets/${tid}/chats/unread-count`,  // GET → { unreadCount } (per-ticket, KHÔNG bulk — ≠ NOTIFICATIONS.UNREAD_COUNT)
+    CHAT_READERS:    (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}/readers`, // GET → ChatReaderDTO[]; Staff/Manager/Admin ONLY (Customer 403)
     CHAT_REACTIONS:      (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}/reactions`, // POST { reactionType } / DELETE ?type=
     CHAT_ATTACHMENT_DOWNLOAD: (tid: string, cid: string, fileId: string) =>
       `/api/tickets/${tid}/chats/${cid}/attachments/${fileId}/download`,             // GET → CommonResponse<string> URL; HTTP 200/202/451/404. {attachmentId}=FileId
