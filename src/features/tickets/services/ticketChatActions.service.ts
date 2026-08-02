@@ -4,6 +4,8 @@ import { CommonResponse, CursorPaginationResponse } from '../../../types/api.typ
 import {
   UpdateChatPayload,
   ChatMarkReadPayload,
+  ChatBulkDeletePayload,
+  ChatBulkDeleteResultDTO,
   ChatTranslateDTO,
   ChatVoiceActionDTO,
   ChatSuggestDTO,
@@ -38,6 +40,14 @@ export const ticketChatActionsService = {
     axiosInstance.delete<CommonResponse<void>>(
       ENDPOINTS.TICKETS.CHAT_DETAIL(ticketId, chatId),
       { data: reason ? { reason } : undefined },
+    ),
+
+  // Xoá nhiều chat trong 1 request (tối đa 50). Partial success — xem
+  // ChatBulkDeleteResultDTO. BE trả 400 nếu ticket Closed/ClosedPendingRate.
+  bulkRemove: (ticketId: string, payload: ChatBulkDeletePayload) =>
+    axiosInstance.delete<CommonResponse<ChatBulkDeleteResultDTO>>(
+      ENDPOINTS.TICKETS.CHAT_BULK_DELETE(ticketId),
+      { data: payload },
     ),
 
   markRead: (ticketId: string, payload: ChatMarkReadPayload) =>

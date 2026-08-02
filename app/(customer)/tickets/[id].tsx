@@ -23,6 +23,10 @@ import { P } from '../../../src/lib/authz';
 import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
 import { ActivityTimeline } from '../../../src/features/tickets/components/ActivityTimeline';
 import { CommentThread } from '../../../src/features/tickets/components/CommentThread';
+import {
+  ChatSelectionHeader,
+  ChatSelectionFooter,
+} from '../../../src/features/tickets/components/ChatSelectionBar';
 import { RateModal } from '../../../src/features/tickets/components/RateModal';
 import { ReopenModal } from '../../../src/features/tickets/components/ReopenModal';
 import { SlaCountdown } from '../../../src/features/tickets/components/SlaCountdown';
@@ -42,6 +46,7 @@ import { useTicketCommentsRealtime } from '../../../src/features/tickets/hooks/u
 import {
   useUpdateTicketChat,
   useDeleteTicketChat,
+  useBulkDeleteTicketChats,
   useMarkTicketChatsRead,
   useTranslateTicketChat,
   useTranscribeVoiceChat,
@@ -201,6 +206,8 @@ function TicketDetailScreenInner() {
   const { isConnected, typingUsers, notifyTyping } = useTicketCommentsRealtime(id);
   const { mutate: updateChat, isPending: editChatPending } = useUpdateTicketChat(id ?? '');
   const { mutate: deleteChat, isPending: deleteChatPending } = useDeleteTicketChat(id ?? '');
+  const { mutateAsync: bulkDeleteChats, isPending: bulkDeletePending } =
+    useBulkDeleteTicketChats(id ?? '');
   const { mutate: markChatsRead } = useMarkTicketChatsRead(id ?? '');
   const { mutate: addReaction } = useAddReaction(id ?? '');
   const { mutate: removeReaction } = useRemoveReaction(id ?? '');
@@ -218,6 +225,9 @@ function TicketDetailScreenInner() {
   const [pickedMentions,  setPickedMentions]  = useState<ChatMentionInput[]>([]);
   const [commentError,    setCommentError]    = useState('');
   const [attachments,     setAttachments]     = useState<AttachmentForm[]>([]);
+  // Chọn nhiều tin để xoá (DELETE /chats/bulk) — chỉ tin của chính mình.
+  const [selectMode,      setSelectMode]      = useState(false);
+  const [selectedChatIds, setSelectedChatIds] = useState<Set<string>>(new Set());
   const [showRateModal,   setShowRateModal]   = useState(false);
   const [showReopenModal, setShowReopenModal] = useState(false);
   const [activeTab,       setActiveTab]       = useState<'info' | 'chat'>('info');
@@ -309,6 +319,41 @@ function TicketDetailScreenInner() {
     } catch {
       Alert.alert('Lỗi', 'Không thể tải file lên. Vui lòng thử lại.');
     }
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedChatIds(new Set());
+  };
+
+  const handleBulkDelete = () => {
+    const ids = [...selectedChatIds];
+    if (ids.length === 0) return;
+    Alert.alert(
+      'Xóa tin nhắn',
+      `Xóa ${ids.length} tin nhắn đã chọn? Không thể hoàn tác.`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              try {
+                const res = await bulkDeleteChats(ids);
+                exitSelectMode();
+                // BE partial success: id không tìm thấy / đã xoá trước đó rơi vào skipped.
+                if (res && res.skipped > 0) {
+                  Alert.alert('Đã xóa', `Đã xóa ${res.deleted} tin. ${res.skipped} tin không xóa được.`);
+                }
+              } catch {
+                // handleErrorApi trong hook đã hiện toast/alert.
+              }
+            })();
+          },
+        },
+      ],
+    );
   };
 
   const handleRemoveAttachment = (fileId: string) => {
@@ -635,6 +680,9 @@ function TicketDetailScreenInner() {
       {/* Chat tab — messenger style, FlatList inverted: mới nhất neo xuống đáy */}
       {activeTab === 'chat' && (
         <View style={styles.chatContainer}>
+          {selectMode && (
+            <ChatSelectionHeader count={selectedChatIds.size} onCancel={exitSelectMode} />
+          )}
           <CommentThread
             comments={comments}
             currentUserId={accountId}
@@ -650,6 +698,20 @@ function TicketDetailScreenInner() {
               updateChat({ chatId: comment.id, payload: { body, editReason } })
             }
             onDelete={(comment, reason) => deleteChat({ chatId: comment.id, reason })}
+            selectMode={selectMode}
+            selectedIds={selectedChatIds}
+            onToggleSelect={(comment) =>
+              setSelectedChatIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(comment.id)) next.delete(comment.id);
+                else next.add(comment.id);
+                return next;
+              })
+            }
+            onRequestSelectMode={(comment) => {
+              setSelectMode(true);
+              setSelectedChatIds(new Set([comment.id]));
+            }}
             editPending={editChatPending}
             deletePending={deleteChatPending}
             onMarkRead={handleMarkRead}
@@ -674,8 +736,17 @@ function TicketDetailScreenInner() {
             }}
           />
 
+          {/* Selection mode: nút Xóa (N) thay cho toàn bộ khu vực soạn tin. */}
+          {selectMode && (
+            <ChatSelectionFooter
+              count={selectedChatIds.size}
+              pending={bulkDeletePending}
+              onDelete={handleBulkDelete}
+            />
+          )}
+
           {/* Attachment chips */}
-          {attachments.length > 0 && (
+          {!selectMode && attachments.length > 0 && (
             <View style={styles.attachmentList}>
               {attachments.map((a) => (
                 <View key={a.fileId} style={styles.attachmentChip}>
@@ -689,12 +760,14 @@ function TicketDetailScreenInner() {
             </View>
           )}
 
-          {commentError ? (
+          {!selectMode && commentError ? (
             <View style={styles.composerError}>
               <Text style={styles.fieldError}>{commentError}</Text>
             </View>
           ) : null}
 
+          {!selectMode && (
+            <>
           {/* Autocomplete Popup @Mention khi gõ @ */}
           <MentionSuggestionsPopup
             text={commentText}
@@ -757,6 +830,8 @@ function TicketDetailScreenInner() {
                 : <Ionicons name="send" size={18} color="#fff" />}
             </Pressable>
           </View>
+            </>
+          )}
         </View>
       )}
 

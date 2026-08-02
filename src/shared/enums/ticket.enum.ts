@@ -139,6 +139,21 @@ export const ActivityActionEnum = {
 } as const;
 export type ActivityActionEnum = (typeof ActivityActionEnum)[keyof typeof ActivityActionEnum];
 
+// Trạng thái AI verify tính hợp lệ của ticket (TicketDTO.aiVerifyStatus).
+export const TicketVerifyStatusEnum = {
+  Pending: 'Pending',
+  Legitimate: 'Legitimate',
+  Suspicious: 'Suspicious',
+  Skipped: 'Skipped',
+} as const;
+export type TicketVerifyStatusEnum = (typeof TicketVerifyStatusEnum)[keyof typeof TicketVerifyStatusEnum];
+
+// Lý do đóng đặc biệt — hiện BE chỉ có 1 giá trị.
+export const TicketCloseReasonEnum = {
+  MergedDuplicate: 'MergedDuplicate',
+} as const;
+export type TicketCloseReasonEnum = (typeof TicketCloseReasonEnum)[keyof typeof TicketCloseReasonEnum];
+
 // GH-68 — loại reaction cho ticket chat (BE ReactionTypeEnum). Gửi STRING trong body/query.
 export const ReactionTypeEnum = {
   ThumbsUp: 'ThumbsUp',

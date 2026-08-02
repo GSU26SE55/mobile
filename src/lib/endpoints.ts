@@ -107,6 +107,10 @@ export const ENDPOINTS = {
     PARTICIPANTS:    (id: string) => `/api/tickets/${id}/participants`,
     CHATS:           (id: string) => `/api/tickets/${id}/chats`,   // GET list (?page&pageSize) + POST (BE migration 20260622)
     CHAT_DETAIL:     (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}`, // PUT (edit) / DELETE
+    // DELETE { chatIds } — tối đa 50/lần, partial success. BE chặn 400 khi ticket
+    // Closed/ClosedPendingRate. Chat không thuộc author bị ẨN RIÊNG (TicketChatHide)
+    // chứ không xoá, và KHÔNG nằm trong `deleted`/`skipped` của response.
+    CHAT_BULK_DELETE: (tid: string) => `/api/tickets/${tid}/chats/bulk`,
     CHAT_MARK_READ:  (tid: string) => `/api/tickets/${tid}/chats/mark-read`, // POST { chatIds }
     CHAT_TRANSLATE:  (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}/translate`, // POST ?to=
     CHAT_VOICE:      (tid: string) => `/api/tickets/${tid}/chats/voice`, // POST JSON ChatAttachmentInput (file audio đã upload FileStorage)
@@ -133,7 +137,7 @@ export const ENDPOINTS = {
   CHATS: {
     ME:              '/api/chats/me',                                        // GET ?page&pageSize → flat TicketChatDTO[]
     MENTIONS_ME:     '/api/chats/mentions/me',                              // GET ?page&pageSize
-    ERASE_MY_DATA:   '/api/chats/erase-my-data',                           // POST → { erasedCount }
+    ERASE_MY_DATA:   '/api/chats/erase-my-data',                           // POST → data LUÔN null; số lượng chỉ có trong message
   },
   PERMISSIONS: {
     CATALOG: '/api/permissions', // GH-68 — catalog toàn bộ permission (mọi role); ?module

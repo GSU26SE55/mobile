@@ -31,6 +31,22 @@ export function useDeleteTicketChat(ticketId: string) {
   });
 }
 
+// Xoá nhiều chat 1 lần. Trả về ChatBulkDeleteResultDTO để caller báo số lượng
+// thực tế — BE partial success, không all-or-nothing.
+export function useBulkDeleteTicketChats(ticketId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (chatIds: string[]) =>
+      ticketChatActionsService
+        .bulkRemove(ticketId, { chatIds })
+        .then((r) => r.data.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY.tickets.chats(ticketId) });
+    },
+    onError: (error) => handleErrorApi({ error }),
+  });
+}
+
 // Báo đã đọc — tác vụ nền nên lỗi chỉ nuốt (không Alert), tránh làm phiền user.
 // Thành công thì phải invalidate unread count: badge ở header ticket detail đọc
 // key này, không invalidate thì số treo nguyên dù user đã xem hết tin.

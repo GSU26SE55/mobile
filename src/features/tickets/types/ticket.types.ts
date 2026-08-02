@@ -17,6 +17,8 @@ export {
   ActivityActionEnum,
   ReactionTypeEnum,
   ParticipantTypeEnum,
+  TicketVerifyStatusEnum,
+  TicketCloseReasonEnum,
 } from '../../../shared/enums/ticket.enum';
 
 import type {
@@ -32,6 +34,8 @@ import type {
   ActorRoleEnum,
   ActivityActionEnum,
   ParticipantTypeEnum,
+  TicketVerifyStatusEnum,
+  TicketCloseReasonEnum,
 } from '../../../shared/enums/ticket.enum';
 
 // GH-83 — enum riêng của ticket chat (string-based, khác các enum int ở trên).
@@ -169,7 +173,10 @@ export interface TicketAssignmentDTO {
 export interface TicketDTO {
   id: string;
   code: string;
+  /** Legacy — pin đầu tiên. BE trả `""` (không phải null) khi ticket không gắn pin. */
   batteryAssetId: string | null;
+  /** Danh sách đầy đủ ID pin — nguồn đúng từ GH-866 (ticket hỗ trợ nhiều pin). */
+  batteryAssetIds: string[];
   customerId: string;
   customerName?: string | null;
   /**
@@ -192,6 +199,21 @@ export interface TicketDTO {
   createdAt: string;
   updatedAt: string | null;
   slaTimer: SlaTimerDTO | null;
+
+  // ── BE trả sẵn ở CẢ list lẫn detail (docs xếp trong TicketDTO) ──
+  /** Thời điểm Customer khai báo phát hiện sự cố (`incidentDetectedAt` lúc tạo). */
+  detectedAt: string | null;
+  /** Serial pin snapshot lúc tạo ticket — hiển thị không cần gọi thêm API. */
+  batterySerialNumber: string | null;
+  /** Trạng thái AI verify tính hợp lệ của ticket. */
+  aiVerifyStatus: TicketVerifyStatusEnum;
+  aiVerifyScore: number | null;
+  aiVerifyReason: string | null;
+  suspectedDuplicateOfTicketId: string | null;
+  duplicateReason: string | null;
+  /** Khác null ⇒ ticket đã bị gộp vào ticket khác, đã đóng và ẩn khỏi queue. */
+  mergedIntoTicketId: string | null;
+  closeReason: TicketCloseReasonEnum | null;
 }
 
 export interface MaintenanceLogDTO {
@@ -215,10 +237,6 @@ export interface MaintenanceLogDTO {
 
 export interface TicketDetailDTO extends TicketDTO {
   description: string | null;
-  /** Thời điểm Customer phát hiện pin bất thường (Customer nhập khi tạo ticket). */
-  detectedAt: string | null;
-  /** Serial pin snapshot (BE denormalize) — hiển thị nếu không load được battery. */
-  batterySerialNumber: string | null;
   resolutionSummary: string | null;
   resolvedAt: string | null;
   resolvedByStaffId: string | null;
@@ -233,7 +251,12 @@ export interface TicketDetailDTO extends TicketDTO {
   escalationReason: EscalationReasonEnum | null;
   originAlertId: string | null;
   activities: TicketActivityDTO[] | null;
-  comments: TicketCommentDTO[] | null;
+  /**
+   * BE trả `chats` (TicketChatDTO[]) — KHÔNG còn `comments`.
+   * `TicketCommentsController` đã bị xoá; TicketCommentDTO ở file này chính là
+   * shape của TicketChatDTO (giữ tên cũ để không phải đổi toàn bộ call site).
+   */
+  chats: TicketCommentDTO[] | null;
   maintenanceLogs: MaintenanceLogDTO[] | null;
   // BE trả mảng FileId (string[]), KHÔNG phải mảng TicketAttachmentDTO.
   attachmentFileIds: string[] | null;

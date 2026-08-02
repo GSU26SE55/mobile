@@ -185,10 +185,12 @@ interface ChatActionMenuProps {
   canShowReaders: boolean;
   isPinned: boolean;
   canDownload: boolean;
+  canSelectMany: boolean;
   translating: boolean;
   pinning: boolean;
   onEdit: () => void;
   onDeleteRequest: () => void;
+  onRequestSelectMode: () => void;
   onTranslate: (lang: string) => void;
   onTogglePin: () => void;
   onShowReaders: () => void;
@@ -214,10 +216,12 @@ function ChatActionMenu({
   canShowReaders,
   isPinned,
   canDownload,
+  canSelectMany,
   translating,
   pinning,
   onEdit,
   onDeleteRequest,
+  onRequestSelectMode,
   onTranslate,
   onTogglePin,
   onShowReaders,
@@ -234,7 +238,7 @@ function ChatActionMenu({
 
   const rowCount = showLangs
     ? LANGUAGE_OPTIONS.length + 1
-    : Number(canEdit) + Number(canPin) + Number(canShowReaders) + Number(canDownload) + Number(canTranslate) + Number(canDelete);
+    : Number(canEdit) + Number(canPin) + Number(canShowReaders) + Number(canDownload) + Number(canTranslate) + Number(canDelete) + Number(canSelectMany);
   const popupHeight = rowCount * MENU_ROW_HEIGHT + 12;
   const { width: screenW, height: screenH } = Dimensions.get('window');
 
@@ -295,6 +299,12 @@ function ChatActionMenu({
                   <Text style={[styles.menuItemText, { color: Colors.danger }]}>Xóa</Text>
                 </Pressable>
               )}
+              {canSelectMany && (
+                <Pressable style={styles.menuItem} onPress={() => { handleClose(); onRequestSelectMode(); }}>
+                  <Ionicons name="checkmark-circle-outline" size={18} color={Colors.text} />
+                  <Text style={styles.menuItemText}>Chọn nhiều</Text>
+                </Pressable>
+              )}
             </>
           ) : (
             <>
@@ -326,6 +336,9 @@ export interface ChatBubbleProps {
   // Sửa/Xóa/Dịch — mặc định tắt (Customer screen không truyền → giữ nguyên hành vi cũ).
   canEdit?: boolean;
   canDelete?: boolean;
+  /** Hiện mục "Chọn nhiều" trong menu — chỉ bật cho tin của chính mình. */
+  canSelectMany?: boolean;
+  onRequestSelectMode?: () => void;
   editNeedsReason?: boolean;
   deleteNeedsReason?: boolean;
   editPending?: boolean;
@@ -362,6 +375,8 @@ export function ChatBubble({
   accentColor = Colors.primary,
   canEdit = false,
   canDelete = false,
+  canSelectMany = false,
+  onRequestSelectMode,
   editNeedsReason = false,
   deleteNeedsReason = false,
   editPending = false,
@@ -426,7 +441,7 @@ export function ChatBubble({
   if (!body && fileIds.length === 0) return null;
 
   const canDownload = !!onDownloadAttachments && fileIds.length > 0;
-  const canShowActions = canEdit || canDelete || canTranslate || canPin || canShowReaders || canDownload;
+  const canShowActions = canEdit || canDelete || canTranslate || canPin || canShowReaders || canDownload || canSelectMany;
   const displayBody = showingOriginal || !translation ? body : translation.text;
 
   const time = new Date(comment.createdAt).toLocaleTimeString('vi-VN', {
@@ -601,10 +616,12 @@ export function ChatBubble({
         canShowReaders={canShowReaders}
         isPinned={!!comment.isPinned}
         canDownload={canDownload}
+        canSelectMany={canSelectMany}
         translating={translating}
         pinning={pinning}
         onEdit={startEdit}
         onDeleteRequest={() => setConfirmingDelete(true)}
+        onRequestSelectMode={() => onRequestSelectMode?.()}
         onTranslate={(lang) => onTranslate?.(lang)}
         onTogglePin={() => onTogglePin?.()}
         onShowReaders={() => onShowReaders?.()}

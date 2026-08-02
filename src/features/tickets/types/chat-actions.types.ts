@@ -13,6 +13,25 @@ export interface ChatMarkReadPayload {
   chatIds: string[];
 }
 
+/** DELETE /chats/bulk — tối đa 50 id/request (BE ChatBulkDeleteCommand.MaxBatchSize). */
+export const CHAT_BULK_DELETE_MAX = 50;
+
+export interface ChatBulkDeletePayload {
+  chatIds: string[];
+}
+
+/**
+ * Kết quả bulk delete. LƯU Ý: `deleted + skipped` KHÔNG bằng số id đã gửi —
+ * chat của người khác bị ẩn riêng (TicketChatHide) và không được đếm ở cả hai.
+ * Mobile chỉ cho chọn tin của chính mình nên trên thực tế không rơi vào nhánh đó.
+ */
+export interface ChatBulkDeleteResultDTO {
+  deleted: number;
+  skipped: number;
+  /** Id không tìm thấy / đã bị xoá trước đó. */
+  skippedIds: string[];
+}
+
 // GET /api/tickets/{tid}/chats/{cid}/readers — ai đã đọc 1 chat.
 // Auth: Staff/Manager/Admin ONLY — Customer gọi sẽ nhận 403.
 export interface ChatReaderDTO {

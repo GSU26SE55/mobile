@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { CreateTicketStepper, detectedLabelToIso } from '../../../src/features/tickets/components/CreateTicketStepper';
 import { CreateTicketSuccess } from '../../../src/features/tickets/components/CreateTicketSuccess';
 import { useCreateTicket } from '../../../src/features/tickets/hooks/useCreateTicket';
+import { createTicketSchema } from '../../../src/features/tickets/schemas/createTicket.schema';
 import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
 import { TicketCategoryEnum } from '../../../src/features/tickets/types/ticket.types';
 import type { UploadedTicketAttachment } from '../../../src/features/tickets/types/ticket.types';
@@ -47,8 +48,6 @@ function CreateTicketScreenInner() {
   };
 
   const handleSubmit = async () => {
-    // BE required: BatteryAssetIds phải có ít nhất 1 phần tử → chặn trước khi gửi.
-    if (!category || description.length < 10 || selectedBatteryIds.length === 0) return;
     // Chặn tạo trùng: đã tạo thành công (có id) hoặc đang gửi thì bỏ qua.
     if (createdTicketId || isPending) return;
 
@@ -69,16 +68,25 @@ function CreateTicketScreenInner() {
       ? `${catLabel} - ${firstBattery.serialNumber}${extra > 0 ? ` +${extra}` : ''}`
       : catLabel;
 
+    // Validate bằng schema (rule mobile: parse thủ công qua safeParse) — bắt lỗi
+    // tại chỗ thay vì để BE trả 400 sau khi đã round-trip.
+    const parsed = createTicketSchema.safeParse({
+      title,
+      description,
+      category,
+      batteryAssetIds: selectedBatteryIds,
+      // GH-866 — BE required IncidentDetectedAt (1 mốc, không phải khoảng).
+      // User không chọn thì fallback về hiện tại. ISO tính tại thời điểm submit.
+      incidentDetectedAt: detectedLabelToIso(detectedLabel) || new Date().toISOString(),
+    });
+    if (!parsed.success) {
+      Alert.alert('Thiếu thông tin', parsed.error.issues[0].message);
+      return;
+    }
+
     try {
       const res = await mutateAsync({
-        title,
-        description,
-        category: category as TicketCategoryEnum,
-        // BE required: ít nhất 1 pin (guard ở handleSubmit đã chặn mảng rỗng).
-        batteryAssetIds: selectedBatteryIds,
-        // GH-866 — BE required IncidentDetectedAt (1 mốc, không phải khoảng).
-        // User không chọn thì fallback về hiện tại. ISO tính tại thời điểm submit.
-        incidentDetectedAt: detectedLabelToIso(detectedLabel) || new Date().toISOString(),
+        ...parsed.data,
         attachments: attachedFiles.length > 0
           ? attachedFiles.map((file) => ({
               fileId: file.fileId,
