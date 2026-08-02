@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/src/lib/theme';
 import { BottomSheet } from '@/src/shared/components/BottomSheet';
-import { ChatAiIntentEnum } from '@/src/shared/enums/chat.enum';
+import { ChatAiIntentEnum } from '@/src/features/tickets/enums/chat.enum';
 import { useSuggestChat, useSummarizeThread } from '../hooks/useTicketChatActions';
 
 // GH-67 — thanh AI/Export cho Staff, đặt trên ô soạn reply. CHỈ dùng ở màn Staff ticket detail.

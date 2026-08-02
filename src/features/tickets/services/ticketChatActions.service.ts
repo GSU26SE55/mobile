@@ -12,7 +12,7 @@ import {
   ChatSummarizeDTO,
   ChatReaderDTO,
 } from '../types/chat-actions.types';
-import { ChatAiIntentEnum } from '@/src/shared/enums/chat.enum';
+import { ChatAiIntentEnum } from '@/src/features/tickets/enums/chat.enum';
 import {
   TicketActionResponse,
   TicketCommentDTO,

@@ -3,7 +3,7 @@ import { ticketChatActionsService } from '../services/ticketChatActions.service'
 import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { handleErrorApi } from '@/src/lib/errors';
 import { UpdateChatPayload } from '../types/chat-actions.types';
-import { ChatAiIntentEnum } from '@/src/shared/enums/chat.enum';
+import { ChatAiIntentEnum } from '@/src/features/tickets/enums/chat.enum';
 
 // Invalidate sau mutation — belt-and-suspenders cùng realtime (ChatEdited/ChatDeleted
 // trong useTicketCommentsRealtime cũng invalidate key này khi hub báo về).
