@@ -1,7 +1,7 @@
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { BASE_URL } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
+import { BASE_URL } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
 
 interface AttachmentPreviewItem {
   fileId: string;

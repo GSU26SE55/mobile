@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 import { ChatBubble } from './ChatBubble';
 import { ReactionTypeEnum, TicketCommentDTO } from '../types/ticket.types';
 

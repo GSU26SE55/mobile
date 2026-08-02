@@ -1,10 +1,10 @@
 import { Alert } from 'react-native';
 import { router } from 'expo-router';
-import { saveTokens, clearTokens, setToken } from '../../../lib/secureStore';
-import { decodeToken, redirectByRole } from '../../../types/session.types';
-import { useSessionStore } from '../../../stores/sessionStore';
+import { saveTokens, clearTokens, setToken } from '@/src/lib/secureStore';
+import { decodeToken, redirectByRole } from '@/src/types/session.types';
+import { useSessionStore } from '@/src/stores/sessionStore';
 import { LoginResultData, CHALLENGE_TOKEN_KEY } from '../types/auth.types';
-import { syncDeviceTokenOnLogin } from '../../notifications/services/device-token.service';
+import { syncDeviceTokenOnLogin } from '@/src/features/notifications/services/device-token.service';
 
 /**
  * Xử lý kết quả login thành công — DÙNG CHUNG cho useLogin (email/password) và

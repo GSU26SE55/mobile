@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { staffTicketService } from '../services/staffTicket.service';
-import { handleErrorApi } from '../../../lib/errors';
+import { handleErrorApi } from '@/src/lib/errors';
 import { UpdateMaintenanceLogPayload } from '../types/staff.types';
 
 interface UpdateLogParams {

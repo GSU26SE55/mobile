@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius } from '../../../lib/theme';
+import { Colors, Radius } from '@/src/lib/theme';
 import { useSiteActiveIncidents } from '../hooks/useSiteActiveIncidents';
 import { IncidentStatusBadge } from './IncidentStatusBadge';
 import { INCIDENT_TYPE_LABEL } from '../types/incident.types';

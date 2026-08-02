@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors, Shadow } from '../../../lib/theme';
+import { Colors, Shadow } from '@/src/lib/theme';
 import { SessionDto } from '../types/account.types';
 
 interface Props {

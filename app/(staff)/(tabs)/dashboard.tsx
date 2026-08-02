@@ -3,15 +3,15 @@ import React, { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BadgeColors, Colors, Solar } from '../../../src/lib/theme';
-import { useStaffTickets } from '../../../src/features/staff/hooks/useStaffTickets';
-import { useStaffDashboardStats } from '../../../src/features/staff/hooks/useStaffDashboardStats';
-import { useStaffProfile } from '../../../src/features/staff/hooks/useStaffProfile';
-import { useUnreadCount } from '../../../src/features/notifications/hooks/useNotifications';
-import { TicketStatusEnum, TicketDTO } from '../../../src/features/tickets/types/ticket.types';
-import { HomeHeader } from '../../../src/shared/components/HomeHeader';
-import { StatTrio } from '../../../src/shared/components/StatTrio';
-import { ProgressListItem } from '../../../src/shared/components/ProgressListItem';
+import { BadgeColors, Colors, Solar } from '@/src/lib/theme';
+import { useStaffTickets } from '@/src/features/staff/hooks/useStaffTickets';
+import { useStaffDashboardStats } from '@/src/features/staff/hooks/useStaffDashboardStats';
+import { useStaffProfile } from '@/src/features/staff/hooks/useStaffProfile';
+import { useUnreadCount } from '@/src/features/notifications/hooks/useNotifications';
+import { TicketStatusEnum, TicketDTO } from '@/src/features/tickets/types/ticket.types';
+import { HomeHeader } from '@/src/shared/components/HomeHeader';
+import { StatTrio } from '@/src/shared/components/StatTrio';
+import { ProgressListItem } from '@/src/shared/components/ProgressListItem';
 
 type FilterTab = 'all' | 'active' | 'waiting' | 'resolved';
 

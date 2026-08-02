@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { sensorReadingService } from '../services/sensor-reading.service';
 import { SensorReadingInterval } from '../types/sensor-reading.types';
 

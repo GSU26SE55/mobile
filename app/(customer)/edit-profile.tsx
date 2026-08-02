@@ -3,14 +3,14 @@ import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AvatarPicker } from '../../src/features/profile/components/AvatarPicker';
-import { ProfileForm } from '../../src/features/profile/components/ProfileForm';
-import { useProfile } from '../../src/features/profile/hooks/useProfile';
-import { useUpdateProfile } from '../../src/features/profile/hooks/useUpdateProfile';
-import { useUploadAvatar } from '../../src/features/profile/hooks/useUploadAvatar';
-import { UpdateProfileInput } from '../../src/features/profile/schemas/profile.schema';
-import { handleErrorApi } from '../../src/lib/errors';
-import { Colors, Shadow } from '../../src/lib/theme';
+import { AvatarPicker } from '@/src/features/profile/components/AvatarPicker';
+import { ProfileForm } from '@/src/features/profile/components/ProfileForm';
+import { useProfile } from '@/src/features/profile/hooks/useProfile';
+import { useUpdateProfile } from '@/src/features/profile/hooks/useUpdateProfile';
+import { useUploadAvatar } from '@/src/features/profile/hooks/useUploadAvatar';
+import { UpdateProfileInput } from '@/src/features/profile/schemas/profile.schema';
+import { handleErrorApi } from '@/src/lib/errors';
+import { Colors, Shadow } from '@/src/lib/theme';
 
 export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();

@@ -1,6 +1,6 @@
-import { axiosInstance } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { CommonResponse, PaginationResponse } from '../../../types/api.types';
+import { axiosInstance } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { CommonResponse, PaginationResponse } from '@/src/types/api.types';
 import { TicketCommentDTO, TicketChatMentionDTO } from '../types/ticket.types';
 
 // GH-68 — chat cross-ticket (Mọi role): inbox tổng, mentions, GDPR erase.

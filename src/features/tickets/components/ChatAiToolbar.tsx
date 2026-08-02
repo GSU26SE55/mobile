@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../../lib/theme';
-import { BottomSheet } from '../../../shared/components/BottomSheet';
-import { ChatAiIntentEnum } from '../../../shared/enums/chat.enum';
+import { Colors } from '@/src/lib/theme';
+import { BottomSheet } from '@/src/shared/components/BottomSheet';
+import { ChatAiIntentEnum } from '@/src/shared/enums/chat.enum';
 import { useSuggestChat, useSummarizeThread } from '../hooks/useTicketChatActions';
 
 // GH-67 — thanh AI/Export cho Staff, đặt trên ô soạn reply. CHỈ dùng ở màn Staff ticket detail.

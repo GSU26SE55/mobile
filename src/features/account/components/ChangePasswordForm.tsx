@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors, Shadow, ShadowPrimary } from '../../../lib/theme';
+import { Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
 import { ChangePasswordInput, changePasswordSchema } from '../schemas/changePassword.schema';
 
 interface Props {

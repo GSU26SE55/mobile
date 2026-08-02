@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { incidentService } from '../services/incident.service';
 import { IncidentListParams } from '../types/incident.types';
 

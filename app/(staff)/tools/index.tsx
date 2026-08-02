@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Shadow } from '../../../src/lib/theme';
+import { Colors, Radius, Shadow } from '@/src/lib/theme';
 
 // GH-56 — Hub "Công cụ kỹ thuật" cho Staff. Gate role qua (staff)/_layout.
 type ToolRow = {

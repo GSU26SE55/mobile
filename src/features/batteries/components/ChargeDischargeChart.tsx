@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Pressable, Text, View } from 'react-native';
 import { CartesianChart, AreaRange, Line } from 'victory-native';
-import { Colors, Radius, Shadow } from '../../../lib/theme';
+import { Colors, Radius, Shadow } from '@/src/lib/theme';
 import { useSensorReadingAggregate } from '../hooks/useSensorReadingAggregate';
 import { useBatteryStats } from '../hooks/useBatteryStats';
 import { SensorReadingInterval, StatsWindow } from '../types/sensor-reading.types';

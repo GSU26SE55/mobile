@@ -1,8 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Shadow } from '../../../lib/theme';
-import { RingStat } from '../../../shared/components/StatTrio';
+import { Colors, Radius, Shadow } from '@/src/lib/theme';
+import { RingStat } from '@/src/shared/components/StatTrio';
 import { BatteryAssetRealtimeDto } from '../types/battery.types';
 import { ChargingStateEnum } from '../enums/battery.enum';
 

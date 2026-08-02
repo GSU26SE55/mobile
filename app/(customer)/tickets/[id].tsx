@@ -18,31 +18,31 @@ import {
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { HttpError } from '../../../src/lib/errors';
-import { P } from '../../../src/lib/authz';
-import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
-import { ActivityTimeline } from '../../../src/features/tickets/components/ActivityTimeline';
-import { CommentThread } from '../../../src/features/tickets/components/CommentThread';
+import { HttpError } from '@/src/lib/errors';
+import { P } from '@/src/lib/authz';
+import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
+import { ActivityTimeline } from '@/src/features/tickets/components/ActivityTimeline';
+import { CommentThread } from '@/src/features/tickets/components/CommentThread';
 import {
   ChatSelectionHeader,
   ChatSelectionFooter,
-} from '../../../src/features/tickets/components/ChatSelectionBar';
-import { RateModal } from '../../../src/features/tickets/components/RateModal';
-import { ReopenModal } from '../../../src/features/tickets/components/ReopenModal';
-import { SlaCountdown } from '../../../src/features/tickets/components/SlaCountdown';
-import { TicketStatusBadge } from '../../../src/features/tickets/components/TicketStatusBadge';
-import { useAddComment } from '../../../src/features/tickets/hooks/useAddComment';
-import { useRateTicket } from '../../../src/features/tickets/hooks/useRateTicket';
-import { useReopenTicket } from '../../../src/features/tickets/hooks/useReopenTicket';
-import { useUploadCommentAttachment } from '../../../src/features/tickets/hooks/useUploadCommentAttachment';
-import { useTicketDetail } from '../../../src/features/tickets/hooks/useTicketDetail';
-import { MentionSuggestionsPopup } from '../../../src/features/tickets/components/MentionSuggestionsPopup';
-import { useTicketChatsCursor } from '../../../src/features/tickets/hooks/useTicketChatsCursor';
-import { useAddReaction, useRemoveReaction } from '../../../src/features/tickets/hooks/useChatReactions';
-import { useDownloadChatAttachment } from '../../../src/features/tickets/hooks/useDownloadChatAttachment';
-import { useTicketUnreadCount } from '../../../src/features/tickets/hooks/useTicketUnreadCount';
-import { useTicketActivities } from '../../../src/features/tickets/hooks/useTicketActivities';
-import { useTicketCommentsRealtime } from '../../../src/features/tickets/hooks/useTicketCommentsRealtime';
+} from '@/src/features/tickets/components/ChatSelectionBar';
+import { RateModal } from '@/src/features/tickets/components/RateModal';
+import { ReopenModal } from '@/src/features/tickets/components/ReopenModal';
+import { SlaCountdown } from '@/src/features/tickets/components/SlaCountdown';
+import { TicketStatusBadge } from '@/src/features/tickets/components/TicketStatusBadge';
+import { useAddComment } from '@/src/features/tickets/hooks/useAddComment';
+import { useRateTicket } from '@/src/features/tickets/hooks/useRateTicket';
+import { useReopenTicket } from '@/src/features/tickets/hooks/useReopenTicket';
+import { useUploadCommentAttachment } from '@/src/features/tickets/hooks/useUploadCommentAttachment';
+import { useTicketDetail } from '@/src/features/tickets/hooks/useTicketDetail';
+import { MentionSuggestionsPopup } from '@/src/features/tickets/components/MentionSuggestionsPopup';
+import { useTicketChatsCursor } from '@/src/features/tickets/hooks/useTicketChatsCursor';
+import { useAddReaction, useRemoveReaction } from '@/src/features/tickets/hooks/useChatReactions';
+import { useDownloadChatAttachment } from '@/src/features/tickets/hooks/useDownloadChatAttachment';
+import { useTicketUnreadCount } from '@/src/features/tickets/hooks/useTicketUnreadCount';
+import { useTicketActivities } from '@/src/features/tickets/hooks/useTicketActivities';
+import { useTicketCommentsRealtime } from '@/src/features/tickets/hooks/useTicketCommentsRealtime';
 import {
   useUpdateTicketChat,
   useDeleteTicketChat,
@@ -50,19 +50,19 @@ import {
   useMarkTicketChatsRead,
   useTranslateTicketChat,
   useTranscribeVoiceChat,
-} from '../../../src/features/tickets/hooks/useTicketChatActions';
-import { useVoiceRecorder } from '../../../src/features/tickets/hooks/useVoiceRecorder';
-import { VoiceRecordingModal } from '../../../src/features/tickets/components/VoiceRecordingModal';
-import { TypingIndicator } from '../../../src/features/tickets/components/TypingIndicator';
-import { useAuthImageHeaders } from '../../../src/features/file-storage/hooks/useAuthImageHeaders';
-import { AuthImage } from '../../../src/features/file-storage/components/AuthImage';
-import { AttachmentForm } from '../../../src/features/tickets/schemas/comment.schema';
-import { RatePayload, ReopenPayload, TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
-import type { ChatMentionInput } from '../../../src/features/tickets/types/ticket.types';
-import { BadgeColors, Colors, Shadow, ShadowPrimary } from '../../../src/lib/theme';
-import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
-import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
-import { useSessionStore } from '../../../src/stores/sessionStore';
+} from '@/src/features/tickets/hooks/useTicketChatActions';
+import { useVoiceRecorder } from '@/src/features/tickets/hooks/useVoiceRecorder';
+import { VoiceRecordingModal } from '@/src/features/tickets/components/VoiceRecordingModal';
+import { TypingIndicator } from '@/src/features/tickets/components/TypingIndicator';
+import { useAuthImageHeaders } from '@/src/features/file-storage/hooks/useAuthImageHeaders';
+import { AuthImage } from '@/src/features/file-storage/components/AuthImage';
+import { AttachmentForm } from '@/src/features/tickets/schemas/comment.schema';
+import { RatePayload, ReopenPayload, TicketStatusEnum } from '@/src/features/tickets/types/ticket.types';
+import type { ChatMentionInput } from '@/src/features/tickets/types/ticket.types';
+import { BadgeColors, Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
+import { useMyBatteryAssets } from '@/src/features/batteries/hooks/useMyBatteryAssets';
+import { BatteryAssetDto } from '@/src/features/batteries/types/battery.types';
+import { useSessionStore } from '@/src/stores/sessionStore';
 
 const PRIORITY_MAP: Record<string, { label: string; badge: keyof typeof BadgeColors }> = {
   P1Critical: { label: 'P1 Critical', badge: 'p1' },

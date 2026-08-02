@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import * as signalR from '@microsoft/signalr';
-import { BASE_URL } from '../../../lib/axios';
-import { getAccessToken } from '../../../lib/secureStore';
-import { QUERY_KEY } from '../../../lib/queryKeys';
-import { CursorPaginationResponse } from '../../../types/api.types';
+import { BASE_URL } from '@/src/lib/axios';
+import { getAccessToken } from '@/src/lib/secureStore';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
+import { CursorPaginationResponse } from '@/src/types/api.types';
 import { TicketCommentDTO } from '../types/ticket.types';
 
 const HUB_PATH = '/hubs/ticket-chats';

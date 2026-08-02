@@ -14,14 +14,14 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useReactivateRequest } from '../../src/features/auth/hooks/useReactivateRequest';
-import { useReactivateVerify } from '../../src/features/auth/hooks/useReactivateVerify';
+import { useReactivateRequest } from '@/src/features/auth/hooks/useReactivateRequest';
+import { useReactivateVerify } from '@/src/features/auth/hooks/useReactivateVerify';
 import {
   reactivateRequestSchema,
   reactivateVerifySchema,
-} from '../../src/features/auth/schemas/reactivate.schema';
-import { handleErrorApi } from '../../src/lib/errors';
-import { Colors } from '../../src/lib/theme';
+} from '@/src/features/auth/schemas/reactivate.schema';
+import { handleErrorApi } from '@/src/lib/errors';
+import { Colors } from '@/src/lib/theme';
 
 type Step = 1 | 2;
 

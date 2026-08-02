@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { BadgeColors } from '../../../lib/theme';
-import { TicketCategoryEnum } from '../../../shared/enums/ticket.enum';
-import { KbCategoryIcon, KbCategoryLabel } from '../../../shared/enums/kb.enum';
+import { BadgeColors } from '@/src/lib/theme';
+import { TicketCategoryEnum } from '@/src/shared/enums/ticket.enum';
+import { KbCategoryIcon, KbCategoryLabel } from '@/src/shared/enums/kb.enum';
 
 const BADGE_MAP: Record<TicketCategoryEnum, keyof typeof BadgeColors> = {
   [TicketCategoryEnum.Charging]: 'orange',

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { permissionService } from '../services/permission.service';
 
 // GH-68 — catalog toàn bộ permission (mọi role). Ít đổi → staleTime dài.

@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 import { CHAT_BULK_DELETE_MAX } from '../types/chat-actions.types';
 
 interface HeaderProps {

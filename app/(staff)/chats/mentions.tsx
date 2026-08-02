@@ -1,8 +1,8 @@
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Colors } from '../../../src/lib/theme';
-import { ScreenHeader } from '../../../src/shared/components/ScreenHeader';
-import { useMyMentions } from '../../../src/features/tickets/hooks/useChatInbox';
+import { Colors } from '@/src/lib/theme';
+import { ScreenHeader } from '@/src/shared/components/ScreenHeader';
+import { useMyMentions } from '@/src/features/tickets/hooks/useChatInbox';
 
 // GH-68 — @mention tới Staff. GH-866: BE bỏ endpoint acknowledge; chấm vàng = chat nội bộ.
 export default function StaffMentionsScreen() {

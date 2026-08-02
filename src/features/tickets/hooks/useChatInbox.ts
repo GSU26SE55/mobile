@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { KEY, QUERY_KEY } from '../../../lib/queryKeys';
-import { handleErrorApi } from '../../../lib/errors';
+import { KEY, QUERY_KEY } from '@/src/lib/queryKeys';
+import { handleErrorApi } from '@/src/lib/errors';
 import {
   chatInboxService,
   ChatInboxParams,

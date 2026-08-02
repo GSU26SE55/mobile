@@ -1,6 +1,6 @@
-import { axiosInstance } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { CommonResponse } from '../../../types/api.types';
+import { axiosInstance } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { CommonResponse } from '@/src/types/api.types';
 import { PermissionDto, PermissionCatalogParams } from '../types/permission.types';
 
 // GH-68 — catalog toàn bộ permission (mọi role, không cần admin). BE trả

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { notificationPreferenceService } from '../services/notification-preference.service';
 import { NotificationPreferenceMatrixDto } from '../types/notification-matrix.types';
 import { UpdateNotificationPreferencePayload } from '../types/notification-preference.types';

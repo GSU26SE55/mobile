@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getAccessToken, getRefreshToken, isTokenExpired, saveTokens, clearTokens } from '../lib/secureStore';
-import { decodeToken, redirectByRole } from '../types/session.types';
-import { useSessionStore } from '../stores/sessionStore';
-import { ENDPOINTS } from '../lib/endpoints';
-import { axiosInstance } from '../lib/axios';
+import { getAccessToken, getRefreshToken, isTokenExpired, saveTokens, clearTokens } from '@/src/lib/secureStore';
+import { decodeToken, redirectByRole } from '@/src/types/session.types';
+import { useSessionStore } from '@/src/stores/sessionStore';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { axiosInstance } from '@/src/lib/axios';
 
 interface AuthContextValue {
   isHydrating: boolean;

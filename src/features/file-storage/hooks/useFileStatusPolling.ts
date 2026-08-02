@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { fileStorageService } from '../services/file-storage.service';
 import { FileStatusEnum } from '../enums/file-storage.enum';
 

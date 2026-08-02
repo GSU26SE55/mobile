@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { ticketChatActionsService } from '../services/ticketChatActions.service';
 
 // GH-68 — số chat chưa đọc của ticket (per-ticket, BE không có bulk → chỉ dùng ở

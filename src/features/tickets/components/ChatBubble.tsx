@@ -12,10 +12,10 @@ import {
   type GestureResponderEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { BASE_URL } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { Colors, Shadow } from '../../../lib/theme';
-import { BottomSheet } from '../../../shared/components/BottomSheet';
+import { BASE_URL } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { Colors, Shadow } from '@/src/lib/theme';
+import { BottomSheet } from '@/src/shared/components/BottomSheet';
 import { ReactionTypeEnum, TicketCommentDTO } from '../types/ticket.types';
 import { VoiceMessageBubble } from './VoiceMessageBubble';
 import { ReactionBar } from './ReactionBar';

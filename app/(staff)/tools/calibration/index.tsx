@@ -13,18 +13,18 @@ import {
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Shadow } from '../../../../src/lib/theme';
-import { handleErrorApi } from '../../../../src/lib/errors';
-import { useDeviceByCode } from '../../../../src/features/iot-devices/hooks/useDeviceByCode';
-import { useCalibrations } from '../../../../src/features/iot-devices/hooks/useCalibrations';
-import { useDeleteCalibration } from '../../../../src/features/iot-devices/hooks/useDeleteCalibration';
-import { CalibrationCard } from '../../../../src/features/iot-devices/components/CalibrationCard';
-import { deviceCodeSchema } from '../../../../src/features/iot-devices/schemas/calibration.schema';
+import { Colors, Radius, Shadow } from '@/src/lib/theme';
+import { handleErrorApi } from '@/src/lib/errors';
+import { useDeviceByCode } from '@/src/features/iot-devices/hooks/useDeviceByCode';
+import { useCalibrations } from '@/src/features/iot-devices/hooks/useCalibrations';
+import { useDeleteCalibration } from '@/src/features/iot-devices/hooks/useDeleteCalibration';
+import { CalibrationCard } from '@/src/features/iot-devices/components/CalibrationCard';
+import { deviceCodeSchema } from '@/src/features/iot-devices/schemas/calibration.schema';
 import {
   CalibrationChannel,
   CALIBRATION_CHANNEL_LABEL,
   IOT_DEVICE_STATUS_LABEL,
-} from '../../../../src/features/iot-devices/enums/iot-device.enum';
+} from '@/src/features/iot-devices/enums/iot-device.enum';
 
 const CHANNELS = Object.values(CalibrationChannel);
 

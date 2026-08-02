@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { DevicePlatformEnum } from '../features/notifications/enums/notification.enum';
+import { DevicePlatformEnum } from '@/src/features/notifications/enums/notification.enum';
 
 /** Map Platform.OS → DevicePlatformEnum (khớp BE). */
 export function getDevicePlatform(): DevicePlatformEnum {

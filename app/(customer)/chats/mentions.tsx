@@ -1,7 +1,7 @@
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Colors } from '../../../src/lib/theme';
-import { useMyMentions } from '../../../src/features/tickets/hooks/useChatInbox';
+import { Colors } from '@/src/lib/theme';
+import { useMyMentions } from '@/src/features/tickets/hooks/useChatInbox';
 
 // GH-68 — @mention tới tôi (mọi ticket). GH-866: BE bỏ endpoint acknowledge.
 // Không hiện chỉ báo isInternal: BE đã lọc mention nội bộ khỏi Customer nên luôn false.

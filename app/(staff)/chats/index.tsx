@@ -1,9 +1,9 @@
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
-import { Colors } from '../../../src/lib/theme';
-import { ScreenHeader } from '../../../src/shared/components/ScreenHeader';
-import { useMyChats } from '../../../src/features/tickets/hooks/useChatInbox';
-import { ChatInboxList } from '../../../src/features/tickets/components/ChatInboxList';
+import { Colors } from '@/src/lib/theme';
+import { ScreenHeader } from '@/src/shared/components/ScreenHeader';
+import { useMyChats } from '@/src/features/tickets/hooks/useChatInbox';
+import { ChatInboxList } from '@/src/features/tickets/components/ChatInboxList';
 
 // GH-68 — inbox chat của Staff. Tap → mở ticket (staff route).
 export default function StaffChatInboxScreen() {

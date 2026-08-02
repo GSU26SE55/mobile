@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getAccessToken } from '../../../lib/secureStore';
+import { getAccessToken } from '@/src/lib/secureStore';
 
 /**
  * Load access token once để dựng header Authorization cho <Image> tải ảnh

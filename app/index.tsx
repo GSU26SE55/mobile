@@ -1,7 +1,7 @@
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
-import { useAuthContext } from '../src/context/authContext';
-import { useSessionStore } from '../src/stores/sessionStore';
-import { redirectByRole } from '../src/types/session.types';
+import { useAuthContext } from '@/src/context/authContext';
+import { useSessionStore } from '@/src/stores/sessionStore';
+import { redirectByRole } from '@/src/types/session.types';
 import { Redirect } from 'expo-router';
 
 export default function IndexScreen() {

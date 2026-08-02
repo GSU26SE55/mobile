@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors } from '../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 
 // Header Home mới (dùng chung staff + customer): avatar tròn + lời chào + subtitle,
 // action bên phải (chuông thông báo). Màu giữ nguyên palette hiện tại.

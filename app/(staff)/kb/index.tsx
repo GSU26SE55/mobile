@@ -11,17 +11,17 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '../../../src/lib/theme';
-import type { TicketCategoryEnum } from '../../../src/shared/enums/ticket.enum';
-import { KbArticleCard } from '../../../src/features/kb/components/KbArticleCard';
-import { KbCategoryChips } from '../../../src/features/kb/components/KbCategoryChips';
-import { KbEmptyState } from '../../../src/features/kb/components/KbEmptyState';
-import { KbSearchBar } from '../../../src/features/kb/components/KbSearchBar';
-import { useDebouncedValue } from '../../../src/features/kb/hooks/useDebouncedValue';
-import { useKbInfiniteList } from '../../../src/features/kb/hooks/useKbInfiniteList';
-import type { KbArticleSummaryDTO } from '../../../src/features/kb/types/kb.types';
-import { P } from '../../../src/lib/authz';
-import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
+import { Colors } from '@/src/lib/theme';
+import type { TicketCategoryEnum } from '@/src/shared/enums/ticket.enum';
+import { KbArticleCard } from '@/src/features/kb/components/KbArticleCard';
+import { KbCategoryChips } from '@/src/features/kb/components/KbCategoryChips';
+import { KbEmptyState } from '@/src/features/kb/components/KbEmptyState';
+import { KbSearchBar } from '@/src/features/kb/components/KbSearchBar';
+import { useDebouncedValue } from '@/src/features/kb/hooks/useDebouncedValue';
+import { useKbInfiniteList } from '@/src/features/kb/hooks/useKbInfiniteList';
+import type { KbArticleSummaryDTO } from '@/src/features/kb/types/kb.types';
+import { P } from '@/src/lib/authz';
+import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
 
 export default function StaffKbListScreen() {
   return (

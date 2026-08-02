@@ -1,10 +1,10 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../../lib/theme';
-import { BottomSheet } from '../../../shared/components/BottomSheet';
+import { Colors } from '@/src/lib/theme';
+import { BottomSheet } from '@/src/shared/components/BottomSheet';
 import { useChatReaders } from '../hooks/useChatReaders';
-import type { ActorRoleEnum } from '../../../shared/enums/ticket.enum';
+import type { ActorRoleEnum } from '@/src/shared/enums/ticket.enum';
 
 const ROLE_VI: Record<ActorRoleEnum, string> = {
   Admin: 'Quản trị viên',

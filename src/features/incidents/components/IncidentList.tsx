@@ -1,7 +1,7 @@
 import React from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 import { EnvironmentalIncidentDto } from '../types/incident.types';
 import { IncidentCard } from './IncidentCard';
 

@@ -21,9 +21,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TicketCategoryEnum } from '../types/ticket.types';
 import type { UploadedTicketAttachment } from '../types/ticket.types';
 import { useUploadTicketAttachment } from '../hooks/useUploadTicketAttachment';
-import { useMyBatteryAssets } from '../../batteries/hooks/useMyBatteryAssets';
-import { BatteryAssetDto } from '../../batteries/types/battery.types';
-import { Colors, Shadow, ShadowPrimary } from '../../../lib/theme';
+import { useMyBatteryAssets } from '@/src/features/batteries/hooks/useMyBatteryAssets';
+import { BatteryAssetDto } from '@/src/features/batteries/types/battery.types';
+import { Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
 
 const TOTAL_STEPS = 4;
 

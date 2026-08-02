@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors, Radius, Shadow, Spacing } from '../../../lib/theme';
+import { Colors, Radius, Shadow, Spacing } from '@/src/lib/theme';
 import { NotificationCategoryEnum } from '../enums/notification.enum';
 import { useNotificationMatrix } from '../hooks/useNotificationMatrix';
 import { NotificationCategoryPreferenceDto } from '../types/notification-matrix.types';

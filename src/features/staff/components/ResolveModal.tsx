@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors } from '../../../lib/theme';
-import { BottomSheet } from '../../../shared/components/BottomSheet';
+import { Colors } from '@/src/lib/theme';
+import { BottomSheet } from '@/src/shared/components/BottomSheet';
 
 interface Props {
   visible: boolean;

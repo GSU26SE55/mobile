@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { BadgeColors, Solar } from '../../../lib/theme';
+import { BadgeColors, Solar } from '@/src/lib/theme';
 import { TicketDTO } from '../types/ticket.types';
 import { getPrimaryHandlerId } from '../utils/assignments';
 import { SlaCountdown } from './SlaCountdown';
 import { TicketStatusBadge } from './TicketStatusBadge';
-import { GlassSurface } from '../../../features/batteries/components/EnergyBackdrop';
+import { GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
 
 const PRIORITY_BADGE: Record<string, keyof typeof BadgeColors> = {
   P1Critical: 'p1',

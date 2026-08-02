@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 import {
   useNotifications,
   useUnreadCount,

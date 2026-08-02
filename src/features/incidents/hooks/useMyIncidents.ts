@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { incidentService } from '../services/incident.service';
-import { useMyBatteryAssets } from '../../batteries/hooks/useMyBatteryAssets';
+import { useMyBatteryAssets } from '@/src/features/batteries/hooks/useMyBatteryAssets';
 import { EnvironmentalIncidentDto } from '../types/incident.types';
 
 // Incident của Customer = incident cấp-site của các site có ≥1 pin Customer sở hữu.

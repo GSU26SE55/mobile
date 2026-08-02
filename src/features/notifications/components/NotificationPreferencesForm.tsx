@@ -10,8 +10,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Colors, CommonStyles, Radius, Shadow, Spacing } from '../../../lib/theme';
-import { handleErrorApi } from '../../../lib/errors';
+import { Colors, CommonStyles, Radius, Shadow, Spacing } from '@/src/lib/theme';
+import { handleErrorApi } from '@/src/lib/errors';
 import { CategoryMatrixTable } from './CategoryMatrixTable';
 import { useNotificationMatrix } from '../hooks/useNotificationMatrix';
 import { useUpdateNotificationPreference } from '../hooks/useNotificationPreferences';

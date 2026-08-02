@@ -1,9 +1,9 @@
 import React from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSessions } from '../../../src/features/account/hooks/useSessions';
-import { SessionCard } from '../../../src/features/account/components/SessionCard';
-import { handleErrorApi } from '../../../src/lib/errors';
-import { Colors } from '../../../src/lib/theme';
+import { useSessions } from '@/src/features/account/hooks/useSessions';
+import { SessionCard } from '@/src/features/account/components/SessionCard';
+import { handleErrorApi } from '@/src/lib/errors';
+import { Colors } from '@/src/lib/theme';
 
 export default function SessionsScreen() {
   const { sessions, revokeSession, revokeAll } = useSessions();

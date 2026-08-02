@@ -2,9 +2,9 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Shadow, Solar } from '../../../src/lib/theme';
-import { NotificationList } from '../../../src/features/notifications/components/NotificationList';
-import { StaffHeader } from '../../../src/features/staff/components/StaffHeader';
+import { Shadow, Solar } from '@/src/lib/theme';
+import { NotificationList } from '@/src/features/notifications/components/NotificationList';
+import { StaffHeader } from '@/src/features/staff/components/StaffHeader';
 
 export default function StaffNotificationsScreen() {
   return (

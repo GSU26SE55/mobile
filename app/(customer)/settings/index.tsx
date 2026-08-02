@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
-import { Colors } from '../../../src/lib/theme';
+import { Colors } from '@/src/lib/theme';
 
 const ITEMS = [
   { label: 'Đổi mật khẩu', route: '/(customer)/settings/change-password' as const },

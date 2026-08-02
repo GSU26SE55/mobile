@@ -1,6 +1,6 @@
-import { axiosInstance } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { CommonResponse } from '../../../types/api.types';
+import { axiosInstance } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { CommonResponse } from '@/src/types/api.types';
 import {
   NotificationCategoryMapDto,
   NotificationPreferenceMatrixDto,

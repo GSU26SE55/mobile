@@ -1,6 +1,6 @@
-import { axiosInstance } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { CommonResponse, CursorPaginationResponse } from '../../../types/api.types';
+import { axiosInstance } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { CommonResponse, CursorPaginationResponse } from '@/src/types/api.types';
 import {
   UpdateChatPayload,
   ChatMarkReadPayload,
@@ -12,15 +12,15 @@ import {
   ChatSummarizeDTO,
   ChatReaderDTO,
 } from '../types/chat-actions.types';
-import { ChatAiIntentEnum } from '../../../shared/enums/chat.enum';
+import { ChatAiIntentEnum } from '@/src/shared/enums/chat.enum';
 import {
   TicketActionResponse,
   TicketCommentDTO,
   TicketChatReactionsAggregateDTO,
   ReactionTypeEnum,
 } from '../types/ticket.types';
-import { fileStorageService } from '../../file-storage/services/file-storage.service';
-import { FilePurposeEnum } from '../../file-storage/enums/file-storage.enum';
+import { fileStorageService } from '@/src/features/file-storage/services/file-storage.service';
+import { FilePurposeEnum } from '@/src/features/file-storage/enums/file-storage.enum';
 
 export interface ChatCursorParams {
   cursor?: string;

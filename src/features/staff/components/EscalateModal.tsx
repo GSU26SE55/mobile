@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors } from '../../../lib/theme';
-import { BottomSheet } from '../../../shared/components/BottomSheet';
-import { EscalationReasonEnum } from '../../tickets/types/ticket.types';
+import { Colors } from '@/src/lib/theme';
+import { BottomSheet } from '@/src/shared/components/BottomSheet';
+import { EscalationReasonEnum } from '@/src/features/tickets/types/ticket.types';
 
 const ESCALATION_OPTIONS: { value: EscalationReasonEnum; label: string }[] = [
   { value: 'SkillGap',          label: 'Vượt quá năng lực xử lý' },

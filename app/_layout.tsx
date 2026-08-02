@@ -2,10 +2,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { AuthProvider } from '../src/context/authContext';
-import { PermissionsSync } from '../src/features/auth/components/PermissionsSync';
-import { PushResponseHandler } from '../src/features/notifications/components/PushResponseHandler';
-import { configureGoogleSignin } from '../src/config/googleAuth';
+import { AuthProvider } from '@/src/context/authContext';
+import { PermissionsSync } from '@/src/features/auth/components/PermissionsSync';
+import { PushResponseHandler } from '@/src/features/notifications/components/PushResponseHandler';
+import { configureGoogleSignin } from '@/src/config/googleAuth';
 
 // Cấu hình Google Sign-In 1 lần khi app boot.
 configureGoogleSignin();

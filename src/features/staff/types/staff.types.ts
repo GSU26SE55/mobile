@@ -6,7 +6,7 @@ import type {
   MaintenanceLogDTO,
   CommentAttachmentPayload,
   ChatMentionInput,
-} from '../../tickets/types/ticket.types';
+} from '@/src/features/tickets/types/ticket.types';
 import type { StaffSkillTierEnum } from '../enums/staff.enum';
 
 export { StaffSkillTierEnum } from '../enums/staff.enum';

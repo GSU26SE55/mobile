@@ -3,13 +3,13 @@ import type {
   AlertSeverityEnum,
   AlertStatusEnum,
   AnomalyTypeEnum,
-} from '../../../shared/enums/alert.enum';
+} from '@/src/shared/enums/alert.enum';
 
 export {
   AlertSeverityEnum,
   AlertStatusEnum,
   AnomalyTypeEnum,
-} from '../../../shared/enums/alert.enum';
+} from '@/src/shared/enums/alert.enum';
 
 export interface AlertDto {
   id: string;

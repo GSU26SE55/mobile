@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
 import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { RegisterForm } from '../../src/features/auth/components/RegisterForm';
+import { RegisterForm } from '@/src/features/auth/components/RegisterForm';
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();

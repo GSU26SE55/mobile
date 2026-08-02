@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '../../src/lib/theme';
+import { Colors } from '@/src/lib/theme';
 
 // Tài khoản ADMIN/MANAGER không dùng mobile — login bằng các role này (thường/2FA)
 // điều hướng về đây thay vì vào app. Đối xứng với web (/use-mobile-app chặn CUSTOMER).

@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { getAccessToken } from '../../../lib/secureStore';
-import { Colors } from '../../../lib/theme';
+import { getAccessToken } from '@/src/lib/secureStore';
+import { Colors } from '@/src/lib/theme';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? '';
 

@@ -1,4 +1,4 @@
-import { UserRole } from '../../../shared/enums/session.enum';
+import { UserRole } from '@/src/shared/enums/session.enum';
 
 // GH-58 — dựng query `scope` cho SSE summary stream (docs/battery-realtime-description.md §4/§6).
 // Verified BE (BatteryRealtimeAuthorizationHelper): BatteryAsset.CustomerId == JWT AccountId

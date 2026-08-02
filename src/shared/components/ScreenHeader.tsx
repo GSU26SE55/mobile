@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Shadow } from '../../lib/theme';
+import { Colors, Shadow } from '@/src/lib/theme';
 
 interface Props {
   title: string;

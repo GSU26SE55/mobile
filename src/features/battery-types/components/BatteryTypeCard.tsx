@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Shadow } from '../../../lib/theme';
+import { Colors, Radius, Shadow } from '@/src/lib/theme';
 import { BatteryTypeDto } from '../types/battery-type.types';
 import {
   BatteryChemistryEnum,
