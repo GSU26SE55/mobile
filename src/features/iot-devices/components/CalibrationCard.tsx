@@ -1,7 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Shadow } from '../../../lib/theme';
+import { Colors, Radius, Shadow } from '@/src/lib/theme';
 import { IotDeviceCalibrationDto } from '../types/iot-device.types';
 
 function formatDate(iso: string | null): string {

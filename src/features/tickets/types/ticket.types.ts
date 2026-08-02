@@ -19,7 +19,7 @@ export {
   ParticipantTypeEnum,
   TicketVerifyStatusEnum,
   TicketCloseReasonEnum,
-} from '../../../shared/enums/ticket.enum';
+} from '@/src/shared/enums/ticket.enum';
 
 import type {
   TicketStatusEnum,
@@ -36,7 +36,7 @@ import type {
   ParticipantTypeEnum,
   TicketVerifyStatusEnum,
   TicketCloseReasonEnum,
-} from '../../../shared/enums/ticket.enum';
+} from '@/src/shared/enums/ticket.enum';
 
 // GH-83 — enum riêng của ticket chat (string-based, khác các enum int ở trên).
 // Đặt SAU khối import: `export ... from` xen giữa các import làm eslint `import/first` kêu.

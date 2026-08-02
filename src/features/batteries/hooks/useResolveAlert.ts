@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { KEY } from '../../../lib/queryKeys';
+import { KEY } from '@/src/lib/queryKeys';
 import { alertService } from '../services/alert.service';
 
 // GH-55 — Staff resolve alert (Open/Acknowledged → Resolved). 409 nếu Merged.

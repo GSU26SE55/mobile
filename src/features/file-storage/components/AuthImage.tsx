@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Image, View, Text, ActivityIndicator, StyleSheet, ImageStyle, StyleProp } from 'react-native';
-import { axiosInstance } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { Colors } from '../../../lib/theme';
+import { axiosInstance } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { Colors } from '@/src/lib/theme';
 
 /**
  * Tải ảnh cần auth từ FileStorageService rồi hiển thị qua data URI (base64).

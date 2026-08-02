@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
-import { handleErrorApi } from '../../../lib/errors';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
+import { handleErrorApi } from '@/src/lib/errors';
 import { ticketChatActionsService } from '../services/ticketChatActions.service';
 import { ReactionTypeEnum } from '../types/ticket.types';
 

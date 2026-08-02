@@ -9,12 +9,12 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '../../../src/lib/theme';
-import { HttpError } from '../../../src/lib/errors';
-import { BlogContent } from '../../../src/features/blog/components/BlogContent';
-import { BlogEmptyState } from '../../../src/features/blog/components/BlogEmptyState';
-import { useBlogDetail } from '../../../src/features/blog/hooks/useBlogDetail';
-import { BlogOriginLabel } from '../../../src/features/blog/enums/blog.enum';
+import { Colors } from '@/src/lib/theme';
+import { HttpError } from '@/src/lib/errors';
+import { BlogContent } from '@/src/features/blog/components/BlogContent';
+import { BlogEmptyState } from '@/src/features/blog/components/BlogEmptyState';
+import { useBlogDetail } from '@/src/features/blog/hooks/useBlogDetail';
+import { BlogOriginLabel } from '@/src/features/blog/enums/blog.enum';
 
 function formatDate(iso: string): string {
   const d = new Date(iso);

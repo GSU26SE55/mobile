@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 import { VoiceTranscriptionStatusEnum } from '../enums/chat.enum';
 import { useLocalAudioUri } from '../hooks/useLocalAudioUri';
 

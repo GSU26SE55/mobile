@@ -3,18 +3,18 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Shadow } from '../../../src/lib/theme';
-import { P } from '../../../src/lib/authz';
-import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
-import { useSiteDetail } from '../../../src/features/sites/hooks/useSiteDetail';
-import { useSiteDashboard } from '../../../src/features/sites/hooks/useSiteDashboard';
-import { SiteActiveIncidentsWidget } from '../../../src/features/incidents/components/SiteActiveIncidentsWidget';
-import { useSiteAssets } from '../../../src/features/sites/hooks/useSiteAssets';
-import { SiteHealthBadge } from '../../../src/features/sites/components/SiteHealthBadge';
-import { useAmbientLatest } from '../../../src/features/ambient/hooks/useAmbientLatest';
-import { AmbientTile } from '../../../src/features/ambient/components/AmbientTile';
-import { AmbientTrendChart } from '../../../src/features/ambient/components/AmbientTrendChart';
-import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
+import { Colors, Radius, Shadow } from '@/src/lib/theme';
+import { P } from '@/src/lib/authz';
+import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
+import { useSiteDetail } from '@/src/features/sites/hooks/useSiteDetail';
+import { useSiteDashboard } from '@/src/features/sites/hooks/useSiteDashboard';
+import { SiteActiveIncidentsWidget } from '@/src/features/incidents/components/SiteActiveIncidentsWidget';
+import { useSiteAssets } from '@/src/features/sites/hooks/useSiteAssets';
+import { SiteHealthBadge } from '@/src/features/sites/components/SiteHealthBadge';
+import { useAmbientLatest } from '@/src/features/ambient/hooks/useAmbientLatest';
+import { AmbientTile } from '@/src/features/ambient/components/AmbientTile';
+import { AmbientTrendChart } from '@/src/features/ambient/components/AmbientTrendChart';
+import { BatteryAssetDto } from '@/src/features/batteries/types/battery.types';
 
 export default function CustomerSiteDetailScreen() {
   return (

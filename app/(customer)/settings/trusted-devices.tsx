@@ -1,9 +1,9 @@
 import React from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useTrustedDevices } from '../../../src/features/account/hooks/useTrustedDevices';
-import { TrustedDeviceCard } from '../../../src/features/account/components/TrustedDeviceCard';
-import { handleErrorApi } from '../../../src/lib/errors';
-import { Colors } from '../../../src/lib/theme';
+import { useTrustedDevices } from '@/src/features/account/hooks/useTrustedDevices';
+import { TrustedDeviceCard } from '@/src/features/account/components/TrustedDeviceCard';
+import { handleErrorApi } from '@/src/lib/errors';
+import { Colors } from '@/src/lib/theme';
 
 export default function TrustedDevicesScreen() {
   const { devices, revokeOne, revokeAll } = useTrustedDevices();

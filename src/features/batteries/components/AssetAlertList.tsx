@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Shadow, Solar } from '../../../lib/theme';
+import { Colors, Radius, Shadow, Solar } from '@/src/lib/theme';
 import { AlertDto } from '../types/alert.types';
 import {
   AlertSeverityEnum,
   AlertStatusEnum,
   AnomalyTypeEnum,
-} from '../../../shared/enums/alert.enum';
+} from '@/src/shared/enums/alert.enum';
 
 const SEVERITY_STYLE: Record<AlertSeverityEnum, { label: string; color: string; bg: string }> = {
   [AlertSeverityEnum.Info]: { label: 'Info', color: Colors.info, bg: Colors.infoLight },

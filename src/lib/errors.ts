@@ -1,5 +1,5 @@
 import { Alert } from 'react-native';
-import { CommonResponse } from '../types/api.types';
+import { CommonResponse } from '@/src/types/api.types';
 
 export class HttpError extends Error {
   statusCode: number;

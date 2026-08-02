@@ -3,8 +3,8 @@ import { router, usePathname } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '../../../lib/theme';
-import { useUnreadCount } from '../../notifications/hooks/useNotifications';
+import { Colors } from '@/src/lib/theme';
+import { useUnreadCount } from '@/src/features/notifications/hooks/useNotifications';
 import { useStaffProfile } from '../hooks/useStaffProfile';
 
 interface Props {

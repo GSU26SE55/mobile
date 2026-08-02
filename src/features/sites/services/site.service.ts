@@ -1,7 +1,7 @@
-import { axiosInstance } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { CommonResponse, PaginationResponse } from '../../../types/api.types';
-import { BatteryAssetDto } from '../../batteries/types/battery.types';
+import { axiosInstance } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { CommonResponse, PaginationResponse } from '@/src/types/api.types';
+import { BatteryAssetDto } from '@/src/features/batteries/types/battery.types';
 import {
   SiteDto,
   SiteDashboardDto,

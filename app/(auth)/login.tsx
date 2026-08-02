@@ -1,8 +1,8 @@
 import { Link } from 'expo-router';
 import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LoginForm } from '../../src/features/auth/components/LoginForm';
-import { GoogleSignInButton } from '../../src/features/auth/components/GoogleSignInButton';
+import { LoginForm } from '@/src/features/auth/components/LoginForm';
+import { GoogleSignInButton } from '@/src/features/auth/components/GoogleSignInButton';
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();

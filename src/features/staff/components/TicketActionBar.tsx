@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors, Shadow, ShadowPrimary } from '../../../lib/theme';
-import { TicketStatusEnum } from '../../tickets/types/ticket.types';
+import { Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
+import { TicketStatusEnum } from '@/src/features/tickets/types/ticket.types';
 
 interface Props {
   status: TicketStatusEnum;

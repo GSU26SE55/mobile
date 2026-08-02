@@ -3,19 +3,19 @@ import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useLogout } from '../../../src/features/auth/hooks/useLogout';
-import { useProfile } from '../../../src/features/profile/hooks/useProfile';
-import { useUpdateProfile } from '../../../src/features/profile/hooks/useUpdateProfile';
-import { useUploadAvatar } from '../../../src/features/profile/hooks/useUploadAvatar';
-import { useTickets } from '../../../src/features/tickets/hooks/useTickets';
-import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
-import { useMyAlerts } from '../../../src/features/batteries/hooks/useMyAlerts';
-import { AlertStatusEnum } from '../../../src/shared/enums/alert.enum';
-import { handleErrorApi } from '../../../src/lib/errors';
-import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
-import { Colors, Solar } from '../../../src/lib/theme';
-import { ProfileForm } from '../../../src/features/profile/components/ProfileForm';
-import { EnergyBackdrop, GlassSurface } from '../../../src/features/batteries/components/EnergyBackdrop';
+import { useLogout } from '@/src/features/auth/hooks/useLogout';
+import { useProfile } from '@/src/features/profile/hooks/useProfile';
+import { useUpdateProfile } from '@/src/features/profile/hooks/useUpdateProfile';
+import { useUploadAvatar } from '@/src/features/profile/hooks/useUploadAvatar';
+import { useTickets } from '@/src/features/tickets/hooks/useTickets';
+import { useMyBatteryAssets } from '@/src/features/batteries/hooks/useMyBatteryAssets';
+import { useMyAlerts } from '@/src/features/batteries/hooks/useMyAlerts';
+import { AlertStatusEnum } from '@/src/shared/enums/alert.enum';
+import { handleErrorApi } from '@/src/lib/errors';
+import { BatteryAssetDto } from '@/src/features/batteries/types/battery.types';
+import { Colors, Solar } from '@/src/lib/theme';
+import { ProfileForm } from '@/src/features/profile/components/ProfileForm';
+import { EnergyBackdrop, GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
 
 const BATTERY_STATUS_MAP: Record<number, { label: string; color: string }> = {
   1: { label: 'Đang hoạt động', color: Colors.success },

@@ -1,8 +1,8 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Shadow } from '../../../lib/theme';
-import { AlertSeverityEnum } from '../../../shared/enums/alert.enum';
+import { Colors, Shadow } from '@/src/lib/theme';
+import { AlertSeverityEnum } from '@/src/shared/enums/alert.enum';
 import {
   EnvironmentalIncidentDto,
   EnvironmentalIncidentTypeEnum,

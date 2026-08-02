@@ -3,20 +3,20 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { BadgeColors, Colors, Shadow } from '../../../src/lib/theme';
-import { useBatteryAsset } from '../../../src/features/batteries/hooks/useBatteryAsset';
-import { useBatteryAssetRealtime } from '../../../src/features/batteries/hooks/useBatteryAssetRealtime';
-import { useBatterySensorStream } from '../../../src/features/batteries/hooks/useBatterySensorStream';
-import { useAssetAlerts } from '../../../src/features/batteries/hooks/useAssetAlerts';
-import { useCascadeRisk } from '../../../src/features/batteries/hooks/useCascadeRisk';
-import { BatteryInfoCard } from '../../../src/features/batteries/components/BatteryInfoCard';
-import { BatteryRealtimeCard } from '../../../src/features/batteries/components/BatteryRealtimeCard';
-import { CascadeRiskBadge } from '../../../src/features/batteries/components/CascadeRiskBadge';
-import { SensorChart } from '../../../src/features/batteries/components/SensorChart';
-import { ChargeDischargeChart } from '../../../src/features/batteries/components/ChargeDischargeChart';
-import { AssetAlertList } from '../../../src/features/batteries/components/AssetAlertList';
-import { P } from '../../../src/lib/authz';
-import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
+import { BadgeColors, Colors, Shadow } from '@/src/lib/theme';
+import { useBatteryAsset } from '@/src/features/batteries/hooks/useBatteryAsset';
+import { useBatteryAssetRealtime } from '@/src/features/batteries/hooks/useBatteryAssetRealtime';
+import { useBatterySensorStream } from '@/src/features/batteries/hooks/useBatterySensorStream';
+import { useAssetAlerts } from '@/src/features/batteries/hooks/useAssetAlerts';
+import { useCascadeRisk } from '@/src/features/batteries/hooks/useCascadeRisk';
+import { BatteryInfoCard } from '@/src/features/batteries/components/BatteryInfoCard';
+import { BatteryRealtimeCard } from '@/src/features/batteries/components/BatteryRealtimeCard';
+import { CascadeRiskBadge } from '@/src/features/batteries/components/CascadeRiskBadge';
+import { SensorChart } from '@/src/features/batteries/components/SensorChart';
+import { ChargeDischargeChart } from '@/src/features/batteries/components/ChargeDischargeChart';
+import { AssetAlertList } from '@/src/features/batteries/components/AssetAlertList';
+import { P } from '@/src/lib/authz';
+import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
 
 const STATUS_META: Record<number, { label: string; bg: string; text: string }> = {
   1: { label: 'Hoạt động', bg: BadgeColors.ok.bg, text: BadgeColors.ok.text },

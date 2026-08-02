@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, Pressable, View } from 'react-native';
 import { useForgotPassword } from '../hooks/useForgotPassword';
 import { loginSchema } from '../schemas/login.schema';
-import { HttpError, EntityError } from '../../../lib/errors';
-import { Colors } from '../../../lib/theme';
+import { HttpError, EntityError } from '@/src/lib/errors';
+import { Colors } from '@/src/lib/theme';
 
 interface Props { onSuccess: (email: string) => void; }
 

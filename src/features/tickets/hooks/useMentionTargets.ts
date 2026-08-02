@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ticketService } from '../services/ticket.service';
-import { useSessionStore } from '../../../stores/sessionStore';
+import { useSessionStore } from '@/src/stores/sessionStore';
 
 export interface MentionTarget {
   /** userId — BE nhận mention qua { userId, displayName }, không parse '@' từ body. */

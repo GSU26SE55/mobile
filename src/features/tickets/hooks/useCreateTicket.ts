@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { KEY } from '../../../lib/queryKeys';
+import { KEY } from '@/src/lib/queryKeys';
 import { ticketService } from '../services/ticket.service';
 import { CreateTicketPayload } from '../types/ticket.types';
 

@@ -1,6 +1,6 @@
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 import { TicketCommentDTO } from '../types/ticket.types';
 
 interface Props {

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
-import { useSendPhoneOtp } from '../../../src/features/account/hooks/useSendPhoneOtp';
-import { useVerifyPhoneOtp } from '../../../src/features/account/hooks/useVerifyPhoneOtp';
-import { PhoneVerifyForm } from '../../../src/features/account/components/PhoneVerifyForm';
-import { handleErrorApi } from '../../../src/lib/errors';
-import { PhoneOtpInput } from '../../../src/features/account/schemas/phoneVerify.schema';
+import { useSendPhoneOtp } from '@/src/features/account/hooks/useSendPhoneOtp';
+import { useVerifyPhoneOtp } from '@/src/features/account/hooks/useVerifyPhoneOtp';
+import { PhoneVerifyForm } from '@/src/features/account/components/PhoneVerifyForm';
+import { handleErrorApi } from '@/src/lib/errors';
+import { PhoneOtpInput } from '@/src/features/account/schemas/phoneVerify.schema';
 
 export default function PhoneVerifyScreen() {
   const sendOtp = useSendPhoneOtp();

@@ -11,11 +11,11 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '../../../src/lib/theme';
-import { BlogCard } from '../../../src/features/blog/components/BlogCard';
-import { BlogEmptyState } from '../../../src/features/blog/components/BlogEmptyState';
-import { useBlogInfiniteList } from '../../../src/features/blog/hooks/useBlogInfiniteList';
-import type { BlogPostSummaryDTO } from '../../../src/features/blog/types/blog.types';
+import { Colors } from '@/src/lib/theme';
+import { BlogCard } from '@/src/features/blog/components/BlogCard';
+import { BlogEmptyState } from '@/src/features/blog/components/BlogEmptyState';
+import { useBlogInfiniteList } from '@/src/features/blog/hooks/useBlogInfiniteList';
+import type { BlogPostSummaryDTO } from '@/src/features/blog/types/blog.types';
 
 export default function CustomerBlogListScreen() {
   const insets = useSafeAreaInsets();

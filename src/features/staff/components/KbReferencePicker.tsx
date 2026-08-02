@@ -2,11 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Shadow } from '../../../lib/theme';
-import { KbReferenceTypeEnum, KbReferenceTypeLabel } from '../../../shared/enums/kb.enum';
-import { useKbSuggest } from '../../kb/hooks/useKbSuggest';
-import { useAddKbRef } from '../../kb/hooks/useAddKbRef';
-import { KbSuggestCard } from '../../kb/components/KbSuggestCard';
+import { Colors, Shadow } from '@/src/lib/theme';
+import { KbReferenceTypeEnum, KbReferenceTypeLabel } from '@/src/shared/enums/kb.enum';
+import { useKbSuggest } from '@/src/features/kb/hooks/useKbSuggest';
+import { useAddKbRef } from '@/src/features/kb/hooks/useAddKbRef';
+import { KbSuggestCard } from '@/src/features/kb/components/KbSuggestCard';
 
 interface Props {
   visible: boolean;

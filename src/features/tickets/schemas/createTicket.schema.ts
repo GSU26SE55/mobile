@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TicketCategoryEnum } from '../../../shared/enums/ticket.enum';
+import { TicketCategoryEnum } from '@/src/shared/enums/ticket.enum';
 
 // Khớp BE TicketCreateCommand.ValidateAsync (POST /api/customer/tickets).
 // GH-866: batteryAssetIds là MẢNG bắt buộc (≥1, distinct); incidentDetectedAt là

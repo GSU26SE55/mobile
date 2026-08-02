@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
-import { BadgeColors, Colors, Shadow } from '../../lib/theme';
+import { BadgeColors, Colors, Shadow } from '@/src/lib/theme';
 
 // Hai component card tổng quan:
 //  - StatTrio     : layout 3-cột (2 tile tròn + 1 vòng giữa) — staff dashboard vẫn dùng.

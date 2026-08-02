@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { addPushResponseListener, PushData } from '../../../lib/push';
+import { addPushResponseListener, PushData } from '@/src/lib/push';
 import { useMarkNotificationOpened } from '../hooks/useNotifications';
 
 /**

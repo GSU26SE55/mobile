@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Shadow } from '../../lib/theme';
+import { Colors, Shadow } from '@/src/lib/theme';
 
 interface Props {
   visible: boolean;

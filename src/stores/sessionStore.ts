@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { SessionUser } from '../types/session.types';
+import { SessionUser } from '@/src/types/session.types';
 
 interface SessionState {
   user: SessionUser | null;

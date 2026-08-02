@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { authService } from '../services/auth.service';
-import { handleErrorApi } from '../../../lib/errors';
+import { handleErrorApi } from '@/src/lib/errors';
 
 // #AUTH-51: Device A gửi cross-device 2FA request. Nhận requestId để Device B dùng.
 export function useRequestCrossDevice2fa() {

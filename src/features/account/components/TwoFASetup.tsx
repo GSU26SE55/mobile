@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 
 interface Props {
   secret: string;

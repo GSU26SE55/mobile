@@ -1,8 +1,8 @@
 import { Redirect, Stack } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
-import { useAuthContext } from '../../src/context/authContext';
-import { useSessionStore } from '../../src/stores/sessionStore';
-import { Colors } from '../../src/lib/theme';
+import { useAuthContext } from '@/src/context/authContext';
+import { useSessionStore } from '@/src/stores/sessionStore';
+import { Colors } from '@/src/lib/theme';
 
 export default function CustomerLayout() {
   const { isHydrating } = useAuthContext();

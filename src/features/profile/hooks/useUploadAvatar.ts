@@ -1,9 +1,9 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
-import { fileStorageService } from '../../file-storage/services/file-storage.service';
-import { validateFile } from '../../file-storage/utils/fileValidation';
-import { FilePurposeEnum } from '../../file-storage/enums/file-storage.enum';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
+import { fileStorageService } from '@/src/features/file-storage/services/file-storage.service';
+import { validateFile } from '@/src/features/file-storage/utils/fileValidation';
+import { FilePurposeEnum } from '@/src/features/file-storage/enums/file-storage.enum';
 import { profileService } from '../services/profile.service';
 
 export function useUploadAvatar() {

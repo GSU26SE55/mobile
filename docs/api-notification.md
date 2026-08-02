@@ -147,7 +147,7 @@ Phân loại notification — quyết định template, ma trận kênh (`TypeCh
 (`NotificationCategoryEnum`), và có thuộc diện critical (bypass quiet hours + hạn mức + giữ vĩnh
 viễn khi retention dọn) hay không.
 
-**35 giá trị.** Số hiệu **không liên tục** — `99` reserved cho `System`.
+**35 giá trị** (1–34 liên tục + `System = 99`). Số hiệu **không liên tục** — `99` reserved cho `System`.
 
 | Giá trị | Int | Nhóm (category) | Critical? | Ý nghĩa |
 |---|---|---|---|---|
@@ -175,8 +175,8 @@ viễn khi retention dọn) hay không.
 | `ParticipantAdded` | 22 | Chat | | User được thêm làm participant ticket |
 | `ParticipantRemoved` | 23 | Chat | | User bị xoá khỏi participant ticket |
 | `ParticipantRoleChanged` | 24 | Chat | | Role/type của participant trên ticket bị đổi |
-| `BlogGenerationCompleted` | 25 | Account | | **GH-671** — AI blog generation hoàn thành thành công (status=Draft) |
-| `BlogGenerationFailed` | 26 | Account | | **GH-671** — AI blog generation thất bại |
+| `BlogGenerationCompleted` | 25 | Account | | **GH-671 (module Blog)** — AI sinh blog xong (`status=Draft`). Gửi **InApp cho chính người bấm generate** (`BlogGenerationStatusConsumer` dùng `evt.RequestedByUserId`) |
+| `BlogGenerationFailed` | 26 | Account | | **GH-671 (module Blog)** — AI sinh blog thất bại. Gửi **InApp cho chính người bấm generate** |
 | `ChatEscalatedToAdmin` | 27 | **SLA** | ✅ | **Sprint 6.2 NOTI-03 (#674)** — saga `ChatEscalationReview` timeout 30' (Manager không ACK) → escalate lên Admin |
 | `TicketApproved` | 28 | Ticket | | **Sprint 6.2 NOTI-07 (#678)** — Manager duyệt kết quả, ticket vào `CLOSED_PENDING_RATE` chờ Customer đánh giá |
 | `TicketRejected` | 29 | Ticket | | **Sprint 6.2 NOTI-07** — kết quả resolve bị trả lại (→ Staff), HOẶC ticket đóng do ngoài scope (→ Customer) |
@@ -184,12 +184,29 @@ viễn khi retention dọn) hay không.
 | `TicketRatingRequested` | 31 | Ticket | | **Sprint 6.2 NOTI-07** — nhắc Customer đánh giá ticket đang treo |
 | `BatteryAnomalyWarning` | 32 | Battery | | **Sprint 6.2 NOTI-08 (#679)** — bất thường pin mức **Warning** (spec §3.4 T#12) → InApp + Push |
 | `BatteryAnomalyInfo` | 33 | Battery | | **Sprint 6.2 NOTI-08** — bất thường pin mức **Info** (spec §3.4 T#11) → chỉ InApp |
-| `TicketMerged` | 34 | Ticket | | **GH-699.1 / GH-83** — source ticket đã được gộp vào master ticket. Giá trị đổi 27→34 để bỏ trùng với `ChatEscalatedToAdmin` |
+| `TicketMerged` | **34** | Ticket | | **GH-83** — ticket của Customer bị Manager gộp vào ticket khác (`POST /api/admin/tickets/{id}/merge`). Consumer `TicketMergedConsumer` báo **Customer sở hữu ticket nguồn**; bỏ qua nếu event không có customerId. Không có trong channel map ⇒ dùng mặc định **chỉ InApp** |
 | `System` | 99 | Account | | Notification hệ thống tổng quát (broadcast, maintenance) + **bản tin digest tổng hợp** |
 
-> ⚠️ **FE/Mobile phải mirror đủ 35 giá trị.** Blog (25/26) chèn giữa nên `ChatEscalatedToAdmin`
-> trở đi lùi 2 bậc (ChatEscalatedToAdmin=27, …, BatteryAnomalyInfo=33). `TicketMerged=34` (GH-83,
-> trước là 27 trùng `ChatEscalatedToAdmin` → đổi sang 34).
+> ⚠️ **GH-83 — `TicketMerged` từng trùng giá trị `27` với `ChatEscalatedToAdmin`.** Vì trùng khoá, `TicketMerged` **không khai báo được** trong `NotificationCategoryMap` và biến mất khỏi `GET /api/notification-preferences/categories`. Đã đổi sang **`34`**. FE/Mobile mirror giá trị `27` cho `TicketMerged` phải sửa; `27` giờ **chỉ** là `ChatEscalatedToAdmin`.
+>
+> Cùng đợt: `BlogGenerationCompleted (25)` / `BlogGenerationFailed (26)` trước đây **thiếu khai báo** trong `NotificationCategoryMap` — vẫn rơi vào nhánh mặc định `Account` nên runtime không đổi, nhưng chúng **không xuất hiện** trong `GET /categories`. Nay đã khai báo tường minh.
+
+> ⚠️ **FE/Mobile phải mirror đủ 35 giá trị** (1–34 + `System = 99`).
+>
+> **Sửa 2026-07-31 — số hiệu ĐÃ ĐỔI:** 7 giá trị của Sprint 6.2 là **27–33**, KHÔNG phải 25–31 như
+> bản trước ghi. Module Blog (`GH-671`) chiếm mất **25** và **26**, đẩy toàn bộ nhóm Sprint 6.2 lên
+> 2 bậc. FE/Mobile nào đã mirror theo bản cũ **phải sửa lại**, nếu không sẽ hiển thị sai loại
+> thông báo (ví dụ coi `ChatEscalatedToAdmin` thành `BlogGenerationCompleted`).
+>
+> **Cập nhật 2026-08-01 — `BlogGenerationCompleted`/`BlogGenerationFailed` NAY đã được khai báo
+> tường minh** trong `NotificationCategoryMap` (nhóm `Account`). Trước đó hai type này thiếu khai báo
+> và rơi vào nhánh dự phòng của `Resolve()` — vốn cũng trả `Account`, nên **hành vi lúc chạy không
+> đổi**; điều đổi là nó không còn im lặng nữa và test bao `EveryNotificationType_HasExplicitCategory`
+> đã xanh trở lại.
+>
+> Vì sao xếp nhóm `Account` chứ không phải một nhóm riêng: đây là **phản hồi cho một hành động người
+> dùng tự khởi xướng** (bấm nút generate), không phải cảnh báo vận hành như `Battery`/`SLA`. Người
+> nhận cũng chính là người bấm, không phát tán cho ai khác.
 >
 > **Không có type cho cảnh báo bảo mật** (đăng nhập lạ / refresh-token reuse). Đây là **cố ý**:
 > hai luồng đó đi thẳng `AuthService → EmailService` như OTP, không qua NotificationService, nên
@@ -1799,6 +1816,7 @@ cố hạ tầng phụ trợ sẽ làm câm luôn cả cảnh báo an toàn.
 | `AccountActivated` | InApp + Email |
 | `AdminInvite` | **chỉ Email** |
 | `BatteryAnomalyInfo`, `System` | **chỉ InApp** |
+| `TicketMerged` | **chỉ InApp** (không khai báo trong ma trận ⇒ rơi vào fallback) |
 | Type không khai báo | fallback **chỉ InApp** |
 
 > **Sprint 6.2 NOTI-14 (#685) bổ sung 14 type còn thiếu** vào ma trận — trước đó chúng rơi vào
@@ -2365,6 +2383,20 @@ vẫn phải qua SQL hoặc seeder.
 
 ## Changelog
 
+### 2026-08-02 — Đối chiếu doc với codebase (audit)
+
+Rà `NotificationTypeEnum` / `NotificationCategoryMap` / `DefaultTypeChannelMatrix` / routes so với code.
+**Routes, 5 enum còn lại và toàn bộ DTO khớp 100%.** Một sai lệch:
+
+- 🔴 **Thiếu `TicketMerged = 34`** trong bảng enum. Type này **đã wired đầy đủ** (`TicketMergedConsumer` +
+  unit test, producer là `POST /api/admin/tickets/{id}/merge` bên TicketService) nhưng chưa có trong doc.
+  Category `Ticket`; **không** khai báo trong `TypeChannelMatrix` ⇒ rơi vào mặc định **chỉ InApp**.
+- ⚠️ **GH-83:** `TicketMerged` trước đây **trùng giá trị `27`** với `ChatEscalatedToAdmin` ⇒ trùng khoá
+  dictionary nên không khai báo được trong `NotificationCategoryMap` và **biến mất khỏi**
+  `GET /api/notification-preferences/categories`. Đã tách sang `34`. **FE/Mobile mirror `TicketMerged = 27` phải sửa.**
+- Cùng đợt GH-83: `BlogGenerationCompleted (25)` / `BlogGenerationFailed (26)` trước thiếu khai báo trong
+  `NotificationCategoryMap` — runtime không đổi (vẫn fallback `Account`) nhưng không hiện ở `GET /categories`.
+
 ### 2026-07-30 — Sprint 6.3: Notification production-hardening (`#701..#717`, 16/17 task)
 
 **Endpoint mới (9):**
@@ -2446,9 +2478,10 @@ user chỉ thấy khi tự poll REST. Cộng nhiều **orphan event** (publish n
 - 2 template email thiếu (NOTI-09): `OtpPasswordReset.html`, `OtpEmailChange.html` — trước đó fallback
   về `OtpRegister.html` khiến user reset mật khẩu nhận email nội dung "đăng ký tài khoản".
 
-**Enum mới (7):** `ChatEscalatedToAdmin = 25`, `TicketApproved = 26`, `TicketRejected = 27`,
-`TicketReopened = 28`, `TicketRatingRequested = 29`, `BatteryAnomalyWarning = 30`,
-`BatteryAnomalyInfo = 31`.
+**Enum mới (7)** — *số hiệu đã sửa 2026-07-31, xem cảnh báo ở bảng enum trên:*
+`ChatEscalatedToAdmin = 27`, `TicketApproved = 28`, `TicketRejected = 29`,
+`TicketReopened = 30`, `TicketRatingRequested = 31`, `BatteryAnomalyWarning = 32`,
+`BatteryAnomalyInfo = 33`. (25 và 26 thuộc module Blog `GH-671`, không phải Sprint 6.2.)
 
 **SỬA:**
 - `TicketAssignedEvent` / `TicketResolvedEvent` thêm `CustomerId`; `TicketCreatedEvent` thêm

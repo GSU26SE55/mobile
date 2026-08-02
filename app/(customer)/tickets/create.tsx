@@ -2,16 +2,16 @@ import React, { useState } from 'react';
 import { StyleSheet, View, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { CreateTicketStepper, detectedLabelToIso } from '../../../src/features/tickets/components/CreateTicketStepper';
-import { CreateTicketSuccess } from '../../../src/features/tickets/components/CreateTicketSuccess';
-import { useCreateTicket } from '../../../src/features/tickets/hooks/useCreateTicket';
-import { createTicketSchema } from '../../../src/features/tickets/schemas/createTicket.schema';
-import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
-import { TicketCategoryEnum } from '../../../src/features/tickets/types/ticket.types';
-import type { UploadedTicketAttachment } from '../../../src/features/tickets/types/ticket.types';
-import { Colors } from '../../../src/lib/theme';
-import { P } from '../../../src/lib/authz';
-import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
+import { CreateTicketStepper, detectedLabelToIso } from '@/src/features/tickets/components/CreateTicketStepper';
+import { CreateTicketSuccess } from '@/src/features/tickets/components/CreateTicketSuccess';
+import { useCreateTicket } from '@/src/features/tickets/hooks/useCreateTicket';
+import { createTicketSchema } from '@/src/features/tickets/schemas/createTicket.schema';
+import { useMyBatteryAssets } from '@/src/features/batteries/hooks/useMyBatteryAssets';
+import { TicketCategoryEnum } from '@/src/features/tickets/types/ticket.types';
+import type { UploadedTicketAttachment } from '@/src/features/tickets/types/ticket.types';
+import { Colors } from '@/src/lib/theme';
+import { P } from '@/src/lib/authz';
+import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
 
 export default function CreateTicketScreen() {
   return (

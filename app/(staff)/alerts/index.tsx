@@ -3,13 +3,13 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Colors, Shadow } from '../../../src/lib/theme';
-import { useAlerts } from '../../../src/features/batteries/hooks/useAlerts';
-import { AlertDto, formatMeasure } from '../../../src/features/batteries/types/alert.types';
-import { AlertSeverityEnum, AlertStatusEnum } from '../../../src/shared/enums/alert.enum';
-import { ANOMALY_LABEL } from '../../../src/features/batteries/components/AssetAlertList';
-import { useIncidents } from '../../../src/features/incidents/hooks/useIncidents';
-import { IncidentList } from '../../../src/features/incidents/components/IncidentList';
+import { Colors, Shadow } from '@/src/lib/theme';
+import { useAlerts } from '@/src/features/batteries/hooks/useAlerts';
+import { AlertDto, formatMeasure } from '@/src/features/batteries/types/alert.types';
+import { AlertSeverityEnum, AlertStatusEnum } from '@/src/shared/enums/alert.enum';
+import { ANOMALY_LABEL } from '@/src/features/batteries/components/AssetAlertList';
+import { useIncidents } from '@/src/features/incidents/hooks/useIncidents';
+import { IncidentList } from '@/src/features/incidents/components/IncidentList';
 
 type Segment = 'alerts' | 'incidents';
 

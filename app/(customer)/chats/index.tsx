@@ -1,8 +1,8 @@
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
-import { Colors } from '../../../src/lib/theme';
-import { useMyChats } from '../../../src/features/tickets/hooks/useChatInbox';
-import { ChatInboxList } from '../../../src/features/tickets/components/ChatInboxList';
+import { Colors } from '@/src/lib/theme';
+import { useMyChats } from '@/src/features/tickets/hooks/useChatInbox';
+import { ChatInboxList } from '@/src/features/tickets/components/ChatInboxList';
 
 // GH-68 — inbox chat của tôi (FLAT, BE không group). Tap → mở ticket chứa chat.
 export default function ChatInboxScreen() {

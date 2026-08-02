@@ -1,8 +1,8 @@
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { Colors } from '../../../src/lib/theme';
-import { ScreenHeader } from '../../../src/shared/components/ScreenHeader';
-import { usePermissionCatalog } from '../../../src/features/permissions/hooks/usePermissionCatalog';
-import { PermissionCatalogList } from '../../../src/features/permissions/components/PermissionCatalogList';
+import { Colors } from '@/src/lib/theme';
+import { ScreenHeader } from '@/src/shared/components/ScreenHeader';
+import { usePermissionCatalog } from '@/src/features/permissions/hooks/usePermissionCatalog';
+import { PermissionCatalogList } from '@/src/features/permissions/components/PermissionCatalogList';
 
 // GH-68 — catalog permission read-only cho Staff (trong Công cụ kỹ thuật).
 export default function StaffPermissionCatalogScreen() {

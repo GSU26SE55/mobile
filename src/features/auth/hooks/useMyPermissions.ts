@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { QUERY_KEY } from '../../../lib/queryKeys';
-import { useSessionStore } from '../../../stores/sessionStore';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
+import { useSessionStore } from '@/src/stores/sessionStore';
 import { permissionService } from '../services/permission.service';
 
 /**

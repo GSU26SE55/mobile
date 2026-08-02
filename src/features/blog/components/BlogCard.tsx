@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors, Shadow } from '../../../lib/theme';
+import { Colors, Shadow } from '@/src/lib/theme';
 import { BlogOriginLabel, BlogPostOriginEnum } from '../enums/blog.enum';
 import type { BlogPostSummaryDTO } from '../types/blog.types';
 

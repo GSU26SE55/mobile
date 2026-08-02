@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import EventSource from 'react-native-sse';
-import { BASE_URL } from '../../../lib/axios';
-import { getAccessToken } from '../../../lib/secureStore';
-import { ENDPOINTS } from '../../../lib/endpoints';
+import { BASE_URL } from '@/src/lib/axios';
+import { getAccessToken } from '@/src/lib/secureStore';
+import { ENDPOINTS } from '@/src/lib/endpoints';
 import { BatterySummaryDto, LiveReadingDto } from '../types/live-reading.types';
 import {
   BatteryStatsDto,

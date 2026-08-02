@@ -9,8 +9,8 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors } from '../../../lib/theme';
-import { HttpError, EntityError } from '../../../lib/errors';
+import { Colors } from '@/src/lib/theme';
+import { HttpError, EntityError } from '@/src/lib/errors';
 import { useLogin } from '../hooks/useLogin';
 import { loginSchema } from '../schemas/login.schema';
 

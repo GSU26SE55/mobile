@@ -1,7 +1,7 @@
-import { axiosInstance } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { getDeviceInfo, getDevicePlatform, getExpoPushToken } from '../../../lib/push';
-import { CommonResponse } from '../../../types/api.types';
+import { axiosInstance } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { getDeviceInfo, getDevicePlatform, getExpoPushToken } from '@/src/lib/push';
+import { CommonResponse } from '@/src/types/api.types';
 import {
   RegisterDeviceTokenPayload,
   UnregisterDeviceTokenPayload,

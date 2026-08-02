@@ -3,17 +3,17 @@ import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Colors, Solar } from '../../../src/lib/theme';
-import { useMyAlerts } from '../../../src/features/batteries/hooks/useMyAlerts';
-import { AlertDto, formatMeasure } from '../../../src/features/batteries/types/alert.types';
+import { Colors, Solar } from '@/src/lib/theme';
+import { useMyAlerts } from '@/src/features/batteries/hooks/useMyAlerts';
+import { AlertDto, formatMeasure } from '@/src/features/batteries/types/alert.types';
 import {
   AlertSeverityEnum,
   AlertStatusEnum,
-} from '../../../src/shared/enums/alert.enum';
-import { ANOMALY_LABEL } from '../../../src/features/batteries/components/AssetAlertList';
-import { useMyIncidents } from '../../../src/features/incidents/hooks/useMyIncidents';
-import { IncidentList } from '../../../src/features/incidents/components/IncidentList';
-import { EnergyBackdrop, GlassSurface } from '../../../src/features/batteries/components/EnergyBackdrop';
+} from '@/src/shared/enums/alert.enum';
+import { ANOMALY_LABEL } from '@/src/features/batteries/components/AssetAlertList';
+import { useMyIncidents } from '@/src/features/incidents/hooks/useMyIncidents';
+import { IncidentList } from '@/src/features/incidents/components/IncidentList';
+import { EnergyBackdrop, GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
 
 type FilterKey = 'all' | AlertSeverityEnum;
 type Segment = 'alerts' | 'incidents';

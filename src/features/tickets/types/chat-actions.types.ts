@@ -1,7 +1,7 @@
 // Edit/Delete/Dịch/Ghi âm cho ticket chat — nhân bản types từ Web
 // (shared/types/chat.types.ts) vì mobile chưa có backend riêng, dùng chung endpoint.
-import type { ChatAiIntentEnum } from '../../../shared/enums/chat.enum';
-import type { ActorRoleEnum } from '../../../shared/enums/ticket.enum';
+import type { ChatAiIntentEnum } from '@/src/features/tickets/enums/chat.enum';
+import type { ActorRoleEnum } from '@/src/shared/enums/ticket.enum';
 
 export interface UpdateChatPayload {
   body: string;

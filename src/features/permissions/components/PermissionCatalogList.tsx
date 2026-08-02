@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { SectionList, StyleSheet, Text, View } from 'react-native';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 import { PermissionDto } from '../types/permission.types';
 
 interface Props {

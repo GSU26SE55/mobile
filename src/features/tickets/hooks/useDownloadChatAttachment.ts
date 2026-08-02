@@ -2,9 +2,9 @@ import { useMutation } from '@tanstack/react-query';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Linking } from 'react-native';
-import { BASE_URL } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { getAccessToken } from '../../../lib/secureStore';
+import { BASE_URL } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { getAccessToken } from '@/src/lib/secureStore';
 import { ticketChatActionsService } from '../services/ticketChatActions.service';
 
 // GH-68 — tải attachment chat qua virus-scan gate rồi mở share sheet.

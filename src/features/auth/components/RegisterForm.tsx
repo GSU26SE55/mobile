@@ -8,8 +8,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Colors } from '../../../lib/theme';
-import { HttpError, EntityError } from '../../../lib/errors';
+import { Colors } from '@/src/lib/theme';
+import { HttpError, EntityError } from '@/src/lib/errors';
 import { useRegister } from '../hooks/useRegister';
 import { registerSchema } from '../schemas/register.schema';
 

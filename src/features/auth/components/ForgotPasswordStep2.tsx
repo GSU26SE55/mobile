@@ -3,8 +3,8 @@ import { ActivityIndicator, StyleSheet, Text, TextInput, Pressable, View } from 
 import { useVerifyResetOtp } from '../hooks/useVerifyResetOtp';
 import { useResendResetOtp } from '../hooks/useResendResetOtp';
 import { otpSchema } from '../schemas/otp.schema';
-import { HttpError, EntityError } from '../../../lib/errors';
-import { Colors } from '../../../lib/theme';
+import { HttpError, EntityError } from '@/src/lib/errors';
+import { Colors } from '@/src/lib/theme';
 
 interface Props {
   email: string;

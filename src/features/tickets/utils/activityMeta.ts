@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 
 // Meta dùng chung cho timeline hoạt động ticket: label tiếng Việt + màu + icon
 // theo NHÓM ngữ nghĩa, để phân biệt loại nhanh bằng màu thay vì đọc tên enum thô.

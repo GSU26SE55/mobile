@@ -11,11 +11,11 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useStaffTickets } from '../../../src/features/staff/hooks/useStaffTickets';
-import { TicketDTO, TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
-import { BadgeColors, Colors, Shadow } from '../../../src/lib/theme';
-import { P } from '../../../src/lib/authz';
-import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
+import { useStaffTickets } from '@/src/features/staff/hooks/useStaffTickets';
+import { TicketDTO, TicketStatusEnum } from '@/src/features/tickets/types/ticket.types';
+import { BadgeColors, Colors, Shadow } from '@/src/lib/theme';
+import { P } from '@/src/lib/authz';
+import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
 
 const PALETTE = [
   '#FF6B6B', '#F7A440', '#4ECDC4', '#45B7D1',

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { kbService } from '../services/kb.service';
 
 // GH-44 #7 — gợi ý KB theo ticket (server-driven, ≤5 bài Published). Thay useRelatedKb cũ (client-side).

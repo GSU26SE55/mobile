@@ -5,6 +5,129 @@
 > Response wrapper chuẩn: `CommonResponse<T>`
 > **ID fields:** Tất cả `id` trong response đều là `string` (UUID dạng `"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"`). Entity C# dùng `Guid` nhưng serialize thành `string` trong JSON — TypeScript dùng `string` cho mọi id field.
 
+> **Đối chiếu code 2026-08-02:** toàn bộ route, 20 enum (`AnomalyTypeEnum` 16 giá trị, `BatteryChemistryEnum`, `IotApiKeyScopeEnum` bitflag, …) và DTO **khớp với codebase**. Bổ sung 2 endpoint AI trước đây thiếu: **`GET /api/v1/anomaly-classifications`** và **`GET /api/v1/soh-predictions`** (cả hai `Admin/Manager/Staff`, xem mục AI cuối tài liệu).
+
+---
+
+## Server-side Sort (`SortBy` + `SortDir`) — cập nhật đợt này
+
+**Mục đích:** sort **toàn bộ dataset** ở server rồi mới phân trang (thay client-side sort chỉ sort 1 page hiện tại). FE bấm header cột → gửi `SortBy`/`SortDir`.
+
+**Tác dụng:** BE `ORDER BY <cột> <chiều>, Id ASC` **trước** `Skip/Take` → page trả về đúng thứ tự toàn cục. Không truyền `SortBy` → giữ nguyên default cũ. **Response shape KHÔNG đổi** — chỉ đổi thứ tự phần tử trong `items`.
+
+**Request — 2 query param mới (PascalCase, đều optional):**
+
+| Param | Type | Nullable | Default | Mô tả |
+|---|---|---|---|---|
+| `SortBy` | string | ✓ | field mặc định của endpoint | Whitelist per-endpoint; ngoài whitelist → field mặc định |
+| `SortDir` | string | ✓ | `desc` | `asc` \| `desc`; giá trị lạ → `desc` |
+
+> Sort theo cột **enum** = sort theo **giá trị số** của enum, không theo tên hiển thị.
+> Ví dụ: `GET /api/battery-assets?PageNumber=1&PageSize=20&SortBy=installDate&SortDir=desc`
+
+### `GET /api/battery-assets`
+
+| `SortBy` | Sort theo | Kiểu | Nullable |
+|---|---|---|---|
+| `serialNumber` | số serial | string | Không |
+| `batteryTypeName` | tên loại pin | string | Không |
+| `customerName` | tên khách hàng (join) | string | Không (`""` nếu không có account) |
+| `siteName` | tên site (join) | string | **Có** (null nếu asset chưa gán site) |
+| `status` | trạng thái | enum `BatteryStatusEnum` | Không |
+| `installDate` | ngày lắp | datetime | Không |
+| `createdAt` *(default)* | ngày tạo | datetime | Không |
+
+**`BatteryStatusEnum`:** `Active=1` · `Inactive=2` · `Decommissioned=3`.
+
+### `GET /api/battery-types`
+
+| `SortBy` | Sort theo | Kiểu | Nullable |
+|---|---|---|---|
+| `name` | tên loại | string | Không |
+| `manufacturer` | hãng sản xuất | string | **Có** |
+| `chemistry` | hoá học pin | enum `BatteryChemistryEnum` | Không |
+| `nominalCapacityAh` | dung lượng danh định (Ah) | decimal | Không |
+| `nominalVoltage` | điện áp danh định (V) | decimal | Không |
+| `maxCycleCount` | số chu kỳ tối đa | int | Không |
+| `createdAt` *(default)* | ngày tạo | datetime | Không |
+
+**`BatteryChemistryEnum`:** `LiFePO4=1` · `Nmc=2` · `Nca=3` · `Lco=4` · `Other=99`.
+
+### `GET /api/admin/battery/audit-logs` (áp dụng cả `GET /api/admin/alerts/audit-logs`)
+
+Query dùng `pageNumber`/`pageSize` (mặc định 50, trần 100).
+
+| `SortBy` | Sort theo | Kiểu | Nullable |
+|---|---|---|---|
+| `occurredAt` *(default)* | thời điểm xảy ra | datetime | Không |
+| `actionCode` | mã action | string | Không |
+| `severity` | mức độ | string | Không |
+| `targetDisplay` | đối tượng target | string | **Có** |
+| `actorAccountId` | account thực hiện | Guid | **Có** (null nếu system) |
+| `isSuccess` | thành công? | bool | Không |
+
+### `GET /api/admin/iot-devices`
+
+> Dùng key phân trang **`page`** (không phải `pageNumber`). Giữ param cũ `IsDescending` (bool) — có `SortDir` thì **`SortDir` thắng**.
+
+| `SortBy` | Sort theo | Kiểu | Nullable |
+|---|---|---|---|
+| `deviceCode` | mã thiết bị | string | Không |
+| `displayName` | tên hiển thị | string | Không |
+| `siteName` | tên site (join) | string | **Có** |
+| `status` | trạng thái | enum `IotDeviceStatusEnum` | Không |
+| `currentFirmwareVersion` | firmware hiện tại | string | **Có** (null nếu chưa report) |
+| `lastSeenAt` | heartbeat gần nhất | datetime | **Có** (null nếu chưa từng online) |
+| `createdAt` *(default)* | ngày tạo | datetime | Không |
+
+**`IotDeviceStatusEnum`:** `Pending=1` (chưa provision) · `Active=2` (heartbeat trong 5 phút) · `Offline=3` (mất heartbeat >5 phút) · `Disabled=4` (admin revoke key) · `Decommissioned=5` (ngưng dùng).
+
+### `GET /api/admin/iot-firmware-releases`
+
+> Dùng key phân trang **`page`**.
+
+| `SortBy` | Sort theo | Kiểu | Nullable |
+|---|---|---|---|
+| `version` | phiên bản SemVer | string | Không |
+| `hardwareRevision` | revision phần cứng | string | Không |
+| `channel` | kênh rollout | enum `IotFirmwareChannelEnum` | Không |
+| `status` | trạng thái lifecycle (rank) | derived | Không |
+| `artifactSizeBytes` | kích thước file | long | Không |
+| `createdAt` *(default)* | ngày tạo | datetime | Không |
+
+**`IotFirmwareChannelEnum`:** `Stable=1` · `Beta=2`.
+**`status` (derived rank):** entity không có field status đơn — rank tính từ `IsPublished`/`IsArchived`: `Draft=0 < Published=1 < Archived=2`. Sort `status` = sort theo rank này.
+
+### `GET /api/sites`
+
+> **Auth (đổi đợt này):** trước đây `Admin,Manager` → nay **`Admin,Manager,Staff`** (Staff chọn site khi report sự cố thủ công, GH-145). Các thao tác mutation site vẫn Admin-only.
+
+| `SortBy` | Sort theo | Kiểu | Nullable |
+|---|---|---|---|
+| `name` | tên site | string | Không |
+| `customerName` | tên khách hàng (join) | string | Không (`""` nếu không có account) |
+| `status` | trạng thái | enum `SiteStatusEnum` | Không |
+| `batteryAssetCount` | số pin thuộc site (computed) | int | Không |
+| `installDate` | ngày lắp | datetime | Không |
+| `createdAt` *(default)* | ngày tạo | datetime | Không |
+
+**`SiteStatusEnum`:** `Active=1` · `UnderMaintenance=2` · `Decommissioned=3`.
+
+### `GET /api/sites/{id}/assets`
+
+| `SortBy` | Sort theo | Kiểu | Nullable |
+|---|---|---|---|
+| `serialNumber` | số serial | string | Không |
+| `batteryTypeName` | tên loại pin | string | Không |
+| `status` | trạng thái | enum `BatteryStatusEnum` (như trên) | Không |
+| `installDate` | ngày lắp | datetime | Không |
+| `lastSensorReadingAt` | reading gần nhất | datetime | **Có** (null nếu chưa có reading) |
+| `createdAt` *(default)* | ngày tạo | datetime | Không |
+
+### `GET /api/sensor-readings/{id}/history` — cursor (Hướng B)
+
+Whitelist `SortBy`: `time` (mặc định), `voltage`, `current`, `temperature`, `socPercent` — tất cả field non-null. Chi tiết behavior (Hướng B, validation 400 khi thiếu `from`/`to`, lọc primary source) xem section [`GET /history`](#get-apisensor-readingsbatteryassetidhistory) bên dưới.
+
 ---
 
 ## Cấu trúc Response chung
@@ -114,6 +237,7 @@ Open ──→ Acknowledged ──→ Resolved
 | `AbnormalCharging` | 6 | Quá trình nạp bất thường | Charging current vượt `CurrentMaxCharge` |
 | `DeviceOffline` | 7 | Thiết bị mất kết nối | Không nhận sensor reading trong X phút |
 | `SohDegradation` | 8 | SOH giảm dưới ngưỡng (pin xuống cấp) | `SohPercent < ThresholdConfig.SohCriticalThreshold` |
+| ↑ *(dùng lại)* | 8 | **Hiệu chuẩn thiết bị IoT hết hạn** | `CalibrationExpiryNotificationBackgroundService` tạo alert **cùng mã 8**. ⚠️ **Cùng `anomalyType` nhưng KHÁC hẳn nguyên nhân** — xem ghi chú ngay dưới bảng để biết cách phân biệt |
 | `HighAmbientTemp` | 9 | Nhiệt độ môi trường xung quanh site vượt ngưỡng | Ambient `Temperature > AmbientThresholdConfig.HighAmbientTempCritical` |
 | `HighHumidity` | 10 | Độ ẩm môi trường vượt ngưỡng | Ambient `Humidity > AmbientThresholdConfig.HighHumidityCritical` |
 | `HighTempHumidityCombo` | 11 | Combo nhiệt độ cao + độ ẩm cao đồng thời | Temp ≥ `ComboTempThreshold` AND Humidity ≥ `ComboHumidityThreshold` |
@@ -122,6 +246,23 @@ Open ──→ Acknowledged ──→ Resolved
 | `EnvironmentalIncident` | 14 | Liên kết tới `EnvironmentalIncident` cấp site (smoke/fire/flood…) | Tạo từ incident raise |
 | `SensorMismatch` | 15 | BMS reading lệch IoT reading vượt ngưỡng (Sprint 7) | Cross-source mismatch check — chỉ ghép cặp `Bms ↔ IotGateway`; ΔV > 0.5V hoặc ΔT > 5°C. **Nguồn `redundant` (INA226) không đo nhiệt (temp=0 cứng) → backend skip so sánh nhiệt cho cặp chứa nó** (contract firmware, NS-09 #653) |
 | `Undertemp` | 16 | Nhiệt độ thấp hơn ngưỡng tối thiểu (Sprint Bonus NS-25 #665) | `Temperature < ThresholdConfig.TemperatureMin` (seed −10°C). Dưới `TemperatureMin − 5°C` → Critical, còn lại Warning. Sạc pin lithium dưới 0°C gây lithium plating (nguy hiểm thật). ⚠️ **Wire value cross-service** — FE cần mirror giá trị 16 |
+
+> ⚠️ **`SohDegradation` (8) được DÙNG CHO HAI VIỆC KHÁC NHAU.** `anomalyType` một mình **không đủ**
+> để phân biệt, và **`severity` cũng không đủ** (cả hai đều có thể là `Warning`). Dấu hiệu phân biệt
+> chắc chắn là **bộ ba `thresholdValue`/`actualValue`/`unit`**:
+>
+> | | SOH pin thật sự tụt | Hiệu chuẩn thiết bị IoT hết hạn |
+> |---|---|---|
+> | Sinh bởi | `AnomalyRules` (ngưỡng) · `SohPredictionBackgroundService` (AI) | `CalibrationExpiryNotificationBackgroundService` |
+> | `severity` | `Critical` (dưới `SohCriticalThreshold`) hoặc `Warning` (dưới `SohWarningThreshold`) | **luôn `Warning`** |
+> | `thresholdValue` | **có** (vd `80`) | **`null`** |
+> | `actualValue` | **có** (SOH % đo/dự đoán) | **`null`** |
+> | `unit` | `"%"` | **`null`** |
+> | `dedupWindowEndUtc` | nhánh ngưỡng: `detectedAt + DedupWindowMinutes` (`AnomalyEngineOptions`, mặc định **30 phút**) · nhánh AI: `detectedAt + 1 giờ` | `detectedAt + **7 ngày**` |
+>
+> **Quy tắc cho FE:** `anomalyType == 8 && actualValue == null` ⇒ đây là **cảnh báo hiệu chuẩn hết
+> hạn**, không phải pin xuống cấp. Đừng hiển thị "SOH tụt còn N%" cho nhóm này — không có số nào để
+> hiện.
 
 ### `EnvironmentalIncidentTypeEnum`
 
@@ -308,6 +449,65 @@ Base route: `/api/alerts`
 - `GET /api/alerts` mặc định loại trừ `Merged` (`excludeMerged=true`). Để xem Merged alerts, truyền `excludeMerged=false` hoặc `status=Merged`.
 - `assetsWithActiveAlerts` trong Site dashboard chỉ tính alert `Open` và `Acknowledged`, không tính `Merged` hoặc `Resolved`.
 
+### Thông báo cho Customer theo mức nghiêm trọng (Sprint 6.2 NOTI-08 · #679)
+
+Từ Sprint 6.2, **cả 3 mức severity đều sinh thông báo tới Customer sở hữu pin** — trước đó
+BatteryService **cố ý chỉ publish event cho mức `Critical`** để tránh spam ticket, nên
+`Warning`/`Info` chỉ nằm im trong bảng `alerts` và Customer **không bao giờ được báo** (spec §3.4
+T#11/T#12 chưa đạt).
+
+| Severity | Event publish (qua outbox) | Ai consume | Có tạo ticket không? | Kênh Customer nhận |
+|---|---|---|---|---|
+| `Critical` (3) | `BatteryAnomalyDetectedEvent` | TicketService (auto-tạo ticket BR-02) **+** NotificationService | ✅ **Có** | InApp + Push + **Email + SMS** (Sprint 6.2 mở đủ 4 kênh; trước chỉ InApp + Push) |
+| `Warning` (2) | **`BatteryAnomalyWarningDetectedEvent`** *(MỚI)* | **CHỈ** NotificationService | ❌ Không | InApp + Push |
+| `Info` (1) | **`BatteryAnomalyWarningDetectedEvent`** *(MỚI)* | **CHỈ** NotificationService | ❌ Không | **Chỉ InApp** |
+
+> **Vì sao là event RIÊNG chứ không tái dùng `BatteryAnomalyDetectedEvent`:** TicketService consume
+> `BatteryAnomalyDetectedEvent` để auto-tạo ticket (BR-02) và `AlertTicketSagaStateMachine` consume
+> bản V2 cho cùng mục đích. Publish severity Warning lên chính event đó thì **mọi cảnh báo nhẹ sẽ đẻ
+> ticket** — đúng nỗi lo "spam ticket" mà team đang né bằng cách không publish gì cả.
+
+**Payload `BatteryAnomalyWarningDetectedEvent`:**
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `alertId` | `Guid` | Không | ID alert vừa tạo |
+| `batteryAssetId` | `Guid?` | **Có** | ID pin. `null`/`Guid.Empty` ⇒ **không publish** (xem dedup dưới) |
+| `customerId` | `Guid` | Không | Chủ sở hữu pin — consumer skip nếu rỗng |
+| `assetSerialNumber` | `string?` | **Có** | Serial để hiển thị; rỗng → consumer hiện `"(không rõ serial)"` |
+| `anomalyType` | `int` | Không | Giá trị `AnomalyTypeEnum` |
+| `severity` | `int` | Không | Giá trị `AlertSeverityEnum` — chỉ `1` (Info) hoặc `2` (Warning) |
+| `thresholdValue` | `decimal?` | **Có** | Ngưỡng đã cấu hình |
+| `actualValue` | `decimal?` | **Có** | Giá trị thực tế |
+| `unit` | `string?` | **Có** | Đơn vị (`V`, `°C`, `%`, …) |
+| `detectedAt` | `DateTime` | Không | UTC |
+
+**Chống spam — dedup ở phía publisher:** alert Warning **không** đi qua dedup-merge như Critical (mỗi
+tick vượt ngưỡng có thể tạo alert mới), nên publish thẳng sẽ khiến Customer lãnh một trận thông báo.
+Chỉ publish khi trong `WarningNotifyDedupMinutes` gần nhất **chưa có** outbox event cùng
+`(BatteryAssetId × AnomalyType)`. Alert **không gắn pin** (`batteryAssetId` null/rỗng — vd alert cấp
+site) **không bao giờ được publish** event này.
+
+**Config (section `AnomalyEngine`):**
+
+| Khoá | Kiểu | Mặc định | Ý nghĩa |
+|---|---|---|---|
+| `AnomalyEngine:PublishWarningNotifications` | `bool` | `true` | `false` = quay lại hành vi cũ: chỉ ghi alert, **không báo ai** |
+| `AnomalyEngine:WarningNotifyDedupMinutes` | `int` | `60` | Cửa sổ chống spam theo `(BatteryAssetId × AnomalyType)`. `≤ 0` = tắt dedup (publish mọi lần) |
+
+> ⚠️ **Ghi chú cho người đọc code:** XML comment trong `BatteryAnomalyWarningDetectedEvent.cs` viết
+> khoá là `Anomaly:WarningNotifyDedupMinutes`. Đó là **sai trong comment** — `AnomalyEngineOptions.SectionName`
+> thực tế là **`AnomalyEngine`**, nên khoá đúng là `AnomalyEngine:WarningNotifyDedupMinutes`
+> (biến môi trường: `AnomalyEngine__WarningNotifyDedupMinutes`).
+
+**Outbox `EventTypeMap`:** `OutboxRelayService` đã đăng ký
+`{ nameof(BatteryAnomalyWarningDetectedEvent), typeof(BatteryAnomalyWarningDetectedEvent) }`.
+Thiếu dòng này thì relay báo `"Unknown event type"` và event **nằm lại outbox mãi mãi** — bẫy cố hữu
+khi thêm event mới cho BatteryService.
+
+> Chi tiết phía nhận (template, preference theo nhóm `Battery`, quiet hours, hạn mức):
+> xem [`api-notification.md`](api-notification.md).
+
 ---
 
 ### `GET /api/alerts/{id}`
@@ -384,8 +584,10 @@ Base route: `/api/battery-assets`
 | `siteId` | `string?` | Không | Lọc theo site (UUID string) |
 | `status` | `BatteryStatusEnum?` | Không | Lọc theo trạng thái |
 | `includeDeleted` | `bool` | Không (mặc định `false`) | Bao gồm cả asset đã soft-delete |
+| `SortBy` | `string?` | Không | Cột sort server-side. Whitelist: `serialNumber`, `batteryTypeName`, `customerName`, `siteName`, `status`, `installDate`. Ngoài whitelist → `createdAt` |
+| `SortDir` | `string?` | Không (mặc định `desc`) | `asc` \| `desc`; giá trị lạ → `desc` |
 
-> **Sắp xếp mặc định:** `createdAt` giảm dần (mới nhất trước). Hiện không hỗ trợ sort params động — FE cần sort trên client nếu cần thứ tự khác.
+> **Sắp xếp:** mặc định `createdAt` desc. **Đã hỗ trợ sort server-side** (đợt này) qua `SortBy`/`SortDir` — order toàn dataset **trước** khi phân trang, kèm tie-breaker `Id ASC`. Chi tiết whitelist + kiểu enum + field nullable: xem section **Server-side Sort** ở đầu tài liệu.
 
 **Response thành công `200`:** `PaginationResponse<BatteryAssetDto>`
 
@@ -599,6 +801,10 @@ Base route: `/api/battery-types`
 | `pageSize` | `int` | Số item/trang |
 | `keyword` | `string?` | Tìm theo tên loại pin **hoặc nhà sản xuất** (`Name` + `Manufacturer`, case-insensitive) |
 | `includeDeleted` | `bool` | Bao gồm đã xóa (mặc định `false`) |
+| `SortBy` | `string?` | Cột sort server-side. Whitelist: `name`, `manufacturer`, `chemistry`, `nominalCapacityAh`, `nominalVoltage`, `maxCycleCount`. Ngoài whitelist → `createdAt` |
+| `SortDir` | `string?` | `asc` \| `desc` (mặc định `desc`; giá trị lạ → `desc`) |
+
+> **Sắp xếp:** mặc định `createdAt` desc. Đã hỗ trợ sort server-side qua `SortBy`/`SortDir` (order toàn dataset trước phân trang, tie-breaker `Id ASC`). Chi tiết enum `BatteryChemistryEnum` + nullable: xem **Server-side Sort** đầu tài liệu.
 
 **Response thành công `200`:** `PaginationResponse<BatteryTypeDto>`
 
@@ -715,6 +921,56 @@ Base route: `/api/sensor-readings`
 
 ---
 
+### `GET /api/sensor-readings/stream` — SSE realtime
+
+**Mục đích:** Kênh **một chiều server → client** đẩy số đo cảm biến theo thời gian thực (~5 giây/pin)
+cho 1 pin hoặc nhiều pin cùng lúc.
+
+**Tác dụng:** Thay cho việc FE gọi `/latest` theo vòng lặp. Dữ liệu lên stream **đã calibrate và đã
+loại nhiễu/outlier** — giống hệt dữ liệu đã ghi vào hypertable.
+
+**Auth:** Bắt buộc — `Admin` / `Manager` / `Staff` / `Customer`. Vì `EventSource` của trình duyệt
+**không set được header `Authorization`**, token truyền qua query `?access_token=<JWT>`.
+Quyền theo từng scope còn bị kiểm thêm (Customer chỉ mở được scope pin của chính mình).
+
+**Content-Type trả về:** `text/event-stream` (KHÔNG phải `application/json` như các endpoint khác).
+
+**Query params:**
+
+| Param | Type | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `scope` | `string` | **Có** | `asset:{id}` · `assets:{id1,id2}` · `customer:{id}` · `site:{id}` · `sites:{id1,id2}` · `type:{id}` · `all` · `site:none`. Mỗi danh sách **tối đa 50 id** |
+| `access_token` | `string` | Có (nếu không set header `Authorization`) | JWT |
+
+**Request header tuỳ chọn:**
+
+| Header | Mô tả |
+|---|---|
+| `Last-Event-ID` | Id của event cuối client đã nhận. Có giá trị ⇒ server **phát bù** các reading sau id đó trước khi nối luồng trực tiếp. **Chỉ có tác dụng với scope 1 pin** (`asset:{1 id}`) |
+
+**4 loại event** — `reading` · `summary` · `stats` · `ping`. **Chỉ `reading` mang dòng `id:`.**
+
+```
+id: 1785578400123-0
+event: reading
+data: {"batteryAssetId":"3fa85f64-...","time":"2026-08-01T07:20:00.123Z","voltage":52.3, ... }
+
+```
+
+**Lỗi non-2xx** trả `CommonResponse` như mọi endpoint khác (chưa mở stream):
+
+| Mã | Khi nào | Hình dạng |
+|---|---|---|
+| `400` | `scope` sai cú pháp hoặc quá 50 id | `listErrors: [{ field: "scope", detail: "..." }]` |
+| `401` | Không xác định được người dùng từ token | Chỉ `message`, `listErrors` = `null` |
+| `403` | Token hợp lệ nhưng không có quyền với scope đó | Chỉ `message`, `listErrors` = `null` |
+
+> 📖 **Hợp đồng đầy đủ cho FE/Mobile** — bộ field của `reading`/`summary`/`stats`, RBAC theo từng
+> scope, phát bù `Last-Event-ID` (cửa sổ bù, tình huống biên, khử trùng), cờ cấu hình, và cách thử
+> bằng curl: xem [docs/battery-realtime-description.md](battery-realtime-description.md).
+
+---
+
 ### `GET /api/sensor-readings/{batteryAssetId}/latest`
 
 **Mục đích:** Lấy sensor reading mới nhất của một pin.
@@ -770,9 +1026,16 @@ Base route: `/api/sensor-readings`
 | `from` | `DateTime?` | Không | Từ thời điểm (UTC) |
 | `to` | `DateTime?` | Không | Đến thời điểm (UTC) |
 | `limit` | `int` | Không (mặc định 100) | Số record mỗi trang, range `1–1000` |
-| `cursor` | `DateTime?` | Không | Timestamp của record cuối trang trước; BE lấy record có `time < cursor` |
+| `cursor` | `DateTime?` | Không | Timestamp của record cuối trang trước; BE lấy record có `time < cursor` (desc) hoặc `time > cursor` (asc) |
+| `sortBy` | `string?` | Không (mặc định `time`) | Whitelist: `time` \| `voltage` \| `current` \| `temperature` \| `socPercent`. Xem **Lưu ý sort** bên dưới |
+| `sortDir` | `string?` | Không (mặc định `desc`) | `asc` \| `desc` |
 
 > **Lưu ý:** Swagger còn liệt kê một query param `BatteryAssetId` (trùng tên với path param) do model-binding của BE. FE **bỏ qua** query param này — chỉ truyền `batteryAssetId` qua path.
+
+> **Lưu ý sort (Hướng B):**
+> - `sortBy=time` (mặc định) — dùng **cursor pagination** bình thường (`nextCursor`/`hasMore` như cũ). Hỗ trợ cả `asc`/`desc`.
+> - `sortBy` khác `time` (`voltage`/`current`/`temperature`/`socPercent`) — **bắt buộc** truyền cả `from` và `to` (thiếu → `400`); BE sort toàn khoảng `[from, to]` theo cột đó, **không dùng cursor** → trả `nextCursor = null` + `hasMore = false` (FE tắt "Tải thêm"). Chỉ tính trên reading nguồn **primary** (`sensorSourceCode = "primary"`/null/empty) để tránh 3 nguồn/tick (redundant `temp=0` / external `voltage=0`) làm sort sai.
+> - `sortBy`/`sortDir` ngoài whitelist → coi như `time`/`desc`.
 
 **Response thành công `200`:**
 ```json
@@ -807,7 +1070,7 @@ Base route: `/api/sensor-readings`
 | `hasMore` | `bool` | Không | `true` nếu còn dữ liệu sau trang hiện tại |
 
 **Lỗi thường gặp:**
-- `400` — `batteryAssetId` empty hoặc `limit` ngoài `1–1000`
+- `400` — `batteryAssetId` empty, `limit` ngoài `1–1000`, hoặc `sortBy` khác `time` mà thiếu `from`/`to`
 - `422` — `from > to` (cross-field business rule)
 
 **Lưu ý hiệu suất:** TimescaleDB có thể chứa hàng triệu rows. Luôn truyền `from`/`to` để giới hạn scan range. Endpoint này không trả `totalItems`. FE dùng `hasMore`/`nextCursor` để infinite scroll; không render pagination kiểu page number.
@@ -1052,9 +1315,9 @@ Base route: `/api/sites`
 
 ### `GET /api/sites`
 
-**Mục đích:** Danh sách site với phân trang và lọc (Admin/Manager).
+**Mục đích:** Danh sách site với phân trang và lọc (Admin/Manager/Staff — Staff dùng chọn site khi report sự cố thủ công, GH-145).
 
-**Auth:** Bắt buộc (Admin/Manager)
+**Auth:** Bắt buộc (Admin/Manager/**Staff** — mở cho Staff đợt này, GH-145/GH-146). Các thao tác tạo/sửa/xoá site vẫn Admin-only.
 
 **Query params:**
 
@@ -1066,6 +1329,10 @@ Base route: `/api/sites`
 | `customerId` | `string?` | Lọc theo khách hàng (UUID string) |
 | `status` | `SiteStatusEnum?` | Lọc theo trạng thái |
 | `includeDeleted` | `bool` | Bao gồm đã xóa (mặc định `false`) |
+| `SortBy` | `string?` | Cột sort server-side. Whitelist: `name`, `customerName`, `status`, `batteryAssetCount`, `installDate`. Ngoài whitelist → `createdAt` |
+| `SortDir` | `string?` | `asc` \| `desc` (mặc định `desc`; giá trị lạ → `desc`) |
+
+> **Sắp xếp:** mặc định `createdAt` desc. Đã hỗ trợ sort server-side qua `SortBy`/`SortDir` (order toàn dataset trước phân trang, tie-breaker `Id ASC`). `batteryAssetCount` = số pin thuộc site (computed). Chi tiết enum `SiteStatusEnum` + nullable: xem **Server-side Sort** đầu tài liệu.
 
 **Response thành công `200`:** `PaginationResponse<SiteDto>`
 
@@ -1228,6 +1495,10 @@ Nếu site không có asset nào, healthScore = 100.
 | `pageNumber` | `int` | Trang |
 | `pageSize` | `int` | Số item/trang |
 | `status` | `BatteryStatusEnum?` | Lọc theo trạng thái |
+| `SortBy` | `string?` | Cột sort server-side. Whitelist: `serialNumber`, `batteryTypeName`, `status`, `installDate`, `lastSensorReadingAt`. Ngoài whitelist → `createdAt` |
+| `SortDir` | `string?` | `asc` \| `desc` (mặc định `desc`; giá trị lạ → `desc`) |
+
+> **Sắp xếp:** mặc định `createdAt` desc. Đã hỗ trợ sort server-side qua `SortBy`/`SortDir` (order toàn dataset trước phân trang, tie-breaker `Id ASC`). `lastSensorReadingAt` nullable. Chi tiết: xem **Server-side Sort** đầu tài liệu.
 
 **Response thành công `200`:** `PaginationResponse<BatteryAssetDto>`
 
@@ -2365,7 +2636,7 @@ Base route: `/api/admin/iot-devices` — toàn bộ yêu cầu role `Admin`.
 
 **Auth:** Admin
 
-**Query params:** `siteId` (`Guid?`), `status` (`IotDeviceStatusEnum?`), `keyword` (`string?` — tìm trong `deviceCode` + `displayName`), `page` (mặc định 1), `pageSize` (mặc định 20, clamp `[1,100]`), `isDescending` (mặc định `true`, sort theo `createdAt`).
+**Query params:** `siteId` (`Guid?`), `status` (`IotDeviceStatusEnum?`), `keyword` (`string?` — tìm trong `deviceCode` + `displayName`), `pageNumber` (mặc định 1), `pageSize` (mặc định 10, clamp `[1,100]`), `isDescending` (mặc định `true`, sort theo `createdAt`).
 
 **Response thành công `200`:** `CommonResponse<PaginationResponse<IotDeviceDto>>`
 
@@ -2557,7 +2828,7 @@ Base route: `/api/admin/iot-firmware-releases` — toàn bộ yêu cầu role `A
 
 **Auth:** Admin
 
-**Query params:** `hardwareRevision` (`string?`), `publishedOnly` (`bool?` — `true` chỉ lấy đã publish & chưa archive), `page` (mặc định 1), `pageSize` (mặc định 20, clamp `[1,100]`).
+**Query params:** `hardwareRevision` (`string?`), `publishedOnly` (`bool?` — `true` chỉ lấy đã publish & chưa archive), `pageNumber` (mặc định 1), `pageSize` (mặc định 10, clamp `[1,100]`).
 
 > Sort `createdAt DESC`. Filter `!IsDeleted` luôn áp dụng.
 
@@ -2905,7 +3176,7 @@ Base route: `/api/admin/iot-firmware-releases` — toàn bộ yêu cầu role `A
 | GET | `/api/sensor-readings/{id}/history` | Lịch sử readings cursor-based | Mọi role |
 | GET | `/api/sensor-readings/{id}/aggregate` | Aggregate theo bucket (chart) | Mọi role |
 | POST | `/api/sensor-readings/batch` | Ingest batch (IoT) | API Key |
-| GET | `/api/sites` | Danh sách site | Admin/Manager |
+| GET | `/api/sites` | Danh sách site | Admin/Manager/Staff |
 | GET | `/api/sites/me` | Site của customer | Customer |
 | GET | `/api/sites/{id}` | Chi tiết site | Mọi role |
 | GET | `/api/sites/{id}/dashboard` | Dashboard site | Mọi role |
@@ -3010,6 +3281,10 @@ Base route: `/api/admin/iot-firmware-releases` — toàn bộ yêu cầu role `A
 | `to` | `DateTime?` | Không | Mốc cuối (UTC) |
 | `pageNumber` | `int` | Không (mặc định 1) | Số trang |
 | `pageSize` | `int` | Không (mặc định 50, trần 100) | Số item/trang |
+| `sortBy` | `string?` | Không | Cột sort server-side. Whitelist: `occurredAt`, `actionCode`, `severity`, `targetDisplay`, `actorAccountId`, `isSuccess`. Ngoài whitelist → `occurredAt` |
+| `sortDir` | `string?` | Không (mặc định `desc`) | `asc` \| `desc`; giá trị lạ → `desc` |
+
+> **Sắp xếp:** mặc định `occurredAt` desc. Đã hỗ trợ sort server-side qua `sortBy`/`sortDir` (order toàn dataset trước phân trang, tie-breaker `Id ASC`) — áp dụng cho cả `GET /api/admin/alerts/audit-logs` (dùng chung handler). `targetDisplay`/`actorAccountId` nullable. Chi tiết: xem **Server-side Sort** đầu tài liệu.
 
 **Action codes (battery):** `BatteryCreated` · `BatteryUpdated` · `BatteryDeleted` · `AssignedToCustomer` · `UnassignedFromCustomer` · `ThresholdConfigChanged` · `SensorReadingEdited` · `StatusChanged` · `MaintenanceLogged` · `CalibrationApplied`
 
@@ -3057,6 +3332,63 @@ Base route: `/api/admin/iot-firmware-releases` — toàn bộ yêu cầu role `A
 | `Correct` | 1 | AI phân loại **đúng** |
 | `FalsePositive` | 2 | AI báo bất thường nhưng thực tế **bình thường** (dương tính giả) |
 | `FalseNegative` | 3 | AI **bỏ sót** bất thường thật (âm tính giả) |
+
+### `GET /api/v1/anomaly-classifications`
+
+**Mục đích:** Lịch sử phân loại bất thường của **một pin** (do AI populate qua `SohPredictionBackgroundService`). Dùng cho FE hiển thị timeline phân loại + gắn nút feedback.
+
+**Auth:** JWT — role `Admin` / `Manager` / `Staff` (Customer **không** được).
+
+**Query params:**
+
+| Param | Type | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `BatteryAssetId` | `Guid` | ✅ | Pin cần xem lịch sử phân loại |
+| `Classification` | `AnomalyClassificationEnum?` | ❌ | Lọc theo kết quả (`1` Normal / `2` Degrading / `3` Failed) |
+| `From` | `DateTime?` | ❌ | UTC — lọc `ClassifiedAt >= from` |
+| `To` | `DateTime?` | ❌ | UTC — lọc `ClassifiedAt <= to` |
+| `PageNumber` / `PageSize` | `int` | ❌ | Phân trang (kế thừa `PaginationRequest`) |
+
+**Response thành công `200`:** `CommonResponse<PaginationResponse<AnomalyClassificationDto>>` — shape item xem bảng **`AnomalyClassificationDto`** bên dưới.
+
+**Lỗi thường gặp:** `401` chưa đăng nhập · `403` role không hợp lệ.
+
+---
+
+### `GET /api/v1/soh-predictions`
+
+**Mục đích:** Lịch sử **SOH dự đoán** của một pin (AI populate qua `SohPredictionBackgroundService`) — FE dùng để vẽ chart SOH theo thời gian ở trang chi tiết pin.
+
+**Auth:** JWT — role `Admin` / `Manager` / `Staff` (Customer **không** được).
+
+**Query params:**
+
+| Param | Type | Bắt buộc | Mô tả |
+|---|---|---|---|
+| `BatteryAssetId` | `Guid` | ✅ | Pin cần xem lịch sử dự đoán |
+| `From` | `DateTime?` | ❌ | UTC — lọc `PredictedAt >= from` |
+| `To` | `DateTime?` | ❌ | UTC — lọc `PredictedAt <= to` |
+| `PageNumber` / `PageSize` | `int` | ❌ | Phân trang |
+
+**Response thành công `200`:** `CommonResponse<PaginationResponse<SohPredictionDto>>`
+
+**Chi tiết `SohPredictionDto`:**
+
+| Field | Type | Nullable | Mô tả |
+|---|---|---|---|
+| `id` | `string` (GUID) | Không | ID bản ghi dự đoán |
+| `batteryAssetId` | `string` (GUID) | Không | Pin được dự đoán |
+| `predictedSohPercent` | `decimal` | Không | SOH dự đoán (%) |
+| `confidence` | `decimal` | Không | Độ tự tin 0–1 |
+| `modelVersion` | `string` | Không | Phiên bản model (vd `"1.0"`) |
+| `predictedAt` | `DateTime` (UTC) | Không | Thời điểm dự đoán |
+| `latencyMs` | `int` | Không | Độ trễ inference (ms) — monitor SLA < 100ms |
+
+**Lỗi thường gặp:** `401` chưa đăng nhập · `403` role không hợp lệ.
+
+> ⚠️ Cả 2 bảng `anomaly_classifications` và `soh_predictions` được **AI populate** ở luồng Sprint AI. Nếu pipeline AI chưa chạy, endpoint vẫn trả `200` với `items: []` — không phải lỗi.
+
+---
 
 ### `POST /api/v1/anomaly-classifications/{id}/feedback`
 
