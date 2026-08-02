@@ -1,7 +1,8 @@
+// Khớp BE TicketStatusEnum (13 giá trị). KHÔNG có 'Approved' — đó là
+// ActivityActionEnum.Approved (hành động Manager duyệt), không phải trạng thái ticket.
 export const TicketStatusEnum = {
   New: 'New',
   Open: 'Open',
-  Approved: 'Approved',
   Assigned: 'Assigned',
   InProgress: 'InProgress',
   WaitingCustomer: 'WaitingCustomer',

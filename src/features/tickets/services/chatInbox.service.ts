@@ -9,7 +9,6 @@ export interface ChatInboxParams {
   pageSize?: number;
 }
 export interface MentionListParams {
-  unreadOnly?: boolean;
   page?: number;
   pageSize?: number;
 }
@@ -30,9 +29,6 @@ export const chatInboxService = {
       ENDPOINTS.CHATS.MENTIONS_ME,
       { params },
     ),
-
-  acknowledgeMention: (id: string) =>
-    axiosInstance.patch<CommonResponse<object>>(ENDPOINTS.CHATS.MENTION_ACK(id)),
 
   // GDPR — overwrite body toàn bộ chat của mình bằng [ERASED].
   eraseMyData: () =>

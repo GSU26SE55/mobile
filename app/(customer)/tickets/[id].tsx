@@ -115,7 +115,7 @@ function HorizontalStepper({ status }: { status: TicketStatusEnum }) {
     if (st === 'Resolved') return 4;
     if (['InProgress', 'WaitingCustomer', 'WaitingParts', 'WaitingOnsiteSchedule'].includes(st)) return 3;
     if (st === 'Assigned') return 2;
-    if (st === 'Approved') return 1;
+    if (st === 'Escalated') return 3;
     return 0; // New or Open
   };
 

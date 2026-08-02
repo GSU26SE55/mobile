@@ -124,8 +124,6 @@ export const ENDPOINTS = {
     CHAT_PIN:        (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}/pin`, // POST pin / DELETE unpin
     CHAT_SUGGEST:    (tid: string) => `/api/tickets/${tid}/chats/suggest`,        // POST { intent } (AI)
     CHAT_SUMMARIZE:  (tid: string) => `/api/tickets/${tid}/chats/summarize`,      // POST (AI)
-    CHAT_SENTIMENT:  (tid: string) => `/api/tickets/${tid}/chats/sentiment-check`, // POST (AI)
-    CHAT_EXPORT_PDF: (tid: string) => `/api/tickets/${tid}/chats/export-pdf`,     // GET application/pdf
     ACTIVITIES:      (id: string) => `/api/tickets/${id}/activities`, // GH-44 — timeline
     REOPEN:          (id: string) => `/api/customer/tickets/${id}/reopen`,
     RATE:            (id: string) => `/api/customer/tickets/${id}/rate`,
@@ -133,8 +131,7 @@ export const ENDPOINTS = {
   // GH-68 — chat cross-ticket (Mọi role)
   CHATS: {
     ME:              '/api/chats/me',                                        // GET ?page&pageSize → flat TicketChatDTO[]
-    MENTIONS_ME:     '/api/chats/mentions/me',                              // GET ?unreadOnly&page&pageSize
-    MENTION_ACK:     (id: string) => `/api/chats/mentions/${id}/acknowledge`, // PATCH
+    MENTIONS_ME:     '/api/chats/mentions/me',                              // GET ?page&pageSize
     ERASE_MY_DATA:   '/api/chats/erase-my-data',                           // POST → { erasedCount }
   },
   PERMISSIONS: {

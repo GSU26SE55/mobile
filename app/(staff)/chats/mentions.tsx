@@ -1,14 +1,12 @@
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../src/lib/theme';
 import { ScreenHeader } from '../../../src/shared/components/ScreenHeader';
-import { useMyMentions, useAcknowledgeMention } from '../../../src/features/tickets/hooks/useChatInbox';
+import { useMyMentions } from '../../../src/features/tickets/hooks/useChatInbox';
 
-// GH-68 — @mention tới Staff. Nút "Đã đọc" → acknowledge.
+// GH-68 — @mention tới Staff. GH-866: BE bỏ endpoint acknowledge; chấm vàng = chat nội bộ.
 export default function StaffMentionsScreen() {
   const { data: mentions = [], isLoading, refetch, isRefetching } = useMyMentions();
-  const { mutate: acknowledge } = useAcknowledgeMention();
 
   return (
     <View style={styles.root}>
@@ -30,7 +28,7 @@ export default function StaffMentionsScreen() {
               style={styles.row}
               onPress={() => item.ticketId && router.push(`/(staff)/tickets/${item.ticketId}`)}
             >
-              <View style={[styles.dot, item.isAcknowledged && styles.dotRead]} />
+              <View style={[styles.dot, item.isInternal && styles.dotInternal]} />
               <View style={styles.body}>
                 <Text style={styles.name} numberOfLines={1}>
                   {item.mentionedDisplayName ?? 'Bạn được nhắc đến'}
@@ -41,12 +39,6 @@ export default function StaffMentionsScreen() {
                   })}
                 </Text>
               </View>
-              {!item.isAcknowledged && (
-                <Pressable style={styles.ackBtn} hitSlop={8} onPress={() => acknowledge(item.id)}>
-                  <Ionicons name="checkmark-done" size={16} color={Colors.primaryDark} />
-                  <Text style={styles.ackText}>Đã đọc</Text>
-                </Pressable>
-              )}
             </Pressable>
           )}
         />
@@ -65,11 +57,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 12, marginBottom: 8,
   },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primary },
-  dotRead: { backgroundColor: Colors.border },
+  dotInternal: { backgroundColor: Colors.warning },
   body: { flex: 1, gap: 2 },
   name: { fontSize: 13.5, fontWeight: '700', color: Colors.text },
   time: { fontSize: 11, color: Colors.textFaint },
-  ackBtn: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  ackText: { fontSize: 12, fontWeight: '700', color: Colors.primaryDark },
   empty: { fontSize: 13, color: Colors.textMute, textAlign: 'center', marginTop: 40 },
 });

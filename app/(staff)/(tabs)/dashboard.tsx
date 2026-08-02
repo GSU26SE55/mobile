@@ -30,7 +30,6 @@ const RESOLVED_STATUSES: TicketStatusEnum[] = ['Resolved', 'Escalated'];
 const STATUS_META: Record<string, { label: string; badge: keyof typeof BadgeColors; progress: number }> = {
   New: { label: 'Mới', badge: 'new', progress: 10 },
   Open: { label: 'Đang mở', badge: 'open', progress: 15 },
-  Approved: { label: 'Đã duyệt', badge: 'ok', progress: 20 },
   Assigned: { label: 'Được giao', badge: 'assigned', progress: 30 },
   InProgress: { label: 'Đang xử lý', badge: 'progress', progress: 60 },
   WaitingCustomer: { label: 'Chờ khách', badge: 'waiting', progress: 50 },

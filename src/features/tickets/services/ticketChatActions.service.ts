@@ -8,7 +8,6 @@ import {
   ChatVoiceActionDTO,
   ChatSuggestDTO,
   ChatSummarizeDTO,
-  ChatSentimentCheckDTO,
 } from '../types/chat-actions.types';
 import { ChatAiIntentEnum } from '../../../shared/enums/chat.enum';
 import {
@@ -114,15 +113,6 @@ export const ticketChatActionsService = {
 
   summarize: (ticketId: string) =>
     axiosInstance.post<CommonResponse<ChatSummarizeDTO>>(ENDPOINTS.TICKETS.CHAT_SUMMARIZE(ticketId)),
-
-  sentimentCheck: (ticketId: string) =>
-    axiosInstance.post<CommonResponse<ChatSentimentCheckDTO>>(ENDPOINTS.TICKETS.CHAT_SENTIMENT(ticketId)),
-
-  // Binary PDF — KHÔNG bọc CommonResponse (giống file-storage.downloadFile). Hook tự guard rỗng.
-  exportPdf: (ticketId: string) =>
-    axiosInstance.get<ArrayBuffer>(ENDPOINTS.TICKETS.CHAT_EXPORT_PDF(ticketId), {
-      responseType: 'arraybuffer',
-    }),
 
   // ── GH-68 — Mọi role ───────────────────────────────────────────────────
   // Cursor pagination — thay page/pageSize. BE trả CursorPaginationResponse (items/nextCursor/hasMore).

@@ -88,8 +88,8 @@ export interface TicketChatMentionDTO {
   mentionedUserId: string;
   mentionedUserRole: ActorRoleEnum;
   mentionedDisplayName: string | null;
-  isAcknowledged: boolean;
-  acknowledgedAt: string | null;
+  /** GH-866 — mention nằm trong chat nội bộ. Chọn view public/internal, KHÔNG phải authz. */
+  isInternal: boolean;
   createdAt: string;
 }
 
@@ -250,11 +250,17 @@ export interface CreateTicketPayload {
   title: string;
   description: string;
   category: TicketCategoryEnum;
-  /** BE nhận MẢNG batteryAssetIds (khớp TicketCreateCommand.BatteryAssetIds). */
-  batteryAssetIds?: string[];
-  /** Thời điểm Customer phát hiện pin bất thường (ISO UTC). BE required (khớp TicketCreateCommand.IncidentDetectedFrom). Dùng để AI đối chiếu sensor. */
-  incidentDetectedFrom: string;
-  attachments?: CommentAttachmentPayload[];
+  /**
+   * BE required: ít nhất 1 pin, không rỗng, không trùng lặp
+   * (khớp TicketCreateCommand.BatteryAssetIds).
+   */
+  batteryAssetIds: string[];
+  /**
+   * GH-866 — MỘT mốc thời gian Customer phát hiện sự cố (ISO UTC), thay cho cặp
+   * from/to cũ. BE required và reject nếu ở tương lai.
+   */
+  incidentDetectedAt: string;
+  attachments?: TicketAttachmentPayload[];
 }
 
 export interface UploadedTicketAttachment {
@@ -263,6 +269,21 @@ export interface UploadedTicketAttachment {
   fileName: string;
   contentType: string;
   sizeBytes: number;
+  /** publicUrl từ FileUploadResponse — BE ticket create bắt buộc có url. */
+  url: string;
+}
+
+/**
+ * Attachment gửi kèm khi TẠO ticket (POST /api/customer/tickets).
+ * Khác CommentAttachmentPayload: BE `TicketAttachmentInput` bắt buộc thêm `url`
+ * (required, tối đa 2000 ký tự) — thiếu sẽ bị 400.
+ */
+export interface TicketAttachmentPayload {
+  fileId: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  url: string;
 }
 
 export interface CommentAttachmentPayload {

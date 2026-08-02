@@ -1,16 +1,10 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../lib/theme';
 import { BottomSheet } from '../../../shared/components/BottomSheet';
 import { ChatAiIntentEnum } from '../../../shared/enums/chat.enum';
-import {
-  useExportChatPdf,
-  useSentimentCheck,
-  useSuggestChat,
-  useSummarizeThread,
-} from '../hooks/useTicketChatActions';
-import type { ChatSentimentLabel } from '../types/chat-actions.types';
+import { useSuggestChat, useSummarizeThread } from '../hooks/useTicketChatActions';
 
 // GH-67 — thanh AI/Export cho Staff, đặt trên ô soạn reply. CHỈ dùng ở màn Staff ticket detail.
 // Toolbar disable khi ticket đã đóng (prop disabled = ticketClosed từ [id].tsx).
@@ -21,13 +15,6 @@ const INTENTS: { key: ChatAiIntentEnum; label: string }[] = [
   { key: ChatAiIntentEnum.Resolution, label: 'Giải pháp' },
   { key: ChatAiIntentEnum.FollowUp, label: 'Theo dõi' },
 ];
-
-const SENTIMENT_VI: Record<ChatSentimentLabel, string> = {
-  Positive: 'Tích cực 🙂',
-  Neutral: 'Trung lập 😐',
-  Negative: 'Tiêu cực 🙁',
-  Critical: 'Nghiêm trọng 🚨',
-};
 
 interface Props {
   ticketId: string;
@@ -45,8 +32,6 @@ export function ChatAiToolbar({ ticketId, disabled = false, onSuggestions }: Pro
 
   const suggest = useSuggestChat(ticketId);
   const summarize = useSummarizeThread(ticketId);
-  const sentiment = useSentimentCheck(ticketId);
-  const exportPdf = useExportChatPdf(ticketId);
 
   const runSuggest = (it: ChatAiIntentEnum) => {
     setIntent(it);
@@ -69,26 +54,11 @@ export function ChatAiToolbar({ ticketId, disabled = false, onSuggestions }: Pro
     summarize.mutate(undefined, { onSuccess: (dto) => setSummary(dto?.summary ?? '') });
   };
 
-  const runSentiment = () => {
-    sentiment.mutate(undefined, {
-      onSuccess: (dto) => {
-        if (!dto) return;
-        Alert.alert(
-          'Cảm xúc khách hàng',
-          `${SENTIMENT_VI[dto.label] ?? dto.label} · score ${dto.score.toFixed(2)}` +
-            (dto.isAlertSent ? '\n\n⚠️ Đã gửi cảnh báo tới Manager.' : ''),
-        );
-      },
-    });
-  };
-
   return (
     <>
       <View style={styles.bar}>
         <ToolBtn icon="sparkles-outline" label="Gợi ý" loading={suggest.isPending} disabled={disabled} onPress={openSuggest} />
         <ToolBtn icon="document-text-outline" label="Tóm tắt" loading={summarize.isPending} disabled={disabled} onPress={openSummary} />
-        <ToolBtn icon="happy-outline" label="Cảm xúc" loading={sentiment.isPending} disabled={disabled} onPress={runSentiment} />
-        <ToolBtn icon="download-outline" label="PDF" loading={exportPdf.isPending} disabled={disabled} onPress={() => exportPdf.mutate()} />
       </View>
 
       {/* Gợi ý AI — chỉ hàng chip intent. Chọn 1 loại → gen → bong bóng hiện CUỐI chat. */}

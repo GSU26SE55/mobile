@@ -47,7 +47,8 @@ function CreateTicketScreenInner() {
   };
 
   const handleSubmit = async () => {
-    if (!category || description.length < 10) return;
+    // BE required: BatteryAssetIds phải có ít nhất 1 phần tử → chặn trước khi gửi.
+    if (!category || description.length < 10 || selectedBatteryIds.length === 0) return;
     // Chặn tạo trùng: đã tạo thành công (có id) hoặc đang gửi thì bỏ qua.
     if (createdTicketId || isPending) return;
 
@@ -73,18 +74,18 @@ function CreateTicketScreenInner() {
         title,
         description,
         category: category as TicketCategoryEnum,
-        // BE nhận MẢNG batteryAssetIds — gửi danh sách pin đã chọn.
-        batteryAssetIds:
-          selectedBatteryIds.length > 0 ? selectedBatteryIds : undefined,
-        // BE required (IncidentDetectedFrom) — user không chọn thì fallback về hiện tại.
-        // ISO tính tại thời điểm submit (label ổn định trong state).
-        incidentDetectedFrom: detectedLabelToIso(detectedLabel) || new Date().toISOString(),
+        // BE required: ít nhất 1 pin (guard ở handleSubmit đã chặn mảng rỗng).
+        batteryAssetIds: selectedBatteryIds,
+        // GH-866 — BE required IncidentDetectedAt (1 mốc, không phải khoảng).
+        // User không chọn thì fallback về hiện tại. ISO tính tại thời điểm submit.
+        incidentDetectedAt: detectedLabelToIso(detectedLabel) || new Date().toISOString(),
         attachments: attachedFiles.length > 0
           ? attachedFiles.map((file) => ({
               fileId: file.fileId,
               fileName: file.fileName,
               contentType: file.contentType,
               sizeBytes: file.sizeBytes,
+              url: file.url,
             }))
           : undefined,
       });
