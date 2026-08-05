@@ -342,8 +342,7 @@ export function CreateTicketStepper({
             <Text style={styles.stepNum}>BƯỚC 01</Text>
             <Text style={styles.stepTitle}>Chọn thiết bị</Text>
             <Text style={styles.stepSub}>
-              Chọn 1 hoặc nhiều pin gặp sự cố
-              {selectedBatteryIds.length > 0 ? ` · đã chọn ${selectedBatteryIds.length}` : ''}
+              Chọn viên pin gặp sự cố — mỗi ticket dành cho 1 viên
             </Text>
 
             <View style={styles.batteryList}>
@@ -360,13 +359,12 @@ export function CreateTicketStepper({
                   <Pressable
                     key={battery.id}
                     style={[styles.batteryCard, isSelected && styles.batteryCardSelected, Shadow]}
-                    // Multi-select: toggle pin vào/khỏi danh sách.
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isSelected }}
+                    // Single-select: 1 ticket = 1 viên pin. Chọn viên khác thì thay
+                    // luôn viên đang chọn; bấm lại viên đang chọn để bỏ chọn.
                     onPress={() =>
-                      setSelectedBatteryIds(
-                        isSelected
-                          ? selectedBatteryIds.filter((id) => id !== battery.id)
-                          : [...selectedBatteryIds, battery.id],
-                      )
+                      setSelectedBatteryIds(isSelected ? [] : [battery.id])
                     }
                   >
                     <View style={[styles.batteryIconWrap, { backgroundColor: statusInfo.bg }]}>
@@ -381,9 +379,9 @@ export function CreateTicketStepper({
                     <View style={styles.batteryStatusCol}>
                       <Text style={[styles.batteryStatusLabel, { color: statusInfo.color }]}>{statusInfo.label}</Text>
                     </View>
-                    {/* Checkbox (multi-select) thay radio (single). */}
-                    <View style={[styles.checkboxOutline, isSelected && styles.checkboxChecked]}>
-                      {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
+                    {/* Radio (single-select) — 1 ticket chỉ gắn 1 viên pin. */}
+                    <View style={[styles.radioOutline, isSelected && styles.radioChecked]}>
+                      {isSelected && <View style={styles.radioSelected} />}
                     </View>
                   </Pressable>
                 );
@@ -603,9 +601,7 @@ export function CreateTicketStepper({
                 <Text style={styles.reviewRowValue} numberOfLines={2}>
                   {selectedBatteries.length === 0
                     ? 'Không chọn'
-                    : selectedBatteries.length === 1
-                      ? `${selectedBatteries[0].batteryTypeName} · ${selectedBatteries[0].serialNumber}`
-                      : `${selectedBatteries.length} thiết bị: ${selectedBatteries.map((b) => b.serialNumber).join(', ')}`}
+                    : `${selectedBatteries[0].batteryTypeName} · ${selectedBatteries[0].serialNumber}`}
                 </Text>
               </View>
               <View style={styles.reviewDivider} />
@@ -736,16 +732,21 @@ const styles = StyleSheet.create({
     borderRadius: 18, padding: 14, borderWidth: 1.5, borderColor: 'transparent',
   },
   batteryCardSelected: { borderColor: '#EF5128' },
-  batteryIconWrap: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  batteryIconWrap: { width: 40, height: 40, borderRadius: 12, flexShrink: 0, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   batteryInfo: { flex: 1, marginRight: 8 },
   batteryName: { fontSize: 13, fontWeight: '700', color: Colors.text },
   batterySub: { fontSize: 10, color: Colors.textMute, marginTop: 2 },
-  batteryStatusCol: { alignItems: 'flex-end', marginRight: 12 },
-  batteryStatusLabel: { fontSize: 9, fontWeight: '600', marginTop: 1 },
-  radioOutline: { width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
+  batteryStatusCol: { alignItems: 'flex-end', marginRight: 12, flexShrink: 0 },
+  batteryStatusLabel: { fontSize: 11, fontWeight: '600', marginTop: 1 },
+  // flexShrink: 0 — bắt buộc. Thiếu nó, tên pin dài sẽ ép vòng tròn co ngang
+  // trong khi borderRadius giữ nguyên → radio méo thành hình bầu dục.
+  radioOutline: {
+    width: 20, height: 20, borderRadius: 10, flexShrink: 0,
+    borderWidth: 1.5, borderColor: Colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
   radioSelected: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#EF5128' },
-  checkboxOutline: { width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
-  checkboxChecked: { backgroundColor: '#EF5128', borderColor: '#EF5128' },
+  radioChecked: { borderColor: '#EF5128', borderWidth: 2 },
 
   // Category
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 },

@@ -18,8 +18,9 @@ export function RegisterForm() {
   const [fullName, setFullName]       = useState('');
   const [email, setEmail]             = useState('');
   const [password, setPassword]       = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState('');
   const [focusedField, setFocusedField] = useState<string | null>(null);
@@ -28,12 +29,11 @@ export function RegisterForm() {
 
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const isNameValid = fullName.trim().length >= 2;
-  const isPhoneValid = phoneNumber.trim().length >= 9;
 
   const handleSubmit = async () => {
     setFieldErrors({});
     setGeneralError('');
-    const result = registerSchema.safeParse({ fullName, email, password, phoneNumber });
+    const result = registerSchema.safeParse({ fullName, email, password, confirmPassword });
     if (!result.success) {
       const errs: Record<string, string> = {};
       Object.entries(result.error.flatten().fieldErrors).forEach(([k, v]) => {
@@ -44,10 +44,9 @@ export function RegisterForm() {
     }
     try {
       await mutateAsync({
-        fullName:    result.data.fullName,
-        email:       result.data.email,
-        password:    result.data.password,
-        phoneNumber: result.data.phoneNumber || undefined,
+        fullName: result.data.fullName,
+        email:    result.data.email,
+        password: result.data.password,
       });
     } catch (error) {
       if (error instanceof EntityError) {
@@ -70,16 +69,18 @@ export function RegisterForm() {
     placeholder: string;
     value: string;
     onChangeText: (t: string) => void;
-    keyboardType?: 'email-address' | 'phone-pad';
+    keyboardType?: 'email-address';
     autoCapitalize?: 'none' | 'words';
     secure?: boolean;
+    showSecure?: boolean;
+    onToggleSecure?: () => void;
     optional?: boolean;
     isValid?: boolean;
   }[] = [
     { key: 'fullName', label: 'Họ và tên', placeholder: 'Nguyễn Văn A', value: fullName, onChangeText: setFullName, autoCapitalize: 'words', isValid: isNameValid },
     { key: 'email', label: 'Email', placeholder: 'name@example.com', value: email, onChangeText: setEmail, keyboardType: 'email-address', autoCapitalize: 'none', isValid: isEmailValid },
-    { key: 'password', label: 'Mật khẩu', placeholder: 'Tối thiểu 8 ký tự', value: password, onChangeText: setPassword, secure: true },
-    { key: 'phoneNumber', label: 'Số điện thoại', placeholder: '0912345678 (Tùy chọn)', value: phoneNumber, onChangeText: setPhoneNumber, keyboardType: 'phone-pad', optional: true, isValid: isPhoneValid },
+    { key: 'password', label: 'Mật khẩu', placeholder: 'Tối thiểu 8 ký tự', value: password, onChangeText: setPassword, secure: true, showSecure: showPassword, onToggleSecure: () => setShowPassword(!showPassword) },
+    { key: 'confirmPassword', label: 'Xác nhận mật khẩu', placeholder: 'Nhập lại mật khẩu', value: confirmPassword, onChangeText: setConfirmPassword, secure: true, showSecure: showConfirmPassword, onToggleSecure: () => setShowConfirmPassword(!showConfirmPassword) },
   ];
 
   return (
@@ -102,13 +103,13 @@ export function RegisterForm() {
               onChangeText={f.onChangeText}
               keyboardType={f.keyboardType}
               autoCapitalize={f.autoCapitalize}
-              secureTextEntry={f.secure && !showPassword}
+              secureTextEntry={f.secure && !f.showSecure}
               onFocus={() => setFocusedField(f.key)}
               onBlur={() => setFocusedField(null)}
             />
             {f.secure && (
-              <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
-                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textTertiary} />
+              <Pressable onPress={f.onToggleSecure} hitSlop={8}>
+                <Ionicons name={f.showSecure ? 'eye-off-outline' : 'eye-outline'} size={20} color={Colors.textTertiary} />
               </Pressable>
             )}
             {!f.secure && f.value.length > 0 && f.isValid !== undefined && (
