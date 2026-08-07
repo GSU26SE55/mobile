@@ -1,12 +1,11 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Link, useRouter } from 'expo-router';
-import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Link } from 'expo-router';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RegisterForm } from '@/src/features/auth/components/RegisterForm';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
 
   return (
     <KeyboardAvoidingView
@@ -14,9 +13,7 @@ export default function RegisterScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* Back button */}
-      <Pressable onPress={() => router.back()} style={[styles.backBtn, { top: insets.top + 16 }]}>
-        <Ionicons name="chevron-back" size={20} color="#1A1A1C" />
-      </Pressable>
+      <BackButton />
 
       <ScrollView
         contentContainerStyle={[styles.container, { paddingTop: insets.top + 76, paddingBottom: insets.bottom + 24 }]}

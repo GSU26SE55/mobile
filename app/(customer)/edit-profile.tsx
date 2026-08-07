@@ -1,7 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AvatarPicker } from '@/src/features/profile/components/AvatarPicker';
 import { ProfileForm } from '@/src/features/profile/components/ProfileForm';
@@ -11,6 +10,7 @@ import { useUploadAvatar } from '@/src/features/profile/hooks/useUploadAvatar';
 import { UpdateProfileInput } from '@/src/features/profile/schemas/profile.schema';
 import { handleErrorApi } from '@/src/lib/errors';
 import { Colors, Shadow } from '@/src/lib/theme';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -50,9 +50,7 @@ export default function EditProfileScreen() {
   return (
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={18} color={Colors.text} />
-        </Pressable>
+        <BackButton />
         <Text style={styles.headerTitle}>Chỉnh sửa hồ sơ</Text>
         <View style={{ width: 36 }} />
       </View>

@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Shadow } from '@/src/lib/theme';
 import { useMyMaintenanceLogs } from '@/src/features/staff/hooks/useMyMaintenanceLogs';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 // GH-44 #3 — lịch sử bảo trì cá nhân của Staff, gom nhóm theo ticket.
 export default function MaintenanceHistoryScreen() {
@@ -14,11 +15,9 @@ export default function MaintenanceHistoryScreen() {
   return (
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <Pressable onPress={() => router.back()} style={[styles.backBtn, Shadow]}>
-          <Ionicons name="chevron-back" size={18} color={Colors.text} />
-        </Pressable>
+        <BackButton />
         <Text style={styles.topTitle}>Lịch sử bảo trì</Text>
-        <View style={styles.backBtn} />
+        <View style={styles.headerSpacer} />
       </View>
 
       {isLoading ? (
@@ -80,6 +79,7 @@ export default function MaintenanceHistoryScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 12, gap: 12 },
+  headerSpacer: { width: 44 },
   backBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center' },
   topTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: Colors.text, textAlign: 'center' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10, padding: 24 },

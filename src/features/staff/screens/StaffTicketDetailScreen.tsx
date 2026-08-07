@@ -73,12 +73,14 @@ import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard'
 import { useTicketKbRefs } from '@/src/features/kb/hooks/useTicketKbRefs';
 import { useRemoveKbRef } from '@/src/features/kb/hooks/useRemoveKbRef';
 import { KbReferencePicker } from '@/src/features/staff/components/KbReferencePicker';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
+import { BatteryWarningEvidencePanel } from '@/src/features/batteries/components/BatteryWarningEvidencePanel';
 
 type TabKey = 'comments' | 'activities' | 'logs' | 'kb';
 
 const TABS: { key: TabKey; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: 'comments',   label: 'Trao đổi',  icon: 'chatbubbles-outline' },
-  { key: 'activities', label: 'Lịch sử',   icon: 'time-outline' },
+  { key: 'activities', label: 'Chi tiết',  icon: 'time-outline' },
   { key: 'logs',       label: 'Nhật ký',    icon: 'document-text-outline' },
   { key: 'kb',         label: 'Bài KB',     icon: 'book-outline' },
 ];
@@ -199,7 +201,6 @@ function StaffTicketDetailScreenInner() {
   const [showLogForm, setShowLogForm] = useState(false);
   const [editingLog, setEditingLog] = useState<MaintenanceLogDTO | null>(null);
   const [showKbPicker, setShowKbPicker] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // Deep-link từ push notification: ?tab=chat mở tab trao đổi. Bên staff tab đó
   // tên là 'comments' (TabKey), nên map lại chứ không dùng thẳng giá trị param.
@@ -207,20 +208,6 @@ function StaffTicketDetailScreenInner() {
     if (tab === 'chat') setActiveTab('comments');
   }, [tab]);
 
-  useEffect(() => {
-    const showSub = Keyboard.addListener(
-      Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow',
-      (e) => setKeyboardHeight(e.endCoordinates.height)
-    );
-    const hideSub = Keyboard.addListener(
-      Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide',
-      () => setKeyboardHeight(0)
-    );
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
   // GH-44: bỏ auto scrollToEnd — comments giờ DESC (newest-first).
   const isActioning = isStarting || isHolding || isResuming || isResolving || isEscalating;
 
@@ -342,9 +329,7 @@ function StaffTicketDetailScreenInner() {
     >
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
-        <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={22} color={Colors.text} />
-        </Pressable>
+        <BackButton />
         <View style={styles.headerCenter}>
           <Text style={styles.headerCode}>{ticket.code}</Text>
           <TicketStatusBadge status={ticket.status} />
@@ -483,10 +468,11 @@ function StaffTicketDetailScreenInner() {
                 onPress={handleSendComment}
                 disabled={(!commentText.trim() && commentAttachments.length === 0) || isSending || uploadingComment || voiceRecorder.isRecording}
               >
+                {/* Nút gửi nền vàng → icon trắng bị chìm, dùng ink đậm. */}
                 {isSending ? (
-                  <ActivityIndicator size="small" color="#FFF" />
+                  <ActivityIndicator size="small" color={Colors.text} />
                 ) : (
-                  <Ionicons name="send" size={18} color="#FFF" />
+                  <Ionicons name="send" size={18} color={Colors.text} />
                 )}
               </Pressable>
             </View>
@@ -519,6 +505,17 @@ function StaffTicketDetailScreenInner() {
           <View style={[styles.card, Shadow]}>
             <Text style={styles.sectionLabel}>Mô tả</Text>
             <Text style={styles.descText}>{ticket.description}</Text>
+          </View>
+        )}
+
+        {/* Bằng chứng cảnh báo — log cảm biến vượt ngưỡng quanh lúc phát hiện sự cố.
+            Tự ẩn khi ticket không có batteryAssetId hoặc detectedAt. */}
+        {ticket.batteryAssetId && ticket.detectedAt && (
+          <View style={[styles.card, Shadow]}>
+            <BatteryWarningEvidencePanel
+              batteryAssetId={ticket.batteryAssetId}
+              detectedAt={ticket.detectedAt}
+            />
           </View>
         )}
 
@@ -562,7 +559,6 @@ function StaffTicketDetailScreenInner() {
         {/* Maintenance log button */}
         {(['InProgress', 'WaitingCustomer', 'WaitingParts', 'WaitingOnsiteSchedule'] as TicketStatusEnum[]).includes(ticket.status) && (
           <Pressable style={[styles.logButton, Shadow]} onPress={() => setShowLogForm(!showLogForm)}>
-            <Ionicons name="create-outline" size={18} color={Colors.primary} />
             <Text style={styles.logButtonText}>{showLogForm ? 'Ẩn nhật ký' : 'Thêm nhật ký bảo trì'}</Text>
           </Pressable>
         )}
@@ -621,7 +617,6 @@ function StaffTicketDetailScreenInner() {
             {/* Gán bài KB — chỉ Staff được phân công + ticket chưa đóng (BE chặn 403 nếu vi phạm) */}
             {!ticketClosed && !!accountId && isPrimaryHandler(ticket.assignments, accountId) && (
               <Pressable style={styles.kbAssignBtn} onPress={() => setShowKbPicker(true)}>
-                <Ionicons name="add-circle-outline" size={18} color="#FFF" />
                 <Text style={styles.kbAssignText}>Gán bài viết KB</Text>
               </Pressable>
             )}
@@ -793,7 +788,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF', borderRadius: 14, paddingVertical: 12,
     borderWidth: 1, borderColor: Colors.primaryLight,
   },
-  logButtonText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
+  // Chữ đen trên nền trắng — #FFD500 chỉ đạt ~1.5:1 contrast, đọc rất khó.
+  logButtonText: { fontSize: 13, fontWeight: '700', color: Colors.text },
 
   tabRow: {
     flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: 14, padding: 4,
@@ -826,7 +822,7 @@ const styles = StyleSheet.create({
   logEditBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', marginTop: 6, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999, backgroundColor: Colors.primaryLight },
   logEditText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
   kbAssignBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11, borderRadius: 14, backgroundColor: Colors.primary, marginBottom: 12 },
-  kbAssignText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
+  kbAssignText: { color: Colors.text, fontSize: 13, fontWeight: '700' },
   kbRefDeleteBtn: { padding: 4, marginLeft: 'auto' },
   editOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   editSheet: { backgroundColor: Colors.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16, paddingTop: 12, maxHeight: '88%' },

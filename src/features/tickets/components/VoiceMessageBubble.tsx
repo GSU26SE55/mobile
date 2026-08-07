@@ -91,11 +91,13 @@ export function VoiceMessageBubble({
     }
   };
 
-  const activeColor = isMe ? '#FFFFFF' : Colors.primary;
-  const inactiveColor = isMe ? 'rgba(255,255,255,0.4)' : Colors.graySoft;
-  const timeColor = isMe ? 'rgba(255,255,255,0.85)' : Colors.textMute;
-  const transcriptColor = isMe ? '#FFFFFF' : Colors.text;
-  const btnBg = isMe ? 'rgba(255,255,255,0.22)' : Colors.primaryLight;
+  // Bong bóng của mình nền vàng #FFD500 → trắng/trắng mờ gần như chìm hẳn.
+  // Dùng ink đậm + đen pha alpha để sóng âm và thời lượng đọc được.
+  const activeColor = isMe ? Colors.text : Colors.primary;
+  const inactiveColor = isMe ? 'rgba(28,28,30,0.28)' : Colors.graySoft;
+  const timeColor = isMe ? 'rgba(28,28,30,0.75)' : Colors.textMute;
+  const transcriptColor = Colors.text;
+  const btnBg = isMe ? 'rgba(255,255,255,0.55)' : Colors.primaryLight;
 
   const timeLabel = duration > 0 ? formatDuration(current > 0 ? current : duration) : '--:--';
 

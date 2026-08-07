@@ -136,6 +136,10 @@ export const ENDPOINTS = {
   // GH-68 — chat cross-ticket (Mọi role)
   CHATS: {
     ME:              '/api/chats/me',                                        // GET ?page&pageSize → flat TicketChatDTO[]
+    UNREAD_COUNT:    '/api/chats/unread-count',                             // GET → tổng unread chat (đã gồm mention)
+    // GET → [{ customerId, unreadCount }] — 1 call cho cả màn Khách hàng.
+    // Customer không có tin chưa đọc thì KHÔNG có trong list (coi như 0).
+    UNREAD_BY_CUSTOMER: '/api/chats/unread-count/by-customer',
     MENTIONS_ME:     '/api/chats/mentions/me',                              // GET ?page&pageSize
     ERASE_MY_DATA:   '/api/chats/erase-my-data',                           // POST → data LUÔN null; số lượng chỉ có trong message
   },
@@ -197,6 +201,11 @@ export const ENDPOINTS = {
   BATTERY_TYPES: {
     LIST:   '/api/battery-types',                              // GET ?pageNumber&pageSize&keyword&includeDeleted
     DETAIL: (id: string) => `/api/battery-types/${id}`,        // GH-56 — read-only cho Staff
+  },
+  THRESHOLDS: {
+    // Ngưỡng cảnh báo theo loại pin — Staff đọc được (Admin mới sửa được).
+    // 404 = loại pin này chưa cấu hình ngưỡng, không phải lỗi.
+    BY_TYPE: (batteryTypeId: string) => `/api/thresholds/by-type/${batteryTypeId}`,
   },
   IOT_DEVICES: {
     // GH-56 — cầu nối deviceCode (mã in trên thiết bị) → id (GUID) cho Staff/Manager

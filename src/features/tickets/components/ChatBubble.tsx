@@ -671,7 +671,9 @@ const styles = StyleSheet.create({
   bubbleHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 },
   bubbleName: { fontSize: 11, fontWeight: '700', color: Colors.textMute },
   bubbleText: { fontSize: 13.5, fontWeight: '500', color: Colors.text, lineHeight: 19 },
-  bubbleTextMe: { color: '#FFFFFF' },
+  // Nền bong bóng của mình là vàng #FFD500 — chữ trắng chỉ ~1.4:1 contrast,
+  // gần như chìm vào nền. Dùng ink đậm cho nổi (~11:1).
+  bubbleTextMe: { color: Colors.text },
   // Là sibling đứng TRƯỚC `row` (không nằm trong bubbleStack) ⇒ rộng full màn hình, hiện
   // phía trên đầu bong bóng, textAlign center kéo giờ ra giữa toàn bộ chat — không lệch
   // theo phía isMe của bong bóng.

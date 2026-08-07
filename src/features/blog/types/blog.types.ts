@@ -37,6 +37,8 @@ export interface BlogListParams {
   pageNumber?: number;
   pageSize?: number;
   origin?: BlogPostOriginEnum;
+  /** Từ khoá tìm theo tiêu đề / tóm tắt — BE lọc, không lọc client. */
+  q?: string;
 }
 
 // Query gửi lên BE — PascalCase.
@@ -45,4 +47,5 @@ export interface BlogListQuery {
   PageNumber?: number;
   PageSize?: number;
   Origin?: BlogPostOriginEnum;
+  Q?: string;
 }

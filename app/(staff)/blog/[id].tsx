@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import {
   ActivityIndicator,
@@ -15,6 +15,7 @@ import { BlogContent } from '@/src/features/blog/components/BlogContent';
 import { BlogEmptyState } from '@/src/features/blog/components/BlogEmptyState';
 import { useBlogDetail } from '@/src/features/blog/hooks/useBlogDetail';
 import { BlogOriginLabel } from '@/src/features/blog/enums/blog.enum';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -36,9 +37,7 @@ export default function StaffBlogDetailScreen() {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Ionicons name="chevron-back" size={22} color={Colors.text} />
-        </Pressable>
+        <BackButton />
         <Text style={styles.headerTitle} numberOfLines={1}>
           Tin tức
         </Text>

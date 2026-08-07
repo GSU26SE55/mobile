@@ -112,7 +112,7 @@ function ToolBtn({
       {loading ? (
         <ActivityIndicator size="small" color={Colors.primaryDark} />
       ) : (
-        <Ionicons name={icon} size={16} color={disabled ? Colors.textFaint : Colors.primaryDark} />
+        <Ionicons name={icon} size={16} color={disabled ? Colors.textMute : Colors.text} />
       )}
       <Text style={[styles.btnText, disabled && styles.btnTextOff]}>{label}</Text>
     </Pressable>
@@ -128,9 +128,12 @@ const styles = StyleSheet.create({
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
     paddingVertical: 7, borderRadius: 10, backgroundColor: Colors.primaryLight,
   },
-  btnOff: { opacity: 0.5 },
-  btnText: { fontSize: 12, fontWeight: '700', color: Colors.primaryDark },
-  btnTextOff: { color: Colors.textFaint },
+  // Trước dùng opacity 0.5 chồng lên chữ vàng #D9A000 trên nền #FFF6D6 (vốn đã
+  // yếu ~2.4:1) → nút mờ hẳn, không đọc được. Nay đổi NỀN sang xám thay vì hạ
+  // opacity, chữ vẫn đủ đậm để biết nút tên gì dù đang bị khoá.
+  btnOff: { backgroundColor: Colors.card2 },
+  btnText: { fontSize: 12, fontWeight: '700', color: Colors.text },
+  btnTextOff: { color: Colors.textMute },
 
   sheet: { gap: 12, paddingBottom: 8 },
   sheetTitle: { flex: 1, fontSize: 15, fontWeight: '800', color: Colors.text },
@@ -146,5 +149,5 @@ const styles = StyleSheet.create({
   chip: { flex: 1, paddingVertical: 6, borderRadius: 999, backgroundColor: Colors.card2, alignItems: 'center' },
   chipActive: { backgroundColor: Colors.primary },
   chipText: { fontSize: 11, fontWeight: '700', color: Colors.textMute },
-  chipTextActive: { color: '#FFF' },
+  chipTextActive: { color: Colors.text },
 });

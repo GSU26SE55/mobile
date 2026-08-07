@@ -62,20 +62,13 @@ import { BadgeColors, Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
 import { useMyBatteryAssets } from '@/src/features/batteries/hooks/useMyBatteryAssets';
 import { BatteryAssetDto } from '@/src/features/batteries/types/battery.types';
 import { useSessionStore } from '@/src/stores/sessionStore';
+import { getPrimaryHandlerName, getSupporterNames } from '@/src/features/tickets/utils/assignments';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 const PRIORITY_MAP: Record<string, { label: string; badge: keyof typeof BadgeColors }> = {
   P1Critical: { label: 'P1 Critical', badge: 'p1' },
   P2High:     { label: 'P2 High',     badge: 'p2' },
   P3Normal:   { label: 'P3 Standard', badge: 'p3' },
-};
-
-const CATEGORY_LABEL: Record<string, string> = {
-  Charging: 'Sạc pin',
-  Overheat: 'Quá nhiệt',
-  NoPower: 'Mất điện',
-  Performance: 'Hiệu suất',
-  Repair: 'Sửa chữa',
-  Other: 'Khác',
 };
 
 /**
@@ -231,7 +224,6 @@ function TicketDetailScreenInner() {
   const [showReopenModal, setShowReopenModal] = useState(false);
   const [activeTab,       setActiveTab]       = useState<'info' | 'chat'>(tab === 'chat' ? 'chat' : 'info');
   const [viewingImage,    setViewingImage]    = useState<string | null>(null);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // Deep-link từ push notification: ?tab=chat mở thẳng tab chat. Cần useEffect
   // riêng vì màn đã mount sẵn thì đổi param KHÔNG chạy lại useState initializer.
@@ -239,21 +231,6 @@ function TicketDetailScreenInner() {
     if (tab === 'chat') setActiveTab('chat');
   }, [tab]);
 
-  useEffect(() => {
-    const showSub = Keyboard.addListener(
-      Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow',
-      (e) => setKeyboardHeight(e.endCoordinates.height)
-    );
-    const hideSub = Keyboard.addListener(
-      Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide',
-      () => setKeyboardHeight(0)
-    );
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
-    
   if (isLoading) {
     return (
       <View style={styles.center}>
@@ -455,9 +432,7 @@ function TicketDetailScreenInner() {
     >
       {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <Pressable onPress={() => router.back()} style={[styles.backBtn, Shadow]}>
-          <Ionicons name="chevron-back" size={18} color={Colors.text} />
-        </Pressable>
+        <BackButton />
         <Text style={styles.topCode} numberOfLines={1}>{ticket.code}</Text>
         {/* Spacer giữ mã ticket ở giữa. Badge chưa đọc nằm trên tab "Trao đổi",
             không lặp lại ở đây để tránh 2 chỗ cùng báo một con số. */}
@@ -499,24 +474,10 @@ function TicketDetailScreenInner() {
               <PriorityBadge priority={ticket.priority} />
               <TicketStatusBadge status={ticket.status} />
             </View>
+            {/* Đã bỏ ngày tạo + danh mục. Đếm ngược SLA giữ lại, đặt cùng kiểu
+                với màn Staff: một dòng riêng dưới tiêu đề. */}
             <Text style={styles.title}>{ticket.title}</Text>
-            {/* Trước đây ngày + danh mục dồn vào MỘT dòng xám chạy dài, mắt phải
-                tự tách. Tách thành 2 mẩu có icon → quét nhanh hơn. */}
-            <View style={styles.metaRow}>
-              <View style={styles.metaItem}>
-                <Ionicons name="time-outline" size={12} color={Colors.textMute} />
-                <Text style={styles.metaText}>{fmtDateTime(ticket.createdAt)}</Text>
-              </View>
-              <View style={styles.metaDivider} />
-              <View style={styles.metaItem}>
-                <Ionicons name="pricetag-outline" size={12} color={Colors.textMute} />
-                <Text style={styles.metaText}>
-                  {CATEGORY_LABEL[ticket.category] ?? ticket.category}
-                </Text>
-              </View>
-              <View style={{ flex: 1 }} />
-              {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} />}
-            </View>
+            {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} />}
           </View>
 
           {/* Stepper progress */}
@@ -562,9 +523,10 @@ function TicketDetailScreenInner() {
             // #697 — trạng thái phân công suy ra từ `assignments`, không phải
             // `assignedStaffId` (BE đã bỏ field đó).
             const assignments = ticket.assignments ?? [];
-            const hasPrimary = assignments.some((a) => a.role === 'PrimaryHandler');
-            const supporterCount = assignments.filter((a) => a.role === 'Supporter').length;
-            if (!hasPrimary && !assignActivity) return null;
+            // BE trả kèm staffName nên hiện được TÊN thật thay vì "Đã phân công".
+            const primaryName = getPrimaryHandlerName(assignments);
+            const supporterNames = getSupporterNames(assignments);
+            if (!primaryName && !assignActivity) return null;
             return (
               <View style={[styles.assignCard, Shadow]}>
                 <View style={styles.assignRow}>
@@ -572,15 +534,25 @@ function TicketDetailScreenInner() {
                     <Ionicons name="person-outline" size={16} color={Colors.primary} />
                   </View>
                   <View style={styles.assignInfo}>
-                    <Text style={styles.assignLabel}>Kỹ thuật viên</Text>
+                    <Text style={styles.assignLabel}>
+                      Kỹ thuật viên
+                      {/* >1 người thì nói rõ tổng số ngay ở nhãn; danh sách tên nằm ngay dưới. */}
+                      {supporterNames.length > 0 &&
+                        ` · ${supporterNames.length + (primaryName ? 1 : 0)} người`}
+                    </Text>
                     <Text style={styles.assignValue}>
-                      {hasPrimary ? 'Đã phân công' : 'Chưa phân công'}
-                      {supporterCount > 0 && (
-                        <Text style={styles.assignTime}>
-                          {` · +${supporterCount} hỗ trợ`}
-                        </Text>
+                      {primaryName ?? 'Chưa phân công'}
+                      {primaryName && supporterNames.length > 0 && (
+                        <Text style={styles.assignTime}> · phụ trách chính</Text>
                       )}
                     </Text>
+                    {/* Mỗi supporter một dòng — nối bằng dấu phẩy thì tên dài bị cắt cụt. */}
+                    {supporterNames.map((name) => (
+                      <Text key={name} style={styles.assignSupporter} numberOfLines={1}>
+                        {name}
+                        <Text style={styles.assignTime}> · hỗ trợ</Text>
+                      </Text>
+                    ))}
                   </View>
                 </View>
                 {assignActivity && (
@@ -964,10 +936,6 @@ const styles = StyleSheet.create({
   badgeDot:       { width: 6, height: 6, borderRadius: 3 },
   badgeLabel:     { fontSize: 11, fontWeight: '700' },
   title:          { fontSize: 18, fontWeight: '800', color: Colors.text, lineHeight: 26, letterSpacing: -0.3 },
-  metaRow:        { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  metaItem:       { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaDivider:    { width: 1, height: 10, backgroundColor: 'rgba(0,0,0,0.10)' },
-  metaText:       { fontSize: 11.5, color: Colors.textMute, fontWeight: '600' },
 
   stepperContainer: {
     backgroundColor: '#FFFFFF',
@@ -1094,6 +1062,7 @@ const styles = StyleSheet.create({
   assignLabel:    { fontSize: 11, color: Colors.textMute, fontWeight: '500', marginBottom: 2 },
   assignValue:    { fontSize: 13, color: Colors.text, fontWeight: '700' },
   assignTime:     { fontSize: 11, color: Colors.textMute, fontWeight: '400' },
+  assignSupporter:{ fontSize: 12, color: Colors.text, fontWeight: '600', marginTop: 2 },
   descCard:       { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, gap: 10, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
   sectionH:       { fontSize: 13, fontWeight: '800', color: Colors.text, letterSpacing: -0.1 },
   descText:       { fontSize: 13, color: Colors.text2, lineHeight: 22, fontWeight: '500' },

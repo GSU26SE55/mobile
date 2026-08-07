@@ -10,6 +10,7 @@ import { AlertSeverityEnum, AlertStatusEnum } from '@/src/shared/enums/alert.enu
 import { ANOMALY_LABEL } from '@/src/features/batteries/components/AssetAlertList';
 import { useIncidents } from '@/src/features/incidents/hooks/useIncidents';
 import { IncidentList } from '@/src/features/incidents/components/IncidentList';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 type Segment = 'alerts' | 'incidents';
 
@@ -58,9 +59,7 @@ export default function StaffAlertsIncidentsScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <Pressable onPress={() => router.back()} style={[styles.headerBtn, Shadow]}>
-          <Ionicons name="chevron-back" size={18} color={Colors.accent} />
-        </Pressable>
+        <BackButton />
         <Text style={styles.headerTitle}>Cảnh báo & Sự cố</Text>
         <View style={{ width: 44 }} />
       </View>

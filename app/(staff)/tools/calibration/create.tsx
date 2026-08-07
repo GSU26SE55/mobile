@@ -12,8 +12,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Shadow } from '@/src/lib/theme';
+import { Colors, Radius } from '@/src/lib/theme';
 import { handleErrorApi } from '@/src/lib/errors';
 import { useCreateCalibration } from '@/src/features/iot-devices/hooks/useCreateCalibration';
 import { createCalibrationSchema } from '@/src/features/iot-devices/schemas/calibration.schema';
@@ -21,6 +20,7 @@ import {
   CalibrationChannel,
   CALIBRATION_CHANNEL_LABEL,
 } from '@/src/features/iot-devices/enums/iot-device.enum';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 const CHANNELS = Object.values(CalibrationChannel);
 
@@ -112,11 +112,9 @@ export default function CreateCalibrationScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <Pressable onPress={() => router.back()} style={[styles.backBtn, Shadow]}>
-          <Ionicons name="chevron-back" size={18} color={Colors.text} />
-        </Pressable>
+        <BackButton />
         <Text style={styles.topTitle}>Thêm calibration</Text>
-        <View style={styles.backBtn} />
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -229,6 +227,7 @@ export default function CreateCalibrationScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12 },
+  headerSpacer: { width: 44 },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
   content: { padding: 16, paddingBottom: 40 },
@@ -244,7 +243,7 @@ const styles = StyleSheet.create({
   chip: { paddingHorizontal: 14, height: 36, borderRadius: 18, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border },
   chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   chipText: { fontSize: 13, color: Colors.text },
-  chipTextActive: { color: '#fff', fontWeight: '700' },
+  chipTextActive: { color: Colors.text, fontWeight: '700' },
   submitBtn: { backgroundColor: Colors.primary, borderRadius: Radius.md, height: 50, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   submitBtnDisabled: { opacity: 0.6 },
   submitText: { color: '#fff', fontSize: 15, fontWeight: '700' },

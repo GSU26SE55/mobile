@@ -14,6 +14,7 @@ import { ANOMALY_LABEL } from '@/src/features/batteries/components/AssetAlertLis
 import { useMyIncidents } from '@/src/features/incidents/hooks/useMyIncidents';
 import { IncidentList } from '@/src/features/incidents/components/IncidentList';
 import { EnergyBackdrop, GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 type FilterKey = 'all' | AlertSeverityEnum;
 type Segment = 'alerts' | 'incidents';
@@ -104,9 +105,7 @@ export default function AlertsScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         {router.canGoBack() && (
-          <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-            <Ionicons name="chevron-back" size={20} color={Solar.ink} />
-          </Pressable>
+          <BackButton />
         )}
         <View style={styles.headerLeft}>
           <Text style={styles.title}>Cảnh báo & Sự cố</Text>

@@ -1,8 +1,9 @@
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useChatUnreadCount } from '@/src/features/tickets/hooks/useChatInbox';
 
 const ACCENT = '#FFD500';
 const INK = '#1C1C1E';
@@ -23,6 +24,9 @@ const tabMeta: Record<
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 8);
+  // Tổng tin chưa đọc — BE đếm theo chat row nên tin có @mention đã nằm trong
+  // số này, KHÔNG cộng thêm list mention (sẽ đếm gấp đôi cùng 1 tin).
+  const { data: unread = 0 } = useChatUnreadCount();
 
   return (
     <View style={[styles.tabBar, { paddingBottom: bottomInset, height: 60 + bottomInset }]}>
@@ -55,6 +59,11 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                 size={26}
                 color={focused ? INK : MUTED}
               />
+              {route.name === 'customers' && unread > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>{unread > 99 ? '99+' : unread}</Text>
+                </View>
+              )}
             </View>
           </Pressable>
         );
@@ -103,6 +112,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  tabBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: '#FF3B30',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  tabBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
   iconBoxActive: {
     backgroundColor: ACCENT,
     borderRadius: 18,

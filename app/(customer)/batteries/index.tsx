@@ -18,6 +18,7 @@ import { buildFleetScope } from '@/src/features/batteries/utils/buildFleetScope'
 import { useSessionStore } from '@/src/stores/sessionStore';
 import { Solar } from '@/src/lib/theme';
 import { EnergyBackdrop, GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 const BATTERY_IMAGE = require('../../../assets/images/battery-storage-3d.png');
 
@@ -49,9 +50,7 @@ export default function BatteriesListScreen() {
 
       {/* Header Row */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Pressable style={styles.iconButton} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={22} color={Solar.ink} />
-        </Pressable>
+        <BackButton />
         <View style={styles.titleWrap}>
           <Text style={styles.title}>Tất cả cục pin</Text>
           <Text style={styles.subtitle}>{batteries.length} thiết bị lưu trữ</Text>
