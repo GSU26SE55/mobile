@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { KEY } from '../../../lib/queryKeys';
+import { KEY } from '@/src/lib/queryKeys';
 import { staffTicketService } from '../services/staffTicket.service';
-import { handleErrorApi } from '../../../lib/errors';
+import { handleErrorApi } from '@/src/lib/errors';
 import { EscalatePayload } from '../types/staff.types';
 
 export function useEscalateTicket(ticketId: string) {

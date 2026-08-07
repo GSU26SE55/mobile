@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors, Shadow, ShadowPrimary } from '../../../lib/theme';
-import { BottomSheet } from '../../../shared/components/BottomSheet';
+import { Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
+import { BottomSheet } from '@/src/shared/components/BottomSheet';
 import { rateTicketSchema } from '../schemas/rateTicket.schema';
 import { RatePayload } from '../types/ticket.types';
 

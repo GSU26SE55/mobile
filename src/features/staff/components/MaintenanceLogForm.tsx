@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors, Shadow } from '../../../lib/theme';
-import { AttachmentPicker, UploadedAttachment } from '../../file-storage/components/AttachmentPicker';
-import { FilePurposeEnum } from '../../file-storage/enums/file-storage.enum';
+import { Colors, Shadow } from '@/src/lib/theme';
+import { AttachmentPicker, UploadedAttachment } from '@/src/features/file-storage/components/AttachmentPicker';
+import { FilePurposeEnum } from '@/src/features/file-storage/enums/file-storage.enum';
 import type { MaintenanceLogPayload } from '../types/staff.types';
 
 interface Props {

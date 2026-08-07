@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors } from '../../../lib/theme';
-import { BottomSheet } from '../../../shared/components/BottomSheet';
-import { PauseReasonEnum } from '../../tickets/types/ticket.types';
+import { Colors } from '@/src/lib/theme';
+import { BottomSheet } from '@/src/shared/components/BottomSheet';
+import { PauseReasonEnum } from '@/src/features/tickets/types/ticket.types';
 
 const HOLD_OPTIONS: { value: PauseReasonEnum; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { value: PauseReasonEnum.WaitingCustomer,       label: 'Chờ khách phản hồi',     icon: 'person-outline' },

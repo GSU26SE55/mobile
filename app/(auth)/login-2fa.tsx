@@ -13,12 +13,12 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getToken } from '../../src/lib/secureStore';
-import { useSend2faSms } from '../../src/features/auth/hooks/useSend2faSms';
-import { useVerify2faLogin } from '../../src/features/auth/hooks/useVerify2faLogin';
-import { CHALLENGE_TOKEN_KEY, Verify2faLoginPayload } from '../../src/features/auth/types/auth.types';
-import { handleErrorApi } from '../../src/lib/errors';
-import { Colors, Spacing } from '../../src/lib/theme';
+import { getToken } from '@/src/lib/secureStore';
+import { useSend2faSms } from '@/src/features/auth/hooks/useSend2faSms';
+import { useVerify2faLogin } from '@/src/features/auth/hooks/useVerify2faLogin';
+import { CHALLENGE_TOKEN_KEY, Verify2faLoginPayload } from '@/src/features/auth/types/auth.types';
+import { handleErrorApi } from '@/src/lib/errors';
+import { Colors } from '@/src/lib/theme';
 
 // 3 mode loại trừ nhau — KHÔNG bao giờ gửi isBackupCode & isSmsCode cùng true (BE trả 400).
 type Mode = 'totp' | 'backup' | 'sms';
@@ -59,6 +59,9 @@ export default function Login2faScreen() {
     return () => {
       active = false;
     };
+    // Chạy 1 lần lúc mount. `router` của expo-router là singleton ổn định —
+    // thêm vào deps không đổi hành vi, chỉ làm nhiễu ý đồ "mount-only".
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const switchMode = (next: Mode) => {

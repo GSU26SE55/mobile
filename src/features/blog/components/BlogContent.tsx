@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Linking, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 
 interface Props {
   html: string;

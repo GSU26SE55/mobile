@@ -1,7 +1,7 @@
-import { axiosInstance } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { CommonResponse, PaginationResponse } from '../../../types/api.types';
-import { TicketActionResponse, TicketDetailDTO, TicketDTO } from '../../tickets/types/ticket.types';
+import { axiosInstance } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { CommonResponse, PaginationResponse } from '@/src/types/api.types';
+import { TicketActionResponse, TicketDetailDTO, TicketDTO } from '@/src/features/tickets/types/ticket.types';
 import { EscalatePayload, HoldPayload, MaintenanceLogPayload, ResolvePayload, StaffAddCommentPayload, StaffMaintenanceLogGroupDTO, StaffTicketDashboardStatsDto, StaffTicketListParams, UpdateMaintenanceLogPayload } from '../types/staff.types';
 
 const { STAFF_TICKETS, TICKETS } = ENDPOINTS;

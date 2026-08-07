@@ -2,9 +2,9 @@ import { useMutation } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import { router } from 'expo-router';
 import { authService } from '../services/auth.service';
-import { saveTokens, clearTokens, clearToken } from '../../../lib/secureStore';
-import { decodeToken, redirectByRole } from '../../../types/session.types';
-import { useSessionStore } from '../../../stores/sessionStore';
+import { saveTokens, clearTokens, clearToken } from '@/src/lib/secureStore';
+import { decodeToken, redirectByRole } from '@/src/types/session.types';
+import { useSessionStore } from '@/src/stores/sessionStore';
 import { Verify2faLoginPayload, CHALLENGE_TOKEN_KEY } from '../types/auth.types';
 
 // GH-295: bước 2 của 2FA login — verify TOTP/backup code → cấp token (giống login Case A)

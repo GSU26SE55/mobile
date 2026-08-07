@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Shadow, Solar } from '../../../lib/theme';
+import { Colors, Radius, Shadow, Solar } from '@/src/lib/theme';
 import { SiteDto } from '../types/site.types';
 
 export function SiteCard({ item, onPress }: { item: SiteDto; onPress: () => void }) {

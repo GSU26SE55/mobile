@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
-import { useChangeEmail } from '../../../src/features/account/hooks/useChangeEmail';
-import { useConfirmEmailChange } from '../../../src/features/account/hooks/useConfirmEmailChange';
-import { ChangeEmailForm } from '../../../src/features/account/components/ChangeEmailForm';
-import { ConfirmEmailOtpForm } from '../../../src/features/account/components/ConfirmEmailOtpForm';
-import { handleErrorApi } from '../../../src/lib/errors';
-import { ChangeEmailInput, ConfirmEmailOtpInput } from '../../../src/features/account/schemas/changeEmail.schema';
-import { Colors } from '../../../src/lib/theme';
+import { useChangeEmail } from '@/src/features/account/hooks/useChangeEmail';
+import { useConfirmEmailChange } from '@/src/features/account/hooks/useConfirmEmailChange';
+import { ChangeEmailForm } from '@/src/features/account/components/ChangeEmailForm';
+import { ConfirmEmailOtpForm } from '@/src/features/account/components/ConfirmEmailOtpForm';
+import { handleErrorApi } from '@/src/lib/errors';
+import { ChangeEmailInput, ConfirmEmailOtpInput } from '@/src/features/account/schemas/changeEmail.schema';
+import { Colors } from '@/src/lib/theme';
 
 export default function ChangeEmailScreen() {
   const [step, setStep] = useState<1 | 2>(1);

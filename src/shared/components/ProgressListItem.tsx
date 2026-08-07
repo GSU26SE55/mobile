@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors, Shadow } from '../../lib/theme';
+import { Colors, Shadow } from '@/src/lib/theme';
 
 // Dòng danh sách kiểu Home mới: [chấm màu] tiêu đề ... [badge trạng thái]
 // rồi thanh tiến độ ngang, và caption phụ căn phải bên dưới.

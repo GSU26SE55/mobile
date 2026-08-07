@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
-import { fileStorageService } from '../../file-storage/services/file-storage.service';
-import { FilePurposeEnum } from '../../file-storage/enums/file-storage.enum';
+import { fileStorageService } from '@/src/features/file-storage/services/file-storage.service';
+import { FilePurposeEnum } from '@/src/features/file-storage/enums/file-storage.enum';
 import { AttachmentForm } from '../schemas/comment.schema';
 
 export function useUploadCommentAttachment() {

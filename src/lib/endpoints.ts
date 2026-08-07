@@ -107,12 +107,21 @@ export const ENDPOINTS = {
     PARTICIPANTS:    (id: string) => `/api/tickets/${id}/participants`,
     CHATS:           (id: string) => `/api/tickets/${id}/chats`,   // GET list (?page&pageSize) + POST (BE migration 20260622)
     CHAT_DETAIL:     (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}`, // PUT (edit) / DELETE
+    // DELETE { chatIds } — tối đa 50/lần, partial success. BE chặn 400 khi ticket
+    // Closed/ClosedPendingRate. Chat không thuộc author bị ẨN RIÊNG (TicketChatHide)
+    // chứ không xoá, và KHÔNG nằm trong `deleted`/`skipped` của response.
+    CHAT_BULK_DELETE: (tid: string) => `/api/tickets/${tid}/chats/bulk`,
     CHAT_MARK_READ:  (tid: string) => `/api/tickets/${tid}/chats/mark-read`, // POST { chatIds }
     CHAT_TRANSLATE:  (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}/translate`, // POST ?to=
-    CHAT_VOICE:      (tid: string) => `/api/tickets/${tid}/chats/voice`, // POST multipart — field "AudioFile"
+    CHAT_VOICE:      (tid: string) => `/api/tickets/${tid}/chats/voice`, // POST JSON ChatAttachmentInput (file audio đã upload FileStorage)
+    // GH-83 — retry chuyển giọng nói → văn bản. POST, không body, trả 202 (BE xử lý bất đồng bộ).
+    // 409 nếu chat chưa ở trạng thái Failed; 404 nếu chat không thuộc ticket.
+    CHAT_VOICE_RETRY: (tid: string, chatId: string) =>
+      `/api/tickets/${tid}/chats/${chatId}/voice/retry`,
     // GH-68 — Mọi role
     CHATS_CURSOR:        (tid: string) => `/api/tickets/${tid}/chats/cursor`,        // GET ?cursor&limit(≤100,def20)
     CHAT_UNREAD_COUNT:   (tid: string) => `/api/tickets/${tid}/chats/unread-count`,  // GET → { unreadCount } (per-ticket, KHÔNG bulk — ≠ NOTIFICATIONS.UNREAD_COUNT)
+    CHAT_READERS:    (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}/readers`, // GET → ChatReaderDTO[]; Staff/Manager/Admin ONLY (Customer 403)
     CHAT_REACTIONS:      (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}/reactions`, // POST { reactionType } / DELETE ?type=
     CHAT_ATTACHMENT_DOWNLOAD: (tid: string, cid: string, fileId: string) =>
       `/api/tickets/${tid}/chats/${cid}/attachments/${fileId}/download`,             // GET → CommonResponse<string> URL; HTTP 200/202/451/404. {attachmentId}=FileId
@@ -120,8 +129,6 @@ export const ENDPOINTS = {
     CHAT_PIN:        (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}/pin`, // POST pin / DELETE unpin
     CHAT_SUGGEST:    (tid: string) => `/api/tickets/${tid}/chats/suggest`,        // POST { intent } (AI)
     CHAT_SUMMARIZE:  (tid: string) => `/api/tickets/${tid}/chats/summarize`,      // POST (AI)
-    CHAT_SENTIMENT:  (tid: string) => `/api/tickets/${tid}/chats/sentiment-check`, // POST (AI)
-    CHAT_EXPORT_PDF: (tid: string) => `/api/tickets/${tid}/chats/export-pdf`,     // GET application/pdf
     ACTIVITIES:      (id: string) => `/api/tickets/${id}/activities`, // GH-44 — timeline
     REOPEN:          (id: string) => `/api/customer/tickets/${id}/reopen`,
     RATE:            (id: string) => `/api/customer/tickets/${id}/rate`,
@@ -129,9 +136,8 @@ export const ENDPOINTS = {
   // GH-68 — chat cross-ticket (Mọi role)
   CHATS: {
     ME:              '/api/chats/me',                                        // GET ?page&pageSize → flat TicketChatDTO[]
-    MENTIONS_ME:     '/api/chats/mentions/me',                              // GET ?unreadOnly&page&pageSize
-    MENTION_ACK:     (id: string) => `/api/chats/mentions/${id}/acknowledge`, // PATCH
-    ERASE_MY_DATA:   '/api/chats/erase-my-data',                           // POST → { erasedCount }
+    MENTIONS_ME:     '/api/chats/mentions/me',                              // GET ?page&pageSize
+    ERASE_MY_DATA:   '/api/chats/erase-my-data',                           // POST → data LUÔN null; số lượng chỉ có trong message
   },
   PERMISSIONS: {
     CATALOG: '/api/permissions', // GH-68 — catalog toàn bộ permission (mọi role); ?module
@@ -154,9 +160,11 @@ export const ENDPOINTS = {
       `/api/tickets/${ticketId}/maintenance-logs/${logId}`,        // GH-44 #4 — PATCH
   },
   NOTIFICATIONS: {
-    MARK_OPENED: (id: string) => `/api/notifications/${id}/opened`,
     LIST: '/api/notifications',
     MARK_READ: (id: string) => `/api/notifications/${id}/read`, // PATCH — idempotent
+    // GH-83 — Sprint 6.3 NOTI3-14. PATCH, không body, idempotent. `Opened` MẠNH HƠN `Read`:
+    // gọi `/read` lên record đã `Opened` thì BE giữ nguyên `Opened`, không hạ cấp.
+    MARK_OPENED: (id: string) => `/api/notifications/${id}/opened`,
     MARK_ALL_READ: '/api/notifications/read-all', // POST — body rỗng
     UNREAD_COUNT: '/api/notifications/unread-count', // GET — badge
   },
@@ -165,6 +173,10 @@ export const ENDPOINTS = {
   },
   NOTIFICATION_PREFERENCES: {
     BASE: '/api/notification-preferences',
+    // GH-83 — Sprint 6.3 NOTI3-04. MATRIX: GET (ma trận nhóm × kênh) + PUT (vá từng dòng).
+    MATRIX: '/api/notification-preferences/matrix',
+    // Bảng tra cứu NotificationType → nhóm. KHÔNG nhân bản bảng này ở client — thêm type mới là lệch.
+    CATEGORIES: '/api/notification-preferences/categories',
   },
   KNOWLEDGE_BASE: {
     LIST:    '/api/knowledge-base',

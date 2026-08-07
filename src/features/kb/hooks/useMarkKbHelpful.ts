@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { KEY, QUERY_KEY } from '../../../lib/queryKeys';
+import { KEY, QUERY_KEY } from '@/src/lib/queryKeys';
 import { kbService } from '../services/kb.service';
 import type { KbArticleDTO, KbArticleSummaryDTO } from '../types/kb.types';
 

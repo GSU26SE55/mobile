@@ -9,15 +9,15 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useProfile } from '../../../src/features/profile/hooks/useProfile';
-import { useInit2FA } from '../../../src/features/account/hooks/useInit2FA';
-import { useConfirm2FA } from '../../../src/features/account/hooks/useConfirm2FA';
-import { useDisable2FA } from '../../../src/features/account/hooks/useDisable2FA';
-import { useRegenerateBackupCodes } from '../../../src/features/account/hooks/useRegenerateBackupCodes';
-import { TwoFASetup } from '../../../src/features/account/components/TwoFASetup';
-import { Init2faResponse } from '../../../src/features/account/types/account.types';
-import { handleErrorApi } from '../../../src/lib/errors';
-import { Colors } from '../../../src/lib/theme';
+import { useProfile } from '@/src/features/profile/hooks/useProfile';
+import { useInit2FA } from '@/src/features/account/hooks/useInit2FA';
+import { useConfirm2FA } from '@/src/features/account/hooks/useConfirm2FA';
+import { useDisable2FA } from '@/src/features/account/hooks/useDisable2FA';
+import { useRegenerateBackupCodes } from '@/src/features/account/hooks/useRegenerateBackupCodes';
+import { TwoFASetup } from '@/src/features/account/components/TwoFASetup';
+import { Init2faResponse } from '@/src/features/account/types/account.types';
+import { handleErrorApi } from '@/src/lib/errors';
+import { Colors } from '@/src/lib/theme';
 
 export default function TwoFAScreen() {
   const { data: account, isLoading } = useProfile();

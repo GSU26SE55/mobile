@@ -2,8 +2,8 @@ import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { accountService } from '../services/account.service';
 import { ConfirmEmailChangePayload } from '../types/account.types';
-import { clearTokens } from '../../../lib/secureStore';
-import { useSessionStore } from '../../../stores/sessionStore';
+import { clearTokens } from '@/src/lib/secureStore';
+import { useSessionStore } from '@/src/stores/sessionStore';
 
 export function useConfirmEmailChange() {
   const clearSession = useSessionStore((s) => s.clearSession);

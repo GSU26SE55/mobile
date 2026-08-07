@@ -10,12 +10,12 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Shadow } from '../../../src/lib/theme';
-import { KbCategoryBadge } from '../../../src/features/kb/components/KbCategoryBadge';
-import { KbDetailSection } from '../../../src/features/kb/components/KbDetailSection';
-import { KbStepList } from '../../../src/features/kb/components/KbStepList';
-import { useKbDetail } from '../../../src/features/kb/hooks/useKbDetail';
-import { useMarkKbHelpful } from '../../../src/features/kb/hooks/useMarkKbHelpful';
+import { Colors, Shadow } from '@/src/lib/theme';
+import { KbCategoryBadge } from '@/src/features/kb/components/KbCategoryBadge';
+import { KbDetailSection } from '@/src/features/kb/components/KbDetailSection';
+import { KbStepList } from '@/src/features/kb/components/KbStepList';
+import { useKbDetail } from '@/src/features/kb/hooks/useKbDetail';
+import { useMarkKbHelpful } from '@/src/features/kb/hooks/useMarkKbHelpful';
 
 export default function StaffKbDetailScreen() {
   const insets = useSafeAreaInsets();

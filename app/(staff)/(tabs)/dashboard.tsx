@@ -3,15 +3,15 @@ import React, { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BadgeColors, Colors, Solar } from '../../../src/lib/theme';
-import { useStaffTickets } from '../../../src/features/staff/hooks/useStaffTickets';
-import { useStaffDashboardStats } from '../../../src/features/staff/hooks/useStaffDashboardStats';
-import { useStaffProfile } from '../../../src/features/staff/hooks/useStaffProfile';
-import { useUnreadCount } from '../../../src/features/notifications/hooks/useNotifications';
-import { TicketStatusEnum, TicketDTO } from '../../../src/features/tickets/types/ticket.types';
-import { HomeHeader } from '../../../src/shared/components/HomeHeader';
-import { StatTrio } from '../../../src/shared/components/StatTrio';
-import { ProgressListItem } from '../../../src/shared/components/ProgressListItem';
+import { BadgeColors, Colors, Solar } from '@/src/lib/theme';
+import { useStaffTickets } from '@/src/features/staff/hooks/useStaffTickets';
+import { useStaffDashboardStats } from '@/src/features/staff/hooks/useStaffDashboardStats';
+import { useStaffProfile } from '@/src/features/staff/hooks/useStaffProfile';
+import { useUnreadCount } from '@/src/features/notifications/hooks/useNotifications';
+import { TicketStatusEnum, TicketDTO } from '@/src/features/tickets/types/ticket.types';
+import { HomeHeader } from '@/src/shared/components/HomeHeader';
+import { StatTrio } from '@/src/shared/components/StatTrio';
+import { ProgressListItem } from '@/src/shared/components/ProgressListItem';
 
 type FilterTab = 'all' | 'active' | 'waiting' | 'resolved';
 
@@ -30,7 +30,6 @@ const RESOLVED_STATUSES: TicketStatusEnum[] = ['Resolved', 'Escalated'];
 const STATUS_META: Record<string, { label: string; badge: keyof typeof BadgeColors; progress: number }> = {
   New: { label: 'Mới', badge: 'new', progress: 10 },
   Open: { label: 'Đang mở', badge: 'open', progress: 15 },
-  Approved: { label: 'Đã duyệt', badge: 'ok', progress: 20 },
   Assigned: { label: 'Được giao', badge: 'assigned', progress: 30 },
   InProgress: { label: 'Đang xử lý', badge: 'progress', progress: 60 },
   WaitingCustomer: { label: 'Chờ khách', badge: 'waiting', progress: 50 },

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
-import { Colors, Radius, Shadow, Solar } from '../../../lib/theme';
+import { Colors, Radius, Shadow, Solar } from '@/src/lib/theme';
 import { useSensorReadingAggregate } from '../hooks/useSensorReadingAggregate';
 import { SensorReadingAggregateDto, SensorReadingInterval } from '../types/sensor-reading.types';
 

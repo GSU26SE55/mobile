@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { batteryTypeService } from '../services/battery-type.service';
 import { BatteryTypeListParams } from '../types/battery-type.types';
 

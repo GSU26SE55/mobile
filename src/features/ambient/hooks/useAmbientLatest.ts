@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { ambientService } from '../services/ambient.service';
 
 // 404 = site chưa có ambient reading → coi là "chưa có dữ liệu", KHÔNG retry.

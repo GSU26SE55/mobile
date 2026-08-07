@@ -1,6 +1,6 @@
 import axios, { create as axiosCreate } from 'axios';
 import { Platform } from 'react-native';
-import { useSessionStore } from '../stores/sessionStore';
+import { useSessionStore } from '@/src/stores/sessionStore';
 import { getDeviceId } from './deviceId';
 import { ENDPOINTS } from './endpoints';
 import { EntityError, HttpError } from './errors';

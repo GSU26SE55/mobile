@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { staffTicketService } from '../services/staffTicket.service';
 
 export function useStaffTicketDetail(id: string) {

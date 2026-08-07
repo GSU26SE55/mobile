@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { ActivityIndicator, Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 
 function formatElapsed(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);

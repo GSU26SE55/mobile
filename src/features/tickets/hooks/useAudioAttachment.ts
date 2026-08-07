@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { fileStorageService } from '../../file-storage/services/file-storage.service';
-import { QUERY_KEY } from '../../../lib/queryKeys';
-import { BASE_URL } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
+import { fileStorageService } from '@/src/features/file-storage/services/file-storage.service';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
+import { BASE_URL } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
 
 const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

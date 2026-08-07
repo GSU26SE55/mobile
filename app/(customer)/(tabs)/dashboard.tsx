@@ -18,18 +18,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LineChart } from 'react-native-gifted-charts';
 import { useScrollToTop } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { useProfile } from '../../../src/features/profile/hooks/useProfile';
-import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
-import { useMyAlerts } from '../../../src/features/batteries/hooks/useMyAlerts';
-import { useBatteryFleetStream } from '../../../src/features/batteries/hooks/useBatteryFleetStream';
-import { buildFleetScope } from '../../../src/features/batteries/utils/buildFleetScope';
-import { useMySites } from '../../../src/features/sites/hooks/useMySites';
-import { useAmbientLatest } from '../../../src/features/ambient/hooks/useAmbientLatest';
-import { AlertStatusEnum } from '../../../src/shared/enums/alert.enum';
-import { LiveReadingDto } from '../../../src/features/batteries/types/live-reading.types';
-import { useSessionStore } from '../../../src/stores/sessionStore';
-import { Colors, Solar } from '../../../src/lib/theme';
-import { EnergyBackdrop, GlassSurface } from '../../../src/features/batteries/components/EnergyBackdrop';
+import { useProfile } from '@/src/features/profile/hooks/useProfile';
+import { useMyBatteryAssets } from '@/src/features/batteries/hooks/useMyBatteryAssets';
+import { useMyAlerts } from '@/src/features/batteries/hooks/useMyAlerts';
+import { useBatteryFleetStream } from '@/src/features/batteries/hooks/useBatteryFleetStream';
+import { buildFleetScope } from '@/src/features/batteries/utils/buildFleetScope';
+import { useMySites } from '@/src/features/sites/hooks/useMySites';
+import { useAmbientLatest } from '@/src/features/ambient/hooks/useAmbientLatest';
+import { AlertStatusEnum } from '@/src/shared/enums/alert.enum';
+import { LiveReadingDto } from '@/src/features/batteries/types/live-reading.types';
+import { useSessionStore } from '@/src/stores/sessionStore';
+import { Colors, Solar } from '@/src/lib/theme';
+import { EnergyBackdrop, GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
 
 const BATTERY_IMAGE = require('../../../assets/images/battery-storage-3d.png');
 
@@ -102,7 +102,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   useScrollToTop(scrollRef);
-  const { data: account, isLoading: profileLoading } = useProfile();
+  const { isLoading: profileLoading } = useProfile();
   const { data: batteries = [], isLoading: batteriesLoading } = useMyBatteryAssets();
   const { data: alerts = [] } = useMyAlerts();
   const { data: sites = [] } = useMySites();
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
   waveEmpty: { height: 95, justifyContent: 'center', alignItems: 'center' },
   waveEmptyText: { fontSize: 12, color: Solar.mute, fontWeight: '600' },
 
-  // GH-78 — hàng điểm vào Blog, đặt dưới PopularKbSection.
+  // GH-78 — hàng điểm vào Blog.
   blogEntry: {
     flexDirection: 'row',
     alignItems: 'center',

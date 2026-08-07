@@ -5,7 +5,8 @@ import type {
   MaintenanceLogTypeEnum,
   MaintenanceLogDTO,
   CommentAttachmentPayload,
-} from '../../tickets/types/ticket.types';
+  ChatMentionInput,
+} from '@/src/features/tickets/types/ticket.types';
 import type { StaffSkillTierEnum } from '../enums/staff.enum';
 
 export { StaffSkillTierEnum } from '../enums/staff.enum';
@@ -87,6 +88,8 @@ export interface StaffTicketListParams {
 export interface StaffAddCommentPayload {
   body: string;
   isInternal?: boolean;
+  /** BE nhận mention qua field này, KHÔNG parse '@' từ body. */
+  mentions?: ChatMentionInput[];
   attachments?: CommentAttachmentPayload[];
 }
 

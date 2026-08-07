@@ -3,16 +3,16 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Shadow } from '../../../src/lib/theme';
-import { handleErrorApi } from '../../../src/lib/errors';
-import { useAlert } from '../../../src/features/batteries/hooks/useAlert';
-import { useResolveAlert } from '../../../src/features/batteries/hooks/useResolveAlert';
-import { ANOMALY_LABEL } from '../../../src/features/batteries/components/AssetAlertList';
-import { formatMeasure } from '../../../src/features/batteries/types/alert.types';
+import { Colors, Shadow } from '@/src/lib/theme';
+import { handleErrorApi } from '@/src/lib/errors';
+import { useAlert } from '@/src/features/batteries/hooks/useAlert';
+import { useResolveAlert } from '@/src/features/batteries/hooks/useResolveAlert';
+import { ANOMALY_LABEL } from '@/src/features/batteries/components/AssetAlertList';
+import { formatMeasure } from '@/src/features/batteries/types/alert.types';
 import {
   AlertSeverityEnum,
   AlertStatusEnum,
-} from '../../../src/shared/enums/alert.enum';
+} from '@/src/shared/enums/alert.enum';
 
 const SEVERITY_STYLE: Record<AlertSeverityEnum, { label: string; color: string; bg: string }> = {
   [AlertSeverityEnum.Info]: { label: 'Info', color: Colors.info, bg: Colors.infoLight },

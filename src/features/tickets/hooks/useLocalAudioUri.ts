@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { File, Paths } from 'expo-file-system';
-import { fileStorageService } from '../../file-storage/services/file-storage.service';
+import { fileStorageService } from '@/src/features/file-storage/services/file-storage.service';
 
 /**
  * Tải file audio về cache local (qua axios — interceptor tự gắn Bearer) rồi trả URI local.

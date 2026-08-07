@@ -4,23 +4,23 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Solar } from '../../../src/lib/theme';
-import { useBatteryAsset } from '../../../src/features/batteries/hooks/useBatteryAsset';
-import { useBatteryAssetRealtime } from '../../../src/features/batteries/hooks/useBatteryAssetRealtime';
-import { useBatterySensorStream } from '../../../src/features/batteries/hooks/useBatterySensorStream';
-import { useAssetAlerts } from '../../../src/features/batteries/hooks/useAssetAlerts';
-import { useCascadeRisk } from '../../../src/features/batteries/hooks/useCascadeRisk';
-import { BatteryInfoCard } from '../../../src/features/batteries/components/BatteryInfoCard';
-import { CascadeRiskBadge } from '../../../src/features/batteries/components/CascadeRiskBadge';
-import { SensorChart } from '../../../src/features/batteries/components/SensorChart';
-import { ChargeDischargeChart } from '../../../src/features/batteries/components/ChargeDischargeChart';
-import { AssetAlertList } from '../../../src/features/batteries/components/AssetAlertList';
-import { EnergyBackdrop, GlassSurface } from '../../../src/features/batteries/components/EnergyBackdrop';
-import { ChargingStateEnum } from '../../../src/features/batteries/enums/battery.enum';
-import { P } from '../../../src/lib/authz';
-import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
-import { useProfile } from '../../../src/features/profile/hooks/useProfile';
-import { useSessionStore } from '../../../src/stores/sessionStore';
+import { Solar } from '@/src/lib/theme';
+import { useBatteryAsset } from '@/src/features/batteries/hooks/useBatteryAsset';
+import { useBatteryAssetRealtime } from '@/src/features/batteries/hooks/useBatteryAssetRealtime';
+import { useBatterySensorStream } from '@/src/features/batteries/hooks/useBatterySensorStream';
+import { useAssetAlerts } from '@/src/features/batteries/hooks/useAssetAlerts';
+import { useCascadeRisk } from '@/src/features/batteries/hooks/useCascadeRisk';
+import { BatteryInfoCard } from '@/src/features/batteries/components/BatteryInfoCard';
+import { CascadeRiskBadge } from '@/src/features/batteries/components/CascadeRiskBadge';
+import { SensorChart } from '@/src/features/batteries/components/SensorChart';
+import { ChargeDischargeChart } from '@/src/features/batteries/components/ChargeDischargeChart';
+import { AssetAlertList } from '@/src/features/batteries/components/AssetAlertList';
+import { EnergyBackdrop, GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
+import { ChargingStateEnum } from '@/src/features/batteries/enums/battery.enum';
+import { P } from '@/src/lib/authz';
+import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
+import { useProfile } from '@/src/features/profile/hooks/useProfile';
+import { useSessionStore } from '@/src/stores/sessionStore';
 
 const BATTERY_IMAGE = require('../../../assets/images/battery-storage-3d.png');
 
@@ -53,7 +53,7 @@ function BatteryDetailScreenInner() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const assetId = id ?? '';
 
-  const { data: battery, isLoading, isError, refetch } = useBatteryAsset(assetId);
+  const { data: battery, isLoading, isError } = useBatteryAsset(assetId);
   const { data: realtime } = useBatteryAssetRealtime(assetId);
   useBatterySensorStream(assetId);
   const { data: cascade } = useCascadeRisk(assetId);
@@ -87,8 +87,6 @@ function BatteryDetailScreenInner() {
     router.push({ pathname: '/(customer)/tickets/create', params: { batteryId: battery.id } });
 
   const soc = realtime?.socPercent ?? null;
-  const filledSegments =
-    soc != null ? Math.max(0, Math.min(SEGMENTS, Math.round((soc / 100) * SEGMENTS))) : 0;
 
   const statusPillLabel =
     realtime?.chargingState != null

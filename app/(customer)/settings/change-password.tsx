@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
-import { useChangePassword } from '../../../src/features/account/hooks/useChangePassword';
-import { ChangePasswordForm } from '../../../src/features/account/components/ChangePasswordForm';
-import { handleErrorApi } from '../../../src/lib/errors';
-import { ChangePasswordInput } from '../../../src/features/account/schemas/changePassword.schema';
+import { useChangePassword } from '@/src/features/account/hooks/useChangePassword';
+import { ChangePasswordForm } from '@/src/features/account/components/ChangePasswordForm';
+import { handleErrorApi } from '@/src/lib/errors';
+import { ChangePasswordInput } from '@/src/features/account/schemas/changePassword.schema';
 
 export default function ChangePasswordScreen() {
   const { mutateAsync, isPending } = useChangePassword();

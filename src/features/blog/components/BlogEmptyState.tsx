@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 
 interface Props {
   /** `notFound` — bài đã bị gỡ/archive (BE trả 404 ở màn chi tiết). */

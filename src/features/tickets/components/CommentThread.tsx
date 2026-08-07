@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 import { ChatBubble } from './ChatBubble';
 import { ReactionTypeEnum, TicketCommentDTO } from '../types/ticket.types';
 
@@ -77,6 +77,15 @@ interface CommentThreadProps {
   onDelete?: (comment: TicketCommentDTO, reason?: string) => void;
   editPending?: boolean;
   deletePending?: boolean;
+  /**
+   * Chế độ chọn nhiều tin để xoá (DELETE /chats/bulk). Chỉ tin của CHÍNH MÌNH mới
+   * hiện checkbox — tin người khác sẽ bị BE "ẩn riêng" thay vì xoá, gây hiểu nhầm.
+   * Có `onRequestSelectMode` là bật mục "Chọn nhiều" trong menu long-press.
+   */
+  selectMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (comment: TicketCommentDTO) => void;
+  onRequestSelectMode?: (comment: TicketCommentDTO) => void;
   /** Housekeeping — báo đã đọc các chat đang hiển thị (không có unread badge để wire) */
   onMarkRead?: (chatIds: string[]) => void;
   /** Mọi role đều được dịch (BE không giới hạn quyền) — có prop này là hiện menu dịch */
@@ -86,6 +95,8 @@ interface CommentThreadProps {
   ) => Promise<{ translatedBody: string; targetLanguage: string } | undefined>;
   // GH-67 — Ghim (Staff/Manager/Admin). Có đủ onPin + onUnpin mới hiện menu ghim.
   onPin?: (comment: TicketCommentDTO) => void;
+  /** Staff/Manager/Admin only — mở danh sách "đã đọc bởi". Customer KHÔNG truyền (BE 403). */
+  onShowReaders?: (comment: TicketCommentDTO) => void;
   onUnpin?: (comment: TicketCommentDTO) => void;
   pinningId?: string | null;
   // GH-68 — Reactions + download attachment (Mọi role). Có prop là bật tính năng.
@@ -121,9 +132,14 @@ export function CommentThread({
   onDelete,
   editPending = false,
   deletePending = false,
+  selectMode = false,
+  selectedIds,
+  onToggleSelect,
+  onRequestSelectMode,
   onMarkRead,
   onTranslate,
   onPin,
+  onShowReaders,
   onUnpin,
   pinningId,
   onToggleReaction,
@@ -285,10 +301,14 @@ export function CommentThread({
             const canEdit = !ticketClosed && (authorWindowOk || canEditAny) && !!onEdit;
             const canDelete = !ticketClosed && (isOwn || canDeleteAny) && !!onDelete;
             const canPin = !ticketClosed && !!onPin && !!onUnpin;
+            const canShowReaders = !!onShowReaders;
             const editNeedsReason = canEdit && !authorWindowOk;
             const deleteNeedsReason = canDelete && !isOwn;
+            // Chỉ tin của chính mình mới chọn được — tin người khác BE xử lý bằng
+            // "ẩn riêng" chứ không xoá, không đưa vào luồng này.
+            const selectable = isOwn && !ticketClosed && !!onToggleSelect;
 
-            return (
+            const bubble = (
               <ChatBubble
                 comment={comment}
                 isMe={isOwn}
@@ -310,6 +330,8 @@ export function CommentThread({
                 showingOriginal={!translations[comment.id] || showOriginalIds.has(comment.id)}
                 onToggleOriginal={() => toggleShowOriginal(comment.id)}
                 canPin={canPin}
+                canShowReaders={canShowReaders}
+                onShowReaders={() => onShowReaders?.(comment)}
                 pinning={pinningId === comment.id}
                 onTogglePin={() => (comment.isPinned ? onUnpin?.(comment) : onPin?.(comment))}
                 currentUserId={currentUserId}
@@ -323,7 +345,33 @@ export function CommentThread({
                     ? (fileIds) => onDownloadAttachments(comment, fileIds)
                     : undefined
                 }
+                canSelectMany={selectable && !!onRequestSelectMode}
+                onRequestSelectMode={() => onRequestSelectMode?.(comment)}
               />
+            );
+
+            if (!selectMode) return bubble;
+
+            const checked = !!selectedIds?.has(comment.id);
+            return (
+              <Pressable
+                style={styles.selectRow}
+                onPress={selectable ? () => onToggleSelect?.(comment) : undefined}
+                // Tin người khác: không checkbox, làm mờ để thấy rõ là không chọn được.
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked, disabled: !selectable }}
+              >
+                <View style={styles.selectBox}>
+                  {selectable ? (
+                    <View style={[styles.checkbox, checked && styles.checkboxOn]}>
+                      {checked && <Ionicons name="checkmark" size={14} color="#FFF" />}
+                    </View>
+                  ) : null}
+                </View>
+                <View style={[styles.selectBubble, !selectable && styles.selectBubbleDim]}>
+                  {bubble}
+                </View>
+              </Pressable>
             );
           }}
           contentContainerStyle={styles.listContent}
@@ -376,6 +424,22 @@ const styles = StyleSheet.create({
   // FlatList inverted lật trục dọc ⇒ paddingTop của style này hiển thị ở ĐÁY (cạnh
   // composer) và paddingBottom hiển thị ở ĐỈNH (cạnh thanh tab) — set ngược lại trực giác.
   listContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, gap: 10 },
+  // Selection mode — checkbox cột trái, bubble giữ nguyên layout gốc bên phải.
+  selectRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  selectBox: { width: 24, alignItems: 'center' },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: Colors.textFaint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // primaryDark thay primary: checkmark trắng trên vàng #FFD500 gần như không đọc được.
+  checkboxOn: { backgroundColor: Colors.primaryDark, borderColor: Colors.primaryDark },
+  selectBubble: { flex: 1 },
+  selectBubbleDim: { opacity: 0.45 },
   loadingMore: { paddingVertical: 14, alignItems: 'center' },
 
   // Gợi ý AI — cụm bong bóng cuối chat, căn phải (phía người chat) như web.

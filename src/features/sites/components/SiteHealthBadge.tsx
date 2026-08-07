@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 
 // Ngưỡng màu khuyến nghị doc: 80–100 xanh / 50–79 vàng / 0–49 đỏ.
 function healthStyle(score: number): { bg: string; text: string; label: string } {

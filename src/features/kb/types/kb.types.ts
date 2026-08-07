@@ -1,7 +1,7 @@
-import type { TicketCategoryEnum } from '../../../shared/enums/ticket.enum';
-import type { KbArticleStatusEnum, KbReferenceTypeEnum } from '../../../shared/enums/kb.enum';
+import type { TicketCategoryEnum } from '@/src/shared/enums/ticket.enum';
+import type { KbArticleStatusEnum, KbReferenceTypeEnum } from '@/src/shared/enums/kb.enum';
 
-export { KbArticleStatusEnum, KbReferenceTypeEnum } from '../../../shared/enums/kb.enum';
+export { KbArticleStatusEnum, KbReferenceTypeEnum } from '@/src/shared/enums/kb.enum';
 
 export interface KbArticleSummaryDTO {
   id: string;

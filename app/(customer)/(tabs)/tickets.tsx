@@ -3,12 +3,12 @@ import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { TicketCard } from '../../../src/features/tickets/components/TicketCard';
-import { useTickets } from '../../../src/features/tickets/hooks/useTickets';
-import { checkPermission, P } from '../../../src/lib/authz';
-import { useSessionStore } from '../../../src/stores/sessionStore';
-import { Colors, Solar } from '../../../src/lib/theme';
-import { EnergyBackdrop, GlassSurface } from '../../../src/features/batteries/components/EnergyBackdrop';
+import { TicketCard } from '@/src/features/tickets/components/TicketCard';
+import { useTickets } from '@/src/features/tickets/hooks/useTickets';
+import { checkPermission, P } from '@/src/lib/authz';
+import { useSessionStore } from '@/src/stores/sessionStore';
+import { Solar } from '@/src/lib/theme';
+import { EnergyBackdrop, GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
 
 type FilterKey = 'all' | 'open' | 'closed';
 

@@ -3,8 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useResetPassword } from '../hooks/useResetPassword';
 import { resetPasswordSchema } from '../schemas/resetPassword.schema';
-import { HttpError, EntityError } from '../../../lib/errors';
-import { Colors } from '../../../lib/theme';
+import { HttpError, EntityError } from '@/src/lib/errors';
+import { Colors } from '@/src/lib/theme';
 
 interface Props {
   resetToken: string;

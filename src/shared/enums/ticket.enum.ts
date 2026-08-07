@@ -1,7 +1,8 @@
+// Khớp BE TicketStatusEnum (13 giá trị). KHÔNG có 'Approved' — đó là
+// ActivityActionEnum.Approved (hành động Manager duyệt), không phải trạng thái ticket.
 export const TicketStatusEnum = {
   New: 'New',
   Open: 'Open',
-  Approved: 'Approved',
   Assigned: 'Assigned',
   InProgress: 'InProgress',
   WaitingCustomer: 'WaitingCustomer',
@@ -98,6 +99,18 @@ export const ActorRoleEnum = {
 } as const;
 export type ActorRoleEnum = (typeof ActorRoleEnum)[keyof typeof ActorRoleEnum];
 
+// Vai trò tham gia ticket — GET /api/tickets/{id}/participants.
+export const ParticipantTypeEnum = {
+  Owner: 'Owner',
+  PrimaryAssignee: 'PrimaryAssignee',
+  Collaborator: 'Collaborator',
+  Watcher: 'Watcher',
+  Delegate: 'Delegate',
+  PreviousAssignee: 'PreviousAssignee',
+} as const;
+export type ParticipantTypeEnum =
+  (typeof ParticipantTypeEnum)[keyof typeof ParticipantTypeEnum];
+
 export const ActivityActionEnum = {
   Created: 'Created',
   StatusChanged: 'StatusChanged',
@@ -125,6 +138,21 @@ export const ActivityActionEnum = {
   Closed: 'Closed',
 } as const;
 export type ActivityActionEnum = (typeof ActivityActionEnum)[keyof typeof ActivityActionEnum];
+
+// Trạng thái AI verify tính hợp lệ của ticket (TicketDTO.aiVerifyStatus).
+export const TicketVerifyStatusEnum = {
+  Pending: 'Pending',
+  Legitimate: 'Legitimate',
+  Suspicious: 'Suspicious',
+  Skipped: 'Skipped',
+} as const;
+export type TicketVerifyStatusEnum = (typeof TicketVerifyStatusEnum)[keyof typeof TicketVerifyStatusEnum];
+
+// Lý do đóng đặc biệt — hiện BE chỉ có 1 giá trị.
+export const TicketCloseReasonEnum = {
+  MergedDuplicate: 'MergedDuplicate',
+} as const;
+export type TicketCloseReasonEnum = (typeof TicketCloseReasonEnum)[keyof typeof TicketCloseReasonEnum];
 
 // GH-68 — loại reaction cho ticket chat (BE ReactionTypeEnum). Gửi STRING trong body/query.
 export const ReactionTypeEnum = {

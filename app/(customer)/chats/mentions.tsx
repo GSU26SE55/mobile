@@ -1,13 +1,12 @@
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../../src/lib/theme';
-import { useMyMentions, useAcknowledgeMention } from '../../../src/features/tickets/hooks/useChatInbox';
+import { Colors } from '@/src/lib/theme';
+import { useMyMentions } from '@/src/features/tickets/hooks/useChatInbox';
 
-// GH-68 — @mention tới tôi (mọi ticket). Nút "Đã đọc" → acknowledge.
+// GH-68 — @mention tới tôi (mọi ticket). GH-866: BE bỏ endpoint acknowledge.
+// Không hiện chỉ báo isInternal: BE đã lọc mention nội bộ khỏi Customer nên luôn false.
 export default function MentionsScreen() {
   const { data: mentions = [], isLoading, refetch, isRefetching } = useMyMentions();
-  const { mutate: acknowledge } = useAcknowledgeMention();
 
   if (isLoading) {
     return (
@@ -30,7 +29,7 @@ export default function MentionsScreen() {
           style={styles.row}
           onPress={() => item.ticketId && router.push(`/(customer)/tickets/${item.ticketId}`)}
         >
-          <View style={[styles.dot, item.isAcknowledged && styles.dotRead]} />
+          <View style={styles.dot} />
           <View style={styles.body}>
             <Text style={styles.name} numberOfLines={1}>
               {item.mentionedDisplayName ?? 'Bạn được nhắc đến'}
@@ -41,16 +40,6 @@ export default function MentionsScreen() {
               })}
             </Text>
           </View>
-          {!item.isAcknowledged && (
-            <Pressable
-              style={styles.ackBtn}
-              hitSlop={8}
-              onPress={() => acknowledge(item.id)}
-            >
-              <Ionicons name="checkmark-done" size={16} color={Colors.primaryDark} />
-              <Text style={styles.ackText}>Đã đọc</Text>
-            </Pressable>
-          )}
         </Pressable>
       )}
     />
@@ -66,12 +55,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 12, marginBottom: 8,
   },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primary },
-  dotRead: { backgroundColor: Colors.border },
   body: { flex: 1, gap: 2 },
   name: { fontSize: 13.5, fontWeight: '700', color: Colors.text },
   time: { fontSize: 11, color: Colors.textFaint },
-  ackBtn: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  ackText: { fontSize: 12, fontWeight: '700', color: Colors.primaryDark },
   empty: { fontSize: 13, color: Colors.textMute, textAlign: 'center', marginTop: 40 },
 });
 

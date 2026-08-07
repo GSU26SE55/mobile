@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors, CommonStyles } from '../../../lib/theme';
-import { HttpError, EntityError } from '../../../lib/errors';
+import { Colors } from '@/src/lib/theme';
+import { HttpError, EntityError } from '@/src/lib/errors';
 import { useVerifyOtp } from '../hooks/useVerifyOtp';
 import { useResendOtp } from '../hooks/useResendOtp';
 import { otpSchema } from '../schemas/otp.schema';

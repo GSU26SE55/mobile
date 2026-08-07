@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors, Shadow } from '../../../lib/theme';
+import { Colors, Shadow } from '@/src/lib/theme';
 import { NotificationTypeEnum } from '../enums/notification.enum';
 import { isUnread, NotificationDTO } from '../types/notification.types';
 
@@ -25,22 +25,23 @@ const ICON_MAP: Partial<Record<NotificationTypeEnum, IconSpec>> = {
   [NotificationTypeEnum.BatteryAlertEscalationPending]: { name: 'time-outline',               color: Colors.warning },
   [NotificationTypeEnum.AlertTicketSagaFailed]:         { name: 'bug-outline',                color: Colors.danger },
   [NotificationTypeEnum.IotDeviceWentOffline]:          { name: 'cloud-offline-outline',      color: Colors.textMute },
-  [NotificationTypeEnum.ChatCreated]:                   { name: 'chatbubble-ellipses-outline', color: Colors.info },
-  [NotificationTypeEnum.ChatMentioned]:                 { name: 'at-outline',                  color: Colors.info },
-  [NotificationTypeEnum.ChatReacted]:                   { name: 'heart-outline',               color: Colors.stEscalated },
-  [NotificationTypeEnum.ParticipantAdded]:              { name: 'person-add-outline',          color: Colors.success },
-  [NotificationTypeEnum.ParticipantRemoved]:            { name: 'person-remove-outline',       color: Colors.textMute },
-  [NotificationTypeEnum.ParticipantRoleChanged]:        { name: 'people-outline',              color: Colors.info },
-  [NotificationTypeEnum.BlogGenerationCompleted]:       { name: 'document-text-outline',       color: Colors.success },
-  [NotificationTypeEnum.BlogGenerationFailed]:          { name: 'document-outline',            color: Colors.danger },
-  [NotificationTypeEnum.ChatEscalatedToAdmin]:          { name: 'chatbubble-outline',          color: Colors.danger },
-  [NotificationTypeEnum.TicketApproved]:                { name: 'shield-checkmark-outline',    color: Colors.success },
-  [NotificationTypeEnum.TicketRejected]:                { name: 'close-circle-outline',        color: Colors.danger },
-  [NotificationTypeEnum.TicketReopened]:                { name: 'refresh-circle-outline',      color: Colors.info },
-  [NotificationTypeEnum.TicketRatingRequested]:         { name: 'star-outline',                color: Colors.warning },
-  [NotificationTypeEnum.BatteryAnomalyWarning]:         { name: 'battery-half-outline',        color: Colors.warning },
-  [NotificationTypeEnum.BatteryAnomalyInfo]:            { name: 'battery-charging-outline',    color: Colors.info },
-  [NotificationTypeEnum.TicketMerged]:                  { name: 'git-merge-outline',            color: Colors.info },
+  // GH-83 — 16 type sync từ Sprint 6.2/6.3; trước đây tất cả rơi vào FALLBACK_ICON.
+  [NotificationTypeEnum.ChatCreated]:                    { name: 'chatbubble-outline',         color: Colors.info },
+  [NotificationTypeEnum.ChatMentioned]:                  { name: 'at-outline',                 color: Colors.primary },
+  [NotificationTypeEnum.ChatReacted]:                    { name: 'heart-outline',              color: Colors.stProgress },
+  [NotificationTypeEnum.ParticipantAdded]:               { name: 'person-add-outline',         color: Colors.success },
+  [NotificationTypeEnum.ParticipantRemoved]:             { name: 'person-remove-outline',      color: Colors.textMute },
+  [NotificationTypeEnum.ParticipantRoleChanged]:         { name: 'swap-horizontal-outline',    color: Colors.info },
+  [NotificationTypeEnum.BlogGenerationCompleted]:        { name: 'document-text-outline',      color: Colors.success },
+  [NotificationTypeEnum.BlogGenerationFailed]:           { name: 'document-outline',           color: Colors.danger },
+  [NotificationTypeEnum.ChatEscalatedToAdmin]:           { name: 'arrow-up-circle-outline',    color: Colors.stEscalated },
+  [NotificationTypeEnum.TicketApproved]:                 { name: 'checkmark-circle-outline',   color: Colors.success },
+  [NotificationTypeEnum.TicketRejected]:                 { name: 'close-circle-outline',       color: Colors.danger },
+  [NotificationTypeEnum.TicketReopened]:                 { name: 'refresh-outline',            color: Colors.warning },
+  [NotificationTypeEnum.TicketRatingRequested]:          { name: 'star-outline',               color: Colors.warning },
+  [NotificationTypeEnum.BatteryAnomalyWarning]:          { name: 'battery-half-outline',       color: Colors.warning },
+  [NotificationTypeEnum.BatteryAnomalyInfo]:             { name: 'battery-full-outline',       color: Colors.info },
+  [NotificationTypeEnum.TicketMerged]:                   { name: 'git-merge-outline',          color: Colors.info },
   [NotificationTypeEnum.System]:                        { name: 'information-circle-outline', color: Colors.info },
 };
 

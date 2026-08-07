@@ -14,6 +14,14 @@ export const notificationPreferenceSchema = z
       .string()
       .min(1, 'TimeZone không được trống')
       .max(100, 'TimeZone tối đa 100 ký tự'),
+    // GH-83 — BẮT BUỘC khai ở đây, không chỉ ở type. `safeParse` trả về object đã strip mọi key
+    // không có trong schema, mà `parsed.data` mới là thứ gửi lên BE → thiếu ở schema thì field vẫn
+    // bị rụng và BE ghi đè bằng default, y hệt bug cũ.
+    notifyOnChat: z.boolean(),
+    notifyOnMention: z.boolean(),
+    notifyOnReaction: z.boolean(),
+    // Pass-through: mobile chưa có UI Frequency nên không đặt ràng buộc tự nghĩ ra.
+    digestWindowMinutes: z.number().int().nullable(),
   })
   // BE KHÔNG ép cặp (gửi 1 null 1 có vẫn nhận) → FE tự giữ invariant.
   // KHÔNG validate start < end — wrap-around qua đêm (22:00–07:00) là hợp lệ.

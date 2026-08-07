@@ -1,11 +1,11 @@
 import React from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useDeactivateAccount } from '../../../src/features/account/hooks/useDeactivateAccount';
-import { useDeleteAccount } from '../../../src/features/account/hooks/useDeleteAccount';
-import { useExportMyData } from '../../../src/features/account/hooks/useExportMyData';
-import { useEraseMyChatData } from '../../../src/features/tickets/hooks/useChatInbox';
-import { handleErrorApi } from '../../../src/lib/errors';
-import { Colors } from '../../../src/lib/theme';
+import { useDeactivateAccount } from '@/src/features/account/hooks/useDeactivateAccount';
+import { useDeleteAccount } from '@/src/features/account/hooks/useDeleteAccount';
+import { useExportMyData } from '@/src/features/account/hooks/useExportMyData';
+import { useEraseMyChatData } from '@/src/features/tickets/hooks/useChatInbox';
+import { handleErrorApi } from '@/src/lib/errors';
+import { Colors } from '@/src/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function DangerZoneScreen() {
@@ -31,8 +31,9 @@ export default function DangerZoneScreen() {
                 style: 'destructive',
                 onPress: () =>
                   eraseChat.mutate(undefined, {
+                    // BE trả data = null; số lượng đã xoá chỉ nằm trong message.
                     onSuccess: (res) =>
-                      Alert.alert('Đã xóa', `Đã xóa ${res.data.data?.erasedCount ?? 0} tin nhắn.`),
+                      Alert.alert('Đã xóa', res.data.message ?? 'Đã xóa dữ liệu chat.'),
                   }),
               },
             ]),

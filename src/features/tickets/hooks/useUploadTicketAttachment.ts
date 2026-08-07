@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
-import { fileStorageService } from '../../file-storage/services/file-storage.service';
-import { FilePurposeEnum } from '../../file-storage/enums/file-storage.enum';
-import { resolveFileUrl } from '../../file-storage/utils/fileUrl';
+import { fileStorageService } from '@/src/features/file-storage/services/file-storage.service';
+import { FilePurposeEnum } from '@/src/features/file-storage/enums/file-storage.enum';
+import { resolveFileUrl } from '@/src/features/file-storage/utils/fileUrl';
 import type { UploadedTicketAttachment } from '../types/ticket.types';
 
 export function useUploadTicketAttachment() {
@@ -24,6 +24,9 @@ export function useUploadTicketAttachment() {
         fileName:    data.fileName,
         contentType: data.contentType,
         sizeBytes:   data.size,
+        // BE ticket create bắt buộc `url`. publicUrl null khi PublicBaseUrl chưa
+        // cấu hình → resolveFileUrl fallback về endpoint download, và ghép sẵn
+        // origin nên trả URL tuyệt đối (BE chỉ validate non-empty).
         url:         resolveFileUrl(data.publicUrl, data.fileId),
       };
     },

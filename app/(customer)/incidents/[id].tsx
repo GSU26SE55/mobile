@@ -3,11 +3,11 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Shadow } from '../../../src/lib/theme';
-import { useIncident } from '../../../src/features/incidents/hooks/useIncident';
-import { IncidentStatusBadge } from '../../../src/features/incidents/components/IncidentStatusBadge';
-import { INCIDENT_TYPE_LABEL } from '../../../src/features/incidents/types/incident.types';
-import { AlertSeverityEnum } from '../../../src/shared/enums/alert.enum';
+import { Colors, Shadow } from '@/src/lib/theme';
+import { useIncident } from '@/src/features/incidents/hooks/useIncident';
+import { IncidentStatusBadge } from '@/src/features/incidents/components/IncidentStatusBadge';
+import { INCIDENT_TYPE_LABEL } from '@/src/features/incidents/types/incident.types';
+import { AlertSeverityEnum } from '@/src/shared/enums/alert.enum';
 
 const SEVERITY_STYLE: Record<AlertSeverityEnum, { label: string; color: string; bg: string }> = {
   [AlertSeverityEnum.Info]: { label: 'Info', color: Colors.info, bg: Colors.infoLight },

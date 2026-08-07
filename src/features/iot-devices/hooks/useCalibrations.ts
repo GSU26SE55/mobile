@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { iotDeviceService } from '../services/iot-device.service';
 import { CalibrationListParams } from '../types/iot-device.types';
 

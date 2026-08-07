@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { incidentService } from '../services/incident.service';
 
 // GH-68 — incident đang Active (Open+Acknowledged) của 1 site, 1 call server-side.

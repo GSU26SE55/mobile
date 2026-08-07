@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { BadgeColors, Colors, Shadow } from '../../../lib/theme';
-import { TicketDTO } from '../../tickets/types/ticket.types';
-import { SlaCountdown } from '../../tickets/components/SlaCountdown';
-import { TicketStatusBadge } from '../../tickets/components/TicketStatusBadge';
+import { BadgeColors, Colors, Shadow } from '@/src/lib/theme';
+import { TicketDTO } from '@/src/features/tickets/types/ticket.types';
+import { SlaCountdown } from '@/src/features/tickets/components/SlaCountdown';
+import { TicketStatusBadge } from '@/src/features/tickets/components/TicketStatusBadge';
 
 const PRIORITY_BADGE: Record<string, keyof typeof BadgeColors> = {
   P1Critical: 'p1',

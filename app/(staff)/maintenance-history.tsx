@@ -3,8 +3,8 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Shadow } from '../../src/lib/theme';
-import { useMyMaintenanceLogs } from '../../src/features/staff/hooks/useMyMaintenanceLogs';
+import { Colors, Shadow } from '@/src/lib/theme';
+import { useMyMaintenanceLogs } from '@/src/features/staff/hooks/useMyMaintenanceLogs';
 
 // GH-44 #3 — lịch sử bảo trì cá nhân của Staff, gom nhóm theo ticket.
 export default function MaintenanceHistoryScreen() {

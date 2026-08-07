@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Text } from 'react-native';
-import { Colors } from '../../../lib/theme';
-import { ActivityActionEnum, TicketActivityDTO, TicketStatusEnum } from '../../tickets/types/ticket.types';
+import { Colors } from '@/src/lib/theme';
+import { ActivityActionEnum, TicketActivityDTO, TicketStatusEnum } from '@/src/features/tickets/types/ticket.types';
 
 interface Props {
   activities: TicketActivityDTO[];

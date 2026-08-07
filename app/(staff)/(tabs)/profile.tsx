@@ -2,12 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Colors, Shadow, Solar } from '../../../src/lib/theme';
-import { StaffHeader } from '../../../src/features/staff/components/StaffHeader';
-import { useStaffProfile } from '../../../src/features/staff/hooks/useStaffProfile';
-import { useSessionStore } from '../../../src/stores/sessionStore';
-import { StaffSkillTierEnum } from '../../../src/features/staff/types/staff.types';
-import { clearTokens } from '../../../src/lib/secureStore';
+import { Colors, Shadow, Solar } from '@/src/lib/theme';
+import { StaffHeader } from '@/src/features/staff/components/StaffHeader';
+import { useStaffProfile } from '@/src/features/staff/hooks/useStaffProfile';
+import { useSessionStore } from '@/src/stores/sessionStore';
+import { StaffSkillTierEnum } from '@/src/features/staff/types/staff.types';
+import { clearTokens } from '@/src/lib/secureStore';
 
 const TIER_LABEL: Record<StaffSkillTierEnum, string> = {
   Tier1: 'Tier 1 — Junior',

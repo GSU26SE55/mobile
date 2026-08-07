@@ -2,11 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 import {
   useNotifications,
   useUnreadCount,
   useMarkNotificationRead,
+  useMarkNotificationOpened,
   useMarkAllRead,
 } from '../hooks/useNotifications';
 import { NotificationCard } from './NotificationCard';
@@ -19,6 +20,7 @@ export function NotificationList() {
   const { data, isLoading, isError, refetch, isRefetching } = useNotifications();
   const { data: unreadCount = 0 } = useUnreadCount();
   const markRead = useMarkNotificationRead();
+  const markOpened = useMarkNotificationOpened();
   const markAllRead = useMarkAllRead();
 
   const items = data?.items ?? [];
@@ -26,14 +28,26 @@ export function NotificationList() {
   // Dùng chung notificationHref với luồng bấm-từ-banner (useNotificationTap) để 2 đường
   // không điều hướng lệch nhau. Trước đây chỗ này chỉ xử lý entityType === 'Ticket'.
   const handlePress = (n: NotificationDTO) => {
-    if (isUnread(n)) markRead.mutate(n.id);
-    const href = notificationHref(
+    // GH-83 — deep-link = mở được nội dung thật, mới tính là "Opened" (bằng chứng user chủ động mở).
+    // Bấm dòng không dẫn đi đâu chỉ là "Read". Tách 2 nhánh để open-rate không bị loãng — đúng lý do
+    // BE tách /opened khỏi /read, và khớp với logic web (NotificationBell).
+    //
+    // Đích đến lấy từ notificationHref (không phải ticketHref như bản GH-83 gốc) để phủ cả
+    // chat/mention, và để trùng đường với luồng bấm-từ-banner — xem chú thích ngay trên.
+    const deepLink = notificationHref(
       n.entityType,
       n.entityId,
       role,
       ticketIdFromPayload(n.payloadJson),
     );
-    if (href) router.push(href);
+
+    if (isUnread(n)) {
+      // BE tự set ReadAt khi chuyển Opened ⇒ KHÔNG gọi kèm markRead, sẽ thừa một request.
+      if (deepLink) markOpened.mutate(n.id);
+      else markRead.mutate(n.id);
+    }
+
+    if (deepLink) router.push(deepLink);
   };
 
   if (isLoading) {

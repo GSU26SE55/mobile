@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { KEY } from '../../../lib/queryKeys';
+import { KEY } from '@/src/lib/queryKeys';
 import { iotDeviceService } from '../services/iot-device.service';
 
 // GH-56 — xoá calibration. DELETE trả HTTP 200 + CommonResponse<object>;

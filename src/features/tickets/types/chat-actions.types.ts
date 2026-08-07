@@ -1,6 +1,7 @@
 // Edit/Delete/Dịch/Ghi âm cho ticket chat — nhân bản types từ Web
 // (shared/types/chat.types.ts) vì mobile chưa có backend riêng, dùng chung endpoint.
-import type { ChatAiIntentEnum } from '../../../shared/enums/chat.enum';
+import type { ChatAiIntentEnum } from '@/src/features/tickets/enums/chat.enum';
+import type { ActorRoleEnum } from '@/src/shared/enums/ticket.enum';
 
 export interface UpdateChatPayload {
   body: string;
@@ -12,6 +13,36 @@ export interface ChatMarkReadPayload {
   chatIds: string[];
 }
 
+/** DELETE /chats/bulk — tối đa 50 id/request (BE ChatBulkDeleteCommand.MaxBatchSize). */
+export const CHAT_BULK_DELETE_MAX = 50;
+
+export interface ChatBulkDeletePayload {
+  chatIds: string[];
+}
+
+/**
+ * Kết quả bulk delete. LƯU Ý: `deleted + skipped` KHÔNG bằng số id đã gửi —
+ * chat của người khác bị ẩn riêng (TicketChatHide) và không được đếm ở cả hai.
+ * Mobile chỉ cho chọn tin của chính mình nên trên thực tế không rơi vào nhánh đó.
+ */
+export interface ChatBulkDeleteResultDTO {
+  deleted: number;
+  skipped: number;
+  /** Id không tìm thấy / đã bị xoá trước đó. */
+  skippedIds: string[];
+}
+
+// GET /api/tickets/{tid}/chats/{cid}/readers — ai đã đọc 1 chat.
+// Auth: Staff/Manager/Admin ONLY — Customer gọi sẽ nhận 403.
+export interface ChatReaderDTO {
+  chatId: string;
+  userId: string;
+  /** BE resolve từ CustomerAccounts/StaffAccounts; fallback userId nếu không thấy. */
+  displayName: string;
+  role: ActorRoleEnum;
+  readAt: string;
+}
+
 // POST /api/tickets/{id}/chats/{id}/translate?to={languageCode}
 export interface ChatTranslateDTO {
   translatedBody: string;
@@ -21,7 +52,8 @@ export interface ChatTranslateDTO {
   fromCache: boolean;
 }
 
-// POST /api/tickets/{id}/chats/voice (multipart/form-data) — response giống
+// POST /api/tickets/{id}/chats/voice (application/json — ChatAttachmentInput của file audio
+// đã upload sẵn qua FileStorage). Tạo chat placeholder + transcribe async; response giống
 // TicketActionResponse dùng chung cho các action ticket khác.
 export interface ChatVoiceActionDTO {
   id: string | null;
@@ -48,12 +80,4 @@ export interface ChatSuggestDTO {
 // POST /api/tickets/{id}/chats/summarize — data
 export interface ChatSummarizeDTO {
   summary: string;
-}
-
-// POST /api/tickets/{id}/chats/sentiment-check — data
-export type ChatSentimentLabel = 'Positive' | 'Neutral' | 'Negative' | 'Critical';
-export interface ChatSentimentCheckDTO {
-  score: number; // [-1, 1]
-  label: ChatSentimentLabel;
-  isAlertSent: boolean;
 }

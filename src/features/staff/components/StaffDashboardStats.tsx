@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 import { useStaffDashboardStats } from '../hooks/useStaffDashboardStats';
 import type { StaffTicketDashboardStatsDto } from '../types/staff.types';
 

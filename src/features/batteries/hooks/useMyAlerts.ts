@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { alertService } from '../services/alert.service';
 import { useMyBatteryAssets } from './useMyBatteryAssets';
 import { AlertDto } from '../types/alert.types';

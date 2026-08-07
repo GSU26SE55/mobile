@@ -1,9 +1,9 @@
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { authService } from '../services/auth.service';
-import { clearTokens, getRefreshToken } from '../../../lib/secureStore';
-import { useSessionStore } from '../../../stores/sessionStore';
-import { clearLastSeen } from '../../notifications/lib/lastSeen';
+import { clearTokens, getRefreshToken } from '@/src/lib/secureStore';
+import { useSessionStore } from '@/src/stores/sessionStore';
+import { clearLastSeen } from '@/src/features/notifications/lib/lastSeen';
 
 export function useLogout() {
   const clearSession = useSessionStore((s) => s.clearSession);

@@ -2,9 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors, ShadowPrimary } from '../../../lib/theme';
-import { checkPermission, Permission } from '../../../lib/authz';
-import { useSessionStore } from '../../../stores/sessionStore';
+import { Colors, ShadowPrimary } from '@/src/lib/theme';
+import { checkPermission, Permission } from '@/src/lib/authz';
+import { useSessionStore } from '@/src/stores/sessionStore';
 
 interface Props {
   permission: Permission;

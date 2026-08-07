@@ -1,24 +1,31 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ticketService } from '../services/ticket.service';
+import { useSessionStore } from '@/src/stores/sessionStore';
 
 export interface MentionTarget {
+  /** userId — BE nhận mention qua { userId, displayName }, không parse '@' từ body. */
   id: string;
+  /** Chuỗi chèn vào ô nhập: '@Tên_Hiển_Thị'. */
   tag: string;
-  name?: string;
+  displayName: string;
+  /** Xem được chat nội bộ — dùng để cảnh báo khi soạn chat nội bộ. */
+  canViewInternal: boolean;
 }
 
+/**
+ * Người có thể @-tag trong composer chat.
+ *
+ * Nguồn đúng là participant active của ticket (GET .../participants) — KHÔNG
+ * phải tác giả đã chat: người mới được add vào ticket nhưng chưa nhắn gì vẫn
+ * phải tag được.
+ *
+ * Chỉ lọc bỏ chính mình. Cố ý không lọc `canPost`/`canViewInternal` — BE
+ * (ChatAddCommandHandler) validate mention duy nhất bằng "có phải participant
+ * active không", nên lọc chặt hơn sẽ ẩn mất người mà BE vẫn cho mention.
+ */
 export function useMentionTargets(ticketId?: string, enabled: boolean = true) {
-  const ticketQuery = useQuery({
-    queryKey: ['ticketDetail', ticketId],
-    queryFn: async () => {
-      if (!ticketId) return null;
-      const res = await ticketService.getDetail(ticketId);
-      return res.data?.data ?? null;
-    },
-    enabled: !!ticketId && enabled,
-    staleTime: 2 * 60 * 1000,
-  });
+  const currentUserId = useSessionStore((s) => s.user?.accountId);
 
   const participantsQuery = useQuery({
     queryKey: ['ticketParticipants', ticketId],
@@ -31,63 +38,17 @@ export function useMentionTargets(ticketId?: string, enabled: boolean = true) {
     staleTime: 2 * 60 * 1000,
   });
 
-  const commentsQuery = useQuery({
-    queryKey: ['ticketCommentsList', ticketId],
-    queryFn: async () => {
-      if (!ticketId) return [];
-      const res = await ticketService.getComments(ticketId, { pageSize: 50 });
-      return res.data?.data?.items ?? [];
-    },
-    enabled: !!ticketId && enabled,
-    staleTime: 2 * 60 * 1000,
-  });
-
-  const isLoading = ticketQuery.isLoading || participantsQuery.isLoading || commentsQuery.isLoading;
-
-  const targets = useMemo(() => {
-    const ticket = ticketQuery.data;
+  const targets = useMemo<MentionTarget[]>(() => {
     const participants = participantsQuery.data ?? [];
-    const comments = commentsQuery.data ?? [];
+    return participants
+      .filter((p) => p.userId !== currentUserId)
+      .map((p) => ({
+        id: p.userId,
+        tag: `@${p.displayName.replace(/\s+/g, '_')}`,
+        displayName: p.displayName,
+        canViewInternal: p.canViewInternal,
+      }));
+  }, [participantsQuery.data, currentUserId]);
 
-    const list: MentionTarget[] = [];
-
-    // 1. Comment authors
-    comments.forEach((c) => {
-      if (c.authorDisplayName) {
-        const slug = c.authorDisplayName.replace(/\s+/g, '_');
-        list.push({
-          id: `author-${c.authorUserId ?? c.id}`,
-          tag: `@${slug}`,
-          name: c.authorDisplayName,
-        });
-      }
-    });
-
-    // 2. Assigned staff — #697: BE bỏ `assignedStaffName`; `assignments` chỉ có
-    // staffId (UUID) nên không dựng được tag `@Tên`. Staff nào đã nhắn trong
-    // ticket vẫn xuất hiện ở nhóm (1) qua `authorDisplayName`, nên vẫn mention
-    // được người đang thực sự trao đổi.
-
-    // 3. Customer
-    if (ticket?.customerName) {
-      list.push({
-        id: ticket.customerId,
-        tag: `@${ticket.customerName.replace(/\s+/g, '_')}`,
-        name: ticket.customerName,
-      });
-    }
-
-    // 4. Ticket participants
-    participants.forEach((p) => {
-      list.push({
-        id: p.id,
-        tag: `@${p.userId}`,
-        name: String(p.userRole),
-      });
-    });
-
-    return list;
-  }, [ticketQuery.data, participantsQuery.data, commentsQuery.data]);
-
-  return { targets, isLoading };
+  return { targets, isLoading: participantsQuery.isLoading };
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Solar } from '../../../lib/theme';
+import { Solar } from '@/src/lib/theme';
 import { BatteryAssetDto } from '../types/battery.types';
 import {
   BatteryStatusEnum,

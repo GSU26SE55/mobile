@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { BadgeColors, Solar } from '../../../lib/theme';
+import { BadgeColors, Solar } from '@/src/lib/theme';
 import { TicketDTO } from '../types/ticket.types';
 import { getPrimaryHandlerId } from '../utils/assignments';
 import { SlaCountdown } from './SlaCountdown';
 import { TicketStatusBadge } from './TicketStatusBadge';
-import { GlassSurface } from '../../../features/batteries/components/EnergyBackdrop';
+import { GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
 
 const PRIORITY_BADGE: Record<string, keyof typeof BadgeColors> = {
   P1Critical: 'p1',
@@ -54,6 +54,17 @@ export function TicketCard({ ticket, onPress }: Props) {
           {/* Top Header Row */}
           <View style={styles.topRow}>
             <Text style={styles.code}>{ticket.code}</Text>
+
+            {/* Chat chưa đọc — BE tính sẵn theo user hiện tại. Dùng icon thay chấm
+                trơn: hàng này đã có dot ưu tiên + 2 badge, thêm chấm nữa dễ lẫn. */}
+            {ticket.hasUnreadChat && (
+              <Ionicons
+                name="chatbubble-ellipses"
+                size={14}
+                color={Solar.yellowDeep}
+                accessibilityLabel="Có tin nhắn chưa đọc"
+              />
+            )}
 
             {/* Priority Badge */}
             <View style={[styles.priorityBadge, { backgroundColor: pColors.bg }]}>

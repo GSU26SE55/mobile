@@ -3,13 +3,13 @@
 import {
   EnvironmentalIncidentTypeEnum,
   EnvironmentalIncidentStatusEnum,
-} from '../../../shared/enums/incident.enum';
-import type { AlertSeverityEnum } from '../../../shared/enums/alert.enum';
+} from '@/src/features/incidents/enums/incident.enum';
+import type { AlertSeverityEnum } from '@/src/shared/enums/alert.enum';
 
 export {
   EnvironmentalIncidentTypeEnum,
   EnvironmentalIncidentStatusEnum,
-} from '../../../shared/enums/incident.enum';
+} from '@/src/features/incidents/enums/incident.enum';
 
 export interface EnvironmentalIncidentDto {
   id: string;

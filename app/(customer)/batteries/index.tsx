@@ -12,12 +12,12 @@ import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
-import { useBatteryFleetStream } from '../../../src/features/batteries/hooks/useBatteryFleetStream';
-import { buildFleetScope } from '../../../src/features/batteries/utils/buildFleetScope';
-import { useSessionStore } from '../../../src/stores/sessionStore';
-import { Colors, Solar } from '../../../src/lib/theme';
-import { EnergyBackdrop, GlassSurface } from '../../../src/features/batteries/components/EnergyBackdrop';
+import { useMyBatteryAssets } from '@/src/features/batteries/hooks/useMyBatteryAssets';
+import { useBatteryFleetStream } from '@/src/features/batteries/hooks/useBatteryFleetStream';
+import { buildFleetScope } from '@/src/features/batteries/utils/buildFleetScope';
+import { useSessionStore } from '@/src/stores/sessionStore';
+import { Solar } from '@/src/lib/theme';
+import { EnergyBackdrop, GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
 
 const BATTERY_IMAGE = require('../../../assets/images/battery-storage-3d.png');
 

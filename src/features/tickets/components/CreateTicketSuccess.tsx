@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, Pressable, View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, ShadowPrimary } from '../../../lib/theme';
+import { Colors, ShadowPrimary } from '@/src/lib/theme';
 
 interface Props {
   ticketCode: string;

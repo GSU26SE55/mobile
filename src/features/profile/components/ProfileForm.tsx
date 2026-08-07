@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors, ShadowPrimary } from '../../../lib/theme';
+import { Colors, ShadowPrimary } from '@/src/lib/theme';
 import { AccountDto, UpdateProfilePayload } from '../types/profile.types';
 import { updateProfileSchema } from '../schemas/profile.schema';
 

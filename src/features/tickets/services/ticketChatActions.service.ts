@@ -1,22 +1,26 @@
-import { axiosInstance } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { CommonResponse, CursorPaginationResponse } from '../../../types/api.types';
+import { axiosInstance } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { CommonResponse, CursorPaginationResponse } from '@/src/types/api.types';
 import {
   UpdateChatPayload,
   ChatMarkReadPayload,
+  ChatBulkDeletePayload,
+  ChatBulkDeleteResultDTO,
   ChatTranslateDTO,
   ChatVoiceActionDTO,
   ChatSuggestDTO,
   ChatSummarizeDTO,
-  ChatSentimentCheckDTO,
+  ChatReaderDTO,
 } from '../types/chat-actions.types';
-import { ChatAiIntentEnum } from '../../../shared/enums/chat.enum';
+import { ChatAiIntentEnum } from '@/src/features/tickets/enums/chat.enum';
 import {
   TicketActionResponse,
   TicketCommentDTO,
   TicketChatReactionsAggregateDTO,
   ReactionTypeEnum,
 } from '../types/ticket.types';
+import { fileStorageService } from '@/src/features/file-storage/services/file-storage.service';
+import { FilePurposeEnum } from '@/src/features/file-storage/enums/file-storage.enum';
 
 export interface ChatCursorParams {
   cursor?: string;
@@ -38,6 +42,14 @@ export const ticketChatActionsService = {
       { data: reason ? { reason } : undefined },
     ),
 
+  // Xoá nhiều chat trong 1 request (tối đa 50). Partial success — xem
+  // ChatBulkDeleteResultDTO. BE trả 400 nếu ticket Closed/ClosedPendingRate.
+  bulkRemove: (ticketId: string, payload: ChatBulkDeletePayload) =>
+    axiosInstance.delete<CommonResponse<ChatBulkDeleteResultDTO>>(
+      ENDPOINTS.TICKETS.CHAT_BULK_DELETE(ticketId),
+      { data: payload },
+    ),
+
   markRead: (ticketId: string, payload: ChatMarkReadPayload) =>
     axiosInstance.post<CommonResponse<void>>(
       ENDPOINTS.TICKETS.CHAT_MARK_READ(ticketId),
@@ -51,21 +63,49 @@ export const ticketChatActionsService = {
       { params: { to: targetLanguage } },
     ),
 
-  // RN: content-type PHẢI set cứng 'multipart/form-data' (không boundary) — xem
-  // ghi chú trong file-storage.service.ts (bug Android nếu để axios tự suy ra).
-  transcribeVoice: (ticketId: string, audioFile: { uri: string; name: string; type: string }) => {
-    const form = new FormData();
-    form.append('AudioFile', {
+  // Voice chat — 2 bước LIÊN TỤC:
+  //   1) upload file audio lên FileStorage → lấy metadata (fileId/fileName/contentType/size)
+  //   2) POST metadata (ChatAttachmentInput, JSON) xuống /chats/voice → BE tạo chat placeholder
+  //      rồi transcribe async. Endpoint KHÔNG còn nhận multipart audio trực tiếp.
+  // Nếu bước 1 lỗi → throw NGAY, KHÔNG gọi bước 2 (chưa có file trên server → không có gì để
+  // retry; user phải ghi/upload lại). Chỉ khi bước 1 xong (đã có fileId) mới tạo chat, và lúc đó
+  // retry transcribe (voice/retry) mới có ý nghĩa vì audio attachment đã tồn tại.
+  transcribeVoice: async (
+    ticketId: string,
+    audioFile: { uri: string; name: string; type: string },
+  ) => {
+    const upload = await fileStorageService.uploadFile({
       uri: audioFile.uri,
       name: audioFile.name,
       type: audioFile.type,
-    } as unknown as Blob);
+      purpose: FilePurposeEnum.TicketAttachment,
+    });
+    const meta = upload.data.data;
+    // BE ChatVoiceTranscribeCommand validate `Url` bắt buộc → thiếu publicUrl thì bước 2 chắc
+    // chắn 400. Chặn sớm với thông báo rõ thay vì để lỗi mơ hồ từ /chats/voice.
+    if (!meta?.fileId || !meta.publicUrl) {
+      throw new Error('Tải lên âm thanh thất bại — vui lòng ghi âm và gửi lại.');
+    }
     return axiosInstance.post<CommonResponse<ChatVoiceActionDTO>>(
       ENDPOINTS.TICKETS.CHAT_VOICE(ticketId),
-      form,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
+      {
+        fileId: meta.fileId,
+        fileName: meta.fileName,
+        contentType: meta.contentType,
+        sizeBytes: meta.size,
+        url: meta.publicUrl,
+      },
     );
   },
+
+  // GH-83 — retry chuyển giọng nói → văn bản cho chat đang ở trạng thái Failed.
+  // Không body. BE trả **202 Accepted** (xử lý bất đồng bộ) nên response CHƯA có kết quả —
+  // phải refetch danh sách chat mới thấy trạng thái đổi.
+  // 409 = chat chưa Failed (hoặc không có audio attachment); 404 = chat không thuộc ticket.
+  retryVoice: (ticketId: string, chatId: string) =>
+    axiosInstance.post<CommonResponse<ChatVoiceActionDTO>>(
+      ENDPOINTS.TICKETS.CHAT_VOICE_RETRY(ticketId, chatId),
+    ),
 
   // ── GH-67 — Staff/Manager/Admin ────────────────────────────────────────
   pin: (ticketId: string, chatId: string) =>
@@ -85,15 +125,6 @@ export const ticketChatActionsService = {
   summarize: (ticketId: string) =>
     axiosInstance.post<CommonResponse<ChatSummarizeDTO>>(ENDPOINTS.TICKETS.CHAT_SUMMARIZE(ticketId)),
 
-  sentimentCheck: (ticketId: string) =>
-    axiosInstance.post<CommonResponse<ChatSentimentCheckDTO>>(ENDPOINTS.TICKETS.CHAT_SENTIMENT(ticketId)),
-
-  // Binary PDF — KHÔNG bọc CommonResponse (giống file-storage.downloadFile). Hook tự guard rỗng.
-  exportPdf: (ticketId: string) =>
-    axiosInstance.get<ArrayBuffer>(ENDPOINTS.TICKETS.CHAT_EXPORT_PDF(ticketId), {
-      responseType: 'arraybuffer',
-    }),
-
   // ── GH-68 — Mọi role ───────────────────────────────────────────────────
   // Cursor pagination — thay page/pageSize. BE trả CursorPaginationResponse (items/nextCursor/hasMore).
   listCursor: (ticketId: string, params?: ChatCursorParams) =>
@@ -107,6 +138,12 @@ export const ticketChatActionsService = {
   getUnreadCount: (ticketId: string) =>
     axiosInstance.get<CommonResponse<number>>(
       ENDPOINTS.TICKETS.CHAT_UNREAD_COUNT(ticketId),
+    ),
+
+  // Ai đã đọc 1 chat — Staff/Manager/Admin ONLY. KHÔNG gọi từ màn Customer (403).
+  getReaders: (ticketId: string, chatId: string) =>
+    axiosInstance.get<CommonResponse<ChatReaderDTO[]>>(
+      ENDPOINTS.TICKETS.CHAT_READERS(ticketId, chatId),
     ),
 
   addReaction: (ticketId: string, chatId: string, reactionType: ReactionTypeEnum) =>

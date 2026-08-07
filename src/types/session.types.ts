@@ -1,7 +1,7 @@
 import { jwtDecode } from 'jwt-decode';
-import { UserRole } from '../shared/enums/session.enum';
+import { UserRole } from '@/src/shared/enums/session.enum';
 
-export { UserRole } from '../shared/enums/session.enum';
+export { UserRole } from '@/src/shared/enums/session.enum';
 
 export interface SessionUser {
   accountId: string;

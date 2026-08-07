@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Shadow } from '../../../lib/theme';
+import { Colors, Radius, Shadow } from '@/src/lib/theme';
 import { AmbientReadingDto } from '../types/ambient.types';
 
 function fmt(v: number | null | undefined, unit: string, digits = 1): string {

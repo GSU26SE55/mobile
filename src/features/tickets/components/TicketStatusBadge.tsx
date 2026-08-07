@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { BadgeColors } from '../../../lib/theme';
+import { BadgeColors } from '@/src/lib/theme';
 import { TicketStatusEnum } from '../types/ticket.types';
 
 // Nhãn tiếng Việt — khớp nguyên văn web (`shared/components/ticket/TicketStatusBadge`).
@@ -10,7 +10,6 @@ import { TicketStatusEnum } from '../types/ticket.types';
 const STATUS_CONFIG: Record<TicketStatusEnum, { label: string; badge: keyof typeof BadgeColors }> = {
   New:                    { label: 'Mới',            badge: 'new' },
   Open:                   { label: 'Chờ triage',     badge: 'open' },
-  Approved:               { label: 'Đã duyệt',       badge: 'ok' },
   Assigned:               { label: 'Đã gán',         badge: 'assigned' },
   InProgress:             { label: 'Đang xử lý',     badge: 'progress' },
   WaitingCustomer:        { label: 'Chờ khách hàng', badge: 'waiting' },

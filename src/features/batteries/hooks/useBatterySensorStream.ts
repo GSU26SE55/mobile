@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import EventSource from 'react-native-sse';
-import { BASE_URL } from '../../../lib/axios';
-import { getAccessToken } from '../../../lib/secureStore';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { BASE_URL } from '@/src/lib/axios';
+import { getAccessToken } from '@/src/lib/secureStore';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { BatteryAssetRealtimeDto } from '../types/battery.types';
 import { LiveReadingDto } from '../types/live-reading.types';
 import { ChargingStateEnum } from '../enums/battery.enum';

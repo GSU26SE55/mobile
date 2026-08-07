@@ -1,4 +1,4 @@
-import { SessionUser, UserRole } from '../types/session.types';
+import { SessionUser, UserRole } from '@/src/types/session.types';
 
 /**
  * GH-47 — Permission constants cho Mobile (subset của 43 code BE).

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Dimensions, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors, Shadow } from '../../../lib/theme';
+import { Colors, Shadow } from '@/src/lib/theme';
 import { ReactionTypeEnum, TicketChatReactionsAggregateDTO } from '../types/ticket.types';
 
 // Kích thước picker — nội dung cố định (5 emoji) nên tính sẵn được, dùng để

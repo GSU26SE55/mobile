@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Colors } from '../../../lib/theme';
-import type { TicketCategoryEnum } from '../../../shared/enums/ticket.enum';
-import { KbCategoryLabel } from '../../../shared/enums/kb.enum';
+import { Colors } from '@/src/lib/theme';
+import type { TicketCategoryEnum } from '@/src/shared/enums/ticket.enum';
+import { KbCategoryLabel } from '@/src/shared/enums/kb.enum';
 
 interface Props {
   query?: string;

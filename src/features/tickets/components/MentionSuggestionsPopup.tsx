@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { GlassSurface } from '../../../features/batteries/components/EnergyBackdrop';
-import { Solar } from '../../../lib/theme';
+import { GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
+import { Solar } from '@/src/lib/theme';
 import { MentionTarget, useMentionTargets } from '../hooks/useMentionTargets';
 
 export type { MentionTarget };
@@ -10,8 +10,11 @@ export type { MentionTarget };
 interface MentionSuggestionsPopupProps {
   text: string;
   ticketId?: string;
-  onSelectMention: (selectedTag: string) => void;
+  /** Trả nguyên target — screen cần userId + displayName để gửi field `mentions`. */
+  onSelectMention: (target: MentionTarget) => void;
   customTargets?: MentionTarget[];
+  /** Đang soạn chat nội bộ — cảnh báo người không xem được internal. */
+  isInternal?: boolean;
 }
 
 export function MentionSuggestionsPopup({
@@ -19,6 +22,7 @@ export function MentionSuggestionsPopup({
   ticketId,
   onSelectMention,
   customTargets = [],
+  isInternal = false,
 }: MentionSuggestionsPopupProps) {
   const match = useMemo(() => text.match(/@([a-zA-Z0-9_.-]*)$/), [text]);
   const { targets: dynamicTargets, isLoading } = useMentionTargets(ticketId, !!match);
@@ -36,7 +40,7 @@ export function MentionSuggestionsPopup({
     return list.filter(
       (item) =>
         item.tag.toLowerCase().includes(query) ||
-        (item.name && item.name.toLowerCase().includes(query)),
+        item.displayName.toLowerCase().includes(query),
     );
   }, [match, dynamicTargets, customTargets]);
 
@@ -63,7 +67,7 @@ export function MentionSuggestionsPopup({
           <Pressable
             key={item.id}
             style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-            onPress={() => onSelectMention(item.tag)}
+            onPress={() => onSelectMention(item)}
           >
             <View style={styles.iconCircle}>
               <Ionicons name="person-outline" size={16} color={Solar.ink} />
@@ -71,7 +75,12 @@ export function MentionSuggestionsPopup({
 
             <View style={styles.body}>
               <Text style={styles.tagText}>{item.tag}</Text>
-              {!!item.name && <Text style={styles.nameText}>{item.name}</Text>}
+              <Text style={styles.nameText}>
+                {item.displayName}
+                {/* BE không chặn mention người không xem được chat nội bộ —
+                    cảnh báo để người soạn tự cân nhắc. */}
+                {isInternal && !item.canViewInternal ? ' · không xem được chat nội bộ' : ''}
+              </Text>
             </View>
 
             <Ionicons name="add-circle" size={20} color={Solar.yellowDeep} />

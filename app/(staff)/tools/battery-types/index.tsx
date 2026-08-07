@@ -11,9 +11,9 @@ import {
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Shadow } from '../../../../src/lib/theme';
-import { useBatteryTypes } from '../../../../src/features/battery-types/hooks/useBatteryTypes';
-import { BatteryTypeCard } from '../../../../src/features/battery-types/components/BatteryTypeCard';
+import { Colors, Radius, Shadow } from '@/src/lib/theme';
+import { useBatteryTypes } from '@/src/features/battery-types/hooks/useBatteryTypes';
+import { BatteryTypeCard } from '@/src/features/battery-types/components/BatteryTypeCard';
 
 // GH-56 — danh sách loại pin (read-only). Search keyword + phân trang đơn giản (1 trang lớn).
 export default function BatteryTypesListScreen() {

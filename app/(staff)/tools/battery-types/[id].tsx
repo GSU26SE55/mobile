@@ -3,12 +3,12 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Shadow } from '../../../../src/lib/theme';
-import { useBatteryTypeDetail } from '../../../../src/features/battery-types/hooks/useBatteryTypeDetail';
+import { Colors, Radius, Shadow } from '@/src/lib/theme';
+import { useBatteryTypeDetail } from '@/src/features/battery-types/hooks/useBatteryTypeDetail';
 import {
   BatteryChemistryEnum,
   BATTERY_CHEMISTRY_LABEL,
-} from '../../../../src/features/battery-types/enums/battery-type.enum';
+} from '@/src/features/battery-types/enums/battery-type.enum';
 
 function Row({ label, value }: { label: string; value: string }) {
   return (

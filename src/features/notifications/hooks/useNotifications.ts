@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { KEY, QUERY_KEY } from '../../../lib/queryKeys';
-import { handleErrorApi } from '../../../lib/errors';
+import { KEY, QUERY_KEY } from '@/src/lib/queryKeys';
+import { handleErrorApi } from '@/src/lib/errors';
 import { notificationService } from '../services/notification.service';
 import { NotificationListParams } from '../types/notification.types';
 
@@ -41,21 +41,29 @@ export function useMarkNotificationRead() {
   });
 }
 
-export function useMarkAllRead() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () => notificationService.markAllRead(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: KEY.notifications });
-    },
-    onError: (error) => handleErrorApi({ error }),
-  });
-}
-
+/**
+ * GH-83 — đánh dấu user đã CHỦ ĐỘNG mở notification (bấm push / mở qua deep-link).
+ *
+ * BE tự set `ReadAt` khi chuyển sang `Opened` nên KHÔNG cần gọi kèm `markRead`.
+ * Lỗi được nuốt có chủ đích: đây là telemetry, hỏng thì không được chặn điều hướng của user.
+ */
 export function useMarkNotificationOpened() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => notificationService.markOpened(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: KEY.notifications });
+    },
+    onError: () => {
+      // Không toast: user đang chuyển màn, báo lỗi "không đánh dấu được đã mở" chỉ gây nhiễu.
+    },
+  });
+}
+
+export function useMarkAllRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => notificationService.markAllRead(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: KEY.notifications });
     },
