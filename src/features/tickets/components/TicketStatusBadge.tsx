@@ -23,6 +23,13 @@ const STATUS_CONFIG: Record<TicketStatusEnum, { label: string; badge: keyof type
   Incident:               { label: 'Sự cố',          badge: 'crit' },
 };
 
+/**
+ * Nhãn tiếng Việt của trạng thái — dùng chung cho chỗ nào chỉ cần chữ, không
+ * cần badge (vd ActivityTimeline). Trả nguyên chuỗi gốc nếu BE gửi giá trị lạ.
+ */
+export const statusLabel = (status: string) =>
+  STATUS_CONFIG[status as TicketStatusEnum]?.label ?? status;
+
 interface Props {
   status: TicketStatusEnum;
 }

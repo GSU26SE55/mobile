@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from '@/src/context/authContext';
 import { PermissionsSync } from '@/src/features/auth/components/PermissionsSync';
 import { NotificationBootstrap } from '@/src/features/notifications/components/NotificationBootstrap';
+import { NotificationsRealtimeSync } from '@/src/features/notifications/components/NotificationsRealtimeSync';
 import { configureGoogleSignin } from '@/src/config/googleAuth';
 
 // Import side-effect: TaskManager.defineTask phải chạy ở top-level, TRƯỚC khi React tree dựng.
@@ -53,6 +54,9 @@ export default function RootLayout() {
               Expo remote push, nên không đăng ký device token với BE (xem
               device-token.service.ts). PushResponseHandler của GH-83 đã gỡ theo. */}
           <NotificationBootstrap />
+          {/* Realtime feed + badge qua /hubs/notifications — thay polling 30s. Phải mount đúng
+              1 lần ở đây: mỗi lần mount là một WebSocket riêng. */}
+          <NotificationsRealtimeSync />
           <RootLayoutNav />
           <StatusBar style="dark" />
         </AuthProvider>

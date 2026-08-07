@@ -5,8 +5,8 @@ import {
   statusCodes,
   isErrorWithCode,
 } from '@react-native-google-signin/google-signin';
-import { Colors } from '@/src/lib/theme';
 import { HttpError } from '@/src/lib/errors';
+import { Colors } from '@/src/lib/theme';
 import { useGoogleLogin } from '../hooks/useGoogleLogin';
 
 const GOOGLE_LOGO = require('../../../../assets/images/google.png');

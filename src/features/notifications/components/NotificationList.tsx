@@ -1,29 +1,76 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Colors } from '@/src/lib/theme';
+import { useNotificationCategoryMap } from '../hooks/useNotificationMatrix';
 import {
-  useNotifications,
+  useInfiniteNotifications,
   useUnreadCount,
   useMarkNotificationRead,
   useMarkNotificationOpened,
   useMarkAllRead,
 } from '../hooks/useNotifications';
+import { NotificationCategoryEnum } from '../enums/notification.enum';
 import { NotificationCard } from './NotificationCard';
+import { CategoryFilter, CategoryFilterChips } from './CategoryFilterChips';
 import { isUnread, NotificationDTO } from '../types/notification.types';
 import { notificationHref, ticketIdFromPayload } from '../lib/notificationHref';
 import { useSessionStore } from '../../../stores/sessionStore';
 
 export function NotificationList() {
   const role = useSessionStore((s) => s.user?.role);
-  const { data, isLoading, isError, refetch, isRefetching } = useNotifications();
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+    isRefetching,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteNotifications();
   const { data: unreadCount = 0 } = useUnreadCount();
+  const { data: categoryMap } = useNotificationCategoryMap();
+  const [category, setCategory] = useState<CategoryFilter>(null);
   const markRead = useMarkNotificationRead();
   const markOpened = useMarkNotificationOpened();
   const markAllRead = useMarkAllRead();
 
-  const items = data?.items ?? [];
+  const allItems = useMemo(
+    () => data?.pages.flatMap((p) => p?.items ?? []) ?? [],
+    [data],
+  );
+
+  // type → nhóm lấy từ BE (`GET /notification-preferences/categories`), KHÔNG nhân bản bảng ở client:
+  // thêm NotificationType mới mà client tự giữ bảng riêng là lệch ngay.
+  const typeToCategory = useMemo(() => {
+    const map = new Map<number, NotificationCategoryEnum>();
+    categoryMap?.forEach((e) => map.set(e.typeValue, e.categoryValue as NotificationCategoryEnum));
+    return map;
+  }, [categoryMap]);
+
+  // Type BE chưa khai báo trong map rơi về `Account` — khớp đúng nhánh mặc định của
+  // `NotificationCategoryMap.Resolve()` phía BE, để dòng đó không biến mất khỏi mọi chip.
+  const categoryOf = useCallback(
+    (n: NotificationDTO): NotificationCategoryEnum =>
+      typeToCategory.get(n.type) ?? NotificationCategoryEnum.Account,
+    [typeToCategory],
+  );
+
+  const counts = useMemo(() => {
+    const acc: Record<string, number> = {};
+    allItems.forEach((n) => {
+      const key = String(categoryOf(n));
+      acc[key] = (acc[key] ?? 0) + 1;
+    });
+    return acc;
+  }, [allItems, categoryOf]);
+
+  const items = useMemo(
+    () => (category === null ? allItems : allItems.filter((n) => categoryOf(n) === category)),
+    [allItems, category, categoryOf],
+  );
 
   // Dùng chung notificationHref với luồng bấm-từ-banner (useNotificationTap) để 2 đường
   // không điều hướng lệch nhau. Trước đây chỗ này chỉ xử lý entityType === 'Ticket'.
@@ -86,6 +133,13 @@ export function NotificationList() {
         </View>
       )}
 
+      <CategoryFilterChips
+        value={category}
+        onChange={setCategory}
+        counts={counts}
+        total={allItems.length}
+      />
+
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
@@ -97,10 +151,23 @@ export function NotificationList() {
         refreshControl={
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />
         }
+        // Lọc chạy ở client nên một trang có thể không còn dòng nào thuộc nhóm đang chọn.
+        // Ngưỡng rộng + tải tiếp ngay cả khi `items` rỗng để chip nhóm hiếm không kẹt ở màn trống.
+        onEndReachedThreshold={0.5}
+        onEndReached={() => {
+          if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+        }}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <ActivityIndicator style={styles.footer} color={Colors.primary} />
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="notifications-off-outline" size={48} color={Colors.textFaint} />
-            <Text style={styles.emptyText}>Chưa có thông báo</Text>
+            <Text style={styles.emptyText}>
+              {category === null ? 'Chưa có thông báo' : 'Không có thông báo thuộc nhóm này'}
+            </Text>
           </View>
         }
       />
@@ -122,6 +189,7 @@ const styles = StyleSheet.create({
   markAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   markAllText: { fontSize: 13, color: Colors.primary, fontWeight: '700' },
   list: { paddingHorizontal: 20, paddingBottom: 100 },
+  footer: { paddingVertical: 16 },
   empty: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 8 },
   emptyText: { fontSize: 14, color: Colors.textFaint, fontWeight: '600' },
   retryBtn: {

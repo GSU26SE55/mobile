@@ -61,7 +61,7 @@ export function StaffTicketCard({ ticket, onPress }: Props) {
         </View>
         <TicketStatusBadge status={ticket.status} />
         <View style={{ flex: 1 }} />
-        {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} />}
+        {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} compact />}
       </View>
 
       <Text style={styles.title} numberOfLines={2}>{ticket.title}</Text>

@@ -93,6 +93,9 @@ export const QUERY_KEY = {
   },
   notifications: {
     list: (params?: Record<string, unknown>) => [...KEY.notifications, 'list', params] as const,
+    // Feed cuộn vô hạn — tách khỏi `list` vì shape cache khác hẳn (pages[] của useInfiniteQuery),
+    // dùng chung key sẽ khiến hai hook ghi đè nhau.
+    infinite: (params?: Record<string, unknown>) => [...KEY.notifications, 'infinite', params] as const,
     unreadCount: () => [...KEY.notifications, 'unread-count'] as const,
   },
   notificationPreferences: {
@@ -123,6 +126,8 @@ export const QUERY_KEY = {
   },
   chatsInbox: {
     list: (params?: Record<string, unknown>) => [...KEY.chatsInbox, 'list', params] as const, // GH-68
+    unreadCount:      () => [...KEY.chatsInbox, 'unread-count'] as const,
+    unreadByCustomer: () => [...KEY.chatsInbox, 'unread-by-customer'] as const,
   },
   chatMentions: {
     list: (params?: Record<string, unknown>) => [...KEY.chatMentions, 'list', params] as const, // GH-68
@@ -130,6 +135,7 @@ export const QUERY_KEY = {
   batteryTypes: {
     list:   (params?: Record<string, unknown>) => [...KEY.batteryTypes, 'list', params] as const, // GH-56
     detail: (id: string) => [...KEY.batteryTypes, 'detail', id] as const,
+    threshold: (id: string) => [...KEY.batteryTypes, 'threshold', id] as const,
   },
   iotDevices: {
     byCode:       (deviceCode: string) => [...KEY.iotDevices, 'by-code', deviceCode] as const, // GH-56

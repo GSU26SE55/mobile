@@ -1,11 +1,16 @@
 import { Stack } from 'expo-router';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
+// Nhóm settings không được khai báo <Stack.Screen> ở (customer)/_layout nên nó
+// render như một root stack — expo-router không có screen nào để pop về, do đó
+// không tự vẽ nút back. Tự cấp headerLeft cho cả nhóm để mọi screen đều quay lại được.
 export default function SettingsLayout() {
   return (
     <Stack
       screenOptions={{
         headerShown: true,
         headerBackTitle: 'Quay lại',
+        headerLeft: () => <BackButton variant="bare" />,
       }}
     >
       <Stack.Screen name="index" options={{ title: 'Cài đặt tài khoản' }} />

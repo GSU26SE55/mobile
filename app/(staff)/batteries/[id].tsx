@@ -17,6 +17,7 @@ import { ChargeDischargeChart } from '@/src/features/batteries/components/Charge
 import { AssetAlertList } from '@/src/features/batteries/components/AssetAlertList';
 import { P } from '@/src/lib/authz';
 import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 const STATUS_META: Record<number, { label: string; bg: string; text: string }> = {
   1: { label: 'Hoạt động', bg: BadgeColors.ok.bg, text: BadgeColors.ok.text },
@@ -67,9 +68,7 @@ function StaffBatteryViewScreenInner() {
   return (
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <Pressable onPress={() => router.back()} style={[styles.headerBtn, Shadow]}>
-          <Ionicons name="chevron-back" size={18} color={Colors.accent} />
-        </Pressable>
+        <BackButton />
         <Text style={styles.headerTitle}>Thông tin pin</Text>
         <View style={{ width: 44 }} />
       </View>

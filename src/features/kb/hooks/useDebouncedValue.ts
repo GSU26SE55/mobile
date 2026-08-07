@@ -1,10 +1,3 @@
-import { useEffect, useState } from 'react';
-
-export function useDebouncedValue<T>(value: T, delay = 300): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(id);
-  }, [value, delay]);
-  return debounced;
-}
+// Đã chuyển sang shared/ vì blog + battery-types cũng dùng.
+// Giữ re-export để các import cũ trong feature kb không phải đổi.
+export { useDebouncedValue } from '@/src/shared/hooks/useDebouncedValue';

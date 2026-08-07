@@ -22,6 +22,7 @@ import { useKbInfiniteList } from '@/src/features/kb/hooks/useKbInfiniteList';
 import type { KbArticleSummaryDTO } from '@/src/features/kb/types/kb.types';
 import { P } from '@/src/lib/authz';
 import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 export default function StaffKbListScreen() {
   return (
@@ -63,9 +64,7 @@ function StaffKbListScreenInner() {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Ionicons name="chevron-back" size={22} color={Colors.text} />
-        </Pressable>
+        <BackButton />
         <Text style={styles.headerTitle}>Tài liệu KB</Text>
         <View style={styles.headerSpacer} />
       </View>

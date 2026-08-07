@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/src/lib/theme';
 import { TicketActivityDTO } from '../types/ticket.types';
 import { getActivityMeta, activityToneStyle } from '../utils/activityMeta';
+import { statusLabel } from './TicketStatusBadge';
 
 interface Props {
   activities?: TicketActivityDTO[];
@@ -57,10 +58,14 @@ export function ActivityTimeline({ activities, isLoading }: Props) {
               {item.actorDisplayName && (
                 <Text style={styles.actor}>{item.actorDisplayName} · {item.actorRole}</Text>
               )}
-              {(item.oldValue || item.newValue) && (
+              {/* Chỉ hiện giá trị MỚI. Trước đây in kèm oldValue gạch ngang
+                  ("Assigned InProgress") — rối mắt mà không thêm thông tin gì,
+                  trạng thái cũ đã nằm ở dòng activity ngay phía trên rồi. */}
+              {!!item.newValue && (
                 <Text style={styles.value}>
-                  {item.oldValue && <Text style={styles.oldValue}>{item.oldValue} </Text>}
-                  {item.newValue && <Text>{item.newValue}</Text>}
+                  {/* newValue tuỳ action mà là status / priority / tên nhân viên
+                      → chỉ dịch sang tiếng Việt khi chắc chắn nó là status. */}
+                  {item.action === 'StatusChanged' ? statusLabel(item.newValue) : item.newValue}
                 </Text>
               )}
               {item.reason && (
@@ -90,7 +95,6 @@ const styles = StyleSheet.create({
   action:         { flex: 1, fontSize: 13, fontWeight: '700' },
   actor:          { fontSize: 12, color: Colors.textMute },
   value:          { fontSize: 12, color: Colors.textMute },
-  oldValue:       { textDecorationLine: 'line-through' },
   reason:         { fontSize: 12, color: Colors.textMute, fontStyle: 'italic' },
   time:           { fontSize: 11, color: Colors.textFaint },
 });

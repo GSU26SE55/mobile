@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius, Shadow } from '@/src/lib/theme';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 // GH-56 — Hub "Công cụ kỹ thuật" cho Staff. Gate role qua (staff)/_layout.
 type ToolRow = {
@@ -13,9 +14,7 @@ type ToolRow = {
   href:
     | '/(staff)/tools/battery-types'
     | '/(staff)/tools/calibration'
-    | '/(staff)/tools/permissions'
-    | '/(staff)/chats'
-    | '/(staff)/chats/mentions'
+    | '/(staff)/kb'
     | '/(staff)/blog';
 };
 
@@ -33,22 +32,10 @@ const ROWS: ToolRow[] = [
     href: '/(staff)/tools/calibration',
   },
   {
-    icon: 'chatbubbles-outline',
-    title: 'Hộp thư chat',
-    desc: 'Tất cả tin nhắn của tôi trên mọi ticket',
-    href: '/(staff)/chats',
-  },
-  {
-    icon: 'at-outline',
-    title: 'Nhắc đến tôi',
-    desc: 'Các @mention tới bạn',
-    href: '/(staff)/chats/mentions',
-  },
-  {
-    icon: 'key-outline',
-    title: 'Danh mục quyền',
-    desc: 'Tra cứu toàn bộ permission hệ thống',
-    href: '/(staff)/tools/permissions',
+    icon: 'book-outline',
+    title: 'Tài liệu KB',
+    desc: 'Hướng dẫn xử lý sự cố, tra cứu khi làm ticket',
+    href: '/(staff)/kb',
   },
   {
     icon: 'newspaper-outline',
@@ -63,11 +50,9 @@ export default function ToolsHubScreen() {
   return (
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <Pressable onPress={() => router.back()} style={[styles.backBtn, Shadow]}>
-          <Ionicons name="chevron-back" size={18} color={Colors.text} />
-        </Pressable>
+        <BackButton />
         <Text style={styles.topTitle}>Công cụ kỹ thuật</Text>
-        <View style={styles.backBtn} />
+        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -95,6 +80,7 @@ export default function ToolsHubScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12 },
+  headerSpacer: { width: 44 },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
   content: { padding: 16 },

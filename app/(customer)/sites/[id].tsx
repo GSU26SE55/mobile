@@ -15,6 +15,7 @@ import { useAmbientLatest } from '@/src/features/ambient/hooks/useAmbientLatest'
 import { AmbientTile } from '@/src/features/ambient/components/AmbientTile';
 import { AmbientTrendChart } from '@/src/features/ambient/components/AmbientTrendChart';
 import { BatteryAssetDto } from '@/src/features/batteries/types/battery.types';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 export default function CustomerSiteDetailScreen() {
   return (
@@ -57,9 +58,7 @@ function SiteDetailInner() {
   return (
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <Pressable onPress={() => router.back()} style={[styles.headerBtn, Shadow]}>
-          <Ionicons name="chevron-back" size={18} color={Colors.accent} />
-        </Pressable>
+        <BackButton />
         <Text style={styles.headerTitle}>Chi tiết site</Text>
         <View style={{ width: 44 }} />
       </View>

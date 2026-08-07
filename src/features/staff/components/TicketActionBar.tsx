@@ -28,7 +28,7 @@ export function TicketActionBar({ status, onStart, onHold, onResume, onResolve, 
     return (
       <View style={[styles.bar, Shadow]}>
         <Pressable style={[styles.btnPrimary, ShadowPrimary, { flex: 1 }]} onPress={onStart}>
-          <Ionicons name="play" size={16} color="#fff" />
+          <Ionicons name="play" size={16} color={Colors.text} />
           <Text style={styles.btnPrimaryText}>Bắt đầu xử lý</Text>
         </Pressable>
       </View>
@@ -43,9 +43,11 @@ export function TicketActionBar({ status, onStart, onHold, onResume, onResolve, 
           <Text style={[styles.btnOutlineText, { color: Colors.warning }]}>Tạm dừng</Text>
         </Pressable>
         {canResolve && (
-          <Pressable style={[styles.btnPrimary, ShadowPrimary, { flex: 1 }]} onPress={onResolve}>
+          // Xanh lá + chữ trắng: hành động "kết thúc thành công", và tách hẳn khỏi
+          // vàng (đang xử lý) / cam (tạm dừng) / đỏ (escalate) đứng cạnh.
+          <Pressable style={[styles.btnSuccess, { flex: 1 }]} onPress={onResolve}>
             <Ionicons name="checkmark-circle" size={16} color="#fff" />
-            <Text style={styles.btnPrimaryText}>Hoàn thành</Text>
+            <Text style={styles.btnSuccessText}>Hoàn thành</Text>
           </Pressable>
         )}
         <Pressable style={styles.btnDanger} onPress={onEscalate}>
@@ -91,6 +93,23 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   btnPrimaryText: {
+    // Nền primary là VÀNG (#FFD500) — chữ trắng trên đó gần như không đọc được.
+    // Dùng mực đậm để đạt tương phản, đừng đổi lại '#fff'.
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  btnSuccess: {
+    backgroundColor: Colors.success,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  btnSuccessText: {
     color: '#fff',
     fontSize: 13,
     fontWeight: '800',

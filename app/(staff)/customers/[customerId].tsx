@@ -12,10 +12,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStaffTickets } from '@/src/features/staff/hooks/useStaffTickets';
+import { useMyMentions } from '@/src/features/tickets/hooks/useChatInbox';
 import { TicketDTO, TicketStatusEnum } from '@/src/features/tickets/types/ticket.types';
 import { BadgeColors, Colors, Shadow } from '@/src/lib/theme';
 import { P } from '@/src/lib/authz';
 import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 const PALETTE = [
   '#FF6B6B', '#F7A440', '#4ECDC4', '#45B7D1',
@@ -82,14 +84,31 @@ function CustomerTicketsScreenInner() {
 
   const { data, isLoading, isError, isRefetching, refetch } = useStaffTickets({ PageSize: 100 });
 
+  // @mention tới mình — BE trả flat cross-ticket, gom thành Set ticketId để tra O(1).
+  // Tách khỏi hasUnreadChat: một ticket có thể tag mình mà mình đã đọc, và ngược lại.
+  const { data: mentions } = useMyMentions({ pageSize: 100 });
+  const mentionedTicketIds = useMemo(
+    () => new Set((mentions ?? []).map((m) => m.ticketId).filter((id): id is string => !!id)),
+    [mentions],
+  );
+
+  // Ticket có tin chưa đọc / được tag lên đầu — thứ cần xử lý không nên nằm dưới đáy.
+  // Cùng nhóm thì mới nhất trước.
   const tickets = useMemo(() => {
     if (!data?.items || !customerId) return [];
-    return [...data.items.filter((t) => t.customerId === customerId)].sort(
-      (a, b) =>
+    const rank = (t: TicketDTO) =>
+      (t.hasUnreadChat ? 2 : 0) + (mentionedTicketIds.has(t.id) ? 1 : 0);
+    return [...data.items.filter((t) => t.customerId === customerId)].sort((a, b) => {
+      const diff = rank(b) - rank(a);
+      if (diff !== 0) return diff;
+      return (
         new Date(b.updatedAt ?? b.createdAt).getTime() -
-        new Date(a.updatedAt ?? a.createdAt).getTime(),
-    );
-  }, [data, customerId]);
+        new Date(a.updatedAt ?? a.createdAt).getTime()
+      );
+    });
+  }, [data, customerId, mentionedTicketIds]);
+
+  const unreadTotal = useMemo(() => tickets.filter((t) => t.hasUnreadChat).length, [tickets]);
 
   const color = avatarColor(customerId ?? '');
 
@@ -97,9 +116,7 @@ function CustomerTicketsScreenInner() {
     <View style={styles.root}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
-        <Pressable style={styles.backBtn} onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="chevron-back" size={22} color={Colors.text} />
-        </Pressable>
+        <BackButton />
         <View style={[styles.hAvatar, { backgroundColor: color }]}>
           <Text style={styles.hAvatarText}>{avatarInitials(customerId ?? '')}</Text>
         </View>
@@ -109,6 +126,12 @@ function CustomerTicketsScreenInner() {
             {isLoading ? '…' : `${tickets.length} ticket`}
           </Text>
         </View>
+        {unreadTotal > 0 && (
+          <View style={styles.hUnreadPill}>
+            <Ionicons name="chatbubble-ellipses" size={13} color="#FFF" />
+            <Text style={styles.hUnreadText}>{unreadTotal}</Text>
+          </View>
+        )}
       </View>
 
       {isLoading ? (
@@ -127,7 +150,9 @@ function CustomerTicketsScreenInner() {
         <FlatList
           data={tickets}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <TicketRow ticket={item} />}
+          renderItem={({ item }) => (
+            <TicketRow ticket={item} isMentioned={mentionedTicketIds.has(item.id)} />
+          )}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -145,25 +170,38 @@ function CustomerTicketsScreenInner() {
   );
 }
 
-function TicketRow({ ticket }: { ticket: TicketDTO }) {
+function TicketRow({ ticket, isMentioned }: { ticket: TicketDTO; isMentioned: boolean }) {
   const badgeKey = STATUS_BADGE[ticket.status] ?? 'new';
   const badgeStyle = BadgeColors[badgeKey];
   const time = timeAgo(ticket.updatedAt ?? ticket.createdAt);
+  const unread = !!ticket.hasUnreadChat;
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, Shadow, pressed && { opacity: 0.7 }]}
+      style={({ pressed }) => [
+        styles.card,
+        Shadow,
+        unread && styles.cardUnread,
+        pressed && { opacity: 0.7 },
+      ]}
+      // jumpToUnread: mở thẳng tab chat và cuộn tới tin CŨ NHẤT chưa đọc,
+      // thay vì bắt Staff tự lần ngược lịch sử.
       onPress={() =>
-        router.push({ pathname: '/(staff)/tickets/[id]', params: { id: ticket.id } })
+        router.push({
+          pathname: '/(staff)/tickets/[id]',
+          params: { id: ticket.id, ...(unread ? { jumpToUnread: '1' } : {}) },
+        })
       }
     >
+      {unread && <View style={styles.unreadStripe} />}
+
       <View style={styles.cardTop}>
         <View style={[styles.priorityPill, ticket.priority === 'P1Critical' && styles.p1Pill, ticket.priority === 'P2High' && styles.p2Pill]}>
           <Text style={[styles.priorityText, ticket.priority === 'P1Critical' && styles.p1Text, ticket.priority === 'P2High' && styles.p2Text]}>
             {ticket.priority === 'P1Critical' ? 'P1' : ticket.priority === 'P2High' ? 'P2' : 'P3'}
           </Text>
         </View>
-        <Text style={styles.code}>{ticket.code}</Text>
+        <Text style={[styles.code, unread && styles.codeUnread]}>{ticket.code}</Text>
         <View style={{ flex: 1 }} />
         <View style={[styles.statusBadge, { backgroundColor: badgeStyle.bg }]}>
           <Text style={[styles.statusText, { color: badgeStyle.text }]}>
@@ -172,7 +210,24 @@ function TicketRow({ ticket }: { ticket: TicketDTO }) {
         </View>
       </View>
 
-      <Text style={styles.ticketTitle} numberOfLines={2}>
+      {(unread || isMentioned) && (
+        <View style={styles.flagRow}>
+          {unread && (
+            <View style={styles.unreadChip}>
+              <Ionicons name="chatbubble-ellipses" size={12} color="#FFF" />
+              <Text style={styles.unreadChipText}>Tin nhắn chưa đọc</Text>
+            </View>
+          )}
+          {isMentioned && (
+            <View style={styles.mentionChip}>
+              <Ionicons name="at" size={12} color={Colors.primary} />
+              <Text style={styles.mentionChipText}>Nhắc tên bạn</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      <Text style={[styles.ticketTitle, unread && styles.ticketTitleUnread]} numberOfLines={2}>
         {ticket.title}
       </Text>
 
@@ -180,7 +235,7 @@ function TicketRow({ ticket }: { ticket: TicketDTO }) {
         <Ionicons name="chatbubble-ellipses-outline" size={13} color={Colors.textFaint} />
         <Text style={styles.timeText}>{time}</Text>
         <View style={{ flex: 1 }} />
-        <Text style={styles.goText}>Xem chat</Text>
+        <Text style={styles.goText}>{unread ? 'Đọc tin mới' : 'Xem chat'}</Text>
         <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
       </View>
     </Pressable>
@@ -206,10 +261,40 @@ const styles = StyleSheet.create({
   hInfo:   { flex: 1 },
   hName:   { fontSize: 16, fontWeight: '700', color: Colors.text },
   hSub:    { fontSize: 12, color: Colors.textMute, marginTop: 1 },
+  hUnreadPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#FF3B30', borderRadius: 12,
+    paddingHorizontal: 9, paddingVertical: 4,
+  },
+  hUnreadText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
 
   list: { padding: 16, paddingBottom: 100 },
 
-  card:      { backgroundColor: Colors.card, borderRadius: 16, padding: 14, marginBottom: 10 },
+  card:      { backgroundColor: Colors.card, borderRadius: 16, padding: 14, marginBottom: 10, overflow: 'hidden' },
+  // Ticket chưa đọc: viền + nền ấm để bật hẳn khỏi các card đã đọc.
+  cardUnread: {
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    backgroundColor: Colors.card2,
+  },
+  unreadStripe: {
+    position: 'absolute', left: 0, top: 0, bottom: 0, width: 4,
+    backgroundColor: Colors.primary,
+  },
+
+  flagRow:   { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 7 },
+  unreadChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#FF3B30', borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  unreadChipText: { color: '#FFF', fontSize: 11, fontWeight: '800' },
+  mentionChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: Colors.primaryLight, borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  mentionChipText: { color: Colors.primary, fontSize: 11, fontWeight: '800' },
   cardTop:   { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 7 },
   cardBot:   { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 },
 
@@ -221,10 +306,12 @@ const styles = StyleSheet.create({
   p2Text:       { color: Colors.warningDark },
 
   code:         { fontSize: 12, fontWeight: '600', color: Colors.textMute },
+  codeUnread:   { color: Colors.text, fontWeight: '800' },
   statusBadge:  { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   statusText:   { fontSize: 11, fontWeight: '700' },
 
   ticketTitle: { fontSize: 14, fontWeight: '600', color: Colors.text, lineHeight: 20 },
+  ticketTitleUnread: { fontWeight: '800' },
 
   timeText: { fontSize: 12, color: Colors.textFaint },
   goText:   { fontSize: 12, fontWeight: '600', color: Colors.primary },

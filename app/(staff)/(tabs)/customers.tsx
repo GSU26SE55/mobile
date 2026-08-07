@@ -16,6 +16,7 @@ import { Colors, Shadow, Solar } from '@/src/lib/theme';
 import { P } from '@/src/lib/authz';
 import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
 import { StaffHeader } from '@/src/features/staff/components/StaffHeader';
+import { useUnreadByCustomer } from '@/src/features/tickets/hooks/useChatInbox';
 
 const PALETTE = [
   '#FF6B6B', '#F7A440', '#4ECDC4', '#45B7D1',
@@ -94,6 +95,8 @@ export default function CustomersScreen() {
 function CustomersScreenInner() {
   const { data, isLoading, isError, isRefetching, refetch } = useStaffTickets({ PageSize: 100 });
   const groups = useMemo(() => groupByCustomer(data?.items ?? []), [data]);
+  // Unread lấy 1 call riêng — lỗi/chậm ở đây không chặn danh sách khách hàng.
+  const { data: unreadMap } = useUnreadByCustomer();
 
   return (
     <View style={styles.root}>
@@ -118,7 +121,9 @@ function CustomersScreenInner() {
         <FlatList
           data={groups}
           keyExtractor={(item) => item.customerId}
-          renderItem={({ item }) => <CustomerRow group={item} />}
+          renderItem={({ item }) => (
+            <CustomerRow group={item} unread={unreadMap?.get(item.customerId) ?? 0} />
+          )}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -140,7 +145,7 @@ function CustomersScreenInner() {
   );
 }
 
-function CustomerRow({ group }: { group: CustomerGroup }) {
+function CustomerRow({ group, unread }: { group: CustomerGroup; unread: number }) {
   const color = avatarColor(group.customerId);
   const time = timeAgo(group.lastTicket.updatedAt ?? group.lastTicket.createdAt);
 
@@ -156,11 +161,11 @@ function CustomerRow({ group }: { group: CustomerGroup }) {
     >
       <View style={[styles.avatar, { backgroundColor: color }]}>
         <Text style={styles.avatarText}>{avatarInitials(group.customerId)}</Text>
-        {group.openCount > 0 && (
+        {/* Badge đỏ = SỐ TIN NHẮN chưa đọc (đã gồm tin có @mention tới mình).
+            Khác với pill vàng bên dưới — đó là số ticket đang xử lý. */}
+        {unread > 0 && (
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>
-              {group.openCount > 9 ? '9+' : group.openCount}
-            </Text>
+            <Text style={styles.badgeText}>{unread > 99 ? '99+' : unread}</Text>
           </View>
         )}
       </View>
@@ -176,8 +181,9 @@ function CustomerRow({ group }: { group: CustomerGroup }) {
           <Text style={styles.preview} numberOfLines={1}>
             {group.lastTicket.title}
           </Text>
+          {/* Pill vàng = số ticket đang xử lý của khách này. */}
           <View style={styles.countPill}>
-            <Text style={styles.countText}>{group.tickets.length}</Text>
+            <Text style={styles.countText}>{group.openCount}</Text>
           </View>
         </View>
       </View>

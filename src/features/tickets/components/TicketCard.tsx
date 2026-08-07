@@ -3,7 +3,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BadgeColors, Solar } from '@/src/lib/theme';
 import { TicketDTO } from '../types/ticket.types';
-import { getPrimaryHandlerId } from '../utils/assignments';
+import { assignmentSummary } from '../utils/assignments';
 import { SlaCountdown } from './SlaCountdown';
 import { TicketStatusBadge } from './TicketStatusBadge';
 import { GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
@@ -41,11 +41,9 @@ export function TicketCard({ ticket, onPress }: Props) {
     ? (PRIORITY_LABEL[ticket.priority] ?? ticket.priority)
     : 'Chưa phân loại';
 
-  // #697 — BE không còn trả tên/ID staff trên ticket, chỉ có `assignments`.
-  // App khách hàng không được đọc danh bạ nhân sự nên chỉ hiện TRẠNG THÁI.
-  const technicianName = getPrimaryHandlerId(ticket.assignments)
-    ? 'Đã phân công'
-    : 'Chưa phân công';
+  // BE trả kèm `staffName` trong assignments nên card hiện được TÊN thật.
+  // Nhiều người thì chỉ show 2 tên đầu, dư bao nhiêu đếm số (xem assignmentSummary).
+  const technicianName = assignmentSummary(ticket.assignments);
 
   return (
     <Pressable onPress={onPress}>
@@ -78,7 +76,7 @@ export function TicketCard({ ticket, onPress }: Props) {
             <View style={{ flex: 1 }} />
 
             {/* SLA remaining */}
-            {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} />}
+            {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} compact />}
           </View>
 
           {/* Title */}

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BadgeColors, Colors, Solar } from '@/src/lib/theme';
@@ -8,6 +8,7 @@ import { useStaffTickets } from '@/src/features/staff/hooks/useStaffTickets';
 import { useStaffDashboardStats } from '@/src/features/staff/hooks/useStaffDashboardStats';
 import { useStaffProfile } from '@/src/features/staff/hooks/useStaffProfile';
 import { useUnreadCount } from '@/src/features/notifications/hooks/useNotifications';
+import { useChatUnreadCount } from '@/src/features/tickets/hooks/useChatInbox';
 import { TicketStatusEnum, TicketDTO } from '@/src/features/tickets/types/ticket.types';
 import { HomeHeader } from '@/src/shared/components/HomeHeader';
 import { StatTrio } from '@/src/shared/components/StatTrio';
@@ -66,6 +67,8 @@ export default function StaffDashboardScreen() {
   const { data: stats } = useStaffDashboardStats();
   const { data: profile } = useStaffProfile();
   const { data: unreadCount = 0 } = useUnreadCount();
+  // Chat chưa đọc — tách bạch với unreadCount ở trên (đó là notification).
+  const { data: chatUnread = 0 } = useChatUnreadCount();
 
   const allTickets = apiTickets?.items ?? [];
 
@@ -104,8 +107,17 @@ export default function StaffDashboardScreen() {
         badge={{ label: meta.label, bg: bc.bg, text: bc.text }}
         percent={meta.progress}
         barColor={bc.text}
-        caption={`${item.code} · ${category}`}
-        onPress={() => router.push({ pathname: '/(staff)/tickets/[id]', params: { id: item.id } })}
+        caption={
+          item.hasUnreadChat
+            ? `${item.code} · ${category} · 💬 tin nhắn mới`
+            : `${item.code} · ${category}`
+        }
+        onPress={() =>
+          router.push({
+            pathname: '/(staff)/tickets/[id]',
+            params: { id: item.id, ...(item.hasUnreadChat ? { jumpToUnread: '1' } : {}) },
+          })
+        }
       />
     );
   };
@@ -129,9 +141,30 @@ export default function StaffDashboardScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Công việc cần xử lý</Text>
+          {/* Tổng chat chưa đọc trên MỌI ticket — khác chuông thông báo ở header
+              (useUnreadCount = notification). Bấm vào mở thẳng danh sách khách hàng. */}
+          {chatUnread > 0 && (
+            <Pressable
+              style={styles.unreadPill}
+              onPress={() => router.navigate('/(staff)/(tabs)/customers' as any)}
+              accessibilityLabel={`${chatUnread} tin nhắn chưa đọc`}
+            >
+              <Ionicons name="chatbubble-ellipses" size={13} color="#FFF" />
+              <Text style={styles.unreadPillText}>
+                {chatUnread > 99 ? '99+' : chatUnread} tin chưa đọc
+              </Text>
+            </Pressable>
+          )}
         </View>
 
-        <View style={styles.filterRow}>
+        {/* Cuộn ngang thay vì flex:1 chia đều — nhãn dài ("Đang xử lý (3)") không còn bị bóp
+            tràn mép phải. Chip tự co theo nội dung nên thêm bộ lọc mới cũng không vỡ layout. */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterScroll}
+          contentContainerStyle={styles.filterRow}
+        >
           {FILTER_TABS.map((tab) => (
             <Pressable
               key={tab.key}
@@ -147,7 +180,7 @@ export default function StaffDashboardScreen() {
               </Text>
             </Pressable>
           ))}
-        </View>
+        </ScrollView>
       </View>
 
       {isLoading ? (
@@ -186,17 +219,29 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Solar.bg },
   headerWrap: { paddingHorizontal: 20 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  sectionHeader: { marginBottom: 14 },
+  sectionHeader: { marginBottom: 14, flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionTitle: { fontSize: 18, fontWeight: '900', color: Solar.ink, letterSpacing: -0.4 },
+  unreadPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#FF3B30', borderRadius: 12,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  unreadPillText: { color: '#FFF', fontSize: 11, fontWeight: '800' },
+  // Kéo tràn ra 2 mép để bù paddingHorizontal:20 của headerWrap — chip cuộn hết bề rộng màn hình
+  // thay vì bị cắt cụt tại lề, còn khoảng đệm đầu/cuối trả lại bằng contentContainerStyle.
+  filterScroll: {
+    marginHorizontal: -20,
+  },
   filterRow: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
+    paddingHorizontal: 20,
     paddingBottom: 12,
   },
   filterTab: {
-    flex: 1,
     alignItems: 'center',
     paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 16,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,

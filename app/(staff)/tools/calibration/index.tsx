@@ -25,6 +25,7 @@ import {
   CALIBRATION_CHANNEL_LABEL,
   IOT_DEVICE_STATUS_LABEL,
 } from '@/src/features/iot-devices/enums/iot-device.enum';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 const CHANNELS = Object.values(CalibrationChannel);
 
@@ -75,11 +76,9 @@ export default function CalibrationScreen() {
   return (
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <Pressable onPress={() => router.back()} style={[styles.backBtn, Shadow]}>
-          <Ionicons name="chevron-back" size={18} color={Colors.text} />
-        </Pressable>
+        <BackButton />
         <Text style={styles.topTitle}>Calibration</Text>
-        <View style={styles.backBtn} />
+        <View style={styles.headerSpacer} />
       </View>
 
       {/* Nhập deviceCode */}
@@ -215,6 +214,7 @@ export default function CalibrationScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12 },
+  headerSpacer: { width: 44 },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
   searchSection: { paddingHorizontal: 16, paddingBottom: 12 },
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   chip: { paddingHorizontal: 14, height: 32, borderRadius: 16, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border },
   chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   chipText: { fontSize: 13, color: Colors.text },
-  chipTextActive: { color: '#fff', fontWeight: '700' },
+  chipTextActive: { color: Colors.text, fontWeight: '700' },
   expiredToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 8 },
   toggleLabel: { fontSize: 13, color: Colors.text },
   listContent: { paddingHorizontal: 16, paddingBottom: 24 },

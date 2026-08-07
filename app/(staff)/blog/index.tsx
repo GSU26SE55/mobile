@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -16,9 +16,15 @@ import { BlogCard } from '@/src/features/blog/components/BlogCard';
 import { BlogEmptyState } from '@/src/features/blog/components/BlogEmptyState';
 import { useBlogInfiniteList } from '@/src/features/blog/hooks/useBlogInfiniteList';
 import type { BlogPostSummaryDTO } from '@/src/features/blog/types/blog.types';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
+import { SearchBar } from '@/src/shared/components/SearchBar';
+import { useDebouncedValue } from '@/src/shared/hooks/useDebouncedValue';
 
 export default function StaffBlogListScreen() {
   const insets = useSafeAreaInsets();
+  const [query, setQuery] = useState('');
+  // Debounce 300ms như màn KB — tránh bắn request mỗi ký tự.
+  const debouncedQuery = useDebouncedValue(query, 300);
 
   const {
     data,
@@ -29,7 +35,7 @@ export default function StaffBlogListScreen() {
     fetchNextPage,
     refetch,
     isError,
-  } = useBlogInfiniteList({ pageSize: 10 });
+  } = useBlogInfiniteList({ pageSize: 10, q: debouncedQuery || undefined });
 
   const items = useMemo<BlogPostSummaryDTO[]>(
     () => data?.pages.flatMap((p) => p?.items ?? []) ?? [],
@@ -39,11 +45,17 @@ export default function StaffBlogListScreen() {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Ionicons name="chevron-back" size={22} color={Colors.text} />
-        </Pressable>
+        <BackButton />
         <Text style={styles.headerTitle}>Tin tức</Text>
         <View style={styles.headerSpacer} />
+      </View>
+
+      <View style={styles.searchWrap}>
+        <SearchBar
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Tìm theo tiêu đề hoặc tóm tắt…"
+        />
       </View>
 
       <FlatList
@@ -124,6 +136,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   headerSpacer: { width: 36 },
+  searchWrap: { paddingHorizontal: 16, paddingBottom: 12 },
   list: { paddingHorizontal: 16, paddingBottom: 32 },
   center: { paddingVertical: 48, alignItems: 'center' },
   errorWrap: { alignItems: 'center', paddingVertical: 48, gap: 10 },

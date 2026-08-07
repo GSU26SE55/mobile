@@ -13,6 +13,7 @@ import {
   AlertSeverityEnum,
   AlertStatusEnum,
 } from '@/src/shared/enums/alert.enum';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 const SEVERITY_STYLE: Record<AlertSeverityEnum, { label: string; color: string; bg: string }> = {
   [AlertSeverityEnum.Info]: { label: 'Info', color: Colors.info, bg: Colors.infoLight },
@@ -70,9 +71,7 @@ export default function StaffAlertDetailScreen() {
   return (
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <Pressable onPress={() => router.back()} style={[styles.headerBtn, Shadow]}>
-          <Ionicons name="chevron-back" size={18} color={Colors.accent} />
-        </Pressable>
+        <BackButton />
         <Text style={styles.headerTitle}>Chi tiết cảnh báo</Text>
         <View style={{ width: 44 }} />
       </View>

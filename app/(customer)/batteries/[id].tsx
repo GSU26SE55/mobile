@@ -21,6 +21,7 @@ import { P } from '@/src/lib/authz';
 import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
 import { useProfile } from '@/src/features/profile/hooks/useProfile';
 import { useSessionStore } from '@/src/stores/sessionStore';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 const BATTERY_IMAGE = require('../../../assets/images/battery-storage-3d.png');
 
@@ -104,9 +105,7 @@ function BatteryDetailScreenInner() {
       <EnergyBackdrop />
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <Pressable onPress={() => router.back()} style={styles.headerBtn}>
-          <Ionicons name="chevron-back" size={18} color={Solar.ink} />
-        </Pressable>
+        <BackButton />
         <Text style={styles.headerTitle} numberOfLines={1}>
           {battery.serialNumber}
         </Text>

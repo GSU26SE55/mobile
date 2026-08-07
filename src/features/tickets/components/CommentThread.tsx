@@ -13,7 +13,8 @@ const EDIT_WINDOW_MS = 15 * 60 * 1000;
 
 type ThreadItem =
   | { kind: 'comment'; key: string; comment: TicketCommentDTO }
-  | { kind: 'date'; key: string; label: string };
+  | { kind: 'date'; key: string; label: string }
+  | { kind: 'unread'; key: string; count: number };
 
 function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -36,16 +37,41 @@ function formatDateLabel(iso: string) {
 // đảo lại ở đây. FlatList `inverted` tự neo phần tử đầu (mới nhất) xuống đáy màn hình và
 // đẩy các phần tử cũ hơn lên trên, đúng chuẩn UI chat (Messenger/Zalo...). Nhờ vậy comment
 // mới từ realtime (prepend ở index 0) cũng tự xuất hiện ở đáy mà không cần scrollToEnd thủ công.
-function buildThreadItems(comments: TicketCommentDTO[]): ThreadItem[] {
+/**
+ * Index của tin CŨ NHẤT chưa đọc trong mảng ASC (cũ → mới) — chính là tin chưa đọc ĐẦU
+ * TIÊN gặp được. Chỉ tính khi BE trả `isRead`; `undefined` (realtime ChatAdded không kèm
+ * field) bị bỏ qua để không vẽ nhầm mốc.
+ */
+function findOldestUnreadIndex(ascComments: TicketCommentDTO[]): number {
+  return ascComments.findIndex((c) => c.isRead === false);
+}
+
+/**
+ * `anchorId` — id tin cũ nhất chưa đọc đã được chốt cho phiên xem này (xem CommentThread).
+ * null ⇒ không vẽ mốc.
+ */
+function buildThreadItems(ascComments: TicketCommentDTO[], anchorId: string | null): ThreadItem[] {
   const items: ThreadItem[] = [];
   let lastDay: string | null = null;
 
-  comments.forEach((c, i) => {
+  const oldestUnread = anchorId ? ascComments.findIndex((c) => c.id === anchorId) : -1;
+  // Đếm theo vị trí mốc, KHÔNG lọc isRead — sau khi mark-read thì isRead đã thành true hết,
+  // lọc lại sẽ ra 0 và nhãn mất số.
+  const unreadCount = oldestUnread < 0 ? 0 : ascComments.length - oldestUnread;
+
+  ascComments.forEach((c, i) => {
     const day = dayKey(c.createdAt);
     if (day !== lastDay) {
       items.push({ kind: 'date', key: `date-${day}`, label: formatDateLabel(c.createdAt) });
       lastDay = day;
     }
+
+    // Mốc đặt NGAY TRƯỚC tin cũ nhất chưa đọc — data ASC + list không inverted ⇒ mọi thứ
+    // BÊN DƯỚI vạch là chưa đọc, đúng chuẩn Slack/Messenger.
+    if (i === oldestUnread) {
+      items.push({ kind: 'unread', key: 'unread-divider', count: unreadCount });
+    }
+
     items.push({ kind: 'comment', key: c.id ?? `comment-${i}`, comment: c });
   });
 
@@ -163,9 +189,33 @@ export function CommentThread({
     [comments, showTabs, tab],
   );
 
+  // Mốc phải ĐỨNG YÊN trong suốt phiên xem. onMarkRead bên dưới đánh dấu đã đọc ngay khi
+  // mở chat ⇒ refetch xong mọi isRead thành true; nếu tính lại mốc theo data mới thì vạch
+  // vừa hiện đã biến mất, Staff không kịp thấy mình đang đọc từ đâu. Vì vậy chốt id tin cũ
+  // nhất chưa đọc ở LẦN ĐẦU có dữ liệu và giữ nguyên tới khi đổi tab / rời màn.
+  const anchorIdRef = useRef<string | null>(null);
+  const anchorResolvedRef = useRef(false);
+
+  useEffect(() => {
+    anchorIdRef.current = null;
+    anchorResolvedRef.current = false;
+  }, [tab]);
+
   const items = useMemo(() => {
     const ascComments = [...visible].reverse();
-    return buildThreadItems(ascComments);
+
+    if (!anchorResolvedRef.current) {
+      // Chỉ chốt khi BE đã trả isRead cho ít nhất 1 tin — tránh chốt nhầm "không có mốc"
+      // lúc list mới chỉ có tin từ realtime (isRead undefined).
+      const hasReadInfo = ascComments.some((c) => c.isRead !== undefined);
+      if (hasReadInfo) {
+        const idx = findOldestUnreadIndex(ascComments);
+        anchorIdRef.current = idx >= 0 ? ascComments[idx].id : null;
+        anchorResolvedRef.current = true;
+      }
+    }
+
+    return buildThreadItems(ascComments, anchorIdRef.current);
   }, [visible]);
 
   // Luôn cuộn xuống tin mới nhất (đáy). List không inverted + data ASC ⇒ đáy = tin mới
@@ -173,8 +223,28 @@ export function CommentThread({
   // ý AI xuất hiện ⇒ vào chat / vào lại luôn ở đáy. Chặn cuộn khi đang tải TRANG CŨ hơn
   // (kéo refresh) để không giật người dùng khỏi vị trí đang đọc.
   const listRef = useRef<FlatList>(null);
+
+  // Vị trí mốc "Tin nhắn chưa đọc" trong `items` — đích cuộn khi mở chat còn tin chưa đọc.
+  const unreadIndex = useMemo(() => items.findIndex((it) => it.kind === 'unread'), [items]);
+
+  // Chỉ tự cuộn tới mốc MỘT lần cho mỗi lần mở chat. Không có cờ này thì mỗi lần
+  // onContentSizeChange fire (tin mới, ảnh load xong…) sẽ giật ngược người dùng lên mốc cũ.
+  const jumpedToUnreadRef = useRef(false);
+  useEffect(() => {
+    jumpedToUnreadRef.current = false;
+  }, [tab]);
+
   const scrollToBottom = (animated: boolean) => {
     if (isFetchingNextPage) return;
+
+    // Còn tin chưa đọc → ưu tiên nhảy tới mốc thay vì xuống đáy, để Staff đọc từ tin cũ
+    // nhất chưa đọc trở đi. viewPosition 0.15 chừa mốc hơi cao hơn mép trên cho dễ thấy.
+    if (unreadIndex >= 0 && !jumpedToUnreadRef.current) {
+      jumpedToUnreadRef.current = true;
+      listRef.current?.scrollToIndex({ index: unreadIndex, animated, viewPosition: 0.15 });
+      return;
+    }
+
     listRef.current?.scrollToEnd({ animated });
   };
 
@@ -285,6 +355,22 @@ export function CommentThread({
           data={items}
           keyExtractor={(item) => item.key}
           onContentSizeChange={() => scrollToBottom(false)}
+          keyboardDismissMode="on-drag"
+          // Không có getItemLayout (bong bóng cao thấp khác nhau) nên scrollToIndex có thể
+          // trượt khi item đích chưa render — cuộn áng chừng rồi thử lại đúng index.
+          onScrollToIndexFailed={(info) => {
+            listRef.current?.scrollToOffset({
+              offset: info.averageItemLength * info.index,
+              animated: false,
+            });
+            setTimeout(() => {
+              listRef.current?.scrollToIndex({
+                index: info.index,
+                animated: false,
+                viewPosition: 0.15,
+              });
+            }, 80);
+          }}
           renderItem={({ item }) => {
             if (item.kind === 'date') {
               return (
@@ -292,6 +378,20 @@ export function CommentThread({
                   <View style={styles.dateLine} />
                   <Text style={styles.dateLabel}>{item.label}</Text>
                   <View style={styles.dateLine} />
+                </View>
+              );
+            }
+            if (item.kind === 'unread') {
+              return (
+                <View style={styles.unreadRow}>
+                  <View style={styles.unreadLine} />
+                  <View style={styles.unreadPill}>
+                    <Ionicons name="arrow-down" size={11} color="#FFF" />
+                    <Text style={styles.unreadLabel}>
+                      {item.count > 1 ? `${item.count} tin nhắn chưa đọc` : 'Tin nhắn chưa đọc'}
+                    </Text>
+                  </View>
+                  <View style={styles.unreadLine} />
                 </View>
               );
             }
@@ -457,6 +557,16 @@ const styles = StyleSheet.create({
   dateRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dateLine: { flex: 1, height: 1, backgroundColor: Colors.border },
   dateLabel: { fontSize: 11, fontWeight: '700', color: Colors.textMute },
+
+  // Mốc "Tin nhắn chưa đọc" — đỏ để tách hẳn khỏi vạch ngày (xám).
+  unreadRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 6 },
+  unreadLine:  { flex: 1, height: 1.5, backgroundColor: '#FF3B30' },
+  unreadPill:  {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: '#FF3B30', borderRadius: 10,
+    paddingHorizontal: 9, paddingVertical: 3,
+  },
+  unreadLabel: { fontSize: 11, fontWeight: '800', color: '#FFF' },
 
   tabBar: {
     flexDirection: 'row', gap: 6,

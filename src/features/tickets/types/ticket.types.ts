@@ -141,6 +141,12 @@ export interface TicketCommentDTO {
   isPinned?: boolean;
   pinnedAt?: string | null;
   pinnedByUserId?: string | null;
+  /**
+   * User hiện tại đã đọc tin này chưa. BE set ở GET /chats (list + cursor); tin do chính
+   * mình gửi luôn true. Realtime ChatAdded KHÔNG kèm → undefined nghĩa là "chưa biết",
+   * đừng coi undefined là chưa đọc (sẽ vẽ nhầm mốc "Tin nhắn chưa đọc").
+   */
+  isRead?: boolean;
   // GH-68 — cursor/list handler BE populate đủ; realtime ChatAdded không kèm → optional.
   bodyFormat?: string;
   bodyHtml?: string | null;
@@ -168,6 +174,11 @@ export type TicketAssignmentRole = 'PrimaryHandler' | 'Supporter';
 export interface TicketAssignmentDTO {
   staffId: string;
   role: TicketAssignmentRole;
+  /**
+   * Tên nhân viên — BE lấy từ StaffAccount đã sync sang TicketService.
+   * Null khi chưa sync kịp → fallback hiển thị staffId.
+   */
+  staffName?: string | null;
 }
 
 export interface TicketDTO {

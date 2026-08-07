@@ -16,6 +16,7 @@ import { KbDetailSection } from '@/src/features/kb/components/KbDetailSection';
 import { KbStepList } from '@/src/features/kb/components/KbStepList';
 import { useKbDetail } from '@/src/features/kb/hooks/useKbDetail';
 import { useMarkKbHelpful } from '@/src/features/kb/hooks/useMarkKbHelpful';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 export default function StaffKbDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -64,9 +65,7 @@ export default function StaffKbDetailScreen() {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.iconBtn} hitSlop={8}>
-          <Ionicons name="chevron-back" size={22} color={Colors.text} />
-        </Pressable>
+        <BackButton />
         <Text style={styles.code}>{article.code}</Text>
         <View style={styles.iconBtn} />
       </View>
