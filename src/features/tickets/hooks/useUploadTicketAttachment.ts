@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { fileStorageService } from '@/src/features/file-storage/services/file-storage.service';
 import { FilePurposeEnum } from '@/src/features/file-storage/enums/file-storage.enum';
-import { ENDPOINTS } from '@/src/lib/endpoints';
+import { resolveFileUrl } from '@/src/features/file-storage/utils/fileUrl';
 import type { UploadedTicketAttachment } from '../types/ticket.types';
 
 export function useUploadTicketAttachment() {
@@ -25,8 +25,9 @@ export function useUploadTicketAttachment() {
         contentType: data.contentType,
         sizeBytes:   data.size,
         // BE ticket create bắt buộc `url`. publicUrl null khi PublicBaseUrl chưa
-        // cấu hình → fallback endpoint download (BE chỉ validate non-empty).
-        url:         data.publicUrl ?? ENDPOINTS.FILES.DOWNLOAD(data.fileId),
+        // cấu hình → resolveFileUrl fallback về endpoint download, và ghép sẵn
+        // origin nên trả URL tuyệt đối (BE chỉ validate non-empty).
+        url:         resolveFileUrl(data.publicUrl, data.fileId),
       };
     },
   });

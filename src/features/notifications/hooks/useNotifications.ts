@@ -15,13 +15,16 @@ export function useNotifications(params?: NotificationListParams) {
 }
 
 // Badge số chưa đọc — auto refetch 30s.
-export function useUnreadCount() {
+// `enabled` cho NotificationBootstrap (mount toàn cục, kể cả màn login) tắt query khi chưa
+// đăng nhập — không thì poll 30s/lần vào endpoint 401 và kéo theo refresh-token vô ích.
+export function useUnreadCount(enabled = true) {
   return useQuery({
     queryKey: QUERY_KEY.notifications.unreadCount(),
     queryFn: async () => {
       const res = await notificationService.getUnreadCount();
       return res.data.data ?? 0;
     },
+    enabled,
     staleTime: 0,
     refetchInterval: 30_000,
   });

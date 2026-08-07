@@ -26,9 +26,8 @@ export default function StaffNotificationsScreen() {
         <Ionicons name="chevron-forward" size={16} color={Solar.mute} />
       </Pressable>
 
-      <NotificationList
-        ticketHref={(id) => ({ pathname: '/(staff)/tickets/[id]', params: { id } })}
-      />
+      {/* Route đích tự suy từ entityType + role (notificationHref.ts). */}
+      <NotificationList />
     </View>
   );
 }
