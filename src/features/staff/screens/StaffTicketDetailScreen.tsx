@@ -140,7 +140,7 @@ export function StaffTicketDetailScreen() {
 
 function StaffTicketDetailScreenInner() {
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const ticketId = id ?? '';
   const accountId = useSessionStore((s) => s.user?.accountId);
   const imageHeaders = useAuthImageHeaders();
@@ -199,6 +199,28 @@ function StaffTicketDetailScreenInner() {
   const [showLogForm, setShowLogForm] = useState(false);
   const [editingLog, setEditingLog] = useState<MaintenanceLogDTO | null>(null);
   const [showKbPicker, setShowKbPicker] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // Deep-link từ push notification: ?tab=chat mở tab trao đổi. Bên staff tab đó
+  // tên là 'comments' (TabKey), nên map lại chứ không dùng thẳng giá trị param.
+  useEffect(() => {
+    if (tab === 'chat') setActiveTab('comments');
+  }, [tab]);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow',
+      (e) => setKeyboardHeight(e.endCoordinates.height)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide',
+      () => setKeyboardHeight(0)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
   // GH-44: bỏ auto scrollToEnd — comments giờ DESC (newest-first).
   const isActioning = isStarting || isHolding || isResuming || isResolving || isEscalating;
 

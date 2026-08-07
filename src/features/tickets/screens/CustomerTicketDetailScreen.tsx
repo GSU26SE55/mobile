@@ -188,7 +188,7 @@ export function CustomerTicketDetailScreen() {
 
 function TicketDetailScreenInner() {
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const { data: ticket, isLoading, isError, refetch } = useTicketDetail(id ?? '');
   const imageHeaders = useAuthImageHeaders();
   const accountId = useSessionStore((s) => s.user?.accountId);
@@ -229,9 +229,31 @@ function TicketDetailScreenInner() {
   const [selectedChatIds, setSelectedChatIds] = useState<Set<string>>(new Set());
   const [showRateModal,   setShowRateModal]   = useState(false);
   const [showReopenModal, setShowReopenModal] = useState(false);
-  const [activeTab,       setActiveTab]       = useState<'info' | 'chat'>('info');
+  const [activeTab,       setActiveTab]       = useState<'info' | 'chat'>(tab === 'chat' ? 'chat' : 'info');
   const [viewingImage,    setViewingImage]    = useState<string | null>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
+  // Deep-link từ push notification: ?tab=chat mở thẳng tab chat. Cần useEffect
+  // riêng vì màn đã mount sẵn thì đổi param KHÔNG chạy lại useState initializer.
+  useEffect(() => {
+    if (tab === 'chat') setActiveTab('chat');
+  }, [tab]);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow',
+      (e) => setKeyboardHeight(e.endCoordinates.height)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide',
+      () => setKeyboardHeight(0)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+    
   if (isLoading) {
     return (
       <View style={styles.center}>

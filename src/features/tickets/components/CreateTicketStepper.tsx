@@ -439,7 +439,7 @@ export function CreateTicketStepper({
             </View>
 
             {/* Thời điểm phát hiện — chip nhanh HOẶC nhập giờ cụ thể. Không cần datetime picker lib. */}
-            <Text style={styles.descLabel}>Phát hiện lúc nào? (không bắt buộc)</Text>
+            <Text style={styles.descLabel}>Phát hiện lúc nào?</Text>
             <View style={styles.detectedRow}>
               {DETECTED_OPTIONS.map((opt) => {
                 const isSelected = detectedLabel === opt.label;
@@ -632,6 +632,10 @@ export function CreateTicketStepper({
 
   const isNextDisabled = () => {
     if (step === 1) return selectedBatteryIds.length === 0;
+    // Ngưỡng 5 ký tự (đã trim) khớp createTicketSchema — lệch số ở đây thì nút Tiếp
+    // sáng nhưng safeParse vẫn chặn ở bước submit, user không hiểu vì sao.
+    // KHÔNG chặn theo detectedLabel: create.tsx fallback về thời điểm hiện tại khi
+    // user bỏ trống, chặn ở đây sẽ biến fallback đó thành code chết.
     if (step === 2) return !category || description.trim().length < 5;
     if (step === 3) return isUploadingImage;
     return false;

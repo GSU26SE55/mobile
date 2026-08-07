@@ -12,15 +12,11 @@ import {
 } from '../hooks/useNotifications';
 import { NotificationCard } from './NotificationCard';
 import { isUnread, NotificationDTO } from '../types/notification.types';
+import { notificationHref, ticketIdFromPayload } from '../lib/notificationHref';
+import { useSessionStore } from '../../../stores/sessionStore';
 
-type TicketHref = (id: string) => Parameters<typeof router.push>[0];
-
-interface Props {
-  /** Build deep-link tới ticket detail theo role (staff/customer). */
-  ticketHref: TicketHref;
-}
-
-export function NotificationList({ ticketHref }: Props) {
+export function NotificationList() {
+  const role = useSessionStore((s) => s.user?.role);
   const { data, isLoading, isError, refetch, isRefetching } = useNotifications();
   const { data: unreadCount = 0 } = useUnreadCount();
   const markRead = useMarkNotificationRead();
@@ -29,11 +25,21 @@ export function NotificationList({ ticketHref }: Props) {
 
   const items = data?.items ?? [];
 
+  // Dùng chung notificationHref với luồng bấm-từ-banner (useNotificationTap) để 2 đường
+  // không điều hướng lệch nhau. Trước đây chỗ này chỉ xử lý entityType === 'Ticket'.
   const handlePress = (n: NotificationDTO) => {
     // GH-83 — deep-link = mở được nội dung thật, mới tính là "Opened" (bằng chứng user chủ động mở).
     // Bấm dòng không dẫn đi đâu chỉ là "Read". Tách 2 nhánh để open-rate không bị loãng — đúng lý do
     // BE tách /opened khỏi /read, và khớp với logic web (NotificationBell).
-    const deepLink = n.entityType === 'Ticket' && n.entityId ? ticketHref(n.entityId) : null;
+    //
+    // Đích đến lấy từ notificationHref (không phải ticketHref như bản GH-83 gốc) để phủ cả
+    // chat/mention, và để trùng đường với luồng bấm-từ-banner — xem chú thích ngay trên.
+    const deepLink = notificationHref(
+      n.entityType,
+      n.entityId,
+      role,
+      ticketIdFromPayload(n.payloadJson),
+    );
 
     if (isUnread(n)) {
       // BE tự set ReadAt khi chuyển Opened ⇒ KHÔNG gọi kèm markRead, sẽ thừa một request.

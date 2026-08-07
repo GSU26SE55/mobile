@@ -20,7 +20,6 @@ const ICON_MAP: Partial<Record<NotificationTypeEnum, IconSpec>> = {
   [NotificationTypeEnum.EnvironmentalIncidentDetected]: { name: 'thermometer-outline',        color: Colors.danger },
   [NotificationTypeEnum.EnvironmentalIncidentResolved]: { name: 'leaf-outline',               color: Colors.success },
   [NotificationTypeEnum.AccountActivated]:              { name: 'checkmark-done-outline',     color: Colors.success },
-  [NotificationTypeEnum.AdminInvite]:                   { name: 'mail-outline',               color: Colors.info },
   [NotificationTypeEnum.IncidentDeclared]:              { name: 'alert-outline',              color: Colors.danger },
   [NotificationTypeEnum.CascadeRiskHigh]:               { name: 'git-branch-outline',         color: Colors.danger },
   [NotificationTypeEnum.BatteryAlertEscalationPending]: { name: 'time-outline',               color: Colors.warning },

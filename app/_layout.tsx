@@ -4,8 +4,13 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from '@/src/context/authContext';
 import { PermissionsSync } from '@/src/features/auth/components/PermissionsSync';
-import { PushResponseHandler } from '@/src/features/notifications/components/PushResponseHandler';
+import { NotificationBootstrap } from '@/src/features/notifications/components/NotificationBootstrap';
 import { configureGoogleSignin } from '@/src/config/googleAuth';
+
+// Import side-effect: TaskManager.defineTask phải chạy ở top-level, TRƯỚC khi React tree dựng.
+// OS khởi động lại JS runtime để chạy background task khi app đã bị kill — lúc đó không có
+// component nào cả, task phải đăng ký sẵn từ module scope.
+import '@/src/features/notifications/lib/backgroundSync';
 
 // Cấu hình Google Sign-In 1 lần khi app boot.
 configureGoogleSignin();
@@ -32,6 +37,7 @@ function RootLayoutNav() {
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(customer)" />
       <Stack.Screen name="(staff)" />
+      <Stack.Screen name="notification/chat" />
     </Stack>
   );
 }
@@ -42,8 +48,11 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <PermissionsSync />
-          {/* GH-83 — bấm push → PATCH /opened + deep-link. Không render gì, chỉ gắn listener. */}
-          <PushResponseHandler />
+          {/* Quyền + kênh Android, SignalR realtime, background sync, badge.
+              Thông báo tới qua SignalR rồi hiển thị bằng local notification — KHÔNG dùng
+              Expo remote push, nên không đăng ký device token với BE (xem
+              device-token.service.ts). PushResponseHandler của GH-83 đã gỡ theo. */}
+          <NotificationBootstrap />
           <RootLayoutNav />
           <StatusBar style="dark" />
         </AuthProvider>

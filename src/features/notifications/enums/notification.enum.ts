@@ -14,7 +14,7 @@ export const NotificationTypeEnum = {
   EnvironmentalIncidentDetected: 10,
   EnvironmentalIncidentResolved: 11,
   AccountActivated: 12,
-  AdminInvite: 13,
+  // 13 was AdminInvite and is intentionally retired by the backend.
   IncidentDeclared: 14,
   CascadeRiskHigh: 15, // Sprint Bonus NS-14 (#658) — cascade risk >= 0.7 → notify Manager/Admin
   BatteryAlertEscalationPending: 16,
