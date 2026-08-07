@@ -51,6 +51,9 @@ export const NotificationStatusEnum = {
   Delivered: 5,
   // Sprint 6.3 NOTI3-14 — user chủ động mở notification. MẠNH HƠN Read, không phải trạng thái cộng thêm.
   Opened: 6,
+  // GH-792 — đã CHIẾM để gửi, chưa biết kết quả. Trạng thái tạm; vẫn tính là chưa đọc
+  // (isUnread chỉ loại Read và Opened nên không cần sửa gì thêm).
+  Processing: 7,
 } as const;
 export type NotificationStatusEnum = (typeof NotificationStatusEnum)[keyof typeof NotificationStatusEnum];
 
