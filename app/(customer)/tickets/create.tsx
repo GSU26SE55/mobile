@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Alert } from 'react-native';
+import { StyleSheet, View, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { CreateTicketStepper, detectedLabelToIso } from '@/src/features/tickets/components/CreateTicketStepper';
@@ -128,33 +128,38 @@ function CreateTicketScreenInner() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {step === 5 ? (
-        <CreateTicketSuccess
-          ticketCode={createdTicketCode}
-          onViewDetails={handleViewDetails}
-          onBackToList={handleBackToList}
-        />
-      ) : (
-        <CreateTicketStepper
-          step={step}
-          setStep={setStep}
-          selectedBatteryIds={selectedBatteryIds}
-          setSelectedBatteryIds={setSelectedBatteryIds}
-          category={category}
-          setCategory={setCategory}
-          description={description}
-          setDescription={setDescription}
-          detectedLabel={detectedLabel}
-          setDetectedLabel={setDetectedLabel}
-          attachedFiles={attachedFiles}
-          setAttachedFiles={setAttachedFiles}
-          onSubmit={handleSubmit}
-          isLoading={isPending}
-          onCancel={handleCancel}
-        />
-      )}
-    </View>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        {step === 5 ? (
+          <CreateTicketSuccess
+            ticketCode={createdTicketCode}
+            onViewDetails={handleViewDetails}
+            onBackToList={handleBackToList}
+          />
+        ) : (
+          <CreateTicketStepper
+            step={step}
+            setStep={setStep}
+            selectedBatteryIds={selectedBatteryIds}
+            setSelectedBatteryIds={setSelectedBatteryIds}
+            category={category}
+            setCategory={setCategory}
+            description={description}
+            setDescription={setDescription}
+            detectedLabel={detectedLabel}
+            setDetectedLabel={setDetectedLabel}
+            attachedFiles={attachedFiles}
+            setAttachedFiles={setAttachedFiles}
+            onSubmit={handleSubmit}
+            isLoading={isPending}
+            onCancel={handleCancel}
+          />
+        )}
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 

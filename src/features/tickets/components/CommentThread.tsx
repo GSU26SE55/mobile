@@ -285,6 +285,7 @@ export function CommentThread({
           data={items}
           keyExtractor={(item) => item.key}
           onContentSizeChange={() => scrollToBottom(false)}
+          keyboardDismissMode="on-drag"
           renderItem={({ item }) => {
             if (item.kind === 'date') {
               return (

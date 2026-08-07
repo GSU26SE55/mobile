@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -232,23 +231,6 @@ function TicketDetailScreenInner() {
   const [showReopenModal, setShowReopenModal] = useState(false);
   const [activeTab,       setActiveTab]       = useState<'info' | 'chat'>('info');
   const [viewingImage,    setViewingImage]    = useState<string | null>(null);
-
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-
-  useEffect(() => {
-    const showSub = Keyboard.addListener(
-      Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow',
-      (e) => setKeyboardHeight(e.endCoordinates.height)
-    );
-    const hideSub = Keyboard.addListener(
-      Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide',
-      () => setKeyboardHeight(0)
-    );
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
 
   if (isLoading) {
     return (
@@ -790,11 +772,7 @@ function TicketDetailScreenInner() {
           <View
             style={[
               styles.composer,
-              {
-                paddingBottom: keyboardHeight > 0
-                  ? keyboardHeight + 12
-                  : (insets.bottom > 0 ? insets.bottom + 8 : 12)
-              }
+              { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 12 }
             ]}
           >
             <Pressable style={styles.composerIcon} onPress={handlePickAttachment} disabled={isUploading}>

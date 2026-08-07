@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -200,23 +199,6 @@ function StaffTicketDetailScreenInner() {
   const [showLogForm, setShowLogForm] = useState(false);
   const [editingLog, setEditingLog] = useState<MaintenanceLogDTO | null>(null);
   const [showKbPicker, setShowKbPicker] = useState(false);
-
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-
-  useEffect(() => {
-    const showSub = Keyboard.addListener(
-      Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow',
-      (e) => setKeyboardHeight(e.endCoordinates.height)
-    );
-    const hideSub = Keyboard.addListener(
-      Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide',
-      () => setKeyboardHeight(0)
-    );
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
   // GH-44: bỏ auto scrollToEnd — comments giờ DESC (newest-first).
   const isActioning = isStarting || isHolding || isResuming || isResolving || isEscalating;
 
@@ -435,11 +417,7 @@ function StaffTicketDetailScreenInner() {
           <View
             style={[
               styles.composer,
-              {
-                paddingBottom: keyboardHeight > 0
-                  ? keyboardHeight + 12
-                  : (insets.bottom > 0 ? insets.bottom + 8 : 12)
-              }
+              { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 12 }
             ]}
           >
             <AttachmentPreviewStrip

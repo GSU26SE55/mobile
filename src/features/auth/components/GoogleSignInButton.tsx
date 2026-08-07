@@ -1,12 +1,8 @@
 import React from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text } from 'react-native';
-import {
-  GoogleSignin,
-  statusCodes,
-  isErrorWithCode,
-} from '@react-native-google-signin/google-signin';
-import { Colors } from '@/src/lib/theme';
+import { isGoogleSigninSupported } from '@/src/config/googleAuth';
 import { HttpError } from '@/src/lib/errors';
+import { Colors } from '@/src/lib/theme';
 import { useGoogleLogin } from '../hooks/useGoogleLogin';
 
 const GOOGLE_LOGO = require('../../../../assets/images/google.png');
@@ -15,7 +11,17 @@ export function GoogleSignInButton() {
   const { mutateAsync, isPending } = useGoogleLogin();
 
   const handlePress = async () => {
+    if (!isGoogleSigninSupported()) {
+      Alert.alert(
+        'Chưa hỗ trợ trên Expo Go',
+        'Tính năng Đăng nhập bằng Google yêu cầu Development Build (native build). Vui lòng sử dụng npx expo run:android hoặc npx expo run:ios.',
+      );
+      return;
+    }
+
     try {
+      const { GoogleSignin } = require('@react-native-google-signin/google-signin');
+
       await GoogleSignin.hasPlayServices(); // Android: kiểm tra Google Play Services
       const response = await GoogleSignin.signIn();
 
@@ -28,11 +34,29 @@ export function GoogleSignInButton() {
       // BE đổi idToken → JWT hệ thống; luồng post-login dùng chung handleLoginSuccess.
       await mutateAsync({ idToken });
     } catch (error) {
+      let isCancelled = false;
+      let isInProgress = false;
+      let isPlayServicesMissing = false;
+      let errorCode: string | number | undefined;
+
+      try {
+        const { statusCodes, isErrorWithCode } = require('@react-native-google-signin/google-signin');
+        const err = error as any;
+        if (isErrorWithCode(err)) {
+          isCancelled = err.code === statusCodes.SIGN_IN_CANCELLED;
+          isInProgress = err.code === statusCodes.IN_PROGRESS;
+          isPlayServicesMissing = err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE;
+          errorCode = err.code;
+        }
+      } catch {
+        // ignore fallback
+      }
+
       // User hủy giữa chừng → im lặng, không báo lỗi.
-      if (isErrorWithCode(error) && error.code === statusCodes.SIGN_IN_CANCELLED) {
+      if (isCancelled) {
         return;
       }
-      if (isErrorWithCode(error) && error.code === statusCodes.IN_PROGRESS) {
+      if (isInProgress) {
         return; // đang có 1 lần signIn khác chạy
       }
       if (error instanceof HttpError) {
@@ -40,16 +64,15 @@ export function GoogleSignInButton() {
         Alert.alert('Đăng nhập thất bại', error.message);
         return;
       }
-      if (isErrorWithCode(error) && error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+      if (isPlayServicesMissing) {
         Alert.alert('Lỗi', 'Thiết bị thiếu Google Play Services (cần bản có GMS).');
         return;
       }
       // Surface mã lỗi thật để chẩn đoán (VD DEVELOPER_ERROR = SHA-1/clientId chưa đăng ký).
-      const code = isErrorWithCode(error) ? error.code : undefined;
       Alert.alert(
         'Lỗi đăng nhập Google',
-        code
-          ? `Mã lỗi: ${code}. Nếu là DEVELOPER_ERROR → SHA-1/OAuth client chưa đăng ký hoặc dev build cũ (build lại).`
+        errorCode
+          ? `Mã lỗi: ${errorCode}. Nếu là DEVELOPER_ERROR → SHA-1/OAuth client chưa đăng ký hoặc dev build cũ (build lại).`
           : 'Không thể đăng nhập bằng Google. Vui lòng thử lại.',
       );
     }
