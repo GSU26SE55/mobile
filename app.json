@@ -28,7 +28,8 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "web": {
@@ -53,14 +54,15 @@
       "expo-font",
       "expo-secure-store",
       "expo-audio",
-      "expo-dev-client",
       [
         "@react-native-google-signin/google-signin",
         {
           "iosUrlScheme": "com.googleusercontent.apps.85758470906-f314b54brseebe2ed2us1e8b03ip62j6"
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-background-task",
+      "./plugins/withAndroidChatBubbles"
     ],
     "experiments": {
       "typedRoutes": true,

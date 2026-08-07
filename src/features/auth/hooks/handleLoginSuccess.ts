@@ -4,7 +4,6 @@ import { saveTokens, clearTokens, setToken } from '../../../lib/secureStore';
 import { decodeToken, redirectByRole } from '../../../types/session.types';
 import { useSessionStore } from '../../../stores/sessionStore';
 import { LoginResultData, CHALLENGE_TOKEN_KEY } from '../types/auth.types';
-import { syncDeviceTokenOnLogin } from '../../notifications/services/device-token.service';
 
 /**
  * Xử lý kết quả login thành công — DÙNG CHUNG cho useLogin (email/password) và
@@ -42,7 +41,4 @@ export async function handleLoginSuccess(data: LoginResultData): Promise<void> {
 
   setSession(user);
   router.replace(dest as never);
-
-  // Đăng ký push token (best-effort, không chặn luồng login).
-  void syncDeviceTokenOnLogin();
 }

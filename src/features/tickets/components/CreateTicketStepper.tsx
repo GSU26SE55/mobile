@@ -441,7 +441,7 @@ export function CreateTicketStepper({
             </View>
 
             {/* Thời điểm phát hiện — chip nhanh HOẶC nhập giờ cụ thể. Không cần datetime picker lib. */}
-            <Text style={styles.descLabel}>Phát hiện lúc nào? (không bắt buộc)</Text>
+            <Text style={styles.descLabel}>Phát hiện lúc nào?</Text>
             <View style={styles.detectedRow}>
               {DETECTED_OPTIONS.map((opt) => {
                 const isSelected = detectedLabel === opt.label;
@@ -636,7 +636,8 @@ export function CreateTicketStepper({
 
   const isNextDisabled = () => {
     if (step === 1) return selectedBatteryIds.length === 0;
-    if (step === 2) return !category || description.length < 10;
+    // Thời điểm phát hiện là bắt buộc ở BE — '' khi chưa chọn hoặc giờ gõ tay không parse được.
+    if (step === 2) return !category || description.length < 10 || !detectedLabelToIso(detectedLabel);
     if (step === 3) return isUploadingImage;
     return false;
   };

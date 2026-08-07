@@ -237,9 +237,12 @@ export interface CreateTicketPayload {
   category: TicketCategoryEnum;
   /** BE nhận MẢNG batteryAssetIds (khớp TicketCreateCommand.BatteryAssetIds). */
   batteryAssetIds?: string[];
-  /** Thời điểm Customer phát hiện pin bất thường (ISO UTC). BE dùng để AI đối chiếu sensor. */
-  detectedAt?: string;
-  attachments?: CommentAttachmentPayload[];
+  /**
+   * Thời điểm Customer phát hiện pin bất thường (ISO UTC). BE dùng để AI đối chiếu sensor.
+   * Khớp TicketCreateCommand.IncidentDetectedAt — BE bắt buộc, không nhận thời điểm tương lai.
+   */
+  incidentDetectedAt?: string;
+  attachments?: TicketAttachmentPayload[];
 }
 
 export interface UploadedTicketAttachment {
@@ -248,6 +251,7 @@ export interface UploadedTicketAttachment {
   fileName: string;
   contentType: string;
   sizeBytes: number;
+  url: string;
 }
 
 export interface CommentAttachmentPayload {
@@ -255,6 +259,11 @@ export interface CommentAttachmentPayload {
   fileName: string;
   contentType: string;
   sizeBytes: number;
+}
+
+/** TicketAttachmentInput của BE — khác chat ở chỗ Url là bắt buộc (non-nullable). */
+export interface TicketAttachmentPayload extends CommentAttachmentPayload {
+  url: string;
 }
 
 export interface AddCommentPayload {

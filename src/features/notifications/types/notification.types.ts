@@ -27,7 +27,8 @@ export interface NotificationDTO {
 }
 
 /** Unread = chưa ở trạng thái Read (BE không trả field `isRead`). */
-export const isUnread = (n: NotificationDTO): boolean => n.status !== NotificationStatusEnum.Read;
+export const isUnread = (n: NotificationDTO): boolean =>
+  n.status !== NotificationStatusEnum.Read && n.status !== NotificationStatusEnum.Opened;
 
 export interface NotificationListParams {
   pageNumber?: number;

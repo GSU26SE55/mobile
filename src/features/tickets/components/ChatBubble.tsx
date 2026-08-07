@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
-  Image,
   Modal,
   Pressable,
   StyleSheet,
@@ -12,10 +11,9 @@ import {
   type GestureResponderEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { BASE_URL } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
 import { Colors, Shadow } from '../../../lib/theme';
 import { BottomSheet } from '../../../shared/components/BottomSheet';
+import { AuthImage } from '../../file-storage/components/AuthImage';
 import { ReactionTypeEnum, TicketCommentDTO } from '../types/ticket.types';
 import { VoiceMessageBubble } from './VoiceMessageBubble';
 import { ReactionBar } from './ReactionBar';
@@ -55,17 +53,16 @@ const BUBBLE_PAD_X = 14;
 const BUBBLE_PAD_Y = 10;
 
 interface ImageTileProps {
-  uri: string;
-  imageHeaders?: { Authorization: string };
+  fileId: string;
   onPress: () => void;
   style: object;
   moreCount?: number;
 }
 
-function ImageTile({ uri, imageHeaders, onPress, style, moreCount }: ImageTileProps) {
+function ImageTile({ fileId, onPress, style, moreCount }: ImageTileProps) {
   return (
     <Pressable style={[styles.gridTile, style]} onPress={onPress}>
-      <Image source={{ uri, headers: imageHeaders }} style={styles.gridImage} resizeMode="cover" />
+      <AuthImage fileId={fileId} style={styles.gridImage} resizeMode="cover" />
       {!!moreCount && (
         <View style={styles.gridMoreOverlay}>
           <Text style={styles.gridMoreText}>+{moreCount}</Text>
@@ -78,20 +75,22 @@ function ImageTile({ uri, imageHeaders, onPress, style, moreCount }: ImageTilePr
 interface ChatImageGridProps {
   fileIds: (string | undefined)[];
   imageHeaders?: { Authorization: string };
-  onImagePress?: (uri: string) => void;
+  onImagePress?: (fileId: string) => void;
 }
 
 /** Mosaic ảnh kiểu Messenger — 1 ảnh lớn / 2 ảnh đôi / 3 ảnh (2 trên-1 dưới) / 4+ ảnh lưới 2x2 + overlay "+N". */
-function ChatImageGrid({ fileIds, imageHeaders, onImagePress }: ChatImageGridProps) {
-  const uris = fileIds.map((fid, i) => ({ fid: fid ?? `img-${i}`, uri: `${BASE_URL}${ENDPOINTS.FILES.DOWNLOAD(fid ?? '')}` }));
-  const count = uris.length;
+function ChatImageGrid({ fileIds, onImagePress }: ChatImageGridProps) {
+  const images = fileIds.map((fileId, index) => ({
+    fileId: fileId ?? '',
+    key: fileId ?? `img-${index}`,
+  }));
+  const count = images.length;
 
   if (count === 1) {
     return (
       <ImageTile
-        uri={uris[0].uri}
-        imageHeaders={imageHeaders}
-        onPress={() => onImagePress?.(uris[0].uri)}
+        fileId={images[0].fileId}
+        onPress={() => onImagePress?.(images[0].fileId)}
         style={styles.gridSingle}
       />
     );
@@ -100,12 +99,11 @@ function ChatImageGrid({ fileIds, imageHeaders, onImagePress }: ChatImageGridPro
   if (count === 2) {
     return (
       <View style={styles.gridRow}>
-        {uris.map((it) => (
+        {images.map((image) => (
           <ImageTile
-            key={it.fid}
-            uri={it.uri}
-            imageHeaders={imageHeaders}
-            onPress={() => onImagePress?.(it.uri)}
+            key={image.key}
+            fileId={image.fileId}
+            onPress={() => onImagePress?.(image.fileId)}
             style={styles.gridHalfTall}
           />
         ))}
@@ -117,20 +115,18 @@ function ChatImageGrid({ fileIds, imageHeaders, onImagePress }: ChatImageGridPro
     return (
       <View style={styles.gridCol}>
         <View style={styles.gridRow}>
-          {uris.slice(0, 2).map((it) => (
+          {images.slice(0, 2).map((image) => (
             <ImageTile
-              key={it.fid}
-              uri={it.uri}
-              imageHeaders={imageHeaders}
-              onPress={() => onImagePress?.(it.uri)}
+              key={image.key}
+              fileId={image.fileId}
+              onPress={() => onImagePress?.(image.fileId)}
               style={styles.gridHalf}
             />
           ))}
         </View>
         <ImageTile
-          uri={uris[2].uri}
-          imageHeaders={imageHeaders}
-          onPress={() => onImagePress?.(uris[2].uri)}
+          fileId={images[2].fileId}
+          onPress={() => onImagePress?.(images[2].fileId)}
           style={styles.gridFull}
         />
       </View>
@@ -142,23 +138,21 @@ function ChatImageGrid({ fileIds, imageHeaders, onImagePress }: ChatImageGridPro
   return (
     <View style={styles.gridCol}>
       <View style={styles.gridRow}>
-        {uris.slice(0, 2).map((it) => (
+        {images.slice(0, 2).map((image) => (
           <ImageTile
-            key={it.fid}
-            uri={it.uri}
-            imageHeaders={imageHeaders}
-            onPress={() => onImagePress?.(it.uri)}
+            key={image.key}
+            fileId={image.fileId}
+            onPress={() => onImagePress?.(image.fileId)}
             style={styles.gridHalf}
           />
         ))}
       </View>
       <View style={styles.gridRow}>
-        {uris.slice(2, 4).map((it, i) => (
+        {images.slice(2, 4).map((image, i) => (
           <ImageTile
-            key={it.fid}
-            uri={it.uri}
-            imageHeaders={imageHeaders}
-            onPress={() => onImagePress?.(it.uri)}
+            key={image.key}
+            fileId={image.fileId}
+            onPress={() => onImagePress?.(image.fileId)}
             style={styles.gridHalf}
             moreCount={i === 1 && extra > 0 ? extra : undefined}
           />
@@ -308,7 +302,7 @@ export interface ChatBubbleProps {
   comment: TicketCommentDTO;
   isMe: boolean;
   imageHeaders?: { Authorization: string };
-  onImagePress?: (uri: string) => void;
+  onImagePress?: (fileId: string) => void;
   /** Màu nền bubble của mình — mỗi app (customer/staff) giữ màu thương hiệu riêng. */
   accentColor?: string;
 

@@ -11,15 +11,11 @@ import {
 } from '../hooks/useNotifications';
 import { NotificationCard } from './NotificationCard';
 import { isUnread, NotificationDTO } from '../types/notification.types';
+import { notificationHref, ticketIdFromPayload } from '../lib/notificationHref';
+import { useSessionStore } from '../../../stores/sessionStore';
 
-type TicketHref = (id: string) => Parameters<typeof router.push>[0];
-
-interface Props {
-  /** Build deep-link tới ticket detail theo role (staff/customer). */
-  ticketHref: TicketHref;
-}
-
-export function NotificationList({ ticketHref }: Props) {
+export function NotificationList() {
+  const role = useSessionStore((s) => s.user?.role);
   const { data, isLoading, isError, refetch, isRefetching } = useNotifications();
   const { data: unreadCount = 0 } = useUnreadCount();
   const markRead = useMarkNotificationRead();
@@ -27,11 +23,17 @@ export function NotificationList({ ticketHref }: Props) {
 
   const items = data?.items ?? [];
 
+  // Dùng chung notificationHref với luồng bấm-từ-banner (useNotificationTap) để 2 đường
+  // không điều hướng lệch nhau. Trước đây chỗ này chỉ xử lý entityType === 'Ticket'.
   const handlePress = (n: NotificationDTO) => {
     if (isUnread(n)) markRead.mutate(n.id);
-    if (n.entityType === 'Ticket' && n.entityId) {
-      router.push(ticketHref(n.entityId));
-    }
+    const href = notificationHref(
+      n.entityType,
+      n.entityId,
+      role,
+      ticketIdFromPayload(n.payloadJson),
+    );
+    if (href) router.push(href);
   };
 
   if (isLoading) {

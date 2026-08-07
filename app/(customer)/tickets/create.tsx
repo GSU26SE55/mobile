@@ -77,13 +77,14 @@ function CreateTicketScreenInner() {
         batteryAssetIds:
           selectedBatteryIds.length > 0 ? selectedBatteryIds : undefined,
         // ISO tính tại thời điểm submit (label ổn định trong state).
-        detectedAt: detectedLabelToIso(detectedLabel) || undefined,
+        incidentDetectedAt: detectedLabelToIso(detectedLabel) || undefined,
         attachments: attachedFiles.length > 0
           ? attachedFiles.map((file) => ({
               fileId: file.fileId,
               fileName: file.fileName,
               contentType: file.contentType,
               sizeBytes: file.sizeBytes,
+              url: file.url,
             }))
           : undefined,
       });

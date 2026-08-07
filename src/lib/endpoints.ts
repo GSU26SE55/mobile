@@ -154,6 +154,7 @@ export const ENDPOINTS = {
       `/api/tickets/${ticketId}/maintenance-logs/${logId}`,        // GH-44 #4 — PATCH
   },
   NOTIFICATIONS: {
+    MARK_OPENED: (id: string) => `/api/notifications/${id}/opened`,
     LIST: '/api/notifications',
     MARK_READ: (id: string) => `/api/notifications/${id}/read`, // PATCH — idempotent
     MARK_ALL_READ: '/api/notifications/read-all', // POST — body rỗng

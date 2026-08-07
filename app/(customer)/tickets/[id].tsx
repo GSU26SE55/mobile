@@ -183,7 +183,7 @@ export default function TicketDetailScreen() {
 
 function TicketDetailScreenInner() {
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const { data: ticket, isLoading, isError, refetch } = useTicketDetail(id ?? '');
   const imageHeaders = useAuthImageHeaders();
   const accountId = useSessionStore((s) => s.user?.accountId);
@@ -217,10 +217,14 @@ function TicketDetailScreenInner() {
   const [attachments,     setAttachments]     = useState<AttachmentForm[]>([]);
   const [showRateModal,   setShowRateModal]   = useState(false);
   const [showReopenModal, setShowReopenModal] = useState(false);
-  const [activeTab,       setActiveTab]       = useState<'info' | 'chat'>('info');
+  const [activeTab,       setActiveTab]       = useState<'info' | 'chat'>(tab === 'chat' ? 'chat' : 'info');
   const [viewingImage,    setViewingImage]    = useState<string | null>(null);
 
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (tab === 'chat') setActiveTab('chat');
+  }, [tab]);
 
   useEffect(() => {
     const showSub = Keyboard.addListener(

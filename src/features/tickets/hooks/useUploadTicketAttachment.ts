@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { fileStorageService } from '../../file-storage/services/file-storage.service';
 import { FilePurposeEnum } from '../../file-storage/enums/file-storage.enum';
+import { resolveFileUrl } from '../../file-storage/utils/fileUrl';
 import type { UploadedTicketAttachment } from '../types/ticket.types';
 
 export function useUploadTicketAttachment() {
@@ -23,6 +24,7 @@ export function useUploadTicketAttachment() {
         fileName:    data.fileName,
         contentType: data.contentType,
         sizeBytes:   data.size,
+        url:         resolveFileUrl(data.publicUrl, data.fileId),
       };
     },
   });

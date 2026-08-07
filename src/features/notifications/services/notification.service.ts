@@ -10,6 +10,9 @@ import {
 const { NOTIFICATIONS } = ENDPOINTS;
 
 export const notificationService = {
+  markOpened: (id: string) =>
+    axiosInstance.patch<CommonResponse<string>>(NOTIFICATIONS.MARK_OPENED(id)),
+
   // Mặc định chỉ lấy channel InApp. BE ghi 1 record/channel (InApp + Push) cho mỗi
   // sự kiện ⇒ nếu không lọc, list hiện trùng 2 dòng (record Push chỉ để đẩy Expo,
   // không thuộc danh sách in-app). Caller vẫn override channel được nếu cần.

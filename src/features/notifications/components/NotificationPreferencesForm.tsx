@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,6 +16,7 @@ import { handleErrorApi } from '../../../lib/errors';
 import { useNotificationPreferences } from '../hooks/useNotificationPreferences';
 import { notificationPreferenceSchema } from '../schemas/notificationPreference.schema';
 import { UpdateNotificationPreferencePayload } from '../types/notification-preference.types';
+import { openNotificationSettings } from '../../../lib/notifications';
 
 interface ToggleRowProps {
   label: string;
@@ -130,6 +132,18 @@ export function NotificationPreferencesForm() {
         <ToggleRow label="SMS" value={smsEnabled} onValueChange={setSmsEnabled} />
         <ToggleRow label="Trong ứng dụng" desc="Hiển thị trong danh sách thông báo" value={inAppEnabled} onValueChange={setInAppEnabled} />
       </View>
+
+      {Platform.OS === 'android' ? (
+        <View style={[styles.card, Shadow]}>
+          <Text style={styles.cardTitle}>Bong bóng chat</Text>
+          <Text style={styles.rowDesc}>
+            Cho phép tin nhắn ticket xuất hiện bên ngoài ứng dụng như cuộc trò chuyện nổi.
+          </Text>
+          <Pressable style={CommonStyles.btnOutline} onPress={() => void openNotificationSettings()}>
+            <Text style={CommonStyles.btnOutlineText}>Mở cài đặt Android</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       <View style={[styles.card, Shadow]}>
         <ToggleRow
