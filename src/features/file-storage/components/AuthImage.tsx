@@ -5,11 +5,11 @@ import { ENDPOINTS } from '@/src/lib/endpoints';
 import { Colors } from '@/src/lib/theme';
 
 /**
- * Tải ảnh cần auth từ FileStorageService rồi hiển thị qua data URI (base64).
+ * Loads an image that requires auth from FileStorageService, then renders it via a data URI (base64).
  *
- * KHÔNG dùng `<Image source={{ uri, headers }}>`: trên iOS/New Architecture (và Expo Go),
- * native image loader bỏ qua request khi có custom `Authorization` header → ảnh không tải.
- * Thay vào đó tải bằng axios (interceptor tự gắn Bearer) → base64 → data URI (giống web AuthImage).
+ * Do NOT use `<Image source={{ uri, headers }}>`: on iOS/New Architecture (and Expo Go),
+ * the native image loader ignores the request when a custom `Authorization` header is set → image fails to load.
+ * Instead, load via axios (the interceptor attaches the Bearer token automatically) → base64 → data URI (same as the web AuthImage).
  */
 export function AuthImage({
   fileId,
@@ -34,7 +34,7 @@ export function AuthImage({
       .then(
         (res) =>
           new Promise<string>((resolve, reject) => {
-            // FileReader.readAsDataURL → data URI base64 (RN-native, không cần Buffer/btoa).
+            // FileReader.readAsDataURL → base64 data URI (RN-native, no Buffer/btoa needed).
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result as string);
             reader.onerror = reject;
@@ -56,7 +56,7 @@ export function AuthImage({
   if (state.error) {
     return (
       <View style={[styles.fallback, style]}>
-        <Text style={styles.fallbackText}>Lỗi ảnh</Text>
+        <Text style={styles.fallbackText}>Image error</Text>
       </View>
     );
   }

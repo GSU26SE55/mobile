@@ -14,7 +14,7 @@ export function useBlogDetail(id: string | undefined) {
     },
     staleTime: STALE_TIME,
     enabled: !!id,
-    // Bài bị archive/gỡ → BE trả 404. Không retry, hiện empty state ngay.
+    // Post archived/removed → BE returns 404. No retry, show empty state immediately.
     retry: false,
   });
 }

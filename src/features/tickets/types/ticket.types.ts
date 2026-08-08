@@ -1,5 +1,5 @@
-// GH-83 — enum riêng của ticket chat (string-based, khác các enum int bên dưới).
-// Đặt ở dòng đầu file: import nằm sau `export ... from` sẽ dính eslint `import/first`.
+// GH-83 — ticket chat's own enum (string-based, unlike the int enums below).
+// Placed at the top of the file: an import after `export ... from` would trigger eslint `import/first`.
 import type { VoiceTranscriptionStatusEnum } from '../enums/chat.enum';
 
 export {
@@ -38,8 +38,8 @@ import type {
   TicketCloseReasonEnum,
 } from '@/src/shared/enums/ticket.enum';
 
-// GH-83 — enum riêng của ticket chat (string-based, khác các enum int ở trên).
-// Đặt SAU khối import: `export ... from` xen giữa các import làm eslint `import/first` kêu.
+// GH-83 — ticket chat's own enum (string-based, unlike the int enums above).
+// Placed AFTER the import block: `export ... from` interleaved among imports triggers eslint `import/first`.
 export { VoiceTranscriptionStatusEnum } from '../enums/chat.enum';
 
 export interface SlaTimerDTO {
@@ -68,8 +68,8 @@ export interface TicketActivityDTO {
   createdAt: string;
 }
 
-// GH-68 — reaction aggregate (BE TicketChatReactionsAggregateDTO). Mỗi nhóm gồm count + danh
-// sách user đã react (dùng để biết current user đã react loại nào → toggle).
+// GH-68 — reaction aggregate (BE TicketChatReactionsAggregateDTO). Each group has a count +
+// list of users who reacted (used to know which type the current user reacted with → toggle).
 export interface ChatReactionUserDTO {
   userId: string;
   role: ActorRoleEnum;
@@ -86,7 +86,7 @@ export interface TicketChatReactionsAggregateDTO {
   disagree: ChatReactionGroupDTO;
 }
 
-// GH-68 — mention trong chat (BE TicketChatMentionDTO).
+// GH-68 — mention within a chat (BE TicketChatMentionDTO).
 export interface TicketChatMentionDTO {
   id: string;
   chatId: string;
@@ -94,7 +94,7 @@ export interface TicketChatMentionDTO {
   mentionedUserId: string;
   mentionedUserRole: ActorRoleEnum;
   mentionedDisplayName: string | null;
-  /** GH-866 — mention nằm trong chat nội bộ. Chọn view public/internal, KHÔNG phải authz. */
+  /** GH-866 — mention within an internal chat. Selects public/internal view, NOT authz. */
   isInternal: boolean;
   createdAt: string;
 }
@@ -103,10 +103,10 @@ export interface TicketParticipantDTO {
   id: string;
   ticketId: string;
   userId: string;
-  /** BE resolve từ CustomerAccounts/StaffAccounts; fallback userId nếu không thấy. */
+  /** BE resolves from CustomerAccounts/StaffAccounts; falls back to userId if not found. */
   displayName: string;
   userRole: ActorRoleEnum;
-  /** Serialize dạng chuỗi ('Owner' | 'PrimaryAssignee' | ...), KHÔNG phải số. */
+  /** Serialized as a string ('Owner' | 'PrimaryAssignee' | ...), NOT a number. */
   participantType: ParticipantTypeEnum;
   canPost: boolean;
   canViewInternal: boolean;
@@ -114,7 +114,7 @@ export interface TicketParticipantDTO {
   addedAt: string;
 }
 
-// GH-68 — attachment đầy đủ (chỉ điền khi GetById; list dùng attachmentFileIds).
+// GH-68 — full attachment (only populated on GetById; the list uses attachmentFileIds).
 export interface TicketAttachmentDTO {
   id: string;
   fileId: string;
@@ -136,18 +136,19 @@ export interface TicketCommentDTO {
   createdAt: string;
   editCount?: number;
   updatedAt?: string | null;
-  // GH-67 — pin chat. BE GET /chats list (TicketChatsQueryHandler) project cả 3; realtime
-  // ChatAdded không kèm → optional, undefined = chưa pin.
+  // GH-67 — pinned chat. BE GET /chats list (TicketChatsQueryHandler) projects all 3; realtime
+  // ChatAdded doesn't include them → optional, undefined = not pinned.
   isPinned?: boolean;
   pinnedAt?: string | null;
   pinnedByUserId?: string | null;
   /**
-   * User hiện tại đã đọc tin này chưa. BE set ở GET /chats (list + cursor); tin do chính
-   * mình gửi luôn true. Realtime ChatAdded KHÔNG kèm → undefined nghĩa là "chưa biết",
-   * đừng coi undefined là chưa đọc (sẽ vẽ nhầm mốc "Tin nhắn chưa đọc").
+   * Whether the current user has read this message. BE sets it on GET /chats (list + cursor);
+   * messages sent by the user themself are always true. Realtime ChatAdded does NOT include it →
+   * undefined means "unknown", don't treat undefined as unread (it would misdraw the
+   * "unread messages" marker).
    */
   isRead?: boolean;
-  // GH-68 — cursor/list handler BE populate đủ; realtime ChatAdded không kèm → optional.
+  // GH-68 — the cursor/list handler BE populates it fully; realtime ChatAdded doesn't → optional.
   bodyFormat?: string;
   bodyHtml?: string | null;
   editedAt?: string | null;
@@ -156,18 +157,18 @@ export interface TicketCommentDTO {
   mentions?: TicketChatMentionDTO[];
   attachments?: TicketAttachmentDTO[] | null;
   /**
-   * GH-83 — trạng thái chuyển giọng nói → văn bản (chỉ có ở chat voice).
+   * GH-83 — voice-to-text conversion status (only present for voice chats).
    *
-   * ⚠️ TicketService bật `JsonStringEnumConverter` nên BE trả **CHUỖI** (`"Failed"`), không phải số.
-   * `null`/`undefined` = chat thường, không phải voice.
+   * Warning: TicketService has `JsonStringEnumConverter` enabled so BE returns a **STRING**
+   * (`"Failed"`), not a number. `null`/`undefined` = a regular chat, not voice.
    */
   voiceTranscriptionStatus?: VoiceTranscriptionStatusEnum | null;
 }
 
 /**
- * #697 — 1 ticket có 1 PrimaryHandler + N Supporter.
- * BE chỉ trả `staffId` (UUID), KHÔNG có tên: Customer không được phép đọc danh
- * sách nhân sự nên đừng cố map ra tên ở app khách hàng.
+ * #697 — 1 ticket has 1 PrimaryHandler + N Supporters.
+ * BE only returns `staffId` (UUID), NO name: Customers aren't allowed to read the
+ * staff directory, so don't try to map it to a name in the customer app.
  */
 export type TicketAssignmentRole = 'PrimaryHandler' | 'Supporter';
 
@@ -175,8 +176,8 @@ export interface TicketAssignmentDTO {
   staffId: string;
   role: TicketAssignmentRole;
   /**
-   * Tên nhân viên — BE lấy từ StaffAccount đã sync sang TicketService.
-   * Null khi chưa sync kịp → fallback hiển thị staffId.
+   * Staff name — BE gets it from StaffAccount synced into TicketService.
+   * Null when sync hasn't caught up yet → falls back to displaying staffId.
    */
   staffName?: string | null;
 }
@@ -184,20 +185,21 @@ export interface TicketAssignmentDTO {
 export interface TicketDTO {
   id: string;
   code: string;
-  /** Legacy — pin đầu tiên. BE trả `""` (không phải null) khi ticket không gắn pin. */
+  /** Legacy — first battery. BE returns `""` (not null) when the ticket has no battery attached. */
   batteryAssetId: string | null;
-  /** Danh sách đầy đủ ID pin — nguồn đúng từ GH-866 (ticket hỗ trợ nhiều pin). */
+  /** Full list of battery IDs — the correct source per GH-866 (a ticket supports multiple batteries). */
   batteryAssetIds: string[];
   customerId: string;
   customerName?: string | null;
   /**
-   * #697 — THAY cho `assignedStaffId`/`assignedStaffName` (BE đã bỏ hẳn; đọc 2
-   * field cũ luôn ra undefined nên card "Kỹ thuật viên" hiện sai "Chưa phân công").
+   * #697 — REPLACES `assignedStaffId`/`assignedStaffName` (BE removed them entirely; reading
+   * the 2 old fields always yields undefined, causing the "Technician" card to incorrectly
+   * show "Not assigned").
    */
   assignments: TicketAssignmentDTO[];
   title: string;
   category: TicketCategoryEnum;
-  // BE trả null khi ticket chưa triage (state New/Open) — gán tại bước triage.
+  // BE returns null when the ticket hasn't been triaged yet (state New/Open) — assigned at triage.
   priority: TicketPriorityEnum | null;
   impactScope: ImpactScopeEnum | null;
   urgencyLevel: UrgencyLevelEnum | null;
@@ -205,31 +207,31 @@ export interface TicketDTO {
   origin: TicketOriginEnum;
   reopenCount: number;
   isIncident: boolean;
-  /** BE tính sẵn theo user hiện tại (TicketQueryHelper) — có chat chưa đọc trên ticket này. */
+  /** Pre-computed by BE for the current user (TicketQueryHelper) — has unread chat on this ticket. */
   hasUnreadChat: boolean;
   createdAt: string;
   updatedAt: string | null;
   slaTimer: SlaTimerDTO | null;
 
-  // ── BE trả sẵn ở CẢ list lẫn detail (docs xếp trong TicketDTO) ──
-  /** Thời điểm Customer khai báo phát hiện sự cố (`incidentDetectedAt` lúc tạo). */
+  // ── BE returns these on BOTH list and detail (docs list them under TicketDTO) ──
+  /** When the Customer declared the incident was detected (`incidentDetectedAt` at creation). */
   detectedAt: string | null;
-  /** Serial pin snapshot lúc tạo ticket — hiển thị không cần gọi thêm API. */
+  /** Battery serial snapshot at ticket creation — displayable without an extra API call. */
   batterySerialNumber: string | null;
-  /** Trạng thái AI verify tính hợp lệ của ticket. */
+  /** AI verification status of ticket validity. */
   aiVerifyStatus: TicketVerifyStatusEnum;
   aiVerifyScore: number | null;
   aiVerifyReason: string | null;
   suspectedDuplicateOfTicketId: string | null;
   duplicateReason: string | null;
-  /** Khác null ⇒ ticket đã bị gộp vào ticket khác, đã đóng và ẩn khỏi queue. */
+  /** Non-null ⇒ the ticket was merged into another ticket, closed and hidden from the queue. */
   mergedIntoTicketId: string | null;
   closeReason: TicketCloseReasonEnum | null;
 }
 
 export interface MaintenanceLogDTO {
   id: string;
-  ticketId: string;
+  // BE MaintenanceLogDTO does NOT return ticketId (see MaintenanceLogsByTicketQueryHandler) — don't redeclare it.
   staffId: string;
   logType: MaintenanceLogTypeEnum;
   summary: string | null;
@@ -263,13 +265,13 @@ export interface TicketDetailDTO extends TicketDTO {
   originAlertId: string | null;
   activities: TicketActivityDTO[] | null;
   /**
-   * BE trả `chats` (TicketChatDTO[]) — KHÔNG còn `comments`.
-   * `TicketCommentsController` đã bị xoá; TicketCommentDTO ở file này chính là
-   * shape của TicketChatDTO (giữ tên cũ để không phải đổi toàn bộ call site).
+   * BE returns `chats` (TicketChatDTO[]) — `comments` no longer exists.
+   * `TicketCommentsController` has been removed; TicketCommentDTO in this file is
+   * actually the shape of TicketChatDTO (kept the old name to avoid changing every call site).
    */
   chats: TicketCommentDTO[] | null;
   maintenanceLogs: MaintenanceLogDTO[] | null;
-  // BE trả mảng FileId (string[]), KHÔNG phải mảng TicketAttachmentDTO.
+  // BE returns an array of FileId (string[]), NOT an array of TicketAttachmentDTO.
   attachmentFileIds: string[] | null;
 }
 
@@ -292,13 +294,13 @@ export interface CreateTicketPayload {
   description: string;
   category: TicketCategoryEnum;
   /**
-   * BE required: ít nhất 1 pin, không rỗng, không trùng lặp
-   * (khớp TicketCreateCommand.BatteryAssetIds).
+   * BE required: at least 1 battery, non-empty, no duplicates
+   * (matches TicketCreateCommand.BatteryAssetIds).
    */
   batteryAssetIds: string[];
   /**
-   * GH-866 — MỘT mốc thời gian Customer phát hiện sự cố (ISO UTC), thay cho cặp
-   * from/to cũ. BE required và reject nếu ở tương lai.
+   * GH-866 — A SINGLE timestamp for when the Customer detected the incident (ISO UTC),
+   * replacing the old from/to pair. BE requires it and rejects it if in the future.
    */
   incidentDetectedAt: string;
   attachments?: TicketAttachmentPayload[];
@@ -310,14 +312,14 @@ export interface UploadedTicketAttachment {
   fileName: string;
   contentType: string;
   sizeBytes: number;
-  /** publicUrl từ FileUploadResponse — BE ticket create bắt buộc có url. */
+  /** publicUrl from FileUploadResponse — BE ticket create requires a url. */
   url: string;
 }
 
 /**
- * Attachment gửi kèm khi TẠO ticket (POST /api/customer/tickets).
- * Khác CommentAttachmentPayload: BE `TicketAttachmentInput` bắt buộc thêm `url`
- * (required, tối đa 2000 ký tự) — thiếu sẽ bị 400.
+ * Attachment sent along when CREATING a ticket (POST /api/customer/tickets).
+ * Differs from CommentAttachmentPayload: BE `TicketAttachmentInput` additionally requires
+ * `url` (required, max 2000 characters) — missing it results in a 400.
  */
 export interface TicketAttachmentPayload {
   fileId: string;
@@ -335,8 +337,9 @@ export interface CommentAttachmentPayload {
 }
 
 /**
- * Mention gửi kèm chat — BE nhận qua field `mentions`, KHÔNG parse '@' từ body.
- * Không gửi field này thì mention không được tạo dù text có '@Tên'.
+ * Mention sent along with a chat — BE receives it via the `mentions` field, does NOT
+ * parse '@' from the body. Without sending this field, no mention is created even if
+ * the text contains '@Name'.
  */
 export interface ChatMentionInput {
   userId: string;
@@ -365,7 +368,7 @@ export interface TicketListParams {
   PageSize?: number;
 }
 
-// GH-44 #1 — GET /tickets/{id}/comments. Controller nhận param `page`/`pageSize` (lowercase).
+// GH-44 #1 — GET /tickets/{id}/comments. Controller accepts params `page`/`pageSize` (lowercase).
 export interface CommentListParams {
   page?: number;
   pageSize?: number;

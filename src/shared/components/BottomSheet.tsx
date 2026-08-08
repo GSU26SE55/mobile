@@ -15,14 +15,14 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
-  /** Bọc nội dung trong ScrollView (mặc định true) — form dài không bị bàn phím che. */
+  /** Wraps content in a ScrollView (default true) — keeps long forms from being covered by the keyboard. */
   scroll?: boolean;
 }
 
 /**
- * Bottom-sheet dùng chung cho các modal dạng form (Resolve/Escalate/Hold/Rate/Reopen…).
- * Xử lý sẵn: KeyboardAvoidingView (bàn phím không che nút submit), backdrop tap-to-dismiss,
- * handle bar, và padding safe-area đáy (home indicator không che footer).
+ * Shared bottom-sheet for form-style modals (Resolve/Escalate/Hold/Rate/Reopen…).
+ * Handles: KeyboardAvoidingView (keyboard won't cover the submit button), backdrop tap-to-dismiss,
+ * handle bar, and bottom safe-area padding (home indicator won't cover the footer).
  */
 export function BottomSheet({ visible, onClose, children, scroll = true }: Props) {
   const insets = useSafeAreaInsets();
@@ -32,6 +32,10 @@ export function BottomSheet({ visible, onClose, children, scroll = true }: Props
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        // Sheet is pinned to the bottom of the screen: KAV spans from y=0, so it doesn't
+        // subtract the bottom safe-area, pushing up by exactly the home indicator height.
+        // The negative offset compensates for that.
+        keyboardVerticalOffset={-insets.bottom}
       >
         <Pressable style={styles.backdrop} onPress={onClose} />
         <View style={[styles.sheet, Shadow, { paddingBottom: insets.bottom + 20 }]}>

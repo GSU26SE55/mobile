@@ -18,7 +18,7 @@ export function KbCategoryChips({ selected, onChange }: Props) {
       contentContainerStyle={styles.row}
     >
       <Chip
-        label="Tất cả"
+        label="All"
         active={selected === null}
         onPress={() => onChange(null)}
       />

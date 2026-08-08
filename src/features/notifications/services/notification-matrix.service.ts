@@ -10,22 +10,22 @@ import {
 const { NOTIFICATION_PREFERENCES } = ENDPOINTS;
 
 export const notificationMatrixService = {
-  // GET — luôn trả đủ 6 nhóm; nhóm chưa tuỳ chỉnh có isCustomized = false (giá trị kế thừa).
-  // Kèm luôn `channels` nên màn cài đặt chỉ cần 1 request này, không gọi GET base nữa.
+  // GET — always returns all 6 categories; a category not yet customized has isCustomized = false (inherited value).
+  // Also includes `channels`, so the settings screen only needs this one request, no more calling GET base.
   getMatrix: () =>
     axiosInstance.get<CommonResponse<NotificationPreferenceMatrixDto>>(
       NOTIFICATION_PREFERENCES.MATRIX,
     ),
 
-  // PUT — vá từng dòng: chỉ nhóm có trong items bị đổi, nhóm còn lại giữ nguyên.
-  // Response trả về ma trận ĐẦY ĐỦ sau khi cập nhật ⇒ ghi thẳng vào cache, khỏi refetch.
+  // PUT — patches per row: only the category present in items is changed, the rest stay as-is.
+  // Response returns the FULL matrix after the update ⇒ write straight to the cache, skip refetch.
   updateMatrix: (payload: UpdateNotificationMatrixPayload) =>
     axiosInstance.put<CommonResponse<NotificationPreferenceMatrixDto>>(
       NOTIFICATION_PREFERENCES.MATRIX,
       payload,
     ),
 
-  // GET — bảng tra cứu NotificationType → nhóm. Số phần tử do BE quyết định.
+  // GET — NotificationType → category lookup table. Element count is decided by BE.
   getCategories: () =>
     axiosInstance.get<CommonResponse<NotificationCategoryMapDto[]>>(
       NOTIFICATION_PREFERENCES.CATEGORIES,

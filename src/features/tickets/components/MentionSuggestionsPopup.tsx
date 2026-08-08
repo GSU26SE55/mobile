@@ -50,17 +50,17 @@ export function MentionSuggestionsPopup({
     <GlassSurface style={styles.popupContainer} warm>
       <View style={styles.header}>
         <Ionicons name="at-circle-outline" size={16} color={Solar.yellowDeep} />
-        <Text style={styles.headerTitle}>Gắn thẻ (@mention)</Text>
+        <Text style={styles.headerTitle}>Mention people</Text>
       </View>
 
       {isLoading ? (
         <View style={styles.loadingBox}>
           <ActivityIndicator size="small" color={Solar.yellowDeep} />
-          <Text style={styles.loadingText}>Đang tải dữ liệu từ Server…</Text>
+          <Text style={styles.loadingText}>Loading data from the server…</Text>
         </View>
       ) : filtered.length === 0 ? (
         <View style={styles.emptyBox}>
-          <Text style={styles.emptyText}>Không tìm thấy thành viên</Text>
+          <Text style={styles.emptyText}>No members found</Text>
         </View>
       ) : (
         filtered.map((item) => (
@@ -79,7 +79,7 @@ export function MentionSuggestionsPopup({
                 {item.displayName}
                 {/* BE không chặn mention người không xem được chat nội bộ —
                     cảnh báo để người soạn tự cân nhắc. */}
-                {isInternal && !item.canViewInternal ? ' · không xem được chat nội bộ' : ''}
+                {isInternal && !item.canViewInternal ? ' · cannot view internal chat' : ''}
               </Text>
             </View>
 

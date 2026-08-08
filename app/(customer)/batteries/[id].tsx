@@ -26,17 +26,17 @@ import { BackButton } from '@/src/shared/components/ScreenHeader';
 const BATTERY_IMAGE = require('../../../assets/images/battery-storage-3d.png');
 
 const CHARGING_LABEL: Record<ChargingStateEnum, string> = {
-  [ChargingStateEnum.Idle]: 'Đang nghỉ',
-  [ChargingStateEnum.Charging]: 'Đang sạc',
-  [ChargingStateEnum.Discharging]: 'Đang xả',
-  [ChargingStateEnum.Float]: 'Chế độ float',
-  [ChargingStateEnum.Bypass]: 'Chế độ bypass',
+  [ChargingStateEnum.Idle]: 'Idle',
+  [ChargingStateEnum.Charging]: 'Charging',
+  [ChargingStateEnum.Discharging]: 'Discharging',
+  [ChargingStateEnum.Float]: 'Float mode',
+  [ChargingStateEnum.Bypass]: 'Bypass mode',
 };
 
 const STATUS_LABEL: Record<number, string> = {
-  1: 'Đang hoạt động',
-  2: 'Tạm ngưng',
-  3: 'Ngừng sử dụng',
+  1: 'Active',
+  2: 'Paused',
+  3: 'Decommissioned',
 };
 
 const SEGMENTS = 14;
@@ -76,9 +76,9 @@ function BatteryDetailScreenInner() {
       <View style={styles.center}>
         <EnergyBackdrop />
         <Ionicons name="battery-dead-outline" size={40} color={Solar.faint} />
-        <Text style={styles.notFoundTitle}>Không tìm thấy pin</Text>
+        <Text style={styles.notFoundTitle}>Battery not found</Text>
         <Pressable onPress={() => router.back()} style={styles.goBackBtn}>
-          <Text style={styles.goBackText}>Quay lại</Text>
+          <Text style={styles.goBackText}>Go back</Text>
         </Pressable>
       </View>
     );
@@ -92,9 +92,9 @@ function BatteryDetailScreenInner() {
   const statusPillLabel =
     realtime?.chargingState != null
       ? CHARGING_LABEL[realtime.chargingState]
-      : STATUS_LABEL[battery.status] ?? 'Chưa có dữ liệu';
+      : STATUS_LABEL[battery.status] ?? 'No data yet';
 
-  const customerName = battery.customerName || profile?.fullName || user?.fullName || 'Khách hàng cá nhân';
+  const customerName = battery.customerName || profile?.fullName || user?.fullName || 'Individual customer';
   const soh = realtime?.sohPercent ?? (realtime ? 98 : null);
   const cycleCount = realtime?.cycleCount ?? (realtime ? 120 : null);
   const filledSohSegments =
@@ -113,7 +113,7 @@ function BatteryDetailScreenInner() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Pill trạng thái giữa màn */}
+        {/* Status pill, centered */}
         <View style={styles.statusPillWrap}>
           <View style={styles.statusPill}>
             <View style={styles.statusPillDot} />
@@ -121,7 +121,7 @@ function BatteryDetailScreenInner() {
           </View>
         </View>
 
-        {/* Hero — Model 3D & Nút action */}
+        {/* Hero — 3D model & action button */}
         <View style={styles.hero}>
           <Image
             source={BATTERY_IMAGE}
@@ -130,7 +130,7 @@ function BatteryDetailScreenInner() {
             transition={220}
           />
 
-          {/* Floating Action Controls — Góc dưới trái: Badge SOC % & Nút Tạo Ticket */}
+          {/* Floating Action Controls — bottom-left: SOC % badge & Create Ticket button */}
           <View style={styles.heroControlsLeft}>
             <GlassSurface style={styles.socPillHero} warm>
               <Ionicons name="flash" size={13} color={Solar.yellowDeep} />
@@ -149,12 +149,12 @@ function BatteryDetailScreenInner() {
           </Pressable>
         </View>
 
-        {/* Giám sát hiệu năng */}
+        {/* Performance monitoring */}
         <View style={styles.sectionRow}>
-          <Text style={styles.sectionTitle}>Giám sát hiệu năng</Text>
+          <Text style={styles.sectionTitle}>Performance monitoring</Text>
         </View>
 
-        {/* Hero Performance Banner Card — Nổi bật chỉ số SOH (Sức khỏe pin) từ API/SSE */}
+        {/* Hero Performance Banner Card — highlights the SOH (State of Health) metric from API/SSE */}
         <GlassSurface style={styles.perfCard} warm>
           <View style={styles.perfTop}>
             <View style={styles.perfTitleRow}>
@@ -166,17 +166,17 @@ function BatteryDetailScreenInner() {
                   </Text>
                   <Text style={styles.valUnit}>%</Text>
                 </View>
-                <Text style={styles.perfCaption}>Sức khỏe pin (SOH)</Text>
+                <Text style={styles.perfCaption}>Battery health (SOH)</Text>
               </View>
             </View>
             <View style={styles.perfPill}>
               <Text style={styles.perfPillText}>
-                {cycleCount != null ? `${cycleCount} chu kỳ` : '— chu kỳ'}
+                {cycleCount != null ? `${cycleCount} cycles` : '— cycles'}
               </Text>
             </View>
           </View>
 
-          {/* Thanh tiến độ ô vàng — mức SOH */}
+          {/* Yellow segmented progress bar — SOH level */}
           <View style={styles.segmentRow}>
             <View style={styles.segments}>
               {Array.from({ length: SEGMENTS }).map((_, i) => (
@@ -190,34 +190,34 @@ function BatteryDetailScreenInner() {
           </View>
         </GlassSurface>
 
-        {/* Lưới thông số 4 thẻ từ API/SSE realtime */}
+        {/* 4-card grid of realtime metrics from API/SSE */}
         <View style={styles.metricGrid}>
           <MetricCard
-            label="Điện áp"
+            label="Voltage"
             valNumber={realtime?.voltage != null ? realtime.voltage.toFixed(2) : '—'}
             valUnit="V"
-            caption="Điện áp đo được"
+            caption="Measured voltage"
             warm={true}
           />
           <MetricCard
-            label="Dòng điện"
+            label="Current"
             valNumber={realtime?.current != null ? realtime.current.toFixed(2) : '—'}
             valUnit="A"
-            caption="Dòng điện realtime"
+            caption="Realtime current"
             warm={true}
           />
           <MetricCard
-            label="Nhiệt độ"
+            label="Temperature"
             valNumber={realtime?.temperature != null ? realtime.temperature.toFixed(1) : '—'}
             valUnit="°C"
-            caption="Nhiệt độ cảm biến"
+            caption="Sensor temperature"
             warm={true}
           />
           <MetricCard
             label="SOH"
             valNumber={soh != null ? String(Math.round(soh)) : '—'}
             valUnit="%"
-            caption="Sức khỏe cell pin"
+            caption="Cell health"
             warm={true}
           />
         </View>
@@ -237,25 +237,25 @@ function BatteryDetailScreenInner() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.linkTitle} numberOfLines={1}>
-                  {battery.siteName ?? 'Trạm lắp đặt'}
+                  {battery.siteName ?? 'Installation site'}
                 </Text>
-                <Text style={styles.linkSub}>Xem chi tiết trạm</Text>
+                <Text style={styles.linkSub}>View site details</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Solar.mute} />
             </GlassSurface>
           </Pressable>
         ) : null}
 
-        <Text style={styles.sectionTitle}>Biểu đồ</Text>
+        <Text style={styles.sectionTitle}>Charts</Text>
         <View style={{ height: 10 }} />
         <SensorChart assetId={assetId} />
         <ChargeDischargeChart assetId={assetId} />
 
-        <Text style={styles.sectionTitle}>Thông tin</Text>
+        <Text style={styles.sectionTitle}>Information</Text>
         <View style={{ height: 10 }} />
         <BatteryInfoCard battery={battery} customerName={customerName} />
 
-        <Text style={styles.sectionTitle}>Cảnh báo</Text>
+        <Text style={styles.sectionTitle}>Alerts</Text>
         <View style={{ height: 10 }} />
         <AssetAlertList
           alerts={alerts}
@@ -273,7 +273,7 @@ function MetricCard({
   label,
   valNumber,
   valUnit,
-  caption = 'Thông số realtime',
+  caption = 'Realtime metric',
   warm = false,
 }: {
   label: string;

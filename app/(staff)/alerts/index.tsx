@@ -21,10 +21,10 @@ const SEVERITY_COLORS: Record<AlertSeverityEnum, { bg: string; iconColor: string
 };
 
 const STATUS_LABEL: Record<AlertStatusEnum, string> = {
-  [AlertStatusEnum.Open]: 'Mở',
-  [AlertStatusEnum.Acknowledged]: 'Đã xác nhận',
-  [AlertStatusEnum.Merged]: 'Đã gộp',
-  [AlertStatusEnum.Resolved]: 'Đã xử lý',
+  [AlertStatusEnum.Open]: 'Open',
+  [AlertStatusEnum.Acknowledged]: 'Acknowledged',
+  [AlertStatusEnum.Merged]: 'Merged',
+  [AlertStatusEnum.Resolved]: 'Resolved',
 };
 
 export default function StaffAlertsIncidentsScreen() {
@@ -44,7 +44,7 @@ export default function StaffAlertsIncidentsScreen() {
           <Ionicons name="alert-circle-outline" size={20} color={c.iconColor} />
         </View>
         <View style={styles.info}>
-          <Text style={styles.title}>{ANOMALY_LABEL[item.anomalyType] ?? 'Cảnh báo'}</Text>
+          <Text style={styles.title}>{ANOMALY_LABEL[item.anomalyType] ?? 'Alert'}</Text>
           <Text style={styles.meta}>
             {item.batterySerialNumber} · {STATUS_LABEL[item.status] ?? ''}
           </Text>
@@ -60,7 +60,7 @@ export default function StaffAlertsIncidentsScreen() {
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <BackButton />
-        <Text style={styles.headerTitle}>Cảnh báo & Sự cố</Text>
+        <Text style={styles.headerTitle}>Alerts & Incidents</Text>
         <View style={{ width: 44 }} />
       </View>
 
@@ -70,7 +70,7 @@ export default function StaffAlertsIncidentsScreen() {
           onPress={() => setSegment('alerts')}
         >
           <Text style={[styles.segmentText, segment === 'alerts' && styles.segmentTextActive]}>
-            Cảnh báo
+            Alerts
           </Text>
         </Pressable>
         <Pressable
@@ -78,7 +78,7 @@ export default function StaffAlertsIncidentsScreen() {
           onPress={() => setSegment('incidents')}
         >
           <Text style={[styles.segmentText, segment === 'incidents' && styles.segmentTextActive]}>
-            Sự cố
+            Incidents
           </Text>
         </Pressable>
       </View>
@@ -98,7 +98,7 @@ export default function StaffAlertsIncidentsScreen() {
                 color={Colors.textFaint}
               />
               <Text style={styles.emptyText}>
-                {alertsLoading ? 'Đang tải…' : 'Không có cảnh báo nào'}
+                {alertsLoading ? 'Loading…' : 'No alerts'}
               </Text>
             </View>
           }

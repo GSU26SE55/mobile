@@ -96,7 +96,7 @@ export function ChangePasswordForm({ onSubmit, isLoading, fieldErrors }: Props) 
       {/* Fields */}
       <View style={[styles.fieldsCard, Shadow]}>
         <PasswordField
-          label="Mật khẩu hiện tại"
+          label="Current password"
           value={currentPassword}
           onChange={setCurrentPassword}
           error={getError('currentPassword')}
@@ -107,7 +107,7 @@ export function ChangePasswordForm({ onSubmit, isLoading, fieldErrors }: Props) 
         <View style={styles.divider} />
 
         <PasswordField
-          label="Mật khẩu mới"
+          label="New password"
           value={newPassword}
           onChange={setNewPassword}
           error={getError('newPassword')}
@@ -118,7 +118,7 @@ export function ChangePasswordForm({ onSubmit, isLoading, fieldErrors }: Props) 
         <View style={styles.divider} />
 
         <PasswordField
-          label="Xác nhận mật khẩu mới"
+          label="Confirm new password"
           value={confirmPassword}
           onChange={setConfirmPassword}
           error={getError('confirmPassword')}
@@ -138,7 +138,7 @@ export function ChangePasswordForm({ onSubmit, isLoading, fieldErrors }: Props) 
         ) : (
           <>
             <Ionicons name="checkmark-outline" size={16} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.buttonText}>Xác nhận đổi mật khẩu</Text>
+            <Text style={styles.buttonText}>Confirm password change</Text>
           </>
         )}
       </Pressable>

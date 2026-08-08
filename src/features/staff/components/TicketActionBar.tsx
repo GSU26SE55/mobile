@@ -12,7 +12,7 @@ interface Props {
   onResolve?: () => void;
   onEscalate?: () => void;
   isLoading?: boolean;
-  canResolve?: boolean; // GH-47 — gate nút Resolve theo ticket.resolve
+  canResolve?: boolean; // GH-47 — gate the Resolve button on ticket.resolve
 }
 
 export function TicketActionBar({ status, onStart, onHold, onResume, onResolve, onEscalate, isLoading, canResolve = true }: Props) {
@@ -29,7 +29,7 @@ export function TicketActionBar({ status, onStart, onHold, onResume, onResolve, 
       <View style={[styles.bar, Shadow]}>
         <Pressable style={[styles.btnPrimary, ShadowPrimary, { flex: 1 }]} onPress={onStart}>
           <Ionicons name="play" size={16} color={Colors.text} />
-          <Text style={styles.btnPrimaryText}>Bắt đầu xử lý</Text>
+          <Text style={styles.btnPrimaryText}>Start processing</Text>
         </Pressable>
       </View>
     );
@@ -40,14 +40,14 @@ export function TicketActionBar({ status, onStart, onHold, onResume, onResolve, 
       <View style={[styles.bar, Shadow]}>
         <Pressable style={styles.btnOutline} onPress={onHold}>
           <Ionicons name="pause-outline" size={16} color={Colors.warning} />
-          <Text style={[styles.btnOutlineText, { color: Colors.warning }]}>Tạm dừng</Text>
+          <Text style={[styles.btnOutlineText, { color: Colors.warning }]}>Hold</Text>
         </Pressable>
         {canResolve && (
-          // Xanh lá + chữ trắng: hành động "kết thúc thành công", và tách hẳn khỏi
-          // vàng (đang xử lý) / cam (tạm dừng) / đỏ (escalate) đứng cạnh.
+          // Green + white text: the "successfully completed" action, clearly distinct
+          // from yellow (in progress) / orange (on hold) / red (escalate) beside it.
           <Pressable style={[styles.btnSuccess, { flex: 1 }]} onPress={onResolve}>
             <Ionicons name="checkmark-circle" size={16} color="#fff" />
-            <Text style={styles.btnSuccessText}>Hoàn thành</Text>
+            <Text style={styles.btnSuccessText}>Resolve</Text>
           </Pressable>
         )}
         <Pressable style={styles.btnDanger} onPress={onEscalate}>
@@ -63,7 +63,7 @@ export function TicketActionBar({ status, onStart, onHold, onResume, onResolve, 
       <View style={[styles.bar, Shadow]}>
         <Pressable style={[styles.btnPrimary, ShadowPrimary, { flex: 1 }]} onPress={onResume}>
           <Ionicons name="play" size={16} color="#fff" />
-          <Text style={styles.btnPrimaryText}>Tiếp tục xử lý</Text>
+          <Text style={styles.btnPrimaryText}>Resume processing</Text>
         </Pressable>
       </View>
     );
@@ -93,8 +93,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   btnPrimaryText: {
-    // Nền primary là VÀNG (#FFD500) — chữ trắng trên đó gần như không đọc được.
-    // Dùng mực đậm để đạt tương phản, đừng đổi lại '#fff'.
+    // Primary background is YELLOW (#FFD500) — white text on it is nearly unreadable.
+    // Use dark ink for contrast, don't switch this back to '#fff'.
     color: Colors.text,
     fontSize: 13,
     fontWeight: '800',

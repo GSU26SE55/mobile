@@ -1,17 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/src/lib/theme';
 
-// Meta dùng chung cho timeline hoạt động ticket: label tiếng Việt + màu + icon
-// theo NHÓM ngữ nghĩa, để phân biệt loại nhanh bằng màu thay vì đọc tên enum thô.
-// Mirror Web (shared/components/common/ticketActivityMeta.tsx) — icon đổi sang
-// Ionicons, màu đổi sang Colors token của theme.ts (RN không có CSS var).
+// Shared ticket-activity timeline metadata: labels, colors, and icons are grouped
+// semantically, making an activity recognizable from its color without reading a raw enum.
+// Mirrors the web app, using Ionicons and React Native theme tokens.
 //
-// Nhóm màu:
-//   ok    (xanh lá) — hoàn thành / phê duyệt tích cực
-//   p1    (đỏ)      — nghiêm trọng: breach, incident, từ chối
-//   p2    (cam)     — cảnh báo / chuyển cấp / mở lại
-//   info  (xanh dương) — thao tác thông tin: tạo, đổi trạng thái, gán, bình luận
-//   muted (xám)     — SLA tạm dừng / hệ thống
+// Color groups:
+//   ok    (green)  — successful completion or approval
+//   p1    (red)    — breach, incident, or rejection
+//   p2    (orange) — warning, escalation, or reopening
+//   info  (blue)   — creation, status change, assignment, or comment
+//   muted (gray)   — paused SLA or system activity
 
 type ActivityTone = 'ok' | 'p1' | 'p2' | 'info' | 'muted';
 
@@ -29,39 +28,39 @@ const TONE_STYLE: Record<ActivityTone, { dot: string; iconColor: string; bg: str
   muted: { dot: Colors.gray,    iconColor: Colors.textMute,    bg: Colors.card2 },
 };
 
-// Key là string vì BE có thể trả action ngoài enum FE.
+// The key is a string because the backend can return actions outside the frontend enum.
 const ACTIVITY_META: Record<string, ActivityMeta> = {
-  Created:                  { label: 'Tạo ticket',              tone: 'info',  icon: 'add-circle-outline' },
-  StatusChanged:            { label: 'Đổi trạng thái',          tone: 'info',  icon: 'sync-outline' },
-  PriorityAssigned:         { label: 'Gán mức ưu tiên',         tone: 'info',  icon: 'flag-outline' },
-  StaffAssigned:            { label: 'Gán nhân viên',           tone: 'info',  icon: 'person-add-outline' },
-  StaffReassigned:          { label: 'Điều chuyển nhân viên',   tone: 'info',  icon: 'people-outline' },
-  Commented:                { label: 'Bình luận',               tone: 'info',  icon: 'chatbubble-outline' },
-  Chatted:                  { label: 'Bình luận',               tone: 'info',  icon: 'chatbubble-outline' },
-  ChatEdited:               { label: 'Sửa bình luận',           tone: 'info',  icon: 'chatbubble-outline' },
-  ChatDeleted:              { label: 'Xoá bình luận',           tone: 'muted', icon: 'chatbubble-outline' },
-  ChatFlagged:              { label: 'Bình luận bị gắn cờ',     tone: 'p1',    icon: 'shield-outline' },
-  MaintenanceLogged:        { label: 'Ghi nhật ký bảo trì',     tone: 'info',  icon: 'construct-outline' },
-  AttachmentAdded:          { label: 'Đính kèm tệp',            tone: 'info',  icon: 'attach-outline' },
-  SlaPaused:                { label: 'Tạm dừng SLA',            tone: 'muted', icon: 'pause-circle-outline' },
-  SlaResumed:               { label: 'Tiếp tục SLA',            tone: 'info',  icon: 'play-circle-outline' },
-  SlaWarning:               { label: 'Cảnh báo SLA',            tone: 'p2',    icon: 'warning-outline' },
-  SlaBreached:              { label: 'Vi phạm SLA',             tone: 'p1',    icon: 'alarm-outline' },
-  EscalationRequested:      { label: 'Yêu cầu chuyển cấp',      tone: 'p2',    icon: 'arrow-up-circle-outline' },
-  Escalated:                { label: 'Đã chuyển cấp',           tone: 'p2',    icon: 'arrow-up-circle-outline' },
-  IncidentDeclared:         { label: 'Khai báo sự cố',          tone: 'p1',    icon: 'alert-circle-outline' },
-  Resolved:                 { label: 'Báo hoàn thành',          tone: 'ok',    icon: 'checkmark-circle-outline' },
-  Approved:                 { label: 'Phê duyệt',               tone: 'ok',    icon: 'checkmark-done-circle-outline' },
-  TriageApproved:           { label: 'Duyệt phân loại',         tone: 'ok',    icon: 'checkmark-done-circle-outline' },
-  Rejected:                 { label: 'Từ chối',                 tone: 'p1',    icon: 'close-circle-outline' },
-  Rated:                    { label: 'Khách đánh giá',          tone: 'info',  icon: 'star-outline' },
-  Reopened:                 { label: 'Mở lại ticket',           tone: 'p2',    icon: 'arrow-undo-outline' },
-  AutoClosed:               { label: 'Tự động đóng',            tone: 'muted', icon: 'lock-closed-outline' },
-  ResolvedByEscalatedStaff: { label: 'Giải quyết sau chuyển cấp', tone: 'ok',  icon: 'checkmark-circle-outline' },
-  Closed:                   { label: 'Đã đóng ticket',          tone: 'muted', icon: 'lock-closed-outline' },
+  Created:                  { label: 'Ticket created',              tone: 'info',  icon: 'add-circle-outline' },
+  StatusChanged:            { label: 'Status changed',              tone: 'info',  icon: 'sync-outline' },
+  PriorityAssigned:         { label: 'Priority assigned',           tone: 'info',  icon: 'flag-outline' },
+  StaffAssigned:            { label: 'Staff assigned',              tone: 'info',  icon: 'person-add-outline' },
+  StaffReassigned:          { label: 'Staff reassigned',            tone: 'info',  icon: 'people-outline' },
+  Commented:                { label: 'Commented',                   tone: 'info',  icon: 'chatbubble-outline' },
+  Chatted:                  { label: 'Commented',                   tone: 'info',  icon: 'chatbubble-outline' },
+  ChatEdited:               { label: 'Comment edited',              tone: 'info',  icon: 'chatbubble-outline' },
+  ChatDeleted:              { label: 'Comment deleted',             tone: 'muted', icon: 'chatbubble-outline' },
+  ChatFlagged:              { label: 'Comment flagged',             tone: 'p1',    icon: 'shield-outline' },
+  MaintenanceLogged:        { label: 'Maintenance logged',          tone: 'info',  icon: 'construct-outline' },
+  AttachmentAdded:          { label: 'Attachment added',            tone: 'info',  icon: 'attach-outline' },
+  SlaPaused:                { label: 'SLA paused',                  tone: 'muted', icon: 'pause-circle-outline' },
+  SlaResumed:               { label: 'SLA resumed',                 tone: 'info',  icon: 'play-circle-outline' },
+  SlaWarning:               { label: 'SLA warning',                 tone: 'p2',    icon: 'warning-outline' },
+  SlaBreached:              { label: 'SLA breached',                tone: 'p1',    icon: 'alarm-outline' },
+  EscalationRequested:      { label: 'Escalation requested',        tone: 'p2',    icon: 'arrow-up-circle-outline' },
+  Escalated:                { label: 'Escalated',                   tone: 'p2',    icon: 'arrow-up-circle-outline' },
+  IncidentDeclared:         { label: 'Incident declared',           tone: 'p1',    icon: 'alert-circle-outline' },
+  Resolved:                 { label: 'Resolved',                    tone: 'ok',    icon: 'checkmark-circle-outline' },
+  Approved:                 { label: 'Approved',                    tone: 'ok',    icon: 'checkmark-done-circle-outline' },
+  TriageApproved:           { label: 'Triage approved',             tone: 'ok',    icon: 'checkmark-done-circle-outline' },
+  Rejected:                 { label: 'Rejected',                    tone: 'p1',    icon: 'close-circle-outline' },
+  Rated:                    { label: 'Customer rated',              tone: 'info',  icon: 'star-outline' },
+  Reopened:                 { label: 'Ticket reopened',             tone: 'p2',    icon: 'arrow-undo-outline' },
+  AutoClosed:               { label: 'Automatically closed',       tone: 'muted', icon: 'lock-closed-outline' },
+  ResolvedByEscalatedStaff: { label: 'Resolved after escalation',   tone: 'ok',    icon: 'checkmark-circle-outline' },
+  Closed:                   { label: 'Ticket closed',               tone: 'muted', icon: 'lock-closed-outline' },
 };
 
-const FALLBACK: ActivityMeta = { label: 'Hoạt động', tone: 'muted', icon: 'ellipse-outline' };
+const FALLBACK: ActivityMeta = { label: 'Activity', tone: 'muted', icon: 'ellipse-outline' };
 
 export function getActivityMeta(action: string): ActivityMeta {
   return ACTIVITY_META[action] ?? { ...FALLBACK, label: action };

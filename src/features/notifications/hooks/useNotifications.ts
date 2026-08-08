@@ -17,10 +17,10 @@ export function useNotifications(params?: NotificationListParams) {
 const FEED_PAGE_SIZE = 20;
 
 /**
- * Feed cuộn vô hạn. Trước đây feed chỉ tải đúng 1 trang mặc định (10 dòng) và không có cách nào
- * xem tiếp — thông báo cũ hơn coi như không tồn tại với người dùng.
+ * Infinite-scroll feed. Previously the feed only loaded the default first page (10 rows) with no way to
+ * see more — older notifications were effectively invisible to the user.
  *
- * BE trả `hasNextPage` + `pageNumber` sẵn trong `PaginationResponse` nên không cần tự suy ra.
+ * BE already returns `hasNextPage` + `pageNumber` in `PaginationResponse`, so there's no need to derive them.
  */
 export function useInfiniteNotifications(params?: NotificationListParams) {
   return useInfiniteQuery({
@@ -39,17 +39,18 @@ export function useInfiniteNotifications(params?: NotificationListParams) {
 }
 
 /**
- * Badge số chưa đọc.
+ * Unread count badge.
  *
- * KHÔNG polling: `useNotificationsRealtime` (hub `/hubs/notifications`) nghe "UnreadCountChanged"
- * và ghi thẳng số BE gửi vào chính cache key này. Giữ thêm `refetchInterval` sẽ bắn lại đúng
- * request mà realtime vừa thay thế — doc BE cũng nói rõ không cần polling khi đã nối hub.
+ * NO polling: `useNotificationsRealtime` (hub `/hubs/notifications`) listens for "UnreadCountChanged"
+ * and writes the number BE sends straight into this cache key. Keeping a `refetchInterval` on top would fire
+ * the exact request realtime just replaced — the BE docs also state polling isn't needed once the hub is connected.
  *
- * Query này vẫn fetch lần đầu (badge có số ngay khi mở app, trước khi hub kịp phát event) và được
- * invalidate khi reconnect / quay lại foreground — đó là các mốc realtime có thể đã lỡ event.
+ * This query still fetches once on mount (badge shows a number as soon as the app opens, before the hub
+ * can emit an event) and gets invalidated on reconnect / returning to foreground — the moments realtime
+ * may have missed an event.
  *
- * `enabled` cho NotificationBootstrap (mount toàn cục, kể cả màn login) tắt query khi chưa
- * đăng nhập — không thì bắn vào endpoint 401 và kéo theo refresh-token vô ích.
+ * `enabled` lets NotificationBootstrap (mounted globally, including the login screen) disable the query while
+ * not logged in — otherwise it would hit the endpoint, get a 401, and trigger a pointless refresh-token attempt.
  */
 export function useUnreadCount(enabled = true) {
   return useQuery({
@@ -75,10 +76,10 @@ export function useMarkNotificationRead() {
 }
 
 /**
- * GH-83 — đánh dấu user đã CHỦ ĐỘNG mở notification (bấm push / mở qua deep-link).
+ * GH-83 — marks that the user ACTIVELY opened the notification (tapped push / opened via deep-link).
  *
- * BE tự set `ReadAt` khi chuyển sang `Opened` nên KHÔNG cần gọi kèm `markRead`.
- * Lỗi được nuốt có chủ đích: đây là telemetry, hỏng thì không được chặn điều hướng của user.
+ * BE auto-sets `ReadAt` when transitioning to `Opened`, so there's NO need to also call `markRead`.
+ * The error is swallowed intentionally: this is telemetry — a failure must not block the user's navigation.
  */
 export function useMarkNotificationOpened() {
   const queryClient = useQueryClient();
@@ -88,7 +89,7 @@ export function useMarkNotificationOpened() {
       queryClient.invalidateQueries({ queryKey: KEY.notifications });
     },
     onError: () => {
-      // Không toast: user đang chuyển màn, báo lỗi "không đánh dấu được đã mở" chỉ gây nhiễu.
+      // No toast: the user is already navigating away, an "opened" mark failure error would just be noise.
     },
   });
 }

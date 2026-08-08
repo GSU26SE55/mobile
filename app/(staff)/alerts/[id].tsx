@@ -22,10 +22,10 @@ const SEVERITY_STYLE: Record<AlertSeverityEnum, { label: string; color: string; 
 };
 
 const STATUS_LABEL: Record<AlertStatusEnum, string> = {
-  [AlertStatusEnum.Open]: 'Mở',
-  [AlertStatusEnum.Acknowledged]: 'Đã xác nhận',
-  [AlertStatusEnum.Merged]: 'Đã gộp',
-  [AlertStatusEnum.Resolved]: 'Đã xử lý',
+  [AlertStatusEnum.Open]: 'Open',
+  [AlertStatusEnum.Acknowledged]: 'Acknowledged',
+  [AlertStatusEnum.Merged]: 'Merged',
+  [AlertStatusEnum.Resolved]: 'Resolved',
 };
 
 export default function StaffAlertDetailScreen() {
@@ -46,23 +46,23 @@ export default function StaffAlertDetailScreen() {
     return (
       <View style={styles.center}>
         <Ionicons name="alert-circle-outline" size={32} color={Colors.textFaint} />
-        <Text style={styles.notFound}>Không tìm thấy cảnh báo</Text>
+        <Text style={styles.notFound}>Alert not found</Text>
         <Pressable onPress={() => router.back()} style={styles.goBackBtn}>
-          <Text style={styles.goBackText}>Quay lại</Text>
+          <Text style={styles.goBackText}>Go back</Text>
         </Pressable>
       </View>
     );
   }
 
   const sev = SEVERITY_STYLE[alert.severity] ?? SEVERITY_STYLE[AlertSeverityEnum.Info];
-  // Resolve hợp lệ khi Open/Acknowledged. Merged/Resolved → ẩn nút.
+  // Resolve is valid when Open/Acknowledged. Merged/Resolved → hide the button.
   const canResolve =
     alert.status === AlertStatusEnum.Open || alert.status === AlertStatusEnum.Acknowledged;
 
   const handleResolve = async () => {
     try {
       await resolve(alert.id);
-      Alert.alert('Thành công', 'Đã xử lý cảnh báo này.');
+      Alert.alert('Success', 'This alert has been resolved.');
     } catch (error) {
       handleErrorApi({ error });
     }
@@ -72,7 +72,7 @@ export default function StaffAlertDetailScreen() {
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <BackButton />
-        <Text style={styles.headerTitle}>Chi tiết cảnh báo</Text>
+        <Text style={styles.headerTitle}>Alert Details</Text>
         <View style={{ width: 44 }} />
       </View>
 
@@ -81,28 +81,28 @@ export default function StaffAlertDetailScreen() {
           <View style={[styles.sevPill, { backgroundColor: sev.bg }]}>
             <Text style={[styles.sevText, { color: sev.color }]}>{sev.label}</Text>
           </View>
-          <Text style={styles.title}>{ANOMALY_LABEL[alert.anomalyType] ?? 'Cảnh báo'}</Text>
+          <Text style={styles.title}>{ANOMALY_LABEL[alert.anomalyType] ?? 'Alert'}</Text>
           <Text style={styles.subtitle}>{alert.batterySerialNumber}</Text>
         </View>
 
         <View style={[styles.card, Shadow]}>
-          <Row label="Trạng thái" value={STATUS_LABEL[alert.status] ?? '—'} />
+          <Row label="Status" value={STATUS_LABEL[alert.status] ?? '—'} />
           <Divider />
-          <Row label="Ngưỡng" value={formatMeasure(alert.thresholdValue, alert.unit)} />
+          <Row label="Threshold" value={formatMeasure(alert.thresholdValue, alert.unit)} />
           <Divider />
-          <Row label="Giá trị thực tế" value={formatMeasure(alert.actualValue, alert.unit)} />
+          <Row label="Actual value" value={formatMeasure(alert.actualValue, alert.unit)} />
           <Divider />
-          <Row label="Phát hiện lúc" value={new Date(alert.detectedAt).toLocaleString()} />
+          <Row label="Detected at" value={new Date(alert.detectedAt).toLocaleString()} />
           {alert.acknowledgedAt ? (
             <>
               <Divider />
-              <Row label="Xác nhận lúc" value={new Date(alert.acknowledgedAt).toLocaleString()} />
+              <Row label="Acknowledged at" value={new Date(alert.acknowledgedAt).toLocaleString()} />
             </>
           ) : null}
           {alert.resolvedAt ? (
             <>
               <Divider />
-              <Row label="Xử lý lúc" value={new Date(alert.resolvedAt).toLocaleString()} />
+              <Row label="Resolved at" value={new Date(alert.resolvedAt).toLocaleString()} />
             </>
           ) : null}
         </View>

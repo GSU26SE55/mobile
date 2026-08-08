@@ -23,7 +23,7 @@ export function useSessions() {
 
   const revokeAll = useMutation({
     mutationFn: async () => {
-      // await bắt buộc — getRefreshToken là async (expo-secure-store)
+      // await required — getRefreshToken is async (expo-secure-store)
       const currentRefreshToken = await getRefreshToken();
       return sessionService.revokeAll({
         exceptCurrent: true,

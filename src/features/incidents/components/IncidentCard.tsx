@@ -43,7 +43,7 @@ export function IncidentCard({
         <Ionicons name={icon} size={20} color={sev.iconColor} />
       </View>
       <View style={styles.info}>
-        <Text style={styles.title}>{INCIDENT_TYPE_LABEL[incident.incidentType] ?? 'Sự cố'}</Text>
+        <Text style={styles.title}>{INCIDENT_TYPE_LABEL[incident.incidentType] ?? 'Incident'}</Text>
         {siteName ? <Text style={styles.meta}>{siteName}</Text> : null}
         <Text style={styles.time}>{new Date(incident.detectedAt).toLocaleString()}</Text>
       </View>

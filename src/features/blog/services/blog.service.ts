@@ -14,7 +14,7 @@ function toListQuery(params?: BlogListParams): BlogListQuery | undefined {
   if (params.pageNumber !== undefined) query.PageNumber = params.pageNumber;
   if (params.pageSize !== undefined) query.PageSize = params.pageSize;
   if (params.origin) query.Origin = params.origin;
-  // trim rồi mới check — chuỗi toàn khoảng trắng coi như không lọc.
+  // trim before checking — a whitespace-only string is treated as no filter.
   const q = params.q?.trim();
   if (q) query.Q = q;
   return Object.keys(query).length > 0 ? query : undefined;

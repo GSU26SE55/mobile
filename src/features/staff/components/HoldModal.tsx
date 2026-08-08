@@ -6,9 +6,9 @@ import { BottomSheet } from '@/src/shared/components/BottomSheet';
 import { PauseReasonEnum } from '@/src/features/tickets/types/ticket.types';
 
 const HOLD_OPTIONS: { value: PauseReasonEnum; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { value: PauseReasonEnum.WaitingCustomer,       label: 'Chờ khách phản hồi',     icon: 'person-outline' },
-  { value: PauseReasonEnum.WaitingParts,          label: 'Chờ linh kiện/phụ tùng', icon: 'construct-outline' },
-  { value: PauseReasonEnum.WaitingOnsiteSchedule, label: 'Chờ lịch on-site',       icon: 'calendar-outline' },
+  { value: PauseReasonEnum.WaitingCustomer,       label: 'Waiting for customer reply', icon: 'person-outline' },
+  { value: PauseReasonEnum.WaitingParts,          label: 'Waiting for parts/equipment', icon: 'construct-outline' },
+  { value: PauseReasonEnum.WaitingOnsiteSchedule, label: 'Waiting for on-site schedule', icon: 'calendar-outline' },
 ];
 
 interface Props {
@@ -35,8 +35,8 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
   return (
     <BottomSheet visible={visible} onClose={handleClose}>
       <View style={styles.body}>
-        <Text style={styles.title}>Tạm dừng ticket</Text>
-        <Text style={styles.desc}>Chọn lý do tạm dừng. SLA sẽ được pause.</Text>
+        <Text style={styles.title}>Hold ticket</Text>
+        <Text style={styles.desc}>Select a hold reason. The SLA timer will be paused.</Text>
 
         <View style={styles.options}>
           {HOLD_OPTIONS.map((opt) => {
@@ -59,7 +59,7 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
           style={styles.noteInput}
           value={note}
           onChangeText={setNote}
-          placeholder="Ghi chú (tuỳ chọn)..."
+          placeholder="Note (optional)..."
           placeholderTextColor={Colors.textFaint}
           multiline
           textAlignVertical="top"
@@ -68,7 +68,7 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
 
         <View style={styles.actions}>
           <Pressable style={styles.cancelBtn} onPress={handleClose}>
-            <Text style={styles.cancelText}>Hủy</Text>
+            <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
           <Pressable
             style={[styles.submitBtn, !selected && styles.btnDisabled]}
@@ -78,7 +78,7 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
             {isLoading ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.submitText}>Xác nhận</Text>
+              <Text style={styles.submitText}>Confirm</Text>
             )}
           </Pressable>
         </View>

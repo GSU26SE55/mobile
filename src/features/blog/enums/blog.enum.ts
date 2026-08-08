@@ -1,5 +1,5 @@
-// BE dùng JsonStringEnumConverter → mọi enum trả/nhận dạng CHUỖI.
-// Wire value là 1..5 và 1..2 nhưng Mobile không thấy qua JSON — KHÔNG mirror số.
+// BE uses JsonStringEnumConverter → all enums are sent/received as STRINGS.
+// Wire values are 1..5 and 1..2 but Mobile never sees them through JSON — do NOT mirror the numbers.
 export const BlogPostStatusEnum = {
   Generating: 'Generating',
   GenerationFailed: 'GenerationFailed',
@@ -18,6 +18,6 @@ export type BlogPostOriginEnum =
   (typeof BlogPostOriginEnum)[keyof typeof BlogPostOriginEnum];
 
 export const BlogOriginLabel: Record<BlogPostOriginEnum, string> = {
-  [BlogPostOriginEnum.Manual]: 'Biên tập',
-  [BlogPostOriginEnum.AiGeneratedFromKb]: 'Tổng hợp từ KB',
+  [BlogPostOriginEnum.Manual]: 'Editorial',
+  [BlogPostOriginEnum.AiGeneratedFromKb]: 'Generated from KB',
 };

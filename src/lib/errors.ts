@@ -6,7 +6,7 @@ export class HttpError extends Error {
   payload: CommonResponse<unknown>;
 
   constructor(statusCode: number, payload: CommonResponse<unknown>) {
-    super(payload.message ?? 'Lỗi không xác định');
+    super(payload.message ?? 'Unknown error');
     this.statusCode = statusCode;
     this.payload = payload;
   }
@@ -19,17 +19,17 @@ export class EntityError extends HttpError {
 }
 
 /**
- * Mã lỗi nghiệp vụ BE trả trong `message` (không có field errorCode riêng).
- * Hiện thẳng mã lên Alert thì user đọc ra "CHAT_DUPLICATE_MESSAGE_LIMIT".
+ * Business error codes the BE returns in `message` (no separate errorCode field).
+ * Showing the raw code on an Alert would read as "CHAT_DUPLICATE_MESSAGE_LIMIT" to the user.
  */
 const ERROR_CODE_MESSAGES: Record<string, string> = {
   CHAT_DUPLICATE_MESSAGE_LIMIT:
-    'Bạn đã gửi tin nhắn này quá nhiều lần. Vui lòng đổi nội dung.',
+    'You\'ve sent this message too many times. Please change the content.',
   CHAT_SPAM_CHECK_IN_PROGRESS:
-    'Hệ thống đang kiểm tra tin trước. Vui lòng thử lại sau giây lát.',
+    'The system is still checking the previous message. Please try again shortly.',
 };
 
-/** Đổi mã lỗi BE sang câu tiếng Việt; không phải mã thì giữ nguyên message. */
+/** Maps a BE error code to a readable message; passes the message through unchanged if it's not a known code. */
 export function toUserMessage(message: string): string {
   return ERROR_CODE_MESSAGES[message] ?? message;
 }
@@ -42,18 +42,18 @@ interface HandleErrorApiOptions {
 }
 
 /**
- * Xử lý lỗi API cho form — giống pattern Web nhưng dùng Alert thay toast.
+ * Handles API errors for forms — same pattern as Web but uses Alert instead of toast.
  *
- * - EntityError (BE validation):  map lỗi xuống từng field qua setFieldError
- * - HttpError (lỗi chung):        hiện Alert
- * - Error khác:                   hiện Alert generic
+ * - EntityError (BE validation):  maps errors down to each field via setFieldError
+ * - HttpError (general error):    shows an Alert
+ * - other Error:                  shows a generic Alert
  */
 export function handleErrorApi({ error, setFieldError }: HandleErrorApiOptions) {
   if (error instanceof EntityError && setFieldError) {
     const { listErrors } = error.payload;
     if (listErrors?.length) {
       listErrors.forEach(({ field, detail }) => {
-        // field từ BE là PascalCase (e.g. "FullName") — normalize sang camelCase
+        // field from BE is PascalCase (e.g. "FullName") — normalize to camelCase
         const key = field.charAt(0).toLowerCase() + field.slice(1);
         setFieldError(key, detail);
       });
@@ -62,12 +62,12 @@ export function handleErrorApi({ error, setFieldError }: HandleErrorApiOptions) 
   }
 
   if (error instanceof HttpError) {
-    Alert.alert('Lỗi', toUserMessage(error.message));
+    Alert.alert('Error', toUserMessage(error.message));
     return;
   }
 
   if (error instanceof Error && error.message !== 'CANCELLED') {
-    Alert.alert('Lỗi', error.message);
+    Alert.alert('Error', error.message);
   }
 }
 

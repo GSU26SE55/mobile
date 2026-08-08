@@ -4,8 +4,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/src/lib/theme';
 
-// Tài khoản ADMIN/MANAGER không dùng mobile — login bằng các role này (thường/2FA)
-// điều hướng về đây thay vì vào app. Đối xứng với web (/use-mobile-app chặn CUSTOMER).
+// ADMIN/MANAGER accounts don't use mobile — logging in with these roles (regular/2FA)
+// redirects here instead of into the app. Symmetric with web (/use-mobile-app blocks CUSTOMER).
 export default function UseWebAppScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -17,17 +17,17 @@ export default function UseWebAppScreen() {
           <Ionicons name="desktop-outline" size={34} color={Colors.primary} />
         </View>
 
-        <Text style={styles.title}>Vui lòng sử dụng Web App</Text>
+        <Text style={styles.title}>Please Use the Web App</Text>
         <Text style={styles.subtitle}>
-          Tài khoản Admin và Manager được quản lý trên trình duyệt web. Ứng dụng di
-          động dành cho khách hàng và nhân viên (Staff).
+          Admin and Manager accounts are managed through the web browser. The mobile
+          app is for customers and staff.
         </Text>
 
         <Pressable
           style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
           onPress={() => router.replace('/(auth)/login')}
         >
-          <Text style={styles.btnText}>Quay lại đăng nhập</Text>
+          <Text style={styles.btnText}>Back to Login</Text>
         </Pressable>
       </View>
     </View>

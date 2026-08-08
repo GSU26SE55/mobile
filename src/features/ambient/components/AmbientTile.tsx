@@ -9,13 +9,13 @@ function fmt(v: number | null | undefined, unit: string, digits = 1): string {
   return `${v.toFixed(digits)}${unit}`;
 }
 
-// data === undefined (404 / chưa có reading) → hiện empty state, không treo.
+// data === undefined (404 / no reading yet) → show empty state, don't hang.
 export function AmbientTile({ data }: { data: AmbientReadingDto | null | undefined }) {
   if (!data) {
     return (
       <View style={[styles.card, Shadow]}>
-        <Text style={styles.title}>Môi trường</Text>
-        <Text style={styles.empty}>Chưa có dữ liệu môi trường</Text>
+        <Text style={styles.title}>Environment</Text>
+        <Text style={styles.empty}>No environmental data yet</Text>
       </View>
     );
   }
@@ -23,13 +23,13 @@ export function AmbientTile({ data }: { data: AmbientReadingDto | null | undefin
   return (
     <View style={[styles.card, Shadow]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Môi trường</Text>
+        <Text style={styles.title}>Environment</Text>
         <Text style={styles.updatedAt}>{new Date(data.time).toLocaleString()}</Text>
       </View>
       <View style={styles.grid}>
-        <Metric icon="thermometer-outline" label="Nhiệt độ" value={fmt(data.ambientTemperature, ' °C')} />
-        <Metric icon="water-outline" label="Độ ẩm" value={fmt(data.humidity, ' %')} />
-        <Metric icon="sunny-outline" label="Bức xạ" value={fmt(data.solarIrradiance, ' W/m²', 0)} />
+        <Metric icon="thermometer-outline" label="Temperature" value={fmt(data.ambientTemperature, ' °C')} />
+        <Metric icon="water-outline" label="Humidity" value={fmt(data.humidity, ' %')} />
+        <Metric icon="sunny-outline" label="Irradiance" value={fmt(data.solarIrradiance, ' W/m²', 0)} />
       </View>
     </View>
   );

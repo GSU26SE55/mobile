@@ -30,7 +30,7 @@ const TOTAL_STEPS = 4;
 const BATTERY_STATUS_MAP: Record<number, { label: string; color: string; bg: string }> = {
   1: { label: 'Active', color: '#2E7D32', bg: '#E8F5E9' },
   2: { label: 'Inactive', color: '#E69A1A', bg: '#FFF3E3' },
-  3: { label: 'Ngừng sử dụng', color: '#DC4F3D', bg: '#FFEBEA' },
+  3: { label: 'Stop using', color: '#DC4F3D', bg: '#FFEBEA' },
 };
 
 interface Props {
@@ -57,10 +57,10 @@ interface Props {
 // State lưu `label` (định danh ổn định) — KHÔNG lưu ISO trong state vì Date.now()
 // đổi mỗi render → so sánh ISO sẽ luôn false (chip không chọn được). ISO tính khi submit.
 const DETECTED_OPTIONS: { label: string; minutesAgo: number }[] = [
-  { label: 'Vừa xong', minutesAgo: 0 },
-  { label: '1 giờ trước', minutesAgo: 60 },
-  { label: 'Sáng nay', minutesAgo: 60 * 6 },
-  { label: 'Hôm qua', minutesAgo: 60 * 24 },
+  { label: 'Just now', minutesAgo: 0 },
+  { label: '1 hour ago', minutesAgo: 60 },
+  { label: 'This morning', minutesAgo: 60 * 6 },
+  { label: 'Yesterday', minutesAgo: 60 * 24 },
 ];
 
 // Parse chuỗi Customer gõ tay "dd/MM/yyyy HH:mm" (hoặc "dd/MM/yyyy HH:mm:ss") → Date.
@@ -113,32 +113,32 @@ export function formatDetected(d: Date): string {
 const CATEGORIES: { value: TicketCategoryEnum; label: string; sub: string; icon: keyof typeof Ionicons.glyphMap; iconColor: string; iconBg: string }[] = [
   {
     value: 'Charging',
-    label: 'Sự cố sạc',
-    sub: 'Không sạc, sạc chậm',
+    label: 'Charging issue',
+    sub: 'Not charging or charging slowly',
     icon: 'flash-outline',
     iconColor: '#EF5128',
     iconBg: '#FFE5DA',
   },
   {
     value: 'Overheat',
-    label: 'Quá nhiệt',
-    sub: 'Nhiệt độ vượt ngưỡng',
+    label: 'Overheating',
+    sub: 'Temperature exceeds the threshold',
     icon: 'thermometer-outline',
     iconColor: '#DC4F3D',
     iconBg: '#FFEBEA',
   },
   {
     value: 'NoPower',
-    label: 'Mất nguồn',
-    sub: 'Không có điện ra',
+    label: 'Power outage',
+    sub: 'No power output',
     icon: 'power-outline',
     iconColor: '#E69A1A',
     iconBg: '#FFF3E3',
   },
   {
     value: 'Other',
-    label: 'Khác',
-    sub: 'Bảo trì, yêu cầu khác',
+    label: 'Other',
+    sub: 'Maintenance or other requests',
     icon: 'information-circle-outline',
     iconColor: '#5081C7',
     iconBg: '#EBF3FF',
@@ -243,7 +243,7 @@ export function CreateTicketStepper({
     try {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Quyền truy cập', 'Vui lòng cấp quyền máy ảnh trong cài đặt.');
+        Alert.alert('Permission required', 'Please allow camera access in Settings.');
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
@@ -254,7 +254,7 @@ export function CreateTicketStepper({
         await uploadPickedAssets([result.assets[0]]);
       }
     } catch {
-      Alert.alert('Lỗi', 'Không thể khởi động máy ảnh.');
+      Alert.alert('Error', 'Could not launch the camera.');
     }
   };
 
@@ -262,7 +262,7 @@ export function CreateTicketStepper({
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Quyền truy cập', 'Vui lòng cấp quyền thư viện ảnh trong cài đặt.');
+        Alert.alert('Permission required', 'Please allow photo library access in Settings.');
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -274,7 +274,7 @@ export function CreateTicketStepper({
         await uploadPickedAssets(result.assets);
       }
     } catch {
-      Alert.alert('Lỗi', 'Không thể truy cập thư viện ảnh.');
+      Alert.alert('Error', 'Could not access the photo library.');
     }
   };
 
@@ -283,17 +283,17 @@ export function CreateTicketStepper({
 
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
-        { options: ['Hủy', 'Chụp ảnh', 'Chọn từ thư viện'], cancelButtonIndex: 0 },
+        { options: ['Cancel', 'Take photo', 'Choose from library'], cancelButtonIndex: 0 },
         (idx) => {
           if (idx === 1) pickFromCamera();
           if (idx === 2) pickFromGallery();
         }
       );
     } else {
-      Alert.alert('Thêm ảnh', '', [
-        { text: 'Hủy', style: 'cancel' },
-        { text: 'Chụp ảnh', onPress: pickFromCamera },
-        { text: 'Chọn từ thư viện', onPress: pickFromGallery },
+      Alert.alert('Add photo', '', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Take photo', onPress: pickFromCamera },
+        { text: 'Choose from library', onPress: pickFromGallery },
       ]);
     }
   };
@@ -314,9 +314,9 @@ export function CreateTicketStepper({
       >
         <Ionicons name="chevron-back" size={18} color={Colors.text} />
       </Pressable>
-      <Text style={styles.headerTitle}>Tạo Ticket · {step}/{TOTAL_STEPS}</Text>
+      <Text style={styles.headerTitle}>Create Ticket · {step}/{TOTAL_STEPS}</Text>
       <Pressable onPress={onCancel} style={styles.headerCancel}>
-        <Text style={styles.headerCancelText}>Hủy</Text>
+        <Text style={styles.headerCancelText}>Cancel</Text>
       </Pressable>
     </View>
   );
@@ -339,10 +339,10 @@ export function CreateTicketStepper({
       case 1:
         return (
           <ScrollView style={styles.stepScroll} showsVerticalScrollIndicator={false}>
-            <Text style={styles.stepNum}>BƯỚC 01</Text>
-            <Text style={styles.stepTitle}>Chọn thiết bị</Text>
+            <Text style={styles.stepNum}>STEP 01</Text>
+            <Text style={styles.stepTitle}>Select device</Text>
             <Text style={styles.stepSub}>
-              Chọn viên pin gặp sự cố — mỗi ticket dành cho 1 viên
+              Select the affected battery — one ticket per battery
             </Text>
 
             <View style={styles.batteryList}>
@@ -394,9 +394,9 @@ export function CreateTicketStepper({
       case 2:
         return (
           <ScrollView style={styles.stepScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            <Text style={styles.stepNum}>BƯỚC 02</Text>
-            <Text style={styles.stepTitle}>Lý do & Mô tả</Text>
-            <Text style={styles.stepSub}>Chọn loại sự cố và mô tả chi tiết</Text>
+            <Text style={styles.stepNum}>STEP 02</Text>
+            <Text style={styles.stepTitle}>Reason & description</Text>
+            <Text style={styles.stepSub}>Select an issue type and describe it</Text>
 
             {/* Category grid */}
             <View style={styles.categoryGrid}>
@@ -419,14 +419,14 @@ export function CreateTicketStepper({
             </View>
 
             {/* Description */}
-            <Text style={styles.descLabel}>Mô tả sự cố</Text>
+            <Text style={styles.descLabel}>Describe the issue</Text>
             <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.multilineInput}
                 multiline
                 numberOfLines={5}
                 maxLength={500}
-                placeholder="VD: Pin báo nhiệt độ cao từ 9h sáng. Quạt thông gió vẫn chạy nhưng nhiệt vẫn tăng..."
+                placeholder="E.g. The battery has reported a high temperature since 9 AM..."
                 placeholderTextColor={Colors.textFaint}
                 value={description}
                 onChangeText={setDescription}
@@ -434,12 +434,12 @@ export function CreateTicketStepper({
               />
             </View>
             <View style={styles.charCountRow}>
-              <Text style={styles.minCharLabel}>Tối thiểu 5 ký tự</Text>
+              <Text style={styles.minCharLabel}>At least 5 characters</Text>
               <Text style={styles.countText}>{description.length}/500</Text>
             </View>
 
             {/* Thời điểm phát hiện — chip nhanh HOẶC nhập giờ cụ thể. Không cần datetime picker lib. */}
-            <Text style={styles.descLabel}>Phát hiện lúc nào?</Text>
+            <Text style={styles.descLabel}>When was it detected?</Text>
             <View style={styles.detectedRow}>
               {DETECTED_OPTIONS.map((opt) => {
                 const isSelected = detectedLabel === opt.label;
@@ -475,7 +475,7 @@ export function CreateTicketStepper({
                 customText.trim().length > 0 && parseDetectedInput(customText) !== null;
               return (
                 <>
-                  <Text style={styles.detectedOrLabel}>Hoặc chọn chính xác:</Text>
+                  <Text style={styles.detectedOrLabel}>Or select an exact time:</Text>
                   <View style={styles.detectedPickerRow}>
                     <Pressable
                       style={styles.detectedPickerBtn}
@@ -496,7 +496,7 @@ export function CreateTicketStepper({
                           !hasCustom && { color: Colors.textFaint },
                         ]}
                       >
-                        {hasCustom ? customText : 'Chọn ngày & giờ'}
+                        {hasCustom ? customText : 'Select date & time'}
                       </Text>
                     </Pressable>
                     {hasCustom && (
@@ -525,7 +525,7 @@ export function CreateTicketStepper({
             <View style={[styles.infoBanner, { marginBottom: 40 }]}>
               <Ionicons name="information-circle-outline" size={16} color="#2A538A" style={{ marginRight: 8, marginTop: 1 }} />
               <Text style={styles.infoBannerText}>
-                Bao gồm: <Text style={{ fontWeight: '700' }}>thời gian xảy ra</Text>, hiện tượng, đã thử gì.
+                Include the <Text style={{ fontWeight: '700' }}>time of occurrence</Text>, symptoms, and attempted fixes.
               </Text>
             </View>
           </ScrollView>
@@ -535,9 +535,9 @@ export function CreateTicketStepper({
       case 3:
         return (
           <ScrollView style={styles.stepScroll} showsVerticalScrollIndicator={false}>
-            <Text style={styles.stepNum}>BƯỚC 03</Text>
-            <Text style={styles.stepTitle}>Ảnh đính kèm</Text>
-            <Text style={styles.stepSub}>Không giới hạn – giúp KTV chẩn đoán nhanh hơn</Text>
+            <Text style={styles.stepNum}>STEP 03</Text>
+            <Text style={styles.stepTitle}>Attachments</Text>
+            <Text style={styles.stepSub}>Unlimited — helps technicians diagnose faster</Text>
 
             {/* Added images grid */}
             {attachedFiles.length > 0 && (
@@ -564,11 +564,11 @@ export function CreateTicketStepper({
               ) : (
                 <Ionicons name="image-outline" size={36} color={Colors.textMute} />
               )}
-              <Text style={styles.addSlotText}>Thêm ảnh</Text>
+              <Text style={styles.addSlotText}>Add photo</Text>
             </Pressable>
 
             {attachedFiles.length > 0 && (
-              <Text style={styles.imageCountText}>{attachedFiles.length} ảnh đã chọn · không bắt buộc</Text>
+              <Text style={styles.imageCountText}>{attachedFiles.length} photos selected · optional</Text>
             )}
           </ScrollView>
         );
@@ -577,9 +577,9 @@ export function CreateTicketStepper({
       case 4:
         return (
           <ScrollView style={styles.stepScroll} showsVerticalScrollIndicator={false}>
-            <Text style={styles.stepNum}>BƯỚC 04</Text>
-            <Text style={styles.stepTitle}>Xem lại & gửi</Text>
-            <Text style={styles.stepSub}>Đội hỗ trợ sẽ tiếp nhận và xử lý</Text>
+            <Text style={styles.stepNum}>STEP 04</Text>
+            <Text style={styles.stepTitle}>Review & submit</Text>
+            <Text style={styles.stepSub}>The support team will receive and process it</Text>
 
             {/* Không hiển thị priority gợi ý theo category — priority thật do Manager triage
                 (Impact × Urgency), FE gợi ý dễ dạy khách kỳ vọng SLA sai. */}
@@ -587,9 +587,9 @@ export function CreateTicketStepper({
               <View style={styles.prioritySuggestedBody}>
                 <Ionicons name="information-circle-outline" size={20} color={Colors.info} />
                 <View style={styles.priorityTextCol}>
-                  <Text style={styles.priorityTitle}>Mức độ ưu tiên</Text>
+                  <Text style={styles.priorityTitle}>Priority</Text>
                   <Text style={styles.priorityNote}>
-                    Được đội hỗ trợ đánh giá sau khi tiếp nhận yêu cầu của bạn.
+                    Set by the support team after receiving your request.
                   </Text>
                 </View>
               </View>
@@ -597,28 +597,28 @@ export function CreateTicketStepper({
 
             <View style={[styles.reviewTable, Shadow]}>
               <View style={styles.reviewRow}>
-                <Text style={styles.reviewRowLabel}>Thiết bị</Text>
+                <Text style={styles.reviewRowLabel}>Device</Text>
                 <Text style={styles.reviewRowValue} numberOfLines={2}>
                   {selectedBatteries.length === 0
-                    ? 'Không chọn'
+                    ? 'Not selected'
                     : `${selectedBatteries[0].batteryTypeName} · ${selectedBatteries[0].serialNumber}`}
                 </Text>
               </View>
               <View style={styles.reviewDivider} />
               <View style={styles.reviewRow}>
-                <Text style={styles.reviewRowLabel}>Loại</Text>
+                <Text style={styles.reviewRowLabel}>Type</Text>
                 <Text style={styles.reviewRowValue}>
-                  {CATEGORIES.find((c) => c.value === category)?.label ?? 'Khác'}
+                  {CATEGORIES.find((c) => c.value === category)?.label ?? 'Other'}
                 </Text>
               </View>
               <View style={styles.reviewDivider} />
               <View style={styles.reviewRow}>
-                <Text style={styles.reviewRowLabel}>File đính kèm</Text>
-                <Text style={styles.reviewRowValue}>{attachedFiles.length} ảnh</Text>
+                <Text style={styles.reviewRowLabel}>Attachments</Text>
+                <Text style={styles.reviewRowValue}>{attachedFiles.length} photos</Text>
               </View>
             </View>
 
-            <Text style={styles.descSectionTitle}>Mô tả</Text>
+            <Text style={styles.descSectionTitle}>Description</Text>
             <View style={[styles.reviewDescCard, Shadow]}>
               <Text style={styles.reviewDescText}>{description}</Text>
             </View>
@@ -653,7 +653,7 @@ export function CreateTicketStepper({
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
         {step > 1 ? (
           <Pressable style={styles.backBtn} onPress={() => setStep((s) => s - 1)}>
-            <Text style={styles.backBtnText}>Quay lại</Text>
+            <Text style={styles.backBtnText}>Back</Text>
           </Pressable>
         ) : null}
 
@@ -667,7 +667,7 @@ export function CreateTicketStepper({
             onPress={() => setStep((s) => s + 1)}
             disabled={isNextDisabled()}
           >
-            <Text style={styles.continueBtnText}>Tiếp tục</Text>
+            <Text style={styles.continueBtnText}>Continue</Text>
             <Ionicons name="arrow-forward" size={14} color="#fff" style={{ marginLeft: 6 }} />
           </Pressable>
         ) : (
@@ -676,7 +676,7 @@ export function CreateTicketStepper({
             onPress={onSubmit}
             disabled={isLoading || isUploadingImage}
           >
-            <Text style={styles.continueBtnText}>Gửi ticket</Text>
+            <Text style={styles.continueBtnText}>Submit ticket</Text>
             <Ionicons name="paper-plane" size={14} color="#fff" style={{ marginLeft: 6 }} />
           </Pressable>
         )}

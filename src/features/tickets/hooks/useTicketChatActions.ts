@@ -5,8 +5,8 @@ import { handleErrorApi } from '@/src/lib/errors';
 import { UpdateChatPayload } from '../types/chat-actions.types';
 import { ChatAiIntentEnum } from '@/src/features/tickets/enums/chat.enum';
 
-// Invalidate sau mutation — belt-and-suspenders cùng realtime (ChatEdited/ChatDeleted
-// trong useTicketCommentsRealtime cũng invalidate key này khi hub báo về).
+// Invalidate after mutation — belt-and-suspenders alongside realtime (ChatEdited/ChatDeleted
+// in useTicketCommentsRealtime also invalidate this key when the hub reports back).
 export function useUpdateTicketChat(ticketId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -31,8 +31,8 @@ export function useDeleteTicketChat(ticketId: string) {
   });
 }
 
-// Xoá nhiều chat 1 lần. Trả về ChatBulkDeleteResultDTO để caller báo số lượng
-// thực tế — BE partial success, không all-or-nothing.
+// Delete multiple chats at once. Returns ChatBulkDeleteResultDTO so the caller can report the
+// actual count — BE supports partial success, not all-or-nothing.
 export function useBulkDeleteTicketChats(ticketId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -47,9 +47,10 @@ export function useBulkDeleteTicketChats(ticketId: string) {
   });
 }
 
-// Báo đã đọc — tác vụ nền nên lỗi chỉ nuốt (không Alert), tránh làm phiền user.
-// Thành công thì phải invalidate unread count: badge ở header ticket detail đọc
-// key này, không invalidate thì số treo nguyên dù user đã xem hết tin.
+// Mark as read — a background task, so errors are just swallowed (no Alert) to avoid
+// bothering the user. On success, must invalidate the unread count: the badge in the
+// ticket detail header reads this key, so without invalidating, the count stays stuck
+// even after the user has read everything.
 export function useMarkTicketChatsRead(ticketId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -85,10 +86,11 @@ export function useTranscribeVoiceChat(ticketId: string) {
 }
 
 /**
- * GH-83 — thử lại việc chuyển giọng nói → văn bản khi lần trước Failed.
+ * GH-83 — retry voice-to-text conversion when the previous attempt Failed.
  *
- * BE trả 202: nhận việc rồi xử lý nền, response không mang kết quả. Vì vậy chỉ invalidate danh sách
- * chat để lấy trạng thái mới — không setQueryData từ response.
+ * BE returns 202: accepts the job and processes it in the background, the response carries no
+ * result. So we only invalidate the chat list to fetch the new status — no setQueryData from
+ * the response.
  */
 export function useRetryVoiceChat(ticketId: string) {
   const queryClient = useQueryClient();
@@ -102,8 +104,9 @@ export function useRetryVoiceChat(ticketId: string) {
 }
 
 // ── GH-67 — Staff/Manager/Admin ──────────────────────────────────────────
-// Các hook AI/pin dưới KHÔNG cần check res.data.isSuccess: axios interceptor tự reject
-// 200+isSuccess:false (Gemini rate-limit, pin đủ 3...) → rơi vào onError → handleErrorApi.
+// The AI/pin hooks below do NOT need to check res.data.isSuccess: the axios interceptor
+// auto-rejects 200+isSuccess:false (Gemini rate-limit, pin limit of 3 reached, etc.) →
+// falls into onError → handleErrorApi.
 
 export function usePinChat(ticketId: string) {
   const queryClient = useQueryClient();
@@ -127,7 +130,7 @@ export function useUnpinChat(ticketId: string) {
   });
 }
 
-// AI — mutateAsync resolve thẳng DTO để component dùng (chèn suggestion / hiện modal / badge).
+// AI — mutateAsync resolves directly to the DTO for the component to use (insert suggestion / show modal / badge).
 export function useSuggestChat(ticketId: string) {
   return useMutation({
     mutationFn: async (intent: ChatAiIntentEnum) => {

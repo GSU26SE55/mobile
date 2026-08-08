@@ -1,4 +1,4 @@
 import { StaffTicketDetailScreen } from '@/src/features/staff/screens/StaffTicketDetailScreen';
 
-// Route chỉ khai báo điểm vào cho Expo Router — logic màn hình nằm trong features/.
+// Route only declares the entry point for Expo Router — screen logic lives in features/.
 export default StaffTicketDetailScreen;

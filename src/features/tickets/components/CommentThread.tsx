@@ -7,8 +7,8 @@ import { ReactionTypeEnum, TicketCommentDTO } from '../types/ticket.types';
 
 export type ChatTab = 'public' | 'internal';
 
-// Mirror BE ChatOptions.EditWindowMinutes (15) — chỉ dùng để gợi ý UI, BE luôn
-// là nguồn xác thực cuối cùng.
+// Mirror BE ChatOptions.EditWindowMinutes (15) — only used for a UI hint, BE is always
+// the final source of truth.
 const EDIT_WINDOW_MS = 15 * 60 * 1000;
 
 type ThreadItem =
@@ -28,35 +28,36 @@ function dayKey(iso: string) {
 function formatDateLabel(iso: string) {
   const d = new Date(iso);
   const diffDays = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86_400_000);
-  if (diffDays === 0) return 'Hôm nay';
-  if (diffDays === 1) return 'Hôm qua';
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
   return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-// `comments` truyền vào giữ nguyên thứ tự DESC (mới nhất trước) như BE trả về — KHÔNG
-// đảo lại ở đây. FlatList `inverted` tự neo phần tử đầu (mới nhất) xuống đáy màn hình và
-// đẩy các phần tử cũ hơn lên trên, đúng chuẩn UI chat (Messenger/Zalo...). Nhờ vậy comment
-// mới từ realtime (prepend ở index 0) cũng tự xuất hiện ở đáy mà không cần scrollToEnd thủ công.
+// `comments` passed in keeps the DESC order (newest first) as returned by BE — do NOT
+// reverse it here. FlatList `inverted` automatically anchors the first element (newest) to
+// the bottom of the screen and pushes older elements up, matching standard chat UI
+// (Messenger/Zalo...). This way new comments from realtime (prepended at index 0) also
+// automatically appear at the bottom without a manual scrollToEnd.
 /**
- * Index của tin CŨ NHẤT chưa đọc trong mảng ASC (cũ → mới) — chính là tin chưa đọc ĐẦU
- * TIÊN gặp được. Chỉ tính khi BE trả `isRead`; `undefined` (realtime ChatAdded không kèm
- * field) bị bỏ qua để không vẽ nhầm mốc.
+ * Index of the OLDEST unread message in the ASC array (old → new) — the FIRST unread
+ * message encountered. Only computed when BE returns `isRead`; `undefined` (realtime
+ * ChatAdded doesn't include the field) is skipped to avoid drawing the marker incorrectly.
  */
 function findOldestUnreadIndex(ascComments: TicketCommentDTO[]): number {
   return ascComments.findIndex((c) => c.isRead === false);
 }
 
 /**
- * `anchorId` — id tin cũ nhất chưa đọc đã được chốt cho phiên xem này (xem CommentThread).
- * null ⇒ không vẽ mốc.
+ * `anchorId` — id of the oldest unread message pinned for this viewing session (see CommentThread).
+ * null ⇒ don't draw the marker.
  */
 function buildThreadItems(ascComments: TicketCommentDTO[], anchorId: string | null): ThreadItem[] {
   const items: ThreadItem[] = [];
   let lastDay: string | null = null;
 
   const oldestUnread = anchorId ? ascComments.findIndex((c) => c.id === anchorId) : -1;
-  // Đếm theo vị trí mốc, KHÔNG lọc isRead — sau khi mark-read thì isRead đã thành true hết,
-  // lọc lại sẽ ra 0 và nhãn mất số.
+  // Count by marker position, do NOT filter by isRead — after mark-read, isRead has already
+  // become true for everything, so filtering again would yield 0 and the label loses its count.
   const unreadCount = oldestUnread < 0 ? 0 : ascComments.length - oldestUnread;
 
   ascComments.forEach((c, i) => {
@@ -66,8 +67,8 @@ function buildThreadItems(ascComments: TicketCommentDTO[], anchorId: string | nu
       lastDay = day;
     }
 
-    // Mốc đặt NGAY TRƯỚC tin cũ nhất chưa đọc — data ASC + list không inverted ⇒ mọi thứ
-    // BÊN DƯỚI vạch là chưa đọc, đúng chuẩn Slack/Messenger.
+    // Marker placed RIGHT BEFORE the oldest unread message — ASC data + non-inverted list ⇒
+    // everything BELOW the line is unread, matching the Slack/Messenger standard.
     if (i === oldestUnread) {
       items.push({ kind: 'unread', key: 'unread-divider', count: unreadCount });
     }
@@ -90,53 +91,53 @@ interface CommentThreadProps {
   emptyText?: string;
   accentColor?: string;
 
-  // Tab Công khai/Nội bộ — opt-in (Staff bật, Customer không truyền → 1 danh sách như cũ).
+  // Public/Internal tabs — opt-in (Staff enables, Customer doesn't pass it → single list as before).
   showTabs?: boolean;
   activeTab?: ChatTab;
   onTabChange?: (tab: ChatTab) => void;
 
-  // Sửa/Xóa/Dịch/Mark-read — opt-in tương tự, mặc định tắt hết.
-  canEditAny?: boolean;
-  canDeleteAny?: boolean;
+  // Edit/Delete/Translate/Mark-read — opt-in similarly, off by default.
   ticketClosed?: boolean;
   onEdit?: (comment: TicketCommentDTO, body: string, editReason?: string) => void;
   onDelete?: (comment: TicketCommentDTO, reason?: string) => void;
   editPending?: boolean;
   deletePending?: boolean;
   /**
-   * Chế độ chọn nhiều tin để xoá (DELETE /chats/bulk). Chỉ tin của CHÍNH MÌNH mới
-   * hiện checkbox — tin người khác sẽ bị BE "ẩn riêng" thay vì xoá, gây hiểu nhầm.
-   * Có `onRequestSelectMode` là bật mục "Chọn nhiều" trong menu long-press.
+   * Multi-select mode to delete messages (DELETE /chats/bulk). Only messages from ONESELF
+   * show a checkbox — other people's messages get "hidden for me" by BE instead of being
+   * deleted, which would be confusing. Having `onRequestSelectMode` enables "Select multiple"
+   * in the long-press menu.
    */
   selectMode?: boolean;
   selectedIds?: Set<string>;
   onToggleSelect?: (comment: TicketCommentDTO) => void;
   onRequestSelectMode?: (comment: TicketCommentDTO) => void;
-  /** Housekeeping — báo đã đọc các chat đang hiển thị (không có unread badge để wire) */
+  /** Housekeeping — marks the currently displayed chats as read (no unread badge to wire up) */
   onMarkRead?: (chatIds: string[]) => void;
-  /** Mọi role đều được dịch (BE không giới hạn quyền) — có prop này là hiện menu dịch */
+  /** Every role can translate (BE doesn't restrict this) — passing this prop shows the translate menu */
   onTranslate?: (
     comment: TicketCommentDTO,
     targetLanguage: string,
   ) => Promise<{ translatedBody: string; targetLanguage: string } | undefined>;
-  // GH-67 — Ghim (Staff/Manager/Admin). Có đủ onPin + onUnpin mới hiện menu ghim.
+  // GH-67 — Pin (Staff/Manager/Admin). Only shows the pin menu when both onPin + onUnpin are provided.
   onPin?: (comment: TicketCommentDTO) => void;
-  /** Staff/Manager/Admin only — mở danh sách "đã đọc bởi". Customer KHÔNG truyền (BE 403). */
+  /** Staff/Manager/Admin only — opens the "read by" list. Customer does NOT pass this (BE 403). */
   onShowReaders?: (comment: TicketCommentDTO) => void;
   onUnpin?: (comment: TicketCommentDTO) => void;
   pinningId?: string | null;
-  // GH-68 — Reactions + download attachment (Mọi role). Có prop là bật tính năng.
+  // GH-68 — Reactions + download attachment (all roles). Passing the prop enables the feature.
   onToggleReaction?: (comment: TicketCommentDTO, type: ReactionTypeEnum, isActive: boolean) => void;
   onDownloadAttachments?: (comment: TicketCommentDTO, fileIds: string[]) => void;
 
-  // GH-133 — Gợi ý AI hiển thị dạng bong bóng CUỐI luồng chat (giống web). Bấm chọn →
-  // đổ vào ô nhập (onPickSuggestion), không xóa; đóng cụm gợi ý qua onDismissSuggestions.
+  // GH-133 — AI suggestion shown as a bubble at the END of the chat thread (like web). Tapping
+  // one fills the input (onPickSuggestion) without clearing it; dismiss the suggestion group via
+  // onDismissSuggestions.
   aiSuggestions?: string[];
   onPickSuggestion?: (text: string) => void;
   onDismissSuggestions?: () => void;
 }
 
-/** Danh sách chat dùng chung customer + staff — từ trên xuống dưới, kéo để tải thêm lịch sử cũ. */
+/** Chat list shared by customer + staff — top to bottom, pull to load older history. */
 export function CommentThread({
   comments,
   currentUserId,
@@ -146,13 +147,11 @@ export function CommentThread({
   hasNextPage,
   isFetchingNextPage,
   onLoadMore,
-  emptyText = 'Chưa có trao đổi nào.',
+  emptyText = 'No messages yet.',
   accentColor,
   showTabs = false,
   activeTab,
   onTabChange,
-  canEditAny = false,
-  canDeleteAny = false,
   ticketClosed = false,
   onEdit,
   onDelete,
@@ -189,10 +188,12 @@ export function CommentThread({
     [comments, showTabs, tab],
   );
 
-  // Mốc phải ĐỨNG YÊN trong suốt phiên xem. onMarkRead bên dưới đánh dấu đã đọc ngay khi
-  // mở chat ⇒ refetch xong mọi isRead thành true; nếu tính lại mốc theo data mới thì vạch
-  // vừa hiện đã biến mất, Staff không kịp thấy mình đang đọc từ đâu. Vì vậy chốt id tin cũ
-  // nhất chưa đọc ở LẦN ĐẦU có dữ liệu và giữ nguyên tới khi đổi tab / rời màn.
+  // The marker must STAY FIXED throughout the viewing session. onMarkRead below marks
+  // messages as read as soon as the chat opens ⇒ once the refetch completes every isRead
+  // becomes true; if the marker were recomputed from the new data, the line that just
+  // appeared would vanish before Staff even notices where they were reading from. So the id
+  // of the oldest unread message is pinned on the FIRST render with data and kept until the
+  // tab changes / the screen is left.
   const anchorIdRef = useRef<string | null>(null);
   const anchorResolvedRef = useRef(false);
 
@@ -205,8 +206,9 @@ export function CommentThread({
     const ascComments = [...visible].reverse();
 
     if (!anchorResolvedRef.current) {
-      // Chỉ chốt khi BE đã trả isRead cho ít nhất 1 tin — tránh chốt nhầm "không có mốc"
-      // lúc list mới chỉ có tin từ realtime (isRead undefined).
+      // Only pin the marker once BE has returned isRead for at least 1 message — avoids
+      // incorrectly pinning "no marker" when the list only has realtime messages so far
+      // (isRead undefined).
       const hasReadInfo = ascComments.some((c) => c.isRead !== undefined);
       if (hasReadInfo) {
         const idx = findOldestUnreadIndex(ascComments);
@@ -218,17 +220,19 @@ export function CommentThread({
     return buildThreadItems(ascComments, anchorIdRef.current);
   }, [visible]);
 
-  // Luôn cuộn xuống tin mới nhất (đáy). List không inverted + data ASC ⇒ đáy = tin mới
-  // nhất. onContentSizeChange fire lúc mount, load data, có tin mới, và khi bong bóng gợi
-  // ý AI xuất hiện ⇒ vào chat / vào lại luôn ở đáy. Chặn cuộn khi đang tải TRANG CŨ hơn
-  // (kéo refresh) để không giật người dùng khỏi vị trí đang đọc.
+  // Always scroll to the newest message (the bottom). Non-inverted list + ASC data ⇒ bottom
+  // = newest message. onContentSizeChange fires on mount, on data load, on new messages, and
+  // when the AI suggestion bubble appears ⇒ entering/re-entering the chat always lands at the
+  // bottom. Blocked while loading an OLDER page (pull to refresh) to avoid yanking the user
+  // away from their current reading position.
   const listRef = useRef<FlatList>(null);
 
-  // Vị trí mốc "Tin nhắn chưa đọc" trong `items` — đích cuộn khi mở chat còn tin chưa đọc.
+  // Position of the "Unread messages" marker in `items` — scroll target when opening a chat that still has unread messages.
   const unreadIndex = useMemo(() => items.findIndex((it) => it.kind === 'unread'), [items]);
 
-  // Chỉ tự cuộn tới mốc MỘT lần cho mỗi lần mở chat. Không có cờ này thì mỗi lần
-  // onContentSizeChange fire (tin mới, ảnh load xong…) sẽ giật ngược người dùng lên mốc cũ.
+  // Only auto-scroll to the marker ONCE per chat opening. Without this flag, every
+  // onContentSizeChange fire (new message, image finished loading…) would yank the user back
+  // up to the old marker.
   const jumpedToUnreadRef = useRef(false);
   useEffect(() => {
     jumpedToUnreadRef.current = false;
@@ -237,8 +241,9 @@ export function CommentThread({
   const scrollToBottom = (animated: boolean) => {
     if (isFetchingNextPage) return;
 
-    // Còn tin chưa đọc → ưu tiên nhảy tới mốc thay vì xuống đáy, để Staff đọc từ tin cũ
-    // nhất chưa đọc trở đi. viewPosition 0.15 chừa mốc hơi cao hơn mép trên cho dễ thấy.
+    // Still has unread messages → prefer jumping to the marker instead of the bottom, so
+    // Staff reads starting from the oldest unread message onward. viewPosition 0.15 leaves
+    // the marker slightly above the top edge for visibility.
     if (unreadIndex >= 0 && !jumpedToUnreadRef.current) {
       jumpedToUnreadRef.current = true;
       listRef.current?.scrollToIndex({ index: unreadIndex, animated, viewPosition: 0.15 });
@@ -248,8 +253,8 @@ export function CommentThread({
     listRef.current?.scrollToEnd({ animated });
   };
 
-  // Gen gợi ý AI xong (bong bóng xuất hiện ở cuối chat) → cuộn xuống để user thấy ngay.
-  // Đảm bảo chắc chắn kể cả khi onContentSizeChange không kịp fire.
+  // AI suggestion generation done (bubble appears at the end of the chat) → scroll down so
+  // the user sees it right away. Ensures this happens even if onContentSizeChange doesn't fire in time.
   useEffect(() => {
     if (aiSuggestions.length === 0) return;
     const t = setTimeout(() => scrollToBottom(true), 60);
@@ -257,7 +262,7 @@ export function CommentThread({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aiSuggestions.length]);
 
-  // Housekeeping — đánh dấu đã đọc các comment đang hiển thị trong tab hiện tại, 1 lần/id.
+  // Housekeeping — marks currently displayed comments in the active tab as read, once per id.
   const markedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!onMarkRead) return;
@@ -267,7 +272,7 @@ export function CommentThread({
     onMarkRead(unmarked);
   }, [visible, onMarkRead]);
 
-  // "now" cập nhật định kỳ — tránh gọi Date.now() trực tiếp mỗi render khi tính edit window.
+  // "now" updated periodically — avoids calling Date.now() directly on every render when computing the edit window.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 30_000);
@@ -275,7 +280,7 @@ export function CommentThread({
   }, []);
 
 
-  // Bản dịch giữ cục bộ theo chatId — cho phép toggle gốc/dịch không cần gọi lại BE.
+  // Translations kept locally by chatId — allows toggling original/translated without calling BE again.
   const [translations, setTranslations] = useState<Record<string, { lang: string; text: string }>>({});
   const [showOriginalIds, setShowOriginalIds] = useState<Set<string>>(new Set());
   const [translatingId, setTranslatingId] = useState<string | null>(null);
@@ -326,7 +331,7 @@ export function CommentThread({
           >
             <Ionicons name="earth-outline" size={14} color={tab === 'public' ? Colors.primaryDark : Colors.textMute} />
             <Text style={[styles.tabBtnText, tab === 'public' && styles.tabBtnTextActivePublic]}>
-              Công khai ({publicCount})
+              Public ({publicCount})
             </Text>
           </Pressable>
           <Pressable
@@ -335,7 +340,7 @@ export function CommentThread({
           >
             <Ionicons name="lock-closed-outline" size={14} color={tab === 'internal' ? Colors.warningDark : Colors.textMute} />
             <Text style={[styles.tabBtnText, tab === 'internal' && styles.tabBtnTextActiveInternal]}>
-              Nội bộ ({internalCount})
+              Internal ({internalCount})
             </Text>
           </Pressable>
         </View>
@@ -345,7 +350,7 @@ export function CommentThread({
         <View style={styles.center}>
           <Ionicons name="chatbubbles-outline" size={36} color={Colors.textFaint} />
           <Text style={styles.emptyText}>
-            {showTabs ? (tab === 'public' ? 'Chưa có bình luận công khai.' : 'Chưa có bình luận nội bộ.') : emptyText}
+            {showTabs ? (tab === 'public' ? 'No public comments yet.' : 'No internal comments yet.') : emptyText}
           </Text>
         </View>
       ) : (
@@ -356,8 +361,8 @@ export function CommentThread({
           keyExtractor={(item) => item.key}
           onContentSizeChange={() => scrollToBottom(false)}
           keyboardDismissMode="on-drag"
-          // Không có getItemLayout (bong bóng cao thấp khác nhau) nên scrollToIndex có thể
-          // trượt khi item đích chưa render — cuộn áng chừng rồi thử lại đúng index.
+          // No getItemLayout (bubbles have varying heights) so scrollToIndex can drift when
+          // the target item hasn't rendered yet — scroll approximately then retry the exact index.
           onScrollToIndexFailed={(info) => {
             listRef.current?.scrollToOffset({
               offset: info.averageItemLength * info.index,
@@ -388,7 +393,7 @@ export function CommentThread({
                   <View style={styles.unreadPill}>
                     <Ionicons name="arrow-down" size={11} color="#FFF" />
                     <Text style={styles.unreadLabel}>
-                      {item.count > 1 ? `${item.count} tin nhắn chưa đọc` : 'Tin nhắn chưa đọc'}
+                      {item.count > 1 ? `${item.count} unread messages` : 'Unread message'}
                     </Text>
                   </View>
                   <View style={styles.unreadLine} />
@@ -398,14 +403,22 @@ export function CommentThread({
             const comment = item.comment;
             const isOwn = !!currentUserId && comment.authorUserId === currentUserId;
             const authorWindowOk = isOwn && now - new Date(comment.createdAt).getTime() <= EDIT_WINDOW_MS;
-            const canEdit = !ticketClosed && (authorWindowOk || canEditAny) && !!onEdit;
-            const canDelete = !ticketClosed && (isOwn || canDeleteAny) && !!onDelete;
+            // Only the author can edit/delete their own message — higher roles do NOT override
+            // this. Matches BE's ChatAuthorizationService.CanEditChat/CanDeleteChat: it accepts
+            // actorPermissions but doesn't read it, only compares AuthorUserId. Gating the
+            // button on chat.edit.any/chat.delete.any like before would get a 403 on tap.
+            const canEdit = !ticketClosed && authorWindowOk && !!onEdit;
+            const canDelete = !ticketClosed && isOwn && !!onDelete;
             const canPin = !ticketClosed && !!onPin && !!onUnpin;
             const canShowReaders = !!onShowReaders;
-            const editNeedsReason = canEdit && !authorWindowOk;
-            const deleteNeedsReason = canDelete && !isOwn;
-            // Chỉ tin của chính mình mới chọn được — tin người khác BE xử lý bằng
-            // "ẩn riêng" chứ không xoá, không đưa vào luồng này.
+            // The "reason" field only makes sense when editing/deleting SOMEONE ELSE'S
+            // message — and no role can do that anymore, so it's always off. The prop is kept
+            // on ChatBubble so an Admin override path (ticket already Closed, via a separate
+            // endpoint) still has somewhere to plug in.
+            const editNeedsReason = false;
+            const deleteNeedsReason = false;
+            // Only my own messages are selectable — other people's messages are handled by
+            // BE via "hide for me" rather than delete, so they're not part of this flow.
             const selectable = isOwn && !ticketClosed && !!onToggleSelect;
 
             const bubble = (
@@ -457,7 +470,7 @@ export function CommentThread({
               <Pressable
                 style={styles.selectRow}
                 onPress={selectable ? () => onToggleSelect?.(comment) : undefined}
-                // Tin người khác: không checkbox, làm mờ để thấy rõ là không chọn được.
+                // Other people's messages: no checkbox, dimmed to make it clear they're not selectable.
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked, disabled: !selectable }}
               >
@@ -489,7 +502,7 @@ export function CommentThread({
               <View style={styles.aiWrap}>
                 <View style={styles.aiHeader}>
                   <Ionicons name="sparkles" size={13} color={Colors.primaryDark} />
-                  <Text style={styles.aiHeaderText}>Gợi ý trả lời (AI) — bấm để chèn vào ô nhập</Text>
+                  <Text style={styles.aiHeaderText}>AI reply suggestions — tap to insert into the input</Text>
                 </View>
                 {aiSuggestions.map((s, i) => (
                   <Pressable
@@ -501,7 +514,7 @@ export function CommentThread({
                   </Pressable>
                 ))}
                 <Pressable hitSlop={6} onPress={() => onDismissSuggestions?.()}>
-                  <Text style={styles.aiDismiss}>Bỏ qua gợi ý</Text>
+                  <Text style={styles.aiDismiss}>Dismiss suggestions</Text>
                 </Pressable>
               </View>
             ) : null
@@ -521,10 +534,10 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 60 },
   emptyText: { color: Colors.textFaint, fontSize: 14, fontWeight: '500' },
   list: { flex: 1 },
-  // FlatList inverted lật trục dọc ⇒ paddingTop của style này hiển thị ở ĐÁY (cạnh
-  // composer) và paddingBottom hiển thị ở ĐỈNH (cạnh thanh tab) — set ngược lại trực giác.
+  // FlatList inverted flips the vertical axis ⇒ this style's paddingTop shows at the BOTTOM
+  // (next to the composer) and paddingBottom shows at the TOP (next to the tab bar) — set counterintuitively.
   listContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, gap: 10 },
-  // Selection mode — checkbox cột trái, bubble giữ nguyên layout gốc bên phải.
+  // Selection mode — checkbox on the left column, bubble keeps its original layout on the right.
   selectRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   selectBox: { width: 24, alignItems: 'center' },
   checkbox: {
@@ -536,13 +549,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // primaryDark thay primary: checkmark trắng trên vàng #FFD500 gần như không đọc được.
+  // primaryDark instead of primary: a white checkmark on yellow #FFD500 would be nearly unreadable.
   checkboxOn: { backgroundColor: Colors.primaryDark, borderColor: Colors.primaryDark },
   selectBubble: { flex: 1 },
   selectBubbleDim: { opacity: 0.45 },
   loadingMore: { paddingVertical: 14, alignItems: 'center' },
 
-  // Gợi ý AI — cụm bong bóng cuối chat, căn phải (phía người chat) như web.
+  // AI suggestion — bubble cluster at the end of the chat, right-aligned (chat sender's side) like web.
   aiWrap: { alignItems: 'flex-end', gap: 6, paddingTop: 6 },
   aiHeader: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingRight: 2 },
   aiHeaderText: { fontSize: 11, fontWeight: '700', color: Colors.textMute },
@@ -558,7 +571,7 @@ const styles = StyleSheet.create({
   dateLine: { flex: 1, height: 1, backgroundColor: Colors.border },
   dateLabel: { fontSize: 11, fontWeight: '700', color: Colors.textMute },
 
-  // Mốc "Tin nhắn chưa đọc" — đỏ để tách hẳn khỏi vạch ngày (xám).
+  // "Unread messages" marker — red to stand out clearly from the (gray) date divider.
   unreadRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 6 },
   unreadLine:  { flex: 1, height: 1.5, backgroundColor: '#FF3B30' },
   unreadPill:  {

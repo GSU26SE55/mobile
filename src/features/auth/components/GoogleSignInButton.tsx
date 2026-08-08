@@ -16,41 +16,41 @@ export function GoogleSignInButton() {
 
   const handlePress = async () => {
     try {
-      await GoogleSignin.hasPlayServices(); // Android: kiểm tra Google Play Services
+      await GoogleSignin.hasPlayServices(); // Android: check Google Play Services
       const response = await GoogleSignin.signIn();
 
       const idToken = response.data?.idToken;
       if (!idToken) {
-        Alert.alert('Lỗi', 'Không lấy được idToken từ Google.');
+        Alert.alert('Error', 'Could not get idToken from Google.');
         return;
       }
 
-      // BE đổi idToken → JWT hệ thống; luồng post-login dùng chung handleLoginSuccess.
+      // BE exchanges idToken → system JWT; post-login flow shares handleLoginSuccess.
       await mutateAsync({ idToken });
     } catch (error) {
-      // User hủy giữa chừng → im lặng, không báo lỗi.
+      // User cancelled midway → fail silently, no error shown.
       if (isErrorWithCode(error) && error.code === statusCodes.SIGN_IN_CANCELLED) {
         return;
       }
       if (isErrorWithCode(error) && error.code === statusCodes.IN_PROGRESS) {
-        return; // đang có 1 lần signIn khác chạy
+        return; // another signIn is already in progress
       }
       if (error instanceof HttpError) {
-        // BE từ chối: email chưa confirm / account bị khóa / ngoài scope...
-        Alert.alert('Đăng nhập thất bại', error.message);
+        // BE rejected: email not confirmed / account locked / out of scope...
+        Alert.alert('Sign-in failed', error.message);
         return;
       }
       if (isErrorWithCode(error) && error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        Alert.alert('Lỗi', 'Thiết bị thiếu Google Play Services (cần bản có GMS).');
+        Alert.alert('Error', 'This device is missing Google Play Services (a GMS build is required).');
         return;
       }
-      // Surface mã lỗi thật để chẩn đoán (VD DEVELOPER_ERROR = SHA-1/clientId chưa đăng ký).
+      // Surface the real error code for diagnosis (e.g. DEVELOPER_ERROR = SHA-1/clientId not registered).
       const code = isErrorWithCode(error) ? error.code : undefined;
       Alert.alert(
-        'Lỗi đăng nhập Google',
+        'Google sign-in error',
         code
-          ? `Mã lỗi: ${code}. Nếu là DEVELOPER_ERROR → SHA-1/OAuth client chưa đăng ký hoặc dev build cũ (build lại).`
-          : 'Không thể đăng nhập bằng Google. Vui lòng thử lại.',
+          ? `Error code: ${code}. If DEVELOPER_ERROR → SHA-1/OAuth client not registered or dev build is outdated (rebuild).`
+          : 'Could not sign in with Google. Please try again.',
       );
     }
   };
@@ -66,7 +66,7 @@ export function GoogleSignInButton() {
       ) : (
         <>
           <Image source={GOOGLE_LOGO} style={styles.logo} resizeMode="contain" />
-          <Text style={styles.buttonText}>Đăng nhập với Google</Text>
+          <Text style={styles.buttonText}>Sign in with Google</Text>
         </>
       )}
     </Pressable>

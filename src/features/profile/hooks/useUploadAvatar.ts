@@ -12,7 +12,7 @@ export function useUploadAvatar() {
   return useMutation({
     mutationFn: async () => {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) throw new Error('Cần quyền truy cập thư viện ảnh');
+      if (!permission.granted) throw new Error('Photo library access permission is required');
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -28,7 +28,7 @@ export function useUploadAvatar() {
       const type = asset.mimeType ?? 'image/jpeg';
 
       const check = validateFile(name, asset.fileSize, FilePurposeEnum.Avatar);
-      if (!check.valid) throw new Error(check.message ?? 'File không hợp lệ');
+      if (!check.valid) throw new Error(check.message ?? 'Invalid file');
 
       const uploadRes = await fileStorageService.uploadFile({
         uri: asset.uri,
@@ -38,7 +38,7 @@ export function useUploadAvatar() {
         purpose: FilePurposeEnum.Avatar,
       });
       if (!uploadRes.data.isSuccess || !uploadRes.data.data) {
-        throw new Error(uploadRes.data.message ?? 'Upload thất bại');
+        throw new Error(uploadRes.data.message ?? 'Upload failed');
       }
 
       await profileService.setAvatar(uploadRes.data.data.fileId);

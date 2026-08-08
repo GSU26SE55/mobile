@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius, Shadow } from '@/src/lib/theme';
 import { BackButton } from '@/src/shared/components/ScreenHeader';
 
-// GH-56 — Hub "Công cụ kỹ thuật" cho Staff. Gate role qua (staff)/_layout.
+// GH-56 — "Technical Tools" hub for Staff. Role gating via (staff)/_layout.
 type ToolRow = {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
@@ -21,26 +21,26 @@ type ToolRow = {
 const ROWS: ToolRow[] = [
   {
     icon: 'battery-charging-outline',
-    title: 'Loại pin',
-    desc: 'Tra cứu thông số các model pin',
+    title: 'Battery Types',
+    desc: 'Look up specs for battery models',
     href: '/(staff)/tools/battery-types',
   },
   {
     icon: 'options-outline',
-    title: 'Calibration cảm biến',
-    desc: 'Hiệu chỉnh cảm biến thiết bị IoT tại hiện trường',
+    title: 'Sensor Calibration',
+    desc: 'Calibrate IoT device sensors in the field',
     href: '/(staff)/tools/calibration',
   },
   {
     icon: 'book-outline',
-    title: 'Tài liệu KB',
-    desc: 'Hướng dẫn xử lý sự cố, tra cứu khi làm ticket',
+    title: 'KB Articles',
+    desc: 'Troubleshooting guides, reference while working on tickets',
     href: '/(staff)/kb',
   },
   {
     icon: 'newspaper-outline',
-    title: 'Tin tức',
-    desc: 'Bài viết đã xuất bản từ hệ thống',
+    title: 'News',
+    desc: 'Published articles from the system',
     href: '/(staff)/blog',
   },
 ];
@@ -51,7 +51,7 @@ export default function ToolsHubScreen() {
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <BackButton />
-        <Text style={styles.topTitle}>Công cụ kỹ thuật</Text>
+        <Text style={styles.topTitle}>Technical Tools</Text>
         <View style={styles.headerSpacer} />
       </View>
 

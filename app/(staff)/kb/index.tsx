@@ -65,7 +65,7 @@ function StaffKbListScreenInner() {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <BackButton />
-        <Text style={styles.headerTitle}>Tài liệu KB</Text>
+        <Text style={styles.headerTitle}>KB Articles</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -106,9 +106,9 @@ function StaffKbListScreenInner() {
           ) : isError ? (
             <View style={styles.errorWrap}>
               <Ionicons name="cloud-offline-outline" size={32} color={Colors.textFaint} />
-              <Text style={styles.errorTitle}>Không tải được danh sách</Text>
+              <Text style={styles.errorTitle}>Failed to load the list</Text>
               <Pressable onPress={() => refetch()} style={styles.retryBtn}>
-                <Text style={styles.retryText}>Thử lại</Text>
+                <Text style={styles.retryText}>Retry</Text>
               </Pressable>
             </View>
           ) : (

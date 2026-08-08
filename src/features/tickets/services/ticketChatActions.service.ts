@@ -1,4 +1,4 @@
-import { axiosInstance } from '@/src/lib/axios';
+import { AI_TIMEOUT, axiosInstance } from '@/src/lib/axios';
 import { ENDPOINTS } from '@/src/lib/endpoints';
 import { CommonResponse, CursorPaginationResponse } from '@/src/types/api.types';
 import {
@@ -27,8 +27,8 @@ export interface ChatCursorParams {
   limit?: number;
 }
 
-// Edit/Delete/Mark-read/Translate/Voice cho ticket chat — cùng endpoint
-// /api/tickets/{id}/chats mà staff đã gọi để list/add comment.
+// Edit/Delete/Mark-read/Translate/Voice for ticket chat — same endpoint
+// /api/tickets/{id}/chats that staff already call to list/add comments.
 export const ticketChatActionsService = {
   update: (ticketId: string, chatId: string, payload: UpdateChatPayload) =>
     axiosInstance.put<CommonResponse<void>>(
@@ -42,8 +42,8 @@ export const ticketChatActionsService = {
       { data: reason ? { reason } : undefined },
     ),
 
-  // Xoá nhiều chat trong 1 request (tối đa 50). Partial success — xem
-  // ChatBulkDeleteResultDTO. BE trả 400 nếu ticket Closed/ClosedPendingRate.
+  // Delete multiple chats in 1 request (max 50). Partial success — see
+  // ChatBulkDeleteResultDTO. BE returns 400 if the ticket is Closed/ClosedPendingRate.
   bulkRemove: (ticketId: string, payload: ChatBulkDeletePayload) =>
     axiosInstance.delete<CommonResponse<ChatBulkDeleteResultDTO>>(
       ENDPOINTS.TICKETS.CHAT_BULK_DELETE(ticketId),
@@ -60,16 +60,18 @@ export const ticketChatActionsService = {
     axiosInstance.post<CommonResponse<ChatTranslateDTO>>(
       ENDPOINTS.TICKETS.CHAT_TRANSLATE(ticketId, chatId),
       null,
-      { params: { to: targetLanguage } },
+      { params: { to: targetLanguage }, timeout: AI_TIMEOUT },
     ),
 
-  // Voice chat — 2 bước LIÊN TỤC:
-  //   1) upload file audio lên FileStorage → lấy metadata (fileId/fileName/contentType/size)
-  //   2) POST metadata (ChatAttachmentInput, JSON) xuống /chats/voice → BE tạo chat placeholder
-  //      rồi transcribe async. Endpoint KHÔNG còn nhận multipart audio trực tiếp.
-  // Nếu bước 1 lỗi → throw NGAY, KHÔNG gọi bước 2 (chưa có file trên server → không có gì để
-  // retry; user phải ghi/upload lại). Chỉ khi bước 1 xong (đã có fileId) mới tạo chat, và lúc đó
-  // retry transcribe (voice/retry) mới có ý nghĩa vì audio attachment đã tồn tại.
+  // Voice chat — 2 SEQUENTIAL steps:
+  //   1) upload the audio file to FileStorage → get metadata (fileId/fileName/contentType/size)
+  //   2) POST that metadata (ChatAttachmentInput, JSON) to /chats/voice → BE creates a chat
+  //      placeholder then transcribes asynchronously. The endpoint no longer accepts
+  //      multipart audio directly.
+  // If step 1 fails → throw IMMEDIATELY, do NOT call step 2 (no file exists on the server yet →
+  // nothing to retry; the user must record/upload again). Only once step 1 succeeds (fileId
+  // exists) is the chat created, and only then does retry-transcribe (voice/retry) make sense,
+  // since the audio attachment already exists.
   transcribeVoice: async (
     ticketId: string,
     audioFile: { uri: string; name: string; type: string },
@@ -82,16 +84,16 @@ export const ticketChatActionsService = {
     });
     const meta = upload.data.data;
     if (!meta?.fileId) {
-      throw new Error('Tải lên âm thanh thất bại — vui lòng ghi âm và gửi lại.');
+      throw new Error('Audio upload failed — please record and send again.');
     }
-    // BE validate `Url` bắt buộc, nhưng chỉ lưu nó làm metadata trên TicketAttachment.Url —
-    // VoiceTranscriptionRequestedConsumer tải audio qua gRPC nội bộ theo `fileId`, không đụng
-    // chuỗi này.
+    // BE requires `Url` to be present, but only stores it as metadata on TicketAttachment.Url —
+    // VoiceTranscriptionRequestedConsumer downloads the audio via internal gRPC using `fileId`,
+    // it does not touch this string.
     //
-    // GH-788 — nên KHÔNG được chặn khi publicUrl null. Bucket đối tượng là private nên
-    // PublicBaseUrl để rỗng ở mọi môi trường ⇒ publicUrl luôn null ⇒ bản cũ ném lỗi ngay tại đây
-    // và tính năng ghi âm không bao giờ chạy được. Rơi về đường tải có kiểm quyền — cùng quy ước
-    // với useUploadTicketAttachment.
+    // GH-788 — so this must NOT block when publicUrl is null. The object bucket is private, so
+    // PublicBaseUrl is empty in every environment ⇒ publicUrl is always null ⇒ the old code threw
+    // right here, and the recording feature could never run. Fall back to the auth-checked
+    // download route — same convention as useUploadTicketAttachment.
     return axiosInstance.post<CommonResponse<ChatVoiceActionDTO>>(
       ENDPOINTS.TICKETS.CHAT_VOICE(ticketId),
       {
@@ -104,10 +106,10 @@ export const ticketChatActionsService = {
     );
   },
 
-  // GH-83 — retry chuyển giọng nói → văn bản cho chat đang ở trạng thái Failed.
-  // Không body. BE trả **202 Accepted** (xử lý bất đồng bộ) nên response CHƯA có kết quả —
-  // phải refetch danh sách chat mới thấy trạng thái đổi.
-  // 409 = chat chưa Failed (hoặc không có audio attachment); 404 = chat không thuộc ticket.
+  // GH-83 — retry voice-to-text conversion for a chat currently in Failed status.
+  // No body. BE returns **202 Accepted** (async processing) so the response has NO result yet —
+  // must refetch the chat list to see the status change.
+  // 409 = chat isn't Failed (or has no audio attachment); 404 = chat doesn't belong to the ticket.
   retryVoice: (ticketId: string, chatId: string) =>
     axiosInstance.post<CommonResponse<ChatVoiceActionDTO>>(
       ENDPOINTS.TICKETS.CHAT_VOICE_RETRY(ticketId, chatId),
@@ -120,33 +122,38 @@ export const ticketChatActionsService = {
   unpin: (ticketId: string, chatId: string) =>
     axiosInstance.delete<TicketActionResponse>(ENDPOINTS.TICKETS.CHAT_PIN(ticketId, chatId)),
 
-  // AI — intent gửi STRING (BE JsonStringEnumConverter). 200 isSuccess:false (Gemini rate-limit)
-  // được interceptor tự reject → xử lý ở onError của hook.
+  // AI — intent is sent as a STRING (BE JsonStringEnumConverter). 200 isSuccess:false (Gemini
+  // rate-limit) is auto-rejected by the interceptor → handled in the hook's onError.
   suggest: (ticketId: string, intent: ChatAiIntentEnum) =>
     axiosInstance.post<CommonResponse<ChatSuggestDTO>>(
       ENDPOINTS.TICKETS.CHAT_SUGGEST(ticketId),
       { intent },
+      { timeout: AI_TIMEOUT },
     ),
 
   summarize: (ticketId: string) =>
-    axiosInstance.post<CommonResponse<ChatSummarizeDTO>>(ENDPOINTS.TICKETS.CHAT_SUMMARIZE(ticketId)),
+    axiosInstance.post<CommonResponse<ChatSummarizeDTO>>(
+      ENDPOINTS.TICKETS.CHAT_SUMMARIZE(ticketId),
+      null,
+      { timeout: AI_TIMEOUT },
+    ),
 
-  // ── GH-68 — Mọi role ───────────────────────────────────────────────────
-  // Cursor pagination — thay page/pageSize. BE trả CursorPaginationResponse (items/nextCursor/hasMore).
+  // ── GH-68 — All roles ───────────────────────────────────────────────────
+  // Cursor pagination — replaces page/pageSize. BE returns CursorPaginationResponse (items/nextCursor/hasMore).
   listCursor: (ticketId: string, params?: ChatCursorParams) =>
     axiosInstance.get<CommonResponse<CursorPaginationResponse<TicketCommentDTO>>>(
       ENDPOINTS.TICKETS.CHATS_CURSOR(ticketId),
       { params },
     ),
 
-  // BE trả CommonResponse<int> — data là SỐ THUẦN, không phải object.
-  // (TicketUnreadCountResponse : CommonResponse<int>). Đừng bọc lại thành DTO.
+  // BE returns CommonResponse<int> — data is a PLAIN NUMBER, not an object.
+  // (TicketUnreadCountResponse : CommonResponse<int>). Don't wrap it back into a DTO.
   getUnreadCount: (ticketId: string) =>
     axiosInstance.get<CommonResponse<number>>(
       ENDPOINTS.TICKETS.CHAT_UNREAD_COUNT(ticketId),
     ),
 
-  // Ai đã đọc 1 chat — Staff/Manager/Admin ONLY. KHÔNG gọi từ màn Customer (403).
+  // Who has read a chat — Staff/Manager/Admin ONLY. Do NOT call from Customer screens (403).
   getReaders: (ticketId: string, chatId: string) =>
     axiosInstance.get<CommonResponse<ChatReaderDTO[]>>(
       ENDPOINTS.TICKETS.CHAT_READERS(ticketId, chatId),
@@ -164,8 +171,8 @@ export const ticketChatActionsService = {
       { params: { type } },
     ),
 
-  // {attachmentId} route = FileId. validateStatus:()=>true — 202/451 KHÔNG throw để hook
-  // branch theo status thủ công (KHÔNG dùng handleErrorApi vì 2 status này là "success-path").
+  // {attachmentId} route = FileId. validateStatus:()=>true — 202/451 do NOT throw, so the hook
+  // can branch on status manually (NOT using handleErrorApi since these 2 statuses are "success-path").
   downloadAttachment: (ticketId: string, chatId: string, fileId: string) =>
     axiosInstance.get<CommonResponse<string>>(
       ENDPOINTS.TICKETS.CHAT_ATTACHMENT_DOWNLOAD(ticketId, chatId, fileId),

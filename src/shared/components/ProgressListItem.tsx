@@ -2,17 +2,17 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Colors, Shadow } from '@/src/lib/theme';
 
-// Dòng danh sách kiểu Home mới: [chấm màu] tiêu đề ... [badge trạng thái]
-// rồi thanh tiến độ ngang, và caption phụ căn phải bên dưới.
-// Màu bar/badge truyền từ ngoài (giữ palette hiện tại).
+// New Home-style list row: [color dot] title ... [status badge]
+// followed by a horizontal progress bar, and a right-aligned caption below.
+// Bar/badge colors are passed in from outside (keeps the current palette).
 
 interface Props {
   title: string;
-  dotColor?: string; // chấm tròn đầu dòng (bỏ trống = ẩn)
+  dotColor?: string; // leading round dot (leave empty = hidden)
   badge?: { label: string; bg: string; text: string };
-  percent: number; // 0-100 fill của thanh
+  percent: number; // 0-100 bar fill
   barColor: string;
-  caption?: string; // ví dụ "96% · 51.2V" hoặc "Còn 2 ngày"
+  caption?: string; // e.g. "96% · 51.2V" or "2 days left"
   onPress?: () => void;
 }
 

@@ -7,7 +7,7 @@ import {
   StatsWindow,
 } from '../types/sensor-reading.types';
 
-// Mốc đầu window (UTC) — '1h' = đầu giờ hiện tại, 'today' = 00:00 UTC hôm nay.
+// Window start marker (UTC) — '1h' = start of the current hour, 'today' = 00:00 UTC today.
 function windowStartOf(window: StatsWindow): Date {
   const d = new Date();
   d.setUTCMilliseconds(0);
@@ -33,17 +33,17 @@ function aggregateToSeed(agg: SensorReadingAggregateDto, window: StatsWindow): B
 }
 
 /**
- * Min/max dòng nạp-xả của 1 window cho 1 pin.
+ * Min/max charge-discharge current for 1 window of 1 battery.
  *
- * Nguồn dữ liệu: SSE event `stats` (push, qua `useBatterySensorStream` → `setQueryData` cùng key).
- * Hook này CHỈ lo phần seed: `stats` chỉ đẩy incremental (§5.3bis) nên lúc mở màn chưa có gì —
- * seed 1 lần từ bucket cuối của REST `/aggregate` để UI không trống.
+ * Data source: SSE event `stats` (pushed via `useBatterySensorStream` → `setQueryData` on the
+ * same key). This hook ONLY handles the seed: `stats` pushes incrementally (§5.3bis) so there's
+ * nothing on screen-open — seed once from the last bucket of REST `/aggregate` so the UI isn't empty.
  *
- * `staleTime: Infinity` + không `refetchInterval`: fetch đúng 1 lần rồi để SSE làm chủ.
- * Nếu refetch, seed cũ sẽ ĐÈ NGƯỢC dữ liệu SSE mới hơn.
+ * `staleTime: Infinity` + no `refetchInterval`: fetch exactly once, then let SSE take over.
+ * On refetch, a stale seed would OVERWRITE newer SSE data.
  *
- * `Realtime:Enabled=false` → không bao giờ có `stats` → view giữ nguyên seed (`isSeed: true`).
- * Đây là trạng thái HỢP LỆ, không phải lỗi.
+ * `Realtime:Enabled=false` → `stats` never arrives → the view keeps the seed (`isSeed: true`).
+ * This is a VALID state, not an error.
  */
 export function useBatteryStats(assetId: string, window: StatsWindow) {
   const queryClient = useQueryClient();
@@ -52,8 +52,9 @@ export function useBatteryStats(assetId: string, window: StatsWindow) {
   return useQuery<BatteryStatsView | null>({
     queryKey,
     queryFn: async () => {
-      // Chống race: event `stats` có thể về TRONG LÚC fetch seed đang bay (hoặc đã về từ lần mount trước).
-      // Không có guard này, seed cũ hơn sẽ ĐÈ NGƯỢC data SSE mới hơn khi fetch resolve.
+      // Race guard: a `stats` event can arrive WHILE the seed fetch is in flight (or already
+      // arrived from a previous mount). Without this guard, the older seed would OVERWRITE
+      // newer SSE data when the fetch resolves.
       const existing = queryClient.getQueryData<BatteryStatsView | null>(queryKey);
       if (existing && !existing.isSeed) return existing;
 
@@ -63,7 +64,7 @@ export function useBatteryStats(assetId: string, window: StatsWindow) {
         interval: window === 'today' ? '1d' : '1h',
       });
       const buckets = res.data.data ?? [];
-      // Bucket cuối = window hiện tại. Rỗng (pin chưa có reading nào trong window) → null, UI hiện '—'.
+      // Last bucket = current window. Empty (battery has no reading in this window) → null, UI shows '—'.
       const last = buckets.length > 0 ? buckets[buckets.length - 1] : null;
       return last ? aggregateToSeed(last, window) : null;
     },

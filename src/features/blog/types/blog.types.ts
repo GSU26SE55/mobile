@@ -2,7 +2,7 @@ import type { BlogPostStatusEnum, BlogPostOriginEnum } from '../enums/blog.enum'
 
 export { BlogPostStatusEnum, BlogPostOriginEnum } from '../enums/blog.enum';
 
-// ← BlogPostListItemDTO. KHÔNG có contentHtml — màn list render <Text> thường.
+// ← BlogPostListItemDTO. Does NOT have contentHtml — the list screen renders plain <Text>.
 export interface BlogPostSummaryDTO {
   id: string;
   title: string;
@@ -16,7 +16,7 @@ export interface BlogPostSummaryDTO {
   updatedAt: string | null;
 }
 
-// ← BlogPostDTO. Khai lại đủ field, không extends (theo convention kb.types.ts).
+// ← BlogPostDTO. Redeclares all fields, no extends (follows kb.types.ts convention).
 export interface BlogPostDTO {
   id: string;
   title: string;
@@ -37,12 +37,12 @@ export interface BlogListParams {
   pageNumber?: number;
   pageSize?: number;
   origin?: BlogPostOriginEnum;
-  /** Từ khoá tìm theo tiêu đề / tóm tắt — BE lọc, không lọc client. */
+  /** Search keyword matched against title / summary — filtered by BE, not client-side. */
   q?: string;
 }
 
-// Query gửi lên BE — PascalCase.
-// KHÔNG có `Status`: public controller tự ghi đè Status = Published.
+// Query sent to the BE — PascalCase.
+// No `Status`: the public controller overrides Status = Published automatically.
 export interface BlogListQuery {
   PageNumber?: number;
   PageSize?: number;

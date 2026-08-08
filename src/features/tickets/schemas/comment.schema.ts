@@ -8,7 +8,7 @@ const attachmentSchema = z.object({
 });
 
 export const commentSchema = z.object({
-  body:        z.string().min(1, 'Không được để trống').max(1000, 'Tối đa 1000 ký tự'),
+  body:        z.string().min(1, 'Cannot be empty').max(1000, 'Maximum 1000 characters'),
   attachments: z.array(attachmentSchema).optional(),
 });
 

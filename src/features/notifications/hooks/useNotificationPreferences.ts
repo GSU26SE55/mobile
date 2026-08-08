@@ -5,14 +5,14 @@ import { NotificationPreferenceMatrixDto } from '../types/notification-matrix.ty
 import { UpdateNotificationPreferencePayload } from '../types/notification-preference.types';
 
 /**
- * Ghi công tắc kênh toàn cục — `PUT /api/notification-preferences`.
+ * Writes the global channel toggle — `PUT /api/notification-preferences`.
  *
- * GH-83: hook này **chỉ còn mutation**. Bản trước bọc kèm một `useQuery` đọc
- * `GET /api/notification-preferences`; sau khi màn cài đặt chuyển sang đọc `GET /matrix`
- * (trả cả `channels` lẫn `categories`), cái query đó không ai đọc nữa nhưng **vẫn bắn request**
- * mỗi lần mount vì chỉ cần gọi hook là `useQuery` chạy → màn hình tốn 2 request thay vì 1.
+ * GH-83: this hook now **only holds the mutation**. The previous version also wrapped a `useQuery` reading
+ * `GET /api/notification-preferences`; after the settings screen switched to reading `GET /matrix`
+ * (which returns both `channels` and `categories`), that query was no longer read by anyone but **still fired
+ * a request** on every mount, since calling the hook alone runs `useQuery` → the screen cost 2 requests instead of 1.
  *
- * Ghi thì vẫn phải qua endpoint này: `PUT /matrix` chỉ nhận `items` (dòng nhóm), không đụng `channels`.
+ * Writes still have to go through this endpoint: `PUT /matrix` only accepts `items` (category rows), it doesn't touch `channels`.
  */
 export function useUpdateNotificationPreference() {
   const queryClient = useQueryClient();
@@ -24,8 +24,8 @@ export function useUpdateNotificationPreference() {
       const dto = res.data.data;
       if (!dto) return;
 
-      // PUT trả full DTO → vá thẳng nhánh `channels` của cache matrix, khỏi refetch.
-      // Không vá thì UI hiện giá trị cũ tới khi cache hết hạn, dù BE đã lưu đúng.
+      // PUT returns the full DTO → patch the `channels` branch of the matrix cache directly, skipping a refetch.
+      // Without patching, the UI would show the old value until the cache expires, even though BE saved it correctly.
       queryClient.setQueryData<NotificationPreferenceMatrixDto>(
         QUERY_KEY.notificationPreferences.matrix(),
         (prev) => (prev ? { ...prev, channels: dto } : prev),

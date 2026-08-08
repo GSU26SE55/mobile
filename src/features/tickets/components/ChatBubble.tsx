@@ -13,8 +13,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Shadow } from '@/src/lib/theme';
 import { BottomSheet } from '@/src/shared/components/BottomSheet';
-// Ảnh đính kèm render qua AuthImage (tự gắn header auth) thay vì ghép URL thủ công
-// từ BASE_URL + ENDPOINTS như bản cũ — nên hai import đó không còn cần ở đây.
+// Attachment images render via AuthImage (auto-attaches the auth header) instead of
+// manually building the URL from BASE_URL + ENDPOINTS like before — so those two imports
+// are no longer needed here.
 import { AuthImage } from '@/src/features/file-storage/components/AuthImage';
 import { ReactionTypeEnum, TicketCommentDTO } from '../types/ticket.types';
 import { VoiceMessageBubble } from './VoiceMessageBubble';
@@ -30,25 +31,21 @@ const ROLE_AVATAR: Record<string, { icon: keyof typeof Ionicons.glyphMap; iconCo
 };
 
 const ROLE_FALLBACK_NAME: Record<string, string> = {
-  System: 'Hệ thống',
-  Customer: 'Khách hàng',
+  System: 'System',
+  Customer: 'Customer',
   Manager: 'Manager',
-  Staff: 'Nhân viên',
+  Staff: 'Staff',
 };
 
 const LANGUAGE_OPTIONS = [
-  { code: 'vi', label: 'Tiếng Việt' },
+  { code: 'vi', label: 'Vietnamese' },
   { code: 'en', label: 'English' },
-  { code: 'fr', label: 'Français' },
-  { code: 'zh', label: '中文' },
-  { code: 'ja', label: '日本語' },
-  { code: 'ko', label: '한국어' },
 ] as const;
 const LANGUAGE_LABEL: Record<string, string> = Object.fromEntries(
   LANGUAGE_OPTIONS.map((l) => [l.code, l.label]),
 );
 
-// Kích thước mosaic ảnh trong bubble — khớp với marginHorizontal âm để ảnh tràn sát viền bubble.
+// Image mosaic size inside the bubble — matches the negative marginHorizontal so images bleed to the bubble edge.
 const GRID_W = 220;
 const GRID_GAP = 2;
 const GRID_HALF = (GRID_W - GRID_GAP) / 2;
@@ -81,7 +78,7 @@ interface ChatImageGridProps {
   onImagePress?: (fileId: string) => void;
 }
 
-/** Mosaic ảnh kiểu Messenger — 1 ảnh lớn / 2 ảnh đôi / 3 ảnh (2 trên-1 dưới) / 4+ ảnh lưới 2x2 + overlay "+N". */
+/** Messenger-style image mosaic — 1 large image / 2 side-by-side / 3 (2 top-1 bottom) / 4+ 2x2 grid + "+N" overlay. */
 function ChatImageGrid({ fileIds, onImagePress }: ChatImageGridProps) {
   const images = fileIds.map((fileId, index) => ({
     fileId: fileId ?? '',
@@ -136,7 +133,7 @@ function ChatImageGrid({ fileIds, onImagePress }: ChatImageGridProps) {
     );
   }
 
-  // 4 ảnh trở lên — lưới 2x2, ảnh thứ 4 overlay "+N" nếu còn ảnh ẩn.
+  // 4 or more images — 2x2 grid, 4th image overlays "+N" if there are more hidden images.
   const extra = count - 4;
   return (
     <View style={styles.gridCol}>
@@ -198,8 +195,9 @@ const MENU_ROW_HEIGHT = 42;
 const SCREEN_MARGIN = 10;
 
 /**
- * Menu Sửa/Dịch/Xóa mở khi long-press bubble — popup nổi neo tại vị trí nhấn
- * (kiểu Messenger/Zalo) thay vì bottom sheet trượt từ đáy màn hình lên.
+ * Edit/Translate/Delete menu opened on bubble long-press — a floating popup anchored at
+ * the tap position (Messenger/Zalo style) instead of a bottom sheet sliding up from the
+ * bottom of the screen.
  */
 function ChatActionMenu({
   visible,
@@ -238,7 +236,7 @@ function ChatActionMenu({
   const popupHeight = rowCount * MENU_ROW_HEIGHT + 12;
   const { width: screenW, height: screenH } = Dimensions.get('window');
 
-  // Ưu tiên hiện phía TRÊN điểm nhấn (giống Messenger); nếu không đủ chỗ thì hiện phía dưới.
+  // Prefer showing ABOVE the tap point (like Messenger); if there's not enough room, show below.
   const top =
     anchor.y - popupHeight - 12 >= SCREEN_MARGIN
       ? anchor.y - popupHeight - 12
@@ -253,7 +251,7 @@ function ChatActionMenu({
       <Pressable style={StyleSheet.absoluteFill} onPress={handleClose}>
         <View
           style={[styles.popup, Shadow, { top, left, width: POPUP_WIDTH }]}
-          // Chặn tap bên trong popup lan ra Pressable nền (đóng menu) phía sau.
+          // Block taps inside the popup from propagating to the background Pressable (closes the menu).
           onStartShouldSetResponder={() => true}
         >
           {!showLangs ? (
@@ -261,44 +259,44 @@ function ChatActionMenu({
               {canEdit && (
                 <Pressable style={styles.menuItem} onPress={() => { handleClose(); onEdit(); }}>
                   <Ionicons name="create-outline" size={18} color={Colors.text} />
-                  <Text style={styles.menuItemText}>Sửa</Text>
+                  <Text style={styles.menuItemText}>Edit</Text>
                 </Pressable>
               )}
               {canPin && (
                 <Pressable style={styles.menuItem} onPress={() => { handleClose(); onTogglePin(); }} disabled={pinning}>
                   <Ionicons name={isPinned ? 'bookmark' : 'bookmark-outline'} size={18} color={Colors.primaryDark} />
-                  <Text style={styles.menuItemText}>{isPinned ? 'Bỏ ghim' : 'Ghim'}</Text>
+                  <Text style={styles.menuItemText}>{isPinned ? 'Unpin' : 'Pin'}</Text>
                 </Pressable>
               )}
               {canShowReaders && (
                 <Pressable style={styles.menuItem} onPress={() => { handleClose(); onShowReaders(); }}>
                   <Ionicons name="checkmark-done-outline" size={18} color={Colors.text} />
-                  <Text style={styles.menuItemText}>Đã đọc bởi</Text>
+                  <Text style={styles.menuItemText}>Read by</Text>
                 </Pressable>
               )}
               {canDownload && (
                 <Pressable style={styles.menuItem} onPress={() => { handleClose(); onDownload(); }}>
                   <Ionicons name="download-outline" size={18} color={Colors.text} />
-                  <Text style={styles.menuItemText}>Tải tệp đính kèm</Text>
+                  <Text style={styles.menuItemText}>Download attachment</Text>
                 </Pressable>
               )}
               {canTranslate && (
                 <Pressable style={styles.menuItem} onPress={() => setShowLangs(true)} disabled={translating}>
                   <Ionicons name="language-outline" size={18} color={Colors.text} />
-                  <Text style={styles.menuItemText}>{translating ? 'Đang dịch...' : 'Dịch sang'}</Text>
+                  <Text style={styles.menuItemText}>{translating ? 'Translating...' : 'Translate to'}</Text>
                   <Ionicons name="chevron-forward" size={14} color={Colors.textFaint} style={styles.menuItemChevron} />
                 </Pressable>
               )}
               {canDelete && (
                 <Pressable style={styles.menuItem} onPress={() => { handleClose(); onDeleteRequest(); }}>
                   <Ionicons name="trash-outline" size={18} color={Colors.danger} />
-                  <Text style={[styles.menuItemText, { color: Colors.danger }]}>Xóa</Text>
+                  <Text style={[styles.menuItemText, { color: Colors.danger }]}>Delete</Text>
                 </Pressable>
               )}
               {canSelectMany && (
                 <Pressable style={styles.menuItem} onPress={() => { handleClose(); onRequestSelectMode(); }}>
                   <Ionicons name="checkmark-circle-outline" size={18} color={Colors.text} />
-                  <Text style={styles.menuItemText}>Chọn nhiều</Text>
+                  <Text style={styles.menuItemText}>Select multiple</Text>
                 </Pressable>
               )}
             </>
@@ -306,7 +304,7 @@ function ChatActionMenu({
             <>
               <Pressable style={styles.menuItem} onPress={() => setShowLangs(false)}>
                 <Ionicons name="chevron-back" size={18} color={Colors.text} />
-                <Text style={styles.menuItemText}>Quay lại</Text>
+                <Text style={styles.menuItemText}>Back</Text>
               </Pressable>
               {LANGUAGE_OPTIONS.map((l) => (
                 <Pressable key={l.code} style={styles.menuItem} onPress={() => { handleClose(); onTranslate(l.code); }}>
@@ -326,13 +324,13 @@ export interface ChatBubbleProps {
   isMe: boolean;
   imageHeaders?: { Authorization: string };
   onImagePress?: (fileId: string) => void;
-  /** Màu nền bubble của mình — mỗi app (customer/staff) giữ màu thương hiệu riêng. */
+  /** Background color for my own bubble — each app (customer/staff) keeps its own brand color. */
   accentColor?: string;
 
-  // Sửa/Xóa/Dịch — mặc định tắt (Customer screen không truyền → giữ nguyên hành vi cũ).
+  // Edit/Delete/Translate — off by default (Customer screen doesn't pass these → keeps old behavior).
   canEdit?: boolean;
   canDelete?: boolean;
-  /** Hiện mục "Chọn nhiều" trong menu — chỉ bật cho tin của chính mình. */
+  /** Shows "Select multiple" in the menu — only enabled for my own messages. */
   canSelectMany?: boolean;
   onRequestSelectMode?: () => void;
   editNeedsReason?: boolean;
@@ -348,21 +346,21 @@ export interface ChatBubbleProps {
   showingOriginal?: boolean;
   onToggleOriginal?: () => void;
 
-  // GH-67 — Ghim (Staff/Manager/Admin). Customer screen không truyền → tắt.
+  // GH-67 — Pin (Staff/Manager/Admin). Customer screen doesn't pass this → off.
   canPin?: boolean;
   canShowReaders?: boolean;
   pinning?: boolean;
   onTogglePin?: () => void;
   onShowReaders?: () => void;
 
-  // GH-68 — Reactions + download attachment. Mọi role.
+  // GH-68 — Reactions + download attachment. All roles.
   currentUserId?: string | null;
   onToggleReaction?: (type: ReactionTypeEnum, isActive: boolean) => void;
-  /** Tải toàn bộ attachment của chat (fileIds) qua virus-scan gate. */
+  /** Downloads all of the chat's attachments (fileIds) through the virus-scan gate. */
   onDownloadAttachments?: (fileIds: string[]) => void;
 }
 
-/** Bong bóng chat dùng chung customer + staff — tin của mình bên phải, người khác bên trái kèm avatar theo role. */
+/** Chat bubble shared by customer + staff — my own messages on the right, others on the left with a role-based avatar. */
 export function ChatBubble({
   comment,
   isMe,
@@ -398,23 +396,24 @@ export function ChatBubble({
   const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
   const [editing, setEditing] = useState(false);
   const [editBody, setEditBody] = useState(comment.body);
-  // GH-83 — retry transcribe cho chat voice Failed. Đặt ở đây vì `comment` đã có sẵn `ticketId`,
-  // khỏi phải luồn thêm prop qua mọi màn đang render ChatBubble.
+  // GH-83 — retry transcription for a Failed voice chat. Placed here because `comment` already
+  // has `ticketId` available, avoiding threading an extra prop through every screen rendering ChatBubble.
   const retryVoice = useRetryVoiceChat(comment.ticketId);
   const [editReason, setEditReason] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
 
-  // Lọc bỏ entry không phải GUID (URL rác/legacy) — chính là nguyên nhân 404 khi ghép
-  // /api/files/{fullUrl}/download. Chỉ giữ fileId hợp lệ để tải file.
+  // Filter out entries that aren't a GUID (junk/legacy URLs) — the exact cause of 404s when
+  // building /api/files/{fullUrl}/download. Only keep valid fileIds to download the file.
   const fileIds = (comment.attachmentFileIds ?? []).filter(isFileId);
   const body = comment.body?.trim();
   const hasBody = !!body;
-  // Voice message (BE tạo từ /chats/voice): 1 attachment audio + transcript trong body.
-  // Luồng transcribe async: chat Pending/Processing/Failed có body RỖNG nhưng vẫn phải render
-  // như voice bubble (để hiện trạng thái + nút thử lại) → nhận diện qua voiceTranscriptionStatus
-  // HOẶC (có body + đúng 1 attachment). Hook hỏi metadata để chốt contentType audio khi chưa
-  // có status. Gọi TRƯỚC mọi early return để không vi phạm Rules of Hooks.
+  // Voice message (BE creates it from /chats/voice): 1 audio attachment + transcript in the body.
+  // Async transcription flow: a Pending/Processing/Failed chat has an EMPTY body but still must
+  // render as a voice bubble (to show the status + retry button) → detected via
+  // voiceTranscriptionStatus OR (has body + exactly 1 attachment). The hook queries metadata to
+  // pin down the audio contentType when there's no status yet. Called BEFORE any early return to
+  // not violate the Rules of Hooks.
   const voiceStatus = comment.voiceTranscriptionStatus ?? null;
   const voiceCandidateId =
     fileIds.length === 1 && (voiceStatus !== null || hasBody) ? fileIds[0] : undefined;
@@ -431,9 +430,9 @@ export function ChatBubble({
 
   const avatar = ROLE_AVATAR[comment.authorRole] ?? ROLE_AVATAR.Staff;
   const displayName = isMe
-    ? 'Bạn'
+    ? 'You'
     : comment.authorDisplayName ?? ROLE_FALLBACK_NAME[comment.authorRole] ?? comment.authorRole;
-  // Tin trống (chỉ khoảng trắng) và không có ảnh — không render bubble rỗng gây dư khoảng trắng.
+  // Empty message (whitespace only) and no image — don't render an empty bubble that adds extra whitespace.
   if (!body && fileIds.length === 0) return null;
 
   const canDownload = !!onDownloadAttachments && fileIds.length > 0;
@@ -475,20 +474,20 @@ export function ChatBubble({
       {comment.isInternal && (
         <View style={styles.internalBadge}>
           <Ionicons name="lock-closed" size={9} color={Colors.warningDark} />
-          <Text style={styles.internalBadgeText}>Nội bộ</Text>
+          <Text style={styles.internalBadgeText}>Internal</Text>
         </View>
       )}
       {comment.isPinned && (
         <View style={styles.pinnedBadge}>
           <Ionicons name="bookmark" size={9} color={Colors.primaryDark} />
-          <Text style={styles.pinnedBadgeText}>Đã ghim</Text>
+          <Text style={styles.pinnedBadgeText}>Pinned</Text>
         </View>
       )}
     </View>
   ) : null;
 
-  // Có cả caption và ảnh — tách thành 2 bubble riêng xếp chồng (giống 2 tin nhắn liên tiếp
-  // trên Messenger), không bọc chung 1 khối để tránh nhìn rối.
+  // Has both a caption and images — split into 2 stacked bubbles (like 2 consecutive messages
+  // on Messenger) instead of wrapping them in one block, to avoid a cluttered look.
   return (
     <View>
       {hasBody && showTime && <Text style={styles.timeOutside}>{time}</Text>}
@@ -531,20 +530,20 @@ export function ChatBubble({
                     style={styles.editReasonInput}
                     value={editReason}
                     onChangeText={setEditReason}
-                    placeholder="Lý do chỉnh sửa (bắt buộc)..."
+                    placeholder="Edit reason (required)..."
                     placeholderTextColor={Colors.textFaint}
                   />
                 )}
                 <View style={styles.editActions}>
                   <Pressable style={styles.editCancelBtn} onPress={() => setEditing(false)}>
-                    <Text style={styles.editCancelText}>Hủy</Text>
+                    <Text style={styles.editCancelText}>Cancel</Text>
                   </Pressable>
                   <Pressable
                     style={[styles.editSaveBtn, (editPending || !editBody.trim() || (editNeedsReason && !editReason.trim())) && styles.btnDisabled]}
                     onPress={saveEdit}
                     disabled={editPending || !editBody.trim() || (editNeedsReason && !editReason.trim())}
                   >
-                    {editPending ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.editSaveText}>Lưu</Text>}
+                    {editPending ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.editSaveText}>Save</Text>}
                   </Pressable>
                 </View>
               </View>
@@ -580,14 +579,14 @@ export function ChatBubble({
             <Pressable onPress={onToggleOriginal} hitSlop={6}>
               <Text style={styles.translateToggle}>
                 {showingOriginal
-                  ? `Xem bản dịch (${LANGUAGE_LABEL[translation.lang] ?? translation.lang})`
-                  : 'Xem bản gốc'}
+                  ? `View translation (${LANGUAGE_LABEL[translation.lang] ?? translation.lang})`
+                  : 'View original'}
               </Text>
             </Pressable>
           )}
 
           {!!comment.editCount && comment.editCount > 0 && !editing && (
-            <Text style={styles.editedTag}>đã chỉnh sửa</Text>
+            <Text style={styles.editedTag}>edited</Text>
           )}
 
           {onToggleReaction && !editing && (
@@ -626,27 +625,27 @@ export function ChatBubble({
 
       <BottomSheet visible={confirmingDelete} onClose={() => setConfirmingDelete(false)} scroll={false}>
         <View style={styles.menuBody}>
-          <Text style={styles.deleteTitle}>Xóa bình luận?</Text>
-          <Text style={styles.deleteDesc}>Hành động này không thể hoàn tác.</Text>
+          <Text style={styles.deleteTitle}>Delete comment?</Text>
+          <Text style={styles.deleteDesc}>This action cannot be undone.</Text>
           {deleteNeedsReason && (
             <TextInput
               style={styles.editReasonInput}
               value={deleteReason}
               onChangeText={setDeleteReason}
-              placeholder="Lý do xóa (bắt buộc)..."
+              placeholder="Delete reason (required)..."
               placeholderTextColor={Colors.textFaint}
             />
           )}
           <View style={styles.editActions}>
             <Pressable style={styles.editCancelBtn} onPress={() => setConfirmingDelete(false)}>
-              <Text style={styles.editCancelText}>Hủy</Text>
+              <Text style={styles.editCancelText}>Cancel</Text>
             </Pressable>
             <Pressable
               style={[styles.editSaveBtn, styles.deleteBtn, (deletePending || (deleteNeedsReason && !deleteReason.trim())) && styles.btnDisabled]}
               onPress={confirmDelete}
               disabled={deletePending || (deleteNeedsReason && !deleteReason.trim())}
             >
-              {deletePending ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.editSaveText}>Xóa</Text>}
+              {deletePending ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.editSaveText}>Delete</Text>}
             </Pressable>
           </View>
         </View>
@@ -671,12 +670,12 @@ const styles = StyleSheet.create({
   bubbleHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 },
   bubbleName: { fontSize: 11, fontWeight: '700', color: Colors.textMute },
   bubbleText: { fontSize: 13.5, fontWeight: '500', color: Colors.text, lineHeight: 19 },
-  // Nền bong bóng của mình là vàng #FFD500 — chữ trắng chỉ ~1.4:1 contrast,
-  // gần như chìm vào nền. Dùng ink đậm cho nổi (~11:1).
+  // My own bubble's background is yellow #FFD500 — white text is only ~1.4:1 contrast,
+  // nearly sinking into the background. Use dark ink instead for legibility (~11:1).
   bubbleTextMe: { color: Colors.text },
-  // Là sibling đứng TRƯỚC `row` (không nằm trong bubbleStack) ⇒ rộng full màn hình, hiện
-  // phía trên đầu bong bóng, textAlign center kéo giờ ra giữa toàn bộ chat — không lệch
-  // theo phía isMe của bong bóng.
+  // A sibling positioned BEFORE `row` (not inside bubbleStack) ⇒ spans the full screen width,
+  // appears above the bubble, and textAlign center pulls the time to the middle of the whole
+  // chat — not offset toward the bubble's isMe side.
   timeOutside: { fontSize: 11, color: Colors.textMute, marginBottom: 4, textAlign: 'center' },
 
   internalBadge: {
@@ -693,8 +692,9 @@ const styles = StyleSheet.create({
   },
   pinnedBadgeText: { fontSize: 9, fontWeight: '700', color: Colors.primaryDark },
 
-  // Tràn ảnh ra sát viền ngang bubble (huỷ padding ngang của bubble) — `overflow:hidden` trên
-  // bubble tự bo góc ảnh theo borderRadius của bubble, không cần set radius riêng cho ảnh.
+  // Bleed images to the bubble's horizontal edge (cancels the bubble's horizontal padding) —
+  // `overflow:hidden` on the bubble auto-rounds the image corners to the bubble's borderRadius,
+  // so no need to set a separate radius for the image.
   mediaWrap: { marginHorizontal: -BUBBLE_PAD_X, position: 'relative' },
   mediaWrapBleedBottom: { marginBottom: -BUBBLE_PAD_Y },
 

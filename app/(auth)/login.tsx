@@ -34,7 +34,7 @@ export default function LoginScreen() {
         {/* Divider */}
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>hoặc</Text>
+          <Text style={styles.dividerText}>or</Text>
           <View style={styles.dividerLine} />
         </View>
 
@@ -46,14 +46,14 @@ export default function LoginScreen() {
         {/* Footer links */}
         <View style={styles.footer}>
           <View style={styles.registerRow}>
-            <Text style={styles.registerText}>Chưa có tài khoản? </Text>
+            <Text style={styles.registerText}>Don't have an account? </Text>
             <Link href="/(auth)/register" style={styles.registerLink}>
-              Đăng ký ngay
+              Sign Up Now
             </Link>
           </View>
 
           <Link href="/(auth)/reactivate" style={styles.reactivateLink}>
-            Khôi phục tài khoản đã xóa
+            Restore a Deleted Account
           </Link>
         </View>
       </ScrollView>

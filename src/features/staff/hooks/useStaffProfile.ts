@@ -16,7 +16,7 @@ export function useStaffProfile() {
         email:                account.email,
         phone:                account.phoneNumber,
         department:           account.staffProfile?.department ?? null,
-        // TODO(BE): getProfile() chưa cấp skillTier & currentTicketCount → null (UI ẩn, không hiển thị giá trị giả).
+        // TODO(BE): getProfile() doesn't yet provide skillTier & currentTicketCount → null (UI hides it instead of showing a fake value).
         skillTier:            null,
         maxConcurrentTickets: account.staffProfile?.maxConcurrentTickets ?? 5,
         currentTicketCount:   null,

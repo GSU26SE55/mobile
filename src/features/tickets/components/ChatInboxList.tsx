@@ -13,20 +13,20 @@ interface Props {
 }
 
 const ROLE_LABEL: Record<string, string> = {
-  System: 'Hệ thống',
-  Customer: 'Khách hàng',
+  System: 'System',
+  Customer: 'Customer',
   Manager: 'Manager',
-  Staff: 'Nhân viên',
+  Staff: 'Staff',
 };
 
-// GH-68 — inbox chat của tôi (FLAT, BE không group). Tap → mở ticket chứa chat.
+// GH-68 — my chat inbox (FLAT, BE doesn't group). Tap → opens the ticket containing the chat.
 export function ChatInboxList({
   chats,
   isLoading,
   onRefresh,
   refreshing,
   onPressChat,
-  emptyText = 'Chưa có tin nhắn nào.',
+  emptyText = 'No messages yet.',
 }: Props) {
   return (
     <FlatList
@@ -48,7 +48,7 @@ export function ChatInboxList({
               {item.authorDisplayName ?? ROLE_LABEL[item.authorRole] ?? item.authorRole}
             </Text>
             <Text style={styles.snippet} numberOfLines={1}>
-              {item.body?.trim() || '(không có nội dung)'}
+              {item.body?.trim() || '(no content)'}
             </Text>
           </View>
           <Text style={styles.time}>

@@ -34,13 +34,13 @@ function avatarInitials(id: string): string {
 }
 
 function displayName(id: string): string {
-  return 'Khách ' + (id.split('-')[0] ?? id.substring(0, 8)).toUpperCase();
+  return 'Customer ' + (id.split('-')[0] ?? id.substring(0, 8)).toUpperCase();
 }
 
 function timeAgo(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 60_000) return 'vừa xong';
-  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}p`;
+  if (ms < 60_000) return 'just now';
+  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m`;
   if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h`;
   return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
 }
@@ -95,14 +95,14 @@ export default function CustomersScreen() {
 function CustomersScreenInner() {
   const { data, isLoading, isError, isRefetching, refetch } = useStaffTickets({ PageSize: 100 });
   const groups = useMemo(() => groupByCustomer(data?.items ?? []), [data]);
-  // Unread lấy 1 call riêng — lỗi/chậm ở đây không chặn danh sách khách hàng.
+  // Unread count comes from a separate call — errors/latency here don't block the customer list.
   const { data: unreadMap } = useUnreadByCustomer();
 
   return (
     <View style={styles.root}>
       <StaffHeader
-        title="Khách hàng"
-        subtitle={!isLoading && !isError ? `${groups.length} cuộc trò chuyện` : undefined}
+        title="Customers"
+        subtitle={!isLoading && !isError ? `${groups.length} conversations` : undefined}
       />
 
       {isLoading ? (
@@ -112,9 +112,9 @@ function CustomersScreenInner() {
       ) : isError ? (
         <View style={styles.center}>
           <Ionicons name="alert-circle-outline" size={40} color={Solar.faint} />
-          <Text style={styles.errMsg}>Không thể tải dữ liệu</Text>
+          <Text style={styles.errMsg}>Unable to load data</Text>
           <Pressable style={styles.retryBtn} onPress={() => refetch()}>
-            <Text style={styles.retryText}>Thử lại</Text>
+            <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
       ) : (
@@ -136,7 +136,7 @@ function CustomersScreenInner() {
           ListEmptyComponent={
             <View style={styles.center}>
               <Ionicons name="people-outline" size={48} color={Solar.faint} />
-              <Text style={styles.errMsg}>Chưa có khách hàng nào</Text>
+              <Text style={styles.errMsg}>No customers yet</Text>
             </View>
           }
         />
@@ -161,8 +161,8 @@ function CustomerRow({ group, unread }: { group: CustomerGroup; unread: number }
     >
       <View style={[styles.avatar, { backgroundColor: color }]}>
         <Text style={styles.avatarText}>{avatarInitials(group.customerId)}</Text>
-        {/* Badge đỏ = SỐ TIN NHẮN chưa đọc (đã gồm tin có @mention tới mình).
-            Khác với pill vàng bên dưới — đó là số ticket đang xử lý. */}
+        {/* Red badge = number of UNREAD MESSAGES (already includes messages that @mention me).
+            Different from the yellow pill below — that one is the count of open tickets. */}
         {unread > 0 && (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{unread > 99 ? '99+' : unread}</Text>
@@ -181,7 +181,7 @@ function CustomerRow({ group, unread }: { group: CustomerGroup; unread: number }
           <Text style={styles.preview} numberOfLines={1}>
             {group.lastTicket.title}
           </Text>
-          {/* Pill vàng = số ticket đang xử lý của khách này. */}
+          {/* Yellow pill = number of open tickets for this customer. */}
           <View style={styles.countPill}>
             <Text style={styles.countText}>{group.openCount}</Text>
           </View>

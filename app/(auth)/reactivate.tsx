@@ -45,7 +45,7 @@ export default function ReactivateScreen() {
     setError(null);
     const parsed = reactivateRequestSchema.safeParse({ email });
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? 'Email không hợp lệ');
+      setError(parsed.error.issues[0]?.message ?? 'Invalid email');
       return;
     }
     request.mutate(parsed.data, {
@@ -58,13 +58,13 @@ export default function ReactivateScreen() {
     setError(null);
     const parsed = reactivateVerifySchema.safeParse({ email, otp });
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? 'OTP không hợp lệ');
+      setError(parsed.error.issues[0]?.message ?? 'Invalid OTP');
       return;
     }
     verify.mutate(parsed.data, {
       onSuccess: () => {
-        Alert.alert('Khôi phục thành công', 'Tài khoản đã được khôi phục. Vui lòng đăng nhập lại.', [
-          { text: 'Đăng nhập', onPress: () => router.replace('/(auth)/login') },
+        Alert.alert('Recovery successful', 'Your account has been recovered. Please sign in again.', [
+          { text: 'Sign in', onPress: () => router.replace('/(auth)/login') },
         ]);
       },
       onError: (err) => handleErrorApi({ error: err }),
@@ -75,7 +75,7 @@ export default function ReactivateScreen() {
     otpInputRef.current?.focus();
   };
 
-  // Back nội bộ step: ở step 2 (nhập OTP) thì lùi về step 1 giữ email, chỉ thoát màn khi ở step 1.
+  // Internal step back: at step 2 (OTP entry), go back to step 1 keeping the email; only exit the screen at step 1.
   const handleBack = () => {
     if (step > 1) {
       setStep(1);
@@ -93,7 +93,7 @@ export default function ReactivateScreen() {
         onPress={handleBack}
         style={[styles.backBtn, { top: insets.top + 16 }]}
         accessibilityRole="button"
-        accessibilityLabel="Quay lại"
+        accessibilityLabel="Go back"
       >
         <Ionicons name="chevron-back" size={20} color="#1A1A1C" />
       </Pressable>
@@ -104,13 +104,13 @@ export default function ReactivateScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Khôi phục tài khoản</Text>
+          <Text style={styles.title}>Recover account</Text>
           <Text style={styles.subtitle}>
             {step === 1 ? (
-              'Nhập email của tài khoản đã xóa (trong vòng 90 ngày) để nhận mã khôi phục.'
+              'Enter the email of the deleted account (within 90 days) to receive a recovery code.'
             ) : (
               <>
-                Mã OTP đã gửi đến <Text style={styles.emailHighlight}>{email}</Text>
+                OTP sent to <Text style={styles.emailHighlight}>{email}</Text>
               </>
             )}
           </Text>
@@ -119,7 +119,7 @@ export default function ReactivateScreen() {
         <View style={styles.formSection}>
           {step === 1 ? (
             <View style={styles.formFields}>
-              <Text style={styles.label}>Email tài khoản</Text>
+              <Text style={styles.label}>Account email</Text>
               <View style={[
                 styles.inputRow,
                 emailFocused && styles.inputRowFocused,
@@ -155,7 +155,7 @@ export default function ReactivateScreen() {
                 {request.isPending ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.submitText}>Gửi mã khôi phục</Text>
+                  <Text style={styles.submitText}>Send recovery code</Text>
                 )}
               </Pressable>
             </View>
@@ -204,12 +204,12 @@ export default function ReactivateScreen() {
                 {verify.isPending ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.submitText}>Khôi phục tài khoản</Text>
+                  <Text style={styles.submitText}>Recover account</Text>
                 )}
               </Pressable>
 
               <Pressable onPress={() => { setStep(1); setOtp(''); setError(null); }} style={styles.toggleBtn}>
-                <Text style={styles.toggleText}>Đổi email khác</Text>
+                <Text style={styles.toggleText}>Use a different email</Text>
               </Pressable>
             </View>
           )}

@@ -10,16 +10,16 @@ const CHARGING_META: Record<
   ChargingStateEnum,
   { label: string; color: string; icon: keyof typeof Ionicons.glyphMap }
 > = {
-  [ChargingStateEnum.Idle]: { label: 'Nghỉ', color: Colors.gray, icon: 'pause-circle-outline' },
-  [ChargingStateEnum.Charging]: { label: 'Đang sạc', color: Colors.primary, icon: 'flash' },
-  [ChargingStateEnum.Discharging]: { label: 'Đang xả', color: Colors.info, icon: 'battery-charging-outline' },
+  [ChargingStateEnum.Idle]: { label: 'Idle', color: Colors.gray, icon: 'pause-circle-outline' },
+  [ChargingStateEnum.Charging]: { label: 'Charging', color: Colors.primary, icon: 'flash' },
+  [ChargingStateEnum.Discharging]: { label: 'Discharging', color: Colors.info, icon: 'battery-charging-outline' },
   [ChargingStateEnum.Float]: { label: 'Float', color: Colors.info, icon: 'water-outline' },
   [ChargingStateEnum.Bypass]: { label: 'Bypass', color: Colors.info, icon: 'git-branch-outline' },
 };
 
 function socColor(soc: number | null): string {
   if (soc == null) return Colors.gray;
-  // Accent trang trí: SOC còn dùng được → xanh lá; chỉ khi cạn (<20%) mới đỏ.
+  // Decorative accent: SOC still usable → green; only red when depleted (<20%).
   if (soc >= 20) return Colors.primary;
   return Colors.danger;
 }
@@ -31,8 +31,8 @@ function fmt(v: number | null, unit: string, digits = 1): string {
 
 export function BatteryRealtimeCard({ data }: { data: BatteryAssetRealtimeDto }) {
   const updatedAt = data.time
-    ? new Date(data.time).toLocaleString('vi-VN')
-    : 'Chưa có dữ liệu';
+    ? new Date(data.time).toLocaleString('en-US')
+    : 'No data yet';
   const charging =
     data.chargingState != null ? CHARGING_META[data.chargingState] : undefined;
 
@@ -41,17 +41,17 @@ export function BatteryRealtimeCard({ data }: { data: BatteryAssetRealtimeDto })
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <View style={styles.liveDot} />
-          <Text style={styles.title}>Thông số realtime</Text>
+          <Text style={styles.title}>Realtime metrics</Text>
         </View>
         {data.activeAlerts > 0 ? (
           <View style={styles.alertPill}>
             <Ionicons name="warning" size={12} color={Colors.danger} />
-            <Text style={styles.alertText}>{data.activeAlerts} cảnh báo</Text>
+            <Text style={styles.alertText}>{data.activeAlerts} alerts</Text>
           </View>
         ) : null}
       </View>
 
-      {/* Hero: vòng SOC + trạng thái sạc */}
+      {/* Hero: SOC ring + charging status */}
       <View style={styles.hero}>
         <RingStat
           percent={data.socPercent ?? 0}
@@ -69,11 +69,11 @@ export function BatteryRealtimeCard({ data }: { data: BatteryAssetRealtimeDto })
         ) : null}
       </View>
 
-      {/* Tiles thông số */}
+      {/* Metric tiles */}
       <View style={styles.grid}>
-        <Tile icon="flash-outline" label="Điện áp" value={fmt(data.voltage, ' V', 2)} />
-        <Tile icon="swap-vertical-outline" label="Dòng điện" value={fmt(data.current, ' A', 2)} />
-        <Tile icon="thermometer-outline" label="Nhiệt độ" value={fmt(data.temperature, ' °C')} />
+        <Tile icon="flash-outline" label="Voltage" value={fmt(data.voltage, ' V', 2)} />
+        <Tile icon="swap-vertical-outline" label="Current" value={fmt(data.current, ' A', 2)} />
+        <Tile icon="thermometer-outline" label="Temperature" value={fmt(data.temperature, ' °C')} />
         <Tile icon="pulse-outline" label="SOH" value={fmt(data.sohPercent, ' %', 0)} />
       </View>
 
@@ -81,10 +81,10 @@ export function BatteryRealtimeCard({ data }: { data: BatteryAssetRealtimeDto })
         <View style={styles.footerItem}>
           <Ionicons name="repeat-outline" size={13} color={Colors.textMute} />
           <Text style={styles.footerText}>
-            {data.cycleCount != null ? `${data.cycleCount} chu kỳ` : '— chu kỳ'}
+            {data.cycleCount != null ? `${data.cycleCount} cycles` : '— cycles'}
           </Text>
         </View>
-        <Text style={styles.updatedAt}>Cập nhật {updatedAt}</Text>
+        <Text style={styles.updatedAt}>Updated {updatedAt}</Text>
       </View>
     </View>
   );

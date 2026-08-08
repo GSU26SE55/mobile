@@ -5,9 +5,9 @@ import { FilePurposeEnum } from '../enums/file-storage.enum';
 import type { FileUploadResponse, UploadFilePayload } from '../types/file-storage.types';
 
 /**
- * Upload 1 file lên FileStorageService.
- * Validate size (≤20MB nếu biết bytes) + extension whitelist theo purpose ở client trước khi gọi API.
- * Trả về FileUploadResponse; throw Error nếu validate fail hoặc BE trả isSuccess=false.
+ * Upload a single file to FileStorageService.
+ * Validates size (≤20MB if bytes are known) + extension whitelist per purpose on the client before calling the API.
+ * Returns FileUploadResponse; throws Error if validation fails or the BE returns isSuccess=false.
  */
 export function useUploadFile() {
   return useMutation({
@@ -15,13 +15,13 @@ export function useUploadFile() {
       const purpose = payload.purpose ?? FilePurposeEnum.Other;
       const check = validateFile(payload.name, payload.size, purpose);
       if (!check.valid) {
-        throw new Error(check.message ?? 'File không hợp lệ');
+        throw new Error(check.message ?? 'Invalid file');
       }
 
       const res = await fileStorageService.uploadFile(payload);
       const data = res.data.data;
       if (!res.data.isSuccess || !data) {
-        throw new Error(res.data.message ?? 'Upload thất bại');
+        throw new Error(res.data.message ?? 'Upload failed');
       }
       return data;
     },

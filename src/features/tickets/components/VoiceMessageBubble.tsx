@@ -144,7 +144,7 @@ export function VoiceMessageBubble({
         <View style={styles.failedRow}>
           <Ionicons name="ellipsis-horizontal" size={13} color={timeColor} />
           <Text style={[styles.processingText, { color: timeColor }]}>
-            Đang chuyển lời thoại thành văn bản…
+            Transcribing voice message…
           </Text>
         </View>
       )}
@@ -153,11 +153,11 @@ export function VoiceMessageBubble({
       {transcriptionStatus === VoiceTranscriptionStatusEnum.Failed && (
         <View style={styles.failedRow}>
           <Ionicons name="alert-circle-outline" size={13} color={Colors.danger} />
-          <Text style={styles.failedText}>Không nhận dạng được lời thoại</Text>
+          <Text style={styles.failedText}>Could not transcribe the voice message</Text>
           {onRetry && (
             <Pressable onPress={onRetry} disabled={retrying} hitSlop={6}>
               <Text style={[styles.retryText, retrying && styles.retryTextDisabled]}>
-                {retrying ? 'Đang thử…' : 'Thử lại'}
+                {retrying ? 'Retrying…' : 'Retry'}
               </Text>
             </Pressable>
           )}
@@ -172,7 +172,7 @@ export function VoiceMessageBubble({
             hitSlop={6}
           >
             <Text style={[styles.transcriptToggleText, { color: timeColor }]}>
-              {showTranscript ? 'Ẩn lời thoại' : 'Xem lời thoại'}
+              {showTranscript ? 'Hide transcript' : 'Show transcript'}
             </Text>
             <Ionicons
               name={showTranscript ? 'chevron-up' : 'chevron-down'}

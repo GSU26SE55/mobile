@@ -16,6 +16,7 @@ import {
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useKeyboardVisible } from '@/src/hooks/useKeyboardVisible';
 import { BadgeColors, Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
 import { ActivityTimeline } from '@/src/features/tickets/components/ActivityTimeline';
 import { TypingIndicator } from '@/src/features/tickets/components/TypingIndicator';
@@ -73,16 +74,17 @@ import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard'
 import { useTicketKbRefs } from '@/src/features/kb/hooks/useTicketKbRefs';
 import { useRemoveKbRef } from '@/src/features/kb/hooks/useRemoveKbRef';
 import { KbReferencePicker } from '@/src/features/staff/components/KbReferencePicker';
+import { KbSuggestionPanel } from '@/src/features/tickets/components/KbSuggestionPanel';
 import { BackButton } from '@/src/shared/components/ScreenHeader';
 import { BatteryWarningEvidencePanel } from '@/src/features/batteries/components/BatteryWarningEvidencePanel';
 
 type TabKey = 'comments' | 'activities' | 'logs' | 'kb';
 
 const TABS: { key: TabKey; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { key: 'comments',   label: 'Trao đổi',  icon: 'chatbubbles-outline' },
-  { key: 'activities', label: 'Chi tiết',  icon: 'time-outline' },
-  { key: 'logs',       label: 'Nhật ký',    icon: 'document-text-outline' },
-  { key: 'kb',         label: 'Bài KB',     icon: 'book-outline' },
+  { key: 'comments',   label: 'Chat',      icon: 'chatbubbles-outline' },
+  { key: 'activities', label: 'Details',   icon: 'time-outline' },
+  { key: 'logs',       label: 'Logs',      icon: 'document-text-outline' },
+  { key: 'kb',         label: 'KB Articles', icon: 'book-outline' },
 ];
 
 const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
@@ -104,7 +106,7 @@ function TabsRow({
 }: {
   activeTab: TabKey;
   onChange: (key: TabKey) => void;
-  /** Số chat CHƯA ĐỌC — chỉ gắn lên tab "Trao đổi", không phải tổng số tin. */
+  /** UNREAD chat count — only shown on the "Chat" tab, not the total message count. */
   unreadCount?: number;
 }) {
   return (
@@ -117,8 +119,8 @@ function TabsRow({
         >
           <Ionicons name={tab.icon} size={16} color={activeTab === tab.key ? Colors.primary : Colors.textMute} />
           <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>{tab.label}</Text>
-          {/* Ẩn khi chính tab này đang mở — tin mới về làm badge nháy lên trước
-              khi thread kịp mark-read, mà user thì đang đọc ngay tin đó. */}
+          {/* Hidden while this tab is open — a new message would flash the badge before
+              the thread can mark it read, even though the user is already reading it. */}
           {tab.key === 'comments' && activeTab !== 'comments' && unreadCount > 0 && (
             <View style={styles.tabBadge}>
               <Text style={styles.tabBadgeText}>
@@ -142,6 +144,7 @@ export function StaffTicketDetailScreen() {
 
 function StaffTicketDetailScreenInner() {
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardVisible();
   const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const ticketId = id ?? '';
   const accountId = useSessionStore((s) => s.user?.accountId);
@@ -160,7 +163,7 @@ function StaffTicketDetailScreenInner() {
   const { data: kbRefs, isLoading: kbRefsLoading } = useTicketKbRefs(ticketId || undefined);
   const { mutate: removeKbRef } = useRemoveKbRef(ticketId);
 
-  // GH-44 — comments/activities qua GET riêng + realtime (Staff thấy cả comment internal).
+  // GH-44 — comments/activities via a dedicated GET + realtime (Staff can see internal comments too).
   const commentsQuery = useTicketChatsCursor(ticketId || undefined);
   const activitiesQuery = useTicketActivities(ticketId || undefined);
   const { isConnected, typingUsers, notifyTyping } = useTicketCommentsRealtime(ticketId || undefined);
@@ -173,25 +176,25 @@ function StaffTicketDetailScreenInner() {
   const { mutateAsync: downloadAttachment } = useDownloadChatAttachment(ticketId);
   const { data: unreadCount = 0 } = useTicketUnreadCount(ticketId || undefined);
   const { mutateAsync: transcribeVoice, isPending: transcribing } = useTranscribeVoiceChat(ticketId);
-  // GH-67 — ghim chat. pinningId theo dõi bubble đang thao tác để hiện spinner đúng chỗ.
+  // GH-67 — pin chat. pinningId tracks the bubble being acted on so the spinner shows in the right place.
   const { mutate: pinChat, isPending: pinChatPending, variables: pinningVar } = usePinChat(ticketId);
   const { mutate: unpinChat, isPending: unpinChatPending, variables: unpinningVar } = useUnpinChat(ticketId);
   const pinningId = pinChatPending ? pinningVar : unpinChatPending ? unpinningVar : null;
   const voiceRecorder = useVoiceRecorder();
-  // Trung bình biên độ hiện tại — điều khiển quả cầu "thở" theo giọng nói trong VoiceRecordingModal.
+  // Current average amplitude — drives the "breathing" orb that follows the voice in VoiceRecordingModal.
   const voiceLevel =
     voiceRecorder.waveform.reduce((sum, v) => sum + v, 0) / voiceRecorder.waveform.length;
 
   const [activeTab, setActiveTab] = useState<TabKey>('comments');
   const [chatTab, setChatTab] = useState<ChatTab>('public');
   const [commentText, setCommentText] = useState('');
-  // Mention đã chọn trong tin đang soạn — BE nhận qua field `mentions`, KHÔNG parse '@' từ body.
+  // Mentions picked in the message being composed — BE receives them via the `mentions` field, does NOT parse '@' from the body.
   const [pickedMentions, setPickedMentions] = useState<ChatMentionInput[]>([]);
-  // GH-133 — gợi ý AI hiển thị dạng bong bóng cuối luồng chat (giống web). Bấm chọn →
-  // đổ vào ô nhập, không xóa; chỉ xóa khi đã gửi tin (onSuccess) hoặc bấm bỏ qua.
+  // GH-133 — AI suggestions shown as a bubble at the end of the chat stream (like web). Tapping one →
+  // fills the input, doesn't clear it; only cleared once the message is sent (onSuccess) or dismissed.
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
-  // Chat đang xem "đã đọc bởi" — Staff-only, BE chặn Customer (403).
+  // Chat currently showing "read by" — Staff-only, BE blocks Customer (403).
   const [readersChatId, setReadersChatId] = useState<string | null>(null);
   const [commentAttachments, setCommentAttachments] = useState<UploadedAttachment[]>([]);
   const [uploadingComment, setUploadingComment] = useState(false);
@@ -202,17 +205,17 @@ function StaffTicketDetailScreenInner() {
   const [editingLog, setEditingLog] = useState<MaintenanceLogDTO | null>(null);
   const [showKbPicker, setShowKbPicker] = useState(false);
 
-  // Deep-link từ push notification: ?tab=chat mở tab trao đổi. Bên staff tab đó
-  // tên là 'comments' (TabKey), nên map lại chứ không dùng thẳng giá trị param.
+  // Deep-link from push notification: ?tab=chat opens the chat tab. On the staff side that
+  // tab is named 'comments' (TabKey), so we map it here instead of using the param value directly.
   useEffect(() => {
     if (tab === 'chat') setActiveTab('comments');
   }, [tab]);
 
-  // GH-44: bỏ auto scrollToEnd — comments giờ DESC (newest-first).
+  // GH-44: removed auto scrollToEnd — comments are now DESC (newest-first).
   const isActioning = isStarting || isHolding || isResuming || isResolving || isEscalating;
 
-  // Staff thấy cả comment internal — flatten các page (DESC newest-first), KHÔNG filter internal.
-  // Dedup theo id: offset-pagination + realtime prepend có thể trả trùng 1 comment ở ranh giới trang.
+  // Staff sees internal comments too — flatten pages (DESC newest-first), do NOT filter internal ones.
+  // Dedup by id: offset-pagination + realtime prepend can return the same comment twice at a page boundary.
   const seenCommentIds = new Set<string>();
   const comments = (commentsQuery.data?.pages ?? [])
     .flatMap((p) => p?.items ?? [])
@@ -222,14 +225,14 @@ function StaffTicketDetailScreenInner() {
       return true;
     });
   const activities = activitiesQuery.data ?? [];
-  // Chỉ cho sửa log khi: là chủ log + ticket chưa đóng (BE cũng chặn 403 các case này).
+  // Editing a log is only allowed when: user is the log owner + ticket isn't closed (BE also blocks these cases with 403).
   const ticketClosed = ['Resolved', 'ClosedPendingRate', 'Closed', 'ClosedRejected'].includes(ticket?.status ?? '');
   const canEditLog = (log: MaintenanceLogDTO) => !ticketClosed && !!accountId && log.staffId === accountId;
 
   const handleSendComment = () => {
     const trimmed = commentText.trim();
     if (!trimmed && commentAttachments.length === 0) return;
-    // Chỉ gửi mention còn hiện diện trong body (user có thể đã xoá tên đi).
+    // Only send mentions still present in the body (user may have deleted the name).
     const activeMentions = pickedMentions.filter((m) =>
       trimmed.includes(`@${m.displayName.replace(/\s+/g, '_')}`),
     );
@@ -246,7 +249,7 @@ function StaffTicketDetailScreenInner() {
           setPickedMentions([]);
           setCommentAttachments([]);
           setAiSuggestions([]);
-          // Realtime đẩy CommentAdded về (cả người gửi) → setQueryData. Chỉ fallback khi mất kết nối.
+          // Realtime pushes CommentAdded back (to the sender too) → setQueryData. Only falls back if disconnected.
           if (!isConnected) commentsQuery.refetch();
         },
       },
@@ -262,7 +265,7 @@ function StaffTicketDetailScreenInner() {
     try {
       await voiceRecorder.start();
     } catch {
-      Alert.alert('Quyền truy cập', 'Cần quyền truy cập micro để ghi âm.');
+      Alert.alert('Access permission', 'Microphone access is required to record audio.');
     }
   };
   const handleStopRecording = async () => {
@@ -271,21 +274,21 @@ function StaffTicketDetailScreenInner() {
     try {
       await transcribeVoice(file);
     } catch {
-      // handleErrorApi trong hook đã Alert lỗi — không cần xử lý thêm ở đây.
+      // handleErrorApi in the hook already shows an Alert for the error — no extra handling needed here.
     }
   };
 
-  // GH-44 #4 — sửa maintenance log (PATCH). Form trả MaintenanceLogPayload (gán được vào UpdateMaintenanceLogPayload).
+  // GH-44 #4 — edit maintenance log (PATCH). The form returns MaintenanceLogPayload (assignable to UpdateMaintenanceLogPayload).
   const handleUpdateLog = (data: UpdateMaintenanceLogPayload) => {
     if (!editingLog) return;
     updateLog({ logId: editingLog.id, data }, { onSuccess: () => setEditingLog(null) });
   };
 
-  // GH-44 #6 — gỡ KB reference (có xác nhận).
+  // GH-44 #6 — remove KB reference (with confirmation).
   const handleRemoveRef = (referenceId: string) => {
-    Alert.alert('Gỡ bài KB', 'Gỡ tham chiếu bài viết này khỏi ticket?', [
-      { text: 'Hủy', style: 'cancel' },
-      { text: 'Gỡ', style: 'destructive', onPress: () => removeKbRef(referenceId) },
+    Alert.alert('Remove KB article', 'Remove this article reference from the ticket?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => removeKbRef(referenceId) },
     ]);
   };
 
@@ -308,12 +311,12 @@ function StaffTicketDetailScreenInner() {
     return (
       <View style={[styles.loadingRoot, { paddingTop: insets.top, paddingHorizontal: 24 }]}>
         <Ionicons name="alert-circle-outline" size={48} color={Colors.textFaint} />
-        <Text style={styles.notFoundTitle}>Không tải được ticket</Text>
+        <Text style={styles.notFoundTitle}>Failed to load ticket</Text>
         <Text style={styles.notFoundText}>
-          Ticket không tồn tại hoặc bạn không có quyền xem. Vui lòng thử lại.
+          {"The ticket doesn't exist or you don't have permission to view it. Please try again."}
         </Text>
         <Pressable style={styles.notFoundBtn} onPress={() => refetch()}>
-          <Text style={styles.notFoundBtnText}>Thử lại</Text>
+          <Text style={styles.notFoundBtnText}>Retry</Text>
         </Pressable>
       </View>
     );
@@ -326,6 +329,10 @@ function StaffTicketDetailScreenInner() {
       style={styles.root}
       behavior="padding"
       enabled={Platform.OS === 'ios'}
+      // The view spans from y=0 so KAV can't auto-subtract the bottom safe area: it pushes
+      // up by exactly the home indicator's height, creating a gap between the composer and
+      // the keyboard. A negative offset compensates for that.
+      keyboardVerticalOffset={-insets.bottom}
     >
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
@@ -334,8 +341,8 @@ function StaffTicketDetailScreenInner() {
           <Text style={styles.headerCode}>{ticket.code}</Text>
           <TicketStatusBadge status={ticket.status} />
         </View>
-        {/* Spacer giữ header cân. Badge chưa đọc nằm trên tab "Trao đổi",
-            không lặp lại ở đây để tránh 2 chỗ cùng báo một con số. */}
+        {/* Spacer keeps the header balanced. The unread badge lives on the "Chat" tab,
+            not repeated here to avoid two places reporting the same number. */}
         <View style={styles.unreadSlot} />
       </View>
 
@@ -357,8 +364,6 @@ function StaffTicketDetailScreenInner() {
             showTabs
             activeTab={chatTab}
             onTabChange={setChatTab}
-            canEditAny={checkPermission(user, P.CHAT_EDIT_ANY)}
-            canDeleteAny={checkPermission(user, P.CHAT_DELETE_ANY)}
             ticketClosed={ticketClosed}
             onEdit={(comment, body, editReason) =>
               updateChat({ chatId: comment.id, payload: { body, editReason } })
@@ -378,13 +383,13 @@ function StaffTicketDetailScreenInner() {
                 : addReaction({ chatId: comment.id, reactionType: type })
             }
             onDownloadAttachments={(comment, fileIds) => {
-              // Tuần tự — tránh nhiều share sheet mở cùng lúc (share sheet thứ 2 bị nuốt).
+              // Sequential — avoids multiple share sheets opening at once (the 2nd share sheet gets swallowed).
               void (async () => {
                 for (const fid of fileIds) {
                   try {
-                    await downloadAttachment({ chatId: comment.id, fileId: fid, fileName: `tep-${fid.slice(0, 8)}` });
+                    await downloadAttachment({ chatId: comment.id, fileId: fid, fileName: `file-${fid.slice(0, 8)}` });
                   } catch (e) {
-                    Alert.alert('Tải tệp', (e as Error).message);
+                    Alert.alert('Download file', (e as Error).message);
                     break;
                   }
                 }
@@ -402,7 +407,7 @@ function StaffTicketDetailScreenInner() {
             onSuggestions={setAiSuggestions}
           />
 
-          {/* Autocomplete Popup @Mention khi gõ @ */}
+          {/* Autocomplete Popup @Mention when typing @ */}
           <MentionSuggestionsPopup
             text={commentText}
             ticketId={ticketId}
@@ -418,13 +423,15 @@ function StaffTicketDetailScreenInner() {
             }}
           />
 
-          {/* "Đang nhập" — ngay trên ô input, nền transparent */}
+          {/* "Typing" indicator — right above the input, transparent background */}
           <TypingIndicator names={typingUsers.map((u) => u.displayName)} />
 
           <View
             style={[
               styles.composer,
-              { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 12 }
+              // The open keyboard already covers the home indicator area — adding insets.bottom
+              // here would just create extra whitespace between the input and the keyboard.
+              { paddingBottom: !keyboardVisible && insets.bottom > 0 ? insets.bottom + 8 : 12 }
             ]}
           >
             <AttachmentPreviewStrip
@@ -446,7 +453,7 @@ function StaffTicketDetailScreenInner() {
               />
               <TextInput
                 style={styles.composerInput}
-                placeholder={chatTab === 'internal' ? 'Ghi chú nội bộ (khách không thấy)...' : 'Nhập tin nhắn...'}
+                placeholder={chatTab === 'internal' ? 'Internal note (not visible to customer)...' : 'Type a message...'}
                 placeholderTextColor={Colors.textFaint}
                 value={commentText}
                 onChangeText={(t) => { setCommentText(t); notifyTyping(); }}
@@ -468,7 +475,7 @@ function StaffTicketDetailScreenInner() {
                 onPress={handleSendComment}
                 disabled={(!commentText.trim() && commentAttachments.length === 0) || isSending || uploadingComment || voiceRecorder.isRecording}
               >
-                {/* Nút gửi nền vàng → icon trắng bị chìm, dùng ink đậm. */}
+                {/* Send button has a yellow background → white icon gets lost, use dark ink instead. */}
                 {isSending ? (
                   <ActivityIndicator size="small" color={Colors.text} />
                 ) : (
@@ -489,13 +496,13 @@ function StaffTicketDetailScreenInner() {
           <Text style={styles.ticketTitle}>{ticket.title}</Text>
           <View style={styles.metaRow}>
             <View style={[styles.priorityBadge, { backgroundColor: pColor.bg }]}>
-              <Text style={[styles.priorityText, { color: pColor.text }]}>{ticket.priority ? (PRIORITY_LABELS[ticket.priority] ?? ticket.priority) : 'Chưa phân loại'}</Text>
+              <Text style={[styles.priorityText, { color: pColor.text }]}>{ticket.priority ? (PRIORITY_LABELS[ticket.priority] ?? ticket.priority) : 'Untriaged'}</Text>
             </View>
             <Text style={styles.metaCategory}>{ticket.category}</Text>
           </View>
           {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} />}
           <View style={styles.durationRow}>
-            <Text style={styles.durationLabel}>Thời gian xử lý</Text>
+            <Text style={styles.durationLabel}>Processing time</Text>
             <ProcessingDurationTimer activities={activities} status={ticket.status} />
           </View>
         </View>
@@ -503,13 +510,13 @@ function StaffTicketDetailScreenInner() {
         {/* Description */}
         {ticket.description && (
           <View style={[styles.card, Shadow]}>
-            <Text style={styles.sectionLabel}>Mô tả</Text>
+            <Text style={styles.sectionLabel}>Description</Text>
             <Text style={styles.descText}>{ticket.description}</Text>
           </View>
         )}
 
-        {/* Bằng chứng cảnh báo — log cảm biến vượt ngưỡng quanh lúc phát hiện sự cố.
-            Tự ẩn khi ticket không có batteryAssetId hoặc detectedAt. */}
+        {/* Warning evidence — sensor logs exceeding threshold around the time the issue was detected.
+            Auto-hides when the ticket has no batteryAssetId or detectedAt. */}
         {ticket.batteryAssetId && ticket.detectedAt && (
           <View style={[styles.card, Shadow]}>
             <BatteryWarningEvidencePanel
@@ -519,10 +526,10 @@ function StaffTicketDetailScreenInner() {
           </View>
         )}
 
-        {/* Ảnh khách đính kèm khi tạo ticket */}
+        {/* Photos the customer attached when creating the ticket */}
         {(ticket.attachmentFileIds?.length ?? 0) > 0 && (
           <View style={[styles.card, Shadow]}>
-            <Text style={styles.sectionLabel}>Ảnh đính kèm</Text>
+            <Text style={styles.sectionLabel}>Attachments</Text>
             <AttachmentThumbnails fileIds={ticket.attachmentFileIds} size={72} onPressImage={setViewingImage} />
           </View>
         )}
@@ -539,7 +546,7 @@ function StaffTicketDetailScreenInner() {
             }
           >
             <Ionicons name="battery-charging-outline" size={18} color={Colors.primary} />
-            <Text style={styles.logButtonText}>Xem thông tin pin</Text>
+            <Text style={styles.logButtonText}>View battery info</Text>
             <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
           </Pressable>
         )}
@@ -559,7 +566,7 @@ function StaffTicketDetailScreenInner() {
         {/* Maintenance log button */}
         {(['InProgress', 'WaitingCustomer', 'WaitingParts', 'WaitingOnsiteSchedule'] as TicketStatusEnum[]).includes(ticket.status) && (
           <Pressable style={[styles.logButton, Shadow]} onPress={() => setShowLogForm(!showLogForm)}>
-            <Text style={styles.logButtonText}>{showLogForm ? 'Ẩn nhật ký' : 'Thêm nhật ký bảo trì'}</Text>
+            <Text style={styles.logButtonText}>{showLogForm ? 'Hide log form' : 'Add maintenance log'}</Text>
           </Pressable>
         )}
 
@@ -578,24 +585,24 @@ function StaffTicketDetailScreenInner() {
         {activeTab === 'logs' && (
           <View style={styles.tabContent}>
             {(ticket.maintenanceLogs ?? []).length === 0 ? (
-              <Text style={styles.emptyTab}>Chưa có nhật ký bảo trì</Text>
+              <Text style={styles.emptyTab}>No maintenance logs yet</Text>
             ) : (
               (ticket.maintenanceLogs ?? []).map((log) => (
                 <View key={log.id} style={[styles.logCard, Shadow]}>
                   {!!log.summary && <Text style={styles.logDesc}>{log.summary}</Text>}
-                  {!!log.actionsTaken && <Text style={styles.logMeta}>Hành động: {log.actionsTaken}</Text>}
-                  {!!log.diagnosisDetails && <Text style={styles.logMeta}>Chẩn đoán: {log.diagnosisDetails}</Text>}
-                  {!!log.resolutionNote && <Text style={styles.logMeta}>Kết quả: {log.resolutionNote}</Text>}
-                  {log.durationMinutes > 0 && <Text style={styles.logMeta}>Thời gian: {log.durationMinutes} phút</Text>}
+                  {!!log.actionsTaken && <Text style={styles.logMeta}>Action: {log.actionsTaken}</Text>}
+                  {!!log.diagnosisDetails && <Text style={styles.logMeta}>Diagnosis: {log.diagnosisDetails}</Text>}
+                  {!!log.resolutionNote && <Text style={styles.logMeta}>Result: {log.resolutionNote}</Text>}
+                  {log.durationMinutes > 0 && <Text style={styles.logMeta}>Duration: {log.durationMinutes} mins</Text>}
                   {(log.beforePhotosFileIds?.length ?? 0) > 0 && (
                     <>
-                      <Text style={styles.logMeta}>Ảnh trước:</Text>
+                      <Text style={styles.logMeta}>Before photos:</Text>
                       <AttachmentThumbnails fileIds={log.beforePhotosFileIds} size={64} />
                     </>
                   )}
                   {(log.afterPhotosFileIds?.length ?? 0) > 0 && (
                     <>
-                      <Text style={styles.logMeta}>Ảnh sau:</Text>
+                      <Text style={styles.logMeta}>After photos:</Text>
                       <AttachmentThumbnails fileIds={log.afterPhotosFileIds} size={64} />
                     </>
                   )}
@@ -603,7 +610,7 @@ function StaffTicketDetailScreenInner() {
                   {canEditLog(log) && (
                     <Pressable style={styles.logEditBtn} onPress={() => setEditingLog(log)}>
                       <Ionicons name="create-outline" size={14} color={Colors.primary} />
-                      <Text style={styles.logEditText}>Sửa</Text>
+                      <Text style={styles.logEditText}>Edit</Text>
                     </Pressable>
                   )}
                 </View>
@@ -614,16 +621,35 @@ function StaffTicketDetailScreenInner() {
 
         {activeTab === 'kb' && (
           <View style={styles.tabContent}>
+            {/* AI đề xuất tài liệu — đặt TRƯỚC danh sách đã gán vì đây là thứ dẫn tới
+                hành động, còn danh sách dưới là kết quả đã chốt.
+                `enabled` gắn với tab: chỉ gọi AI khi người dùng thật sự mở tab này.
+                Chỉ đọc + điều hướng; việc gắn tài liệu vẫn qua nút "Gán bài viết KB"
+                bên dưới, đúng phân quyền PrimaryHandler của BE. */}
+            <KbSuggestionPanel
+              ticketId={ticketId}
+              topN={3}
+              enabled={activeTab === 'kb'}
+              onOpen={(kb) =>
+                router.push({
+                  pathname: '/(staff)/kb/[id]' as never,
+                  params: { id: kb.kbArticleId } as never,
+                } as never)
+              }
+            />
+
             {/* Gán bài KB — chỉ Staff được phân công + ticket chưa đóng (BE chặn 403 nếu vi phạm) */}
             {!ticketClosed && !!accountId && isPrimaryHandler(ticket.assignments, accountId) && (
               <Pressable style={styles.kbAssignBtn} onPress={() => setShowKbPicker(true)}>
-                <Text style={styles.kbAssignText}>Gán bài viết KB</Text>
+                <Text style={styles.kbAssignText}>Assign KB article</Text>
               </Pressable>
             )}
+
+            <Text style={styles.kbSectionLabel}>Assigned articles</Text>
             {kbRefsLoading ? (
               <ActivityIndicator color={Colors.primary} style={{ marginTop: 24 }} />
             ) : !kbRefs || kbRefs.length === 0 ? (
-              <Text style={styles.emptyTab}>Chưa có bài KB nào được gán</Text>
+              <Text style={styles.emptyTab}>No KB articles assigned yet</Text>
             ) : (
               kbRefs.map((ref) => (
                 <Pressable
@@ -693,11 +719,12 @@ function StaffTicketDetailScreenInner() {
                   onSubmit={handleUpdateLog}
                   initialValues={{
                     summary: editingLog.summary ?? '',
+                    logType: editingLog.logType,
                     actionsTaken: editingLog.actionsTaken ?? undefined,
                     durationMinutes: editingLog.durationMinutes || undefined,
                   }}
-                  title="Sửa nhật ký bảo trì"
-                  submitLabel="Cập nhật"
+                  title="Edit Maintenance Log"
+                  submitLabel="Update"
                 />
               )}
             </ScrollView>
@@ -821,7 +848,10 @@ const styles = StyleSheet.create({
   emptyTab: { textAlign: 'center', fontSize: 13, color: Colors.textFaint, fontWeight: '600', paddingVertical: 24 },
   logEditBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', marginTop: 6, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999, backgroundColor: Colors.primaryLight },
   logEditText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
-  kbAssignBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11, borderRadius: 14, backgroundColor: Colors.primary, marginBottom: 12 },
+  kbAssignBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11, borderRadius: 14, backgroundColor: Colors.primary, marginTop: 14, marginBottom: 4 },
+  // Nhãn phân tách "AI đề xuất" (ở trên) với "đã gán" (ở dưới) — không có nó thì hai
+  // khối card trông như một danh sách, dễ tưởng gợi ý đã được gắn vào ticket.
+  kbSectionLabel: { fontSize: 12, fontWeight: '800', color: Colors.textMute, textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 14, marginBottom: 8 },
   kbAssignText: { color: Colors.text, fontSize: 13, fontWeight: '700' },
   kbRefDeleteBtn: { padding: 4, marginLeft: 'auto' },
   editOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },

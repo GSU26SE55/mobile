@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { KEY, QUERY_KEY } from '@/src/lib/queryKeys';
 import { trustedDeviceService } from '../services/trustedDevice.service';
 
-// #AUTH-48: quản lý thiết bị tin cậy — query list + revoke 1 / revoke all.
+// #AUTH-48: manage trusted devices — query list + revoke one / revoke all.
 export function useTrustedDevices() {
   const queryClient = useQueryClient();
 

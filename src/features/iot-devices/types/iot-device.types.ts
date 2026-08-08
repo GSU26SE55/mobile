@@ -1,11 +1,11 @@
-// GH-56 — IoT Device + Calibration. Mirror docs/api-battery.md §11B + §by-code (dòng 2051–2128).
+// GH-56 — IoT Device + Calibration. Mirror docs/api-battery.md §11B + §by-code (lines 2051–2128).
 import type { IotDeviceStatusEnum } from '../enums/iot-device.enum';
 export { IotDeviceStatusEnum } from '../enums/iot-device.enum';
 
-// Trả từ GET /api/iot-devices/by-code/{deviceCode} (subset cần dùng).
-// L2: giữ siteId (doc dòng 2161: string, không nullable) cho đúng contract.
+// Returned by GET /api/iot-devices/by-code/{deviceCode} (subset needed here).
+// L2: keep siteId (doc line 2161: string, non-nullable) to match the contract.
 export interface IotDeviceDto {
-  id: string; // GUID — dùng cho các route calibration
+  id: string; // GUID — used for calibration routes
   deviceCode: string;
   displayName: string;
   status: IotDeviceStatusEnum;
@@ -30,7 +30,7 @@ export interface IotDeviceCalibrationDto {
 // Body POST /api/iot-devices/{deviceId}/calibrations
 export interface CreateCalibrationPayload {
   channel: string;
-  batteryAssetId?: string | null; // null = cấp device
+  batteryAssetId?: string | null; // null = device-level
   scale: number; // default 1 (prefill form)
   offset: number; // default 0 (prefill form)
   unit: string;
@@ -42,5 +42,5 @@ export interface CreateCalibrationPayload {
 // Query GET calibrations
 export interface CalibrationListParams {
   channel?: string; // filter case-insensitive
-  includeExpired?: boolean; // mặc định false
+  includeExpired?: boolean; // default false
 }

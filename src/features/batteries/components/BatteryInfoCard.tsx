@@ -11,20 +11,20 @@ import { GlassSurface } from './EnergyBackdrop';
 const STATUS_LABEL: Record<BatteryStatusEnum, string> = {
   [BatteryStatusEnum.Active]: 'Active',
   [BatteryStatusEnum.Inactive]: 'Inactive',
-  [BatteryStatusEnum.Decommissioned]: 'Ngừng sử dụng',
+  [BatteryStatusEnum.Decommissioned]: 'Decommissioned',
 };
 
 const WARRANTY_LABEL: Record<WarrantyStatusEnum, string> = {
-  [WarrantyStatusEnum.Active]: 'Còn bảo hành',
-  [WarrantyStatusEnum.Expired]: 'Hết bảo hành',
-  [WarrantyStatusEnum.Void]: 'Vô hiệu',
+  [WarrantyStatusEnum.Active]: 'Under warranty',
+  [WarrantyStatusEnum.Expired]: 'Warranty expired',
+  [WarrantyStatusEnum.Void]: 'Void',
 };
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('vi-VN');
+  return d.toLocaleDateString('en-US');
 }
 
 interface Props {
@@ -33,18 +33,18 @@ interface Props {
 }
 
 export function BatteryInfoCard({ battery, customerName }: Props) {
-  const finalCustomerName = customerName || battery.customerName || (battery as any).accountName || 'Khách hàng cá nhân';
+  const finalCustomerName = customerName || battery.customerName || (battery as any).accountName || 'Individual customer';
 
   const rows: { label: string; value: string }[] = [
     { label: 'Serial', value: battery.serialNumber },
-    { label: 'Loại pin', value: battery.batteryTypeName },
-    { label: 'Site', value: battery.siteName ?? 'Chưa gán' },
-    { label: 'Khách hàng', value: finalCustomerName },
-    { label: 'Ngày lắp đặt', value: formatDate(battery.installDate) },
-    { label: 'Bảo hành', value: WARRANTY_LABEL[battery.warrantyStatus] ?? '—' },
-    { label: 'Trạng thái', value: STATUS_LABEL[battery.status] ?? 'Unknown' },
+    { label: 'Battery type', value: battery.batteryTypeName },
+    { label: 'Site', value: battery.siteName ?? 'Unassigned' },
+    { label: 'Customer', value: finalCustomerName },
+    { label: 'Install date', value: formatDate(battery.installDate) },
+    { label: 'Warranty', value: WARRANTY_LABEL[battery.warrantyStatus] ?? '—' },
+    { label: 'Status', value: STATUS_LABEL[battery.status] ?? 'Unknown' },
   ];
-  // Đã bỏ dòng Vị trí theo yêu cầu khoanh hình của người dùng
+  // Location row removed per user's screenshot-marked request
 
   return (
     <GlassSurface style={styles.card}>

@@ -28,14 +28,14 @@ export function BatteryTypeCard({
         </View>
       </View>
       <Text style={styles.sub} numberOfLines={1}>
-        {item.manufacturer ?? 'Chưa rõ NSX'}
+        {item.manufacturer ?? 'Manufacturer unknown'}
       </Text>
       <View style={styles.metaRow}>
         <Text style={styles.meta}>{item.nominalCapacityAh} Ah</Text>
         <Text style={styles.dot}>·</Text>
         <Text style={styles.meta}>{item.nominalVoltage} V</Text>
         <Text style={styles.dot}>·</Text>
-        <Text style={styles.meta}>{item.maxCycleCount} chu kỳ</Text>
+        <Text style={styles.meta}>{item.maxCycleCount} cycles</Text>
         <Ionicons
           name="chevron-forward"
           size={16}

@@ -1,4 +1,4 @@
 import { CustomerTicketDetailScreen } from '@/src/features/tickets/screens/CustomerTicketDetailScreen';
 
-// Route chỉ khai báo điểm vào cho Expo Router — logic màn hình nằm trong features/.
+// Route only declares the entry point for Expo Router — screen logic lives in features/.
 export default CustomerTicketDetailScreen;

@@ -25,7 +25,7 @@ const ICON_MAP: Partial<Record<NotificationTypeEnum, IconSpec>> = {
   [NotificationTypeEnum.BatteryAlertEscalationPending]: { name: 'time-outline',               color: Colors.warning },
   [NotificationTypeEnum.AlertTicketSagaFailed]:         { name: 'bug-outline',                color: Colors.danger },
   [NotificationTypeEnum.IotDeviceWentOffline]:          { name: 'cloud-offline-outline',      color: Colors.textMute },
-  // GH-83 — 16 type sync từ Sprint 6.2/6.3; trước đây tất cả rơi vào FALLBACK_ICON.
+  // GH-83 — 16 types synced from Sprint 6.2/6.3; previously all of them fell through to FALLBACK_ICON.
   [NotificationTypeEnum.ChatCreated]:                    { name: 'chatbubble-outline',         color: Colors.info },
   [NotificationTypeEnum.ChatMentioned]:                  { name: 'at-outline',                 color: Colors.primary },
   [NotificationTypeEnum.ChatReacted]:                    { name: 'heart-outline',              color: Colors.stProgress },

@@ -43,9 +43,9 @@ export default function TicketListScreen() {
   };
 
   const filters: { key: FilterKey; label: string }[] = [
-    { key: 'all', label: `Tất cả (${totalCount})` },
-    { key: 'open', label: `Đang mở (${openCount})` },
-    { key: 'closed', label: `Đã đóng (${closedCount})` },
+    { key: 'all', label: `All (${totalCount})` },
+    { key: 'open', label: `Open (${openCount})` },
+    { key: 'closed', label: `Closed (${closedCount})` },
   ];
 
   return (
@@ -56,7 +56,7 @@ export default function TicketListScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerLeft}>
           <Text style={styles.title}>Tickets</Text>
-          <Text style={styles.subtitle}>{openCount} đang mở · {totalCount} tổng</Text>
+          <Text style={styles.subtitle}>{openCount} open · {totalCount} total</Text>
         </View>
         {canCreate && (
           <Pressable
@@ -93,22 +93,22 @@ export default function TicketListScreen() {
       ) : isError ? (
         <View style={styles.empty}>
           <Ionicons name="alert-circle-outline" size={36} color={Solar.mute} />
-          <Text style={styles.emptyText}>Không thể tải danh sách ticket</Text>
+          <Text style={styles.emptyText}>Unable to load the ticket list</Text>
           <Pressable style={styles.emptyBtn} onPress={() => refetch()}>
-            <Text style={styles.emptyBtnText}>Thử lại</Text>
+            <Text style={styles.emptyBtnText}>Retry</Text>
           </Pressable>
         </View>
       ) : displayedTickets.length === 0 ? (
         <View style={styles.empty}>
           <GlassSurface style={styles.emptyCard}>
             <Ionicons name="document-text-outline" size={42} color={Solar.faint} />
-            <Text style={styles.emptyText}>Không có ticket nào</Text>
+            <Text style={styles.emptyText}>No tickets</Text>
             {canCreate && (
               <Pressable
                 style={styles.emptyBtn}
                 onPress={() => router.push('/(customer)/tickets/create')}
               >
-                <Text style={styles.emptyBtnText}>Tạo ticket đầu tiên</Text>
+                <Text style={styles.emptyBtnText}>Create your first ticket</Text>
               </Pressable>
             )}
           </GlassSurface>

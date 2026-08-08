@@ -16,35 +16,35 @@ const SEVERITY_STYLE: Record<AlertSeverityEnum, { label: string; color: string; 
 };
 
 const STATUS_LABEL: Record<AlertStatusEnum, string> = {
-  [AlertStatusEnum.Open]: 'Mở',
-  [AlertStatusEnum.Acknowledged]: 'Đã xác nhận',
-  [AlertStatusEnum.Merged]: 'Đã gộp',
-  [AlertStatusEnum.Resolved]: 'Đã xử lý',
+  [AlertStatusEnum.Open]: 'Open',
+  [AlertStatusEnum.Acknowledged]: 'Acknowledged',
+  [AlertStatusEnum.Merged]: 'Merged',
+  [AlertStatusEnum.Resolved]: 'Resolved',
 };
 
 export const ANOMALY_LABEL: Record<AnomalyTypeEnum, string> = {
-  [AnomalyTypeEnum.Overheat]: 'Quá nhiệt',
-  [AnomalyTypeEnum.Overvoltage]: 'Quá áp',
-  [AnomalyTypeEnum.Undervoltage]: 'Sụt áp',
-  [AnomalyTypeEnum.LowSoc]: 'SOC thấp',
-  [AnomalyTypeEnum.RapidDischarge]: 'Xả nhanh',
-  [AnomalyTypeEnum.AbnormalCharging]: 'Sạc bất thường',
-  [AnomalyTypeEnum.DeviceOffline]: 'Thiết bị offline',
-  [AnomalyTypeEnum.SohDegradation]: 'Suy giảm SOH',
-  [AnomalyTypeEnum.HighAmbientTemp]: 'Nhiệt độ môi trường cao',
-  [AnomalyTypeEnum.HighHumidity]: 'Độ ẩm cao',
-  [AnomalyTypeEnum.HighTempHumidityCombo]: 'Nhiệt độ + độ ẩm cao',
-  [AnomalyTypeEnum.HighInternalResistance]: 'Điện trở trong cao',
-  [AnomalyTypeEnum.CellImbalance]: 'Mất cân bằng cell',
-  [AnomalyTypeEnum.EnvironmentalIncident]: 'Sự cố môi trường',
-  [AnomalyTypeEnum.SensorMismatch]: 'Lệch cảm biến',
-  [AnomalyTypeEnum.Undertemp]: 'Nhiệt độ thấp',
+  [AnomalyTypeEnum.Overheat]: 'Overheat',
+  [AnomalyTypeEnum.Overvoltage]: 'Overvoltage',
+  [AnomalyTypeEnum.Undervoltage]: 'Undervoltage',
+  [AnomalyTypeEnum.LowSoc]: 'Low SOC',
+  [AnomalyTypeEnum.RapidDischarge]: 'Rapid discharge',
+  [AnomalyTypeEnum.AbnormalCharging]: 'Abnormal charging',
+  [AnomalyTypeEnum.DeviceOffline]: 'Device offline',
+  [AnomalyTypeEnum.SohDegradation]: 'SOH degradation',
+  [AnomalyTypeEnum.HighAmbientTemp]: 'High ambient temperature',
+  [AnomalyTypeEnum.HighHumidity]: 'High humidity',
+  [AnomalyTypeEnum.HighTempHumidityCombo]: 'High temperature + humidity',
+  [AnomalyTypeEnum.HighInternalResistance]: 'High internal resistance',
+  [AnomalyTypeEnum.CellImbalance]: 'Cell imbalance',
+  [AnomalyTypeEnum.EnvironmentalIncident]: 'Environmental incident',
+  [AnomalyTypeEnum.SensorMismatch]: 'Sensor mismatch',
+  [AnomalyTypeEnum.Undertemp]: 'Low temperature',
 };
 
 function shortTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleString('vi-VN', {
+  return d.toLocaleString('en-US', {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',
@@ -59,11 +59,11 @@ export function AssetAlertList({
 }: {
   alerts: AlertDto[];
   onPressAlert: (id: string) => void;
-  /** Chỉ hiện tối đa `limit` cảnh báo mới nhất; phần còn lại mở rộng NGAY TẠI CHỖ (không rời màn). */
+  /** Shows at most `limit` newest alerts; the rest expand IN PLACE (no navigation away). */
   limit?: number;
 }) {
   const [showAll, setShowAll] = useState(false);
-  // Mới nhất lên đầu để list rút gọn vẫn giữ cảnh báo quan trọng nhất.
+  // Newest first so the collapsed list still keeps the most important alerts.
   const sorted = useMemo(
     () =>
       [...alerts].sort(
@@ -88,7 +88,7 @@ export function AssetAlertList({
     return (
       <View style={[styles.empty, Shadow]}>
         <Ionicons name="checkmark-circle-outline" size={28} color={Colors.primary} />
-        <Text style={styles.emptyText}>Không có cảnh báo</Text>
+        <Text style={styles.emptyText}>No alerts</Text>
       </View>
     );
   }
@@ -100,9 +100,9 @@ export function AssetAlertList({
 
   return (
     <View style={styles.wrap}>
-      {/* Tóm tắt: tổng số + phân theo mức */}
+      {/* Summary: total count + breakdown by severity */}
       <View style={styles.summary}>
-        <Text style={styles.summaryTotal}>{alerts.length} cảnh báo</Text>
+        <Text style={styles.summaryTotal}>{alerts.length} alerts</Text>
         <View style={styles.summaryChips}>
           {counts.critical > 0 && (
             <SummaryChip color={Colors.danger} value={counts.critical} />
@@ -128,7 +128,7 @@ export function AssetAlertList({
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.title} numberOfLines={1}>
-                  {ANOMALY_LABEL[alert.anomalyType] ?? 'Cảnh báo'}
+                  {ANOMALY_LABEL[alert.anomalyType] ?? 'Alert'}
                 </Text>
                 <Text style={styles.meta} numberOfLines={1}>
                   {shortTime(alert.detectedAt)} · {STATUS_LABEL[alert.status] ?? ''}
@@ -144,13 +144,13 @@ export function AssetAlertList({
 
       {hidden > 0 && (
         <Pressable style={styles.seeAll} onPress={() => setShowAll(true)}>
-          <Text style={styles.seeAllText}>Xem tất cả {alerts.length} cảnh báo</Text>
+          <Text style={styles.seeAllText}>View all {alerts.length} alerts</Text>
           <Ionicons name="chevron-down" size={15} color={Solar.yellowDeep} />
         </Pressable>
       )}
       {canCollapse && (
         <Pressable style={styles.seeAll} onPress={() => setShowAll(false)}>
-          <Text style={styles.seeAllText}>Thu gọn</Text>
+          <Text style={styles.seeAllText}>Collapse</Text>
           <Ionicons name="chevron-up" size={15} color={Solar.yellowDeep} />
         </Pressable>
       )}

@@ -18,9 +18,10 @@ function formatElapsed(ms: number): string {
 }
 
 /**
- * Đếm thời gian đã xử lý kể từ lần chuyển InProgress gần nhất — tự reset mỗi khi
- * staff Resume sau Hold (đúng ý nghĩa "đang xử lý bao lâu rồi", không phải tổng cộng
- * dồn). Suy ra từ activity log đã fetch sẵn cho tab Lịch sử — không gọi thêm API.
+ * Counts processing time since the most recent transition to InProgress — resets
+ * whenever staff Resumes after a Hold (matches the meaning of "how long has this
+ * been in progress", not a cumulative total). Derived from the activity log already
+ * fetched for the History tab — no extra API call.
  */
 export function ProcessingDurationTimer({ activities, status }: Props) {
   const startedAt = useMemo(() => {

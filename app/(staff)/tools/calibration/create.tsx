@@ -24,7 +24,7 @@ import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 const CHANNELS = Object.values(CalibrationChannel);
 
-// Field component nhỏ gọn
+// Compact field component
 function Field({
   label,
   error,
@@ -53,7 +53,7 @@ export default function CreateCalibrationScreen() {
   const [unit, setUnit] = useState('');
   const [scale, setScale] = useState('1');
   const [offset, setOffset] = useState('0');
-  const [expiry, setExpiry] = useState(''); // YYYY-MM-DD (tuỳ chọn)
+  const [expiry, setExpiry] = useState(''); // YYYY-MM-DD (optional)
   const [batteryAssetId, setBatteryAssetId] = useState('');
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -64,12 +64,12 @@ export default function CreateCalibrationScreen() {
   const onSubmit = async () => {
     setErrors({});
 
-    // Guard: ngày sai định dạng → new Date(...).toISOString() ném RangeError → set field error thay vì crash.
+    // Guard: badly formatted date → new Date(...).toISOString() throws RangeError → set a field error instead of crashing.
     let expiresAtIso: string | undefined;
     if (expiry.trim()) {
       const d = new Date(`${expiry.trim()}T00:00:00.000Z`);
       if (Number.isNaN(d.getTime())) {
-        setErrors({ expiresAt: 'Ngày không hợp lệ (định dạng YYYY-MM-DD)' });
+        setErrors({ expiresAt: 'Invalid date (format YYYY-MM-DD)' });
         return;
       }
       expiresAtIso = d.toISOString();
@@ -80,7 +80,7 @@ export default function CreateCalibrationScreen() {
       unit,
       scale: Number(scale),
       offset: Number(offset),
-      calibratedAt: new Date().toISOString(), // thời điểm hiệu chỉnh = bây giờ
+      calibratedAt: new Date().toISOString(), // calibration timestamp = now
       expiresAt: expiresAtIso,
       batteryAssetId: batteryAssetId.trim() || null,
       notes: notes.trim() || undefined,
@@ -99,7 +99,7 @@ export default function CreateCalibrationScreen() {
 
     try {
       await createMut.mutateAsync(parsed.data);
-      Alert.alert('Thành công', 'Đã thêm bản hiệu chỉnh.');
+      Alert.alert('Success', 'The calibration record has been added.');
       router.back();
     } catch (error) {
       handleErrorApi({ error, setFieldError });
@@ -113,12 +113,12 @@ export default function CreateCalibrationScreen() {
     >
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <BackButton />
-        <Text style={styles.topTitle}>Thêm calibration</Text>
+        <Text style={styles.topTitle}>Add Calibration</Text>
         <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.deviceHint}>Thiết bị: {deviceCode}</Text>
+        <Text style={styles.deviceHint}>Device: {deviceCode}</Text>
 
         <Field label="Channel" error={errors.channel}>
           <View style={styles.chips}>
@@ -139,7 +139,7 @@ export default function CreateCalibrationScreen() {
           </View>
         </Field>
 
-        <Field label="Đơn vị (V / A / °C / %)" error={errors.unit}>
+        <Field label="Unit (V / A / °C / %)" error={errors.unit}>
           <TextInput
             style={styles.input}
             value={unit}
@@ -177,7 +177,7 @@ export default function CreateCalibrationScreen() {
           </View>
         </View>
 
-        <Field label="Ngày hết hạn (YYYY-MM-DD, tuỳ chọn)" error={errors.expiresAt}>
+        <Field label="Expiry date (YYYY-MM-DD, optional)" error={errors.expiresAt}>
           <TextInput
             style={styles.input}
             value={expiry}
@@ -188,23 +188,23 @@ export default function CreateCalibrationScreen() {
           />
         </Field>
 
-        <Field label="Battery Asset ID (tuỳ chọn — bỏ trống = cấp device)" error={errors.batteryAssetId}>
+        <Field label="Battery Asset ID (optional — leave blank for device-level)" error={errors.batteryAssetId}>
           <TextInput
             style={styles.input}
             value={batteryAssetId}
             onChangeText={setBatteryAssetId}
-            placeholder="GUID pin cụ thể"
+            placeholder="Specific battery GUID"
             placeholderTextColor={Colors.textMute}
             autoCapitalize="none"
           />
         </Field>
 
-        <Field label="Ghi chú (tuỳ chọn)" error={errors.notes}>
+        <Field label="Notes (optional)" error={errors.notes}>
           <TextInput
             style={[styles.input, styles.textarea]}
             value={notes}
             onChangeText={setNotes}
-            placeholder="Ghi chú của kỹ thuật viên"
+            placeholder="Technician's notes"
             placeholderTextColor={Colors.textMute}
             multiline
           />
@@ -216,7 +216,7 @@ export default function CreateCalibrationScreen() {
           disabled={createMut.isPending}
         >
           <Text style={styles.submitText}>
-            {createMut.isPending ? 'Đang lưu…' : 'Lưu calibration'}
+            {createMut.isPending ? 'Saving…' : 'Save calibration'}
           </Text>
         </Pressable>
       </ScrollView>

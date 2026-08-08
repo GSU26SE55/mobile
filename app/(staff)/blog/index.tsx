@@ -23,7 +23,7 @@ import { useDebouncedValue } from '@/src/shared/hooks/useDebouncedValue';
 export default function StaffBlogListScreen() {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
-  // Debounce 300ms như màn KB — tránh bắn request mỗi ký tự.
+  // 300ms debounce like the KB screen — avoids firing a request on every keystroke.
   const debouncedQuery = useDebouncedValue(query, 300);
 
   const {
@@ -46,7 +46,7 @@ export default function StaffBlogListScreen() {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <BackButton />
-        <Text style={styles.headerTitle}>Tin tức</Text>
+        <Text style={styles.headerTitle}>News</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -54,7 +54,7 @@ export default function StaffBlogListScreen() {
         <SearchBar
           value={query}
           onChangeText={setQuery}
-          placeholder="Tìm theo tiêu đề hoặc tóm tắt…"
+          placeholder="Search by title or summary…"
         />
       </View>
 
@@ -81,9 +81,9 @@ export default function StaffBlogListScreen() {
           ) : isError ? (
             <View style={styles.errorWrap}>
               <Ionicons name="cloud-offline-outline" size={32} color={Colors.textFaint} />
-              <Text style={styles.errorTitle}>Không tải được danh sách</Text>
+              <Text style={styles.errorTitle}>Failed to load the list</Text>
               <Pressable onPress={() => refetch()} style={styles.retryBtn}>
-                <Text style={styles.retryText}>Thử lại</Text>
+                <Text style={styles.retryText}>Retry</Text>
               </Pressable>
             </View>
           ) : (

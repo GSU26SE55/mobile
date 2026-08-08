@@ -4,8 +4,8 @@ import { Colors } from '@/src/lib/theme';
 import { useStaffDashboardStats } from '../hooks/useStaffDashboardStats';
 import type { StaffTicketDashboardStatsDto } from '../types/staff.types';
 
-// GH-67 — KPI dashboard Staff (đã tối giản: KPI + thanh Tuân thủ SLA).
-// Đặt TRÊN filterRow của dashboard.tsx → luôn hiện, độc lập list ticket bên dưới.
+// GH-67 — Staff KPI dashboard (simplified: KPI + SLA compliance bar).
+// Placed ABOVE filterRow in dashboard.tsx → always visible, independent of the ticket list below.
 
 function Kpi({ value, label, color }: { value: number; label: string; color: string }) {
   return (
@@ -33,26 +33,26 @@ function Content({ data }: { data: StaffTicketDashboardStatsDto }) {
   return (
     <View style={styles.wrap}>
       <View style={styles.kpiRow}>
-        <Kpi value={data.openCount} label="Đang phụ trách" color={Colors.primaryDark} />
-        <Kpi value={data.resolvedCount} label="Đã xử lý" color={Colors.success} />
-        <Kpi value={data.nearBreachCount} label="Sắp breach" color={Colors.warning} />
-        <Kpi value={data.breachedCount} label="Quá hạn" color={Colors.danger} />
+        <Kpi value={data.openCount} label="In progress" color={Colors.primaryDark} />
+        <Kpi value={data.resolvedCount} label="Resolved" color={Colors.success} />
+        <Kpi value={data.nearBreachCount} label="Near breach" color={Colors.warning} />
+        <Kpi value={data.breachedCount} label="Overdue" color={Colors.danger} />
       </View>
 
-      {/* Tuân thủ SLA — thanh ngang gọn (đã bỏ gauge + donut Rủi ro + Phân bố trạng thái vì
-          trùng KPI Sắp breach/Quá hạn và tab list bên dưới). */}
+      {/* SLA compliance — compact horizontal bar (gauge + Risk donut + Status distribution
+          removed as they duplicated the Near breach/Overdue KPIs and the tab list below). */}
       <View style={styles.card}>
         <View style={styles.slaTop}>
-          <Text style={styles.chartTitle}>Tuân thủ SLA</Text>
+          <Text style={styles.chartTitle}>SLA compliance</Text>
           <Text style={[styles.slaPct, { color: slaColor }]}>{Math.round(pct)}%</Text>
         </View>
         <View style={styles.track}>
           <View style={[styles.fill, { width: `${pct}%`, backgroundColor: slaColor }]} />
         </View>
         <View style={styles.slaChips}>
-          <SlaChip color={Colors.success} label="đúng hạn" value={data.sla.met} />
+          <SlaChip color={Colors.success} label="on time" value={data.sla.met} />
           <SlaChip color={Colors.danger} label="breach" value={data.sla.breached} />
-          <SlaChip color={Colors.textMute} label="đang chạy" value={data.sla.running} />
+          <SlaChip color={Colors.textMute} label="running" value={data.sla.running} />
         </View>
       </View>
     </View>
@@ -69,7 +69,7 @@ export function StaffDashboardStats() {
       </View>
     );
   }
-  // Lỗi/null → ẩn hẳn KPI, không chặn list ticket bên dưới (query tách biệt).
+  // Error/null → hide the KPI section entirely, don't block the ticket list below (separate query).
   if (isError || !data) return null;
 
   return <Content data={data} />;

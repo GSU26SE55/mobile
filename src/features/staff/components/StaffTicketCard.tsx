@@ -19,22 +19,22 @@ const PRIORITY_LABEL: Record<string, string> = {
 };
 
 const CATEGORY_LABEL: Record<string, string> = {
-  Charging: 'Sạc pin',
-  Overheat: 'Quá nhiệt',
-  NoPower: 'Mất điện',
-  Performance: 'Hiệu suất',
-  Repair: 'Sửa chữa',
-  Other: 'Khác',
+  Charging: 'Charging',
+  Overheat: 'Overheating',
+  NoPower: 'Power loss',
+  Performance: 'Performance',
+  Repair: 'Repair',
+  Other: 'Other',
 };
 
 const STATUS_HINT: Record<string, string> = {
-  Assigned: 'Nhấn để bắt đầu xử lý',
-  InProgress: 'Đang xử lý',
-  WaitingCustomer: 'Chờ khách phản hồi',
-  WaitingParts: 'Chờ linh kiện',
-  WaitingOnsiteSchedule: 'Chờ lịch on-site',
-  Resolved: 'Đã xử lý — chờ duyệt',
-  Escalated: 'Đã escalate',
+  Assigned: 'Tap to start processing',
+  InProgress: 'In progress',
+  WaitingCustomer: 'Waiting for customer reply',
+  WaitingParts: 'Waiting for parts',
+  WaitingOnsiteSchedule: 'Waiting for on-site schedule',
+  Resolved: 'Resolved — pending review',
+  Escalated: 'Escalated',
 };
 
 interface Props {
@@ -43,12 +43,12 @@ interface Props {
 }
 
 export function StaffTicketCard({ ticket, onPress }: Props) {
-  // priority có thể null khi ticket chưa triage — không fallback nhầm sang P3.
+  // priority can be null when the ticket hasn't been triaged yet — don't fall back to P3 by mistake.
   const pKey = ticket.priority ? (PRIORITY_BADGE[ticket.priority] ?? 'p3') : 'p3';
   const pColors = BadgeColors[pKey];
   const pLabel = ticket.priority
     ? (PRIORITY_LABEL[ticket.priority] ?? ticket.priority)
-    : 'Chưa phân loại';
+    : 'Untriaged';
   const hint = STATUS_HINT[ticket.status] ?? '';
 
   return (

@@ -1,5 +1,5 @@
-// Khớp BE TicketStatusEnum (13 giá trị). KHÔNG có 'Approved' — đó là
-// ActivityActionEnum.Approved (hành động Manager duyệt), không phải trạng thái ticket.
+// Matches BE TicketStatusEnum (13 values). Does NOT have 'Approved' — that's
+// ActivityActionEnum.Approved (the Manager approval action), not a ticket status.
 export const TicketStatusEnum = {
   New: 'New',
   Open: 'Open',
@@ -38,8 +38,8 @@ export const TicketOriginEnum = {
   ManualByCustomer: 'ManualByCustomer',
   AutoFromAlert: 'AutoFromAlert',
   CreatedByStaff: 'CreatedByStaff',
-  // Sprint Bonus NS-13/NS-22 — hệ thống tự tạo (cascade risk High, sự cố môi trường Critical).
-  // JsonStringEnumConverter → wire là CHUỖI 'System'; int 4 ở docs/api-ticket.md:168 là cross-service BE↔BE.
+  // Sprint Bonus NS-13/NS-22 — auto-created by the system (cascade risk High, environmental incident Critical).
+  // JsonStringEnumConverter → wire value is the STRING 'System'; int 4 in docs/api-ticket.md:168 is cross-service BE↔BE.
   System: 'System',
 } as const;
 export type TicketOriginEnum = (typeof TicketOriginEnum)[keyof typeof TicketOriginEnum];
@@ -99,7 +99,7 @@ export const ActorRoleEnum = {
 } as const;
 export type ActorRoleEnum = (typeof ActorRoleEnum)[keyof typeof ActorRoleEnum];
 
-// Vai trò tham gia ticket — GET /api/tickets/{id}/participants.
+// Ticket participant role — GET /api/tickets/{id}/participants.
 export const ParticipantTypeEnum = {
   Owner: 'Owner',
   PrimaryAssignee: 'PrimaryAssignee',
@@ -139,7 +139,7 @@ export const ActivityActionEnum = {
 } as const;
 export type ActivityActionEnum = (typeof ActivityActionEnum)[keyof typeof ActivityActionEnum];
 
-// Trạng thái AI verify tính hợp lệ của ticket (TicketDTO.aiVerifyStatus).
+// AI verification status for ticket validity (TicketDTO.aiVerifyStatus).
 export const TicketVerifyStatusEnum = {
   Pending: 'Pending',
   Legitimate: 'Legitimate',
@@ -148,13 +148,13 @@ export const TicketVerifyStatusEnum = {
 } as const;
 export type TicketVerifyStatusEnum = (typeof TicketVerifyStatusEnum)[keyof typeof TicketVerifyStatusEnum];
 
-// Lý do đóng đặc biệt — hiện BE chỉ có 1 giá trị.
+// Special close reason — currently BE only has 1 value.
 export const TicketCloseReasonEnum = {
   MergedDuplicate: 'MergedDuplicate',
 } as const;
 export type TicketCloseReasonEnum = (typeof TicketCloseReasonEnum)[keyof typeof TicketCloseReasonEnum];
 
-// GH-68 — loại reaction cho ticket chat (BE ReactionTypeEnum). Gửi STRING trong body/query.
+// GH-68 — reaction type for ticket chat (BE ReactionTypeEnum). Send as STRING in body/query.
 export const ReactionTypeEnum = {
   ThumbsUp: 'ThumbsUp',
   Acknowledged: 'Acknowledged',

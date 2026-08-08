@@ -3,8 +3,8 @@ import { router } from 'expo-router';
 import { Colors } from '@/src/lib/theme';
 import { useMyMentions } from '@/src/features/tickets/hooks/useChatInbox';
 
-// GH-68 — @mention tới tôi (mọi ticket). GH-866: BE bỏ endpoint acknowledge.
-// Không hiện chỉ báo isInternal: BE đã lọc mention nội bộ khỏi Customer nên luôn false.
+// GH-68 — @mentions of me (all tickets). GH-866: BE removed the acknowledge endpoint.
+// No isInternal indicator shown: BE already filters internal mentions out for Customer, so it's always false.
 export default function MentionsScreen() {
   const { data: mentions = [], isLoading, refetch, isRefetching } = useMyMentions();
 
@@ -23,7 +23,7 @@ export default function MentionsScreen() {
       contentContainerStyle={styles.content}
       onRefresh={refetch}
       refreshing={isRefetching}
-      ListEmptyComponent={<Text style={styles.empty}>Chưa có ai nhắc đến bạn.</Text>}
+      ListEmptyComponent={<Text style={styles.empty}>No one has mentioned you yet.</Text>}
       renderItem={({ item }) => (
         <Pressable
           style={styles.row}
@@ -32,7 +32,7 @@ export default function MentionsScreen() {
           <View style={styles.dot} />
           <View style={styles.body}>
             <Text style={styles.name} numberOfLines={1}>
-              {item.mentionedDisplayName ?? 'Bạn được nhắc đến'}
+              {item.mentionedDisplayName ?? 'You were mentioned'}
             </Text>
             <Text style={styles.time}>
               {new Date(item.createdAt).toLocaleString('vi-VN', {

@@ -1,25 +1,25 @@
 import { getToken, setToken, clearToken } from '../../../lib/secureStore';
 
 /**
- * Mốc "đã báo tới đâu" — dùng chung giữa 2 đường bắn banner:
- *  - SignalR (app đang chạy)      → advanceLastSeen sau mỗi event
- *  - background sync / catch-up   → chỉ bắn banner cho cái mới hơn mốc
+ * "How far we've notified up to" marker — shared between the 2 banner-firing paths:
+ *  - SignalR (app running)         → advanceLastSeen after each event
+ *  - background sync / catch-up    → only fires a banner for something newer than the marker
  *
- * Không có mốc chung thì notification đã hiện live sẽ bị catch-up bắn lại lần nữa khi user
- * quay về foreground — user thấy đúng một cảnh báo hai lần.
+ * Without a shared marker, a notification already shown live would get fired again by catch-up when the
+ * user returns to foreground — the user would see the exact same alert twice.
  *
- * BE fan-out 1 sự kiện thành nhiều row; `NotificationWriter` ghi InApp TRƯỚC Push nên
- * `Push.createdAt` lớn hơn `InApp.createdAt` vài micro-giây. Vì vậy advance theo createdAt
- * của row Push (cái SignalR gửi) sẽ tự loại luôn row InApp anh em khỏi catch-up.
+ * BE fans out 1 event into multiple rows; `NotificationWriter` writes InApp BEFORE Push, so
+ * `Push.createdAt` is a few microseconds later than `InApp.createdAt`. So advancing by the createdAt
+ * of the Push row (the one SignalR sends) automatically excludes its sibling InApp row from catch-up.
  */
 
 const LAST_SEEN_KEY = 'notif_last_seen_at';
 
-// Cache in-memory: SignalR gọi advance mỗi event, không nên chạm SecureStore liên tục.
-// Background task chạy trong JS context mới nên cache rỗng — đọc lại từ store, vẫn đúng.
+// In-memory cache: SignalR calls advance on every event, shouldn't hit SecureStore constantly.
+// A background task runs in a fresh JS context so the cache starts empty — reads back from the store, still correct.
 let cached: number | null = null;
 
-/** `null` = chưa từng khởi tạo (lần đăng nhập đầu trên máy này). */
+/** `null` = never initialized (first login on this device). */
 export async function readLastSeen(): Promise<number | null> {
   if (cached !== null) return cached;
 
@@ -33,7 +33,7 @@ export async function readLastSeen(): Promise<number | null> {
   return parsed;
 }
 
-/** Chỉ tiến, không lùi — event tới không đúng thứ tự cũng không làm hở mốc. */
+/** Only moves forward, never backward — an out-of-order event can't rewind the marker. */
 export async function advanceLastSeen(isoTimestamp: string): Promise<void> {
   const next = Date.parse(isoTimestamp);
   if (Number.isNaN(next)) return;
@@ -46,9 +46,9 @@ export async function advanceLastSeen(isoTimestamp: string): Promise<void> {
 }
 
 /**
- * Đặt mốc = bây giờ mà KHÔNG bắn banner nào.
- * Dùng cho lần đăng nhập đầu: user có sẵn hàng trăm notification chưa đọc, dội hết lên
- * ngay lúc vừa login là cách nhanh nhất để họ tắt notification của app.
+ * Sets the marker = now with NO banner fired.
+ * Used for the first login: the user may already have hundreds of unread notifications, and dumping
+ * them all right after login is the fastest way to make them turn off the app's notifications.
  */
 export async function initLastSeenToNow(): Promise<void> {
   const now = Date.now();
@@ -56,7 +56,7 @@ export async function initLastSeenToNow(): Promise<void> {
   await setToken(LAST_SEEN_KEY, new Date(now).toISOString()).catch(() => {});
 }
 
-/** Logout: xoá mốc để tài khoản đăng nhập sau không kế thừa mốc của tài khoản trước. */
+/** Logout: clears the marker so the next account to log in doesn't inherit the previous account's marker. */
 export async function clearLastSeen(): Promise<void> {
   cached = null;
   await clearToken(LAST_SEEN_KEY).catch(() => {});

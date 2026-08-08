@@ -11,8 +11,8 @@ interface Props {
   isLoading?: boolean;
 }
 
-// Format dd/MM/yyyy HH:mm — khớp frontend (date-fns "dd/MM/yyyy HH:mm").
-// Tự viết để không thêm package date-fns vào mobile.
+// Format dd/MM/yyyy HH:mm — matches frontend (date-fns "dd/MM/yyyy HH:mm").
+// Written by hand to avoid adding the date-fns package to mobile.
 function formatActivityTime(iso: string): string {
   const d = new Date(iso);
   const p = (n: number) => String(n).padStart(2, '0');
@@ -31,7 +31,7 @@ export function ActivityTimeline({ activities, isLoading }: Props) {
   }
 
   if (!activities?.length) {
-    return <Text style={styles.empty}>Chưa có hoạt động nào.</Text>;
+    return <Text style={styles.empty}>No activity yet.</Text>;
   }
 
   return (
@@ -58,18 +58,18 @@ export function ActivityTimeline({ activities, isLoading }: Props) {
               {item.actorDisplayName && (
                 <Text style={styles.actor}>{item.actorDisplayName} · {item.actorRole}</Text>
               )}
-              {/* Chỉ hiện giá trị MỚI. Trước đây in kèm oldValue gạch ngang
-                  ("Assigned InProgress") — rối mắt mà không thêm thông tin gì,
-                  trạng thái cũ đã nằm ở dòng activity ngay phía trên rồi. */}
+              {/* Only show the NEW value. Previously also printed oldValue with a strikethrough
+                  ("Assigned InProgress") — cluttered without adding any information, since the
+                  old status is already shown in the activity line right above. */}
               {!!item.newValue && (
                 <Text style={styles.value}>
-                  {/* newValue tuỳ action mà là status / priority / tên nhân viên
-                      → chỉ dịch sang tiếng Việt khi chắc chắn nó là status. */}
+                  {/* newValue is status / priority / staff name depending on the action
+                      → only translate the label when it's definitely a status. */}
                   {item.action === 'StatusChanged' ? statusLabel(item.newValue) : item.newValue}
                 </Text>
               )}
               {item.reason && (
-                <Text style={styles.reason}>Lý do: {item.reason}</Text>
+                <Text style={styles.reason}>Reason: {item.reason}</Text>
               )}
             </View>
           </View>

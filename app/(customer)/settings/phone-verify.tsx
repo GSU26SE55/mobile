@@ -14,19 +14,19 @@ export default function PhoneVerifyScreen() {
   const setFieldError = (field: string, msg: string) =>
     setFieldErrors((prev) => ({ ...prev, [field]: msg }));
 
-  // sendOtp — non-form → onError trực tiếp
+  // sendOtp — non-form → direct onError
   const handleSend = () => {
     sendOtp.mutate(undefined, {
       onError: (error) => handleErrorApi({ error }),
     });
   };
 
-  // verifyOtp — có form → mutateAsync + try-catch + handleErrorApi
+  // verifyOtp — has form → mutateAsync + try-catch + handleErrorApi
   const handleVerify = async (data: PhoneOtpInput) => {
     setFieldErrors({});
     try {
       await verifyOtp.mutateAsync(data);
-      Alert.alert('Thành công', 'Số điện thoại đã được xác thực.');
+      Alert.alert('Success', 'Your phone number has been verified.');
     } catch (error) {
       handleErrorApi({ error, setFieldError });
     }

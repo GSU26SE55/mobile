@@ -8,7 +8,7 @@ export function useResetPassword() {
   return useMutation({
     mutationFn: (data: ResetPasswordPayload) => authService.resetPassword(data),
     onSuccess: () => {
-      Alert.alert('Thành công', 'Mật khẩu đã được đặt lại. Vui lòng đăng nhập lại.', [
+      Alert.alert('Success', 'Your password has been reset. Please sign in again.', [
         { text: 'OK', onPress: () => router.replace('/(auth)/login') },
       ]);
     },

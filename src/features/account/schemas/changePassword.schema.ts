@@ -2,20 +2,20 @@ import { z } from 'zod';
 
 export const changePasswordSchema = z
   .object({
-    currentPassword: z.string().min(1, 'Mật khẩu hiện tại không được để trống'),
+    currentPassword: z.string().min(1, 'Current password must not be empty'),
     newPassword: z
       .string()
-      .min(8, 'Tối thiểu 8 ký tự')
-      .max(100, 'Tối đa 100 ký tự')
-      .regex(/[A-Z]/, 'Cần ít nhất 1 chữ hoa')
-      .regex(/[a-z]/, 'Cần ít nhất 1 chữ thường')
-      .regex(/[0-9]/, 'Cần ít nhất 1 chữ số')
-      // Khớp BE PasswordPolicy: ký tự đặc biệt = bất kỳ ký tự không phải chữ-số-khoảng trắng.
-      .regex(/[^A-Za-z0-9\s]/, 'Cần ít nhất 1 ký tự đặc biệt'),
-    confirmPassword: z.string().min(1, 'Vui lòng xác nhận mật khẩu'),
+      .min(8, 'Minimum 8 characters')
+      .max(100, 'Maximum 100 characters')
+      .regex(/[A-Z]/, 'Must contain at least 1 uppercase letter')
+      .regex(/[a-z]/, 'Must contain at least 1 lowercase letter')
+      .regex(/[0-9]/, 'Must contain at least 1 digit')
+      // Matches BE PasswordPolicy: special character = any character that isn't a letter, digit, or whitespace.
+      .regex(/[^A-Za-z0-9\s]/, 'Must contain at least 1 special character'),
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
   })
   .refine((d) => d.newPassword === d.confirmPassword, {
-    message: 'Mật khẩu xác nhận không khớp',
+    message: 'Password confirmation does not match',
     path: ['confirmPassword'],
   });
 

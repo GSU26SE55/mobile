@@ -34,7 +34,7 @@ export default function EditProfileScreen() {
     setFieldErrors({});
     try {
       await updateProfile.mutateAsync(data);
-      Alert.alert('Thành công', 'Thông tin đã được cập nhật.');
+      Alert.alert('Success', 'Your information has been updated.');
       router.back();
     } catch (error) {
       handleErrorApi({ error, setFieldError });
@@ -51,7 +51,7 @@ export default function EditProfileScreen() {
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <BackButton />
-        <Text style={styles.headerTitle}>Chỉnh sửa hồ sơ</Text>
+        <Text style={styles.headerTitle}>Edit Profile</Text>
         <View style={{ width: 36 }} />
       </View>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

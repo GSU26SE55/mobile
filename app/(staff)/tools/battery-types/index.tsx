@@ -17,7 +17,7 @@ import { BackButton } from '@/src/shared/components/ScreenHeader';
 import { SearchBar } from '@/src/shared/components/SearchBar';
 import { useDebouncedValue } from '@/src/shared/hooks/useDebouncedValue';
 
-// GH-56 — danh sách loại pin (read-only). Search keyword + phân trang đơn giản (1 trang lớn).
+// GH-56 — battery type list (read-only). Keyword search + simple pagination (1 large page).
 export default function BatteryTypesListScreen() {
   const insets = useSafeAreaInsets();
   const [keyword, setKeyword] = useState('');
@@ -33,7 +33,7 @@ export default function BatteryTypesListScreen() {
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <BackButton />
-        <Text style={styles.topTitle}>Loại pin</Text>
+        <Text style={styles.topTitle}>Battery Types</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -41,7 +41,7 @@ export default function BatteryTypesListScreen() {
         <SearchBar
           value={keyword}
           onChangeText={setKeyword}
-          placeholder="Tìm theo tên hoặc nhà sản xuất"
+          placeholder="Search by name or manufacturer"
         />
       </View>
 
@@ -52,15 +52,15 @@ export default function BatteryTypesListScreen() {
       ) : isError ? (
         <View style={styles.center}>
           <Ionicons name="alert-circle-outline" size={32} color={Colors.textMute} />
-          <Text style={styles.emptyText}>Không tải được danh sách.</Text>
+          <Text style={styles.emptyText}>Failed to load the list.</Text>
           <Pressable onPress={() => refetch()} style={[styles.retryBtn, Shadow]}>
-            <Text style={styles.retryText}>Thử lại</Text>
+            <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
       ) : items.length === 0 ? (
         <View style={styles.center}>
           <Ionicons name="battery-dead-outline" size={32} color={Colors.textMute} />
-          <Text style={styles.emptyText}>Không có loại pin phù hợp.</Text>
+          <Text style={styles.emptyText}>No matching battery types.</Text>
         </View>
       ) : (
         <FlatList
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   headerSpacer: { width: 44 },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
-  // Chỉ lo khoảng cách — kiểu dáng ô search nằm trong <SearchBar> dùng chung.
+  // Only handles spacing — the search box styling lives in the shared <SearchBar>.
   searchWrap: { marginHorizontal: 16, marginBottom: 12 },
   listContent: { paddingHorizontal: 16, paddingBottom: 24 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 10 },

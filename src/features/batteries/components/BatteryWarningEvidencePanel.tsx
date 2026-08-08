@@ -4,9 +4,9 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { Colors } from '@/src/lib/theme';
 import { useReadingEvidence, toWarningRows } from '../hooks/useReadingEvidence';
 
-/** Số dòng hiện sẵn trước khi bấm "Xem thêm". */
+/** Number of rows shown by default before tapping "Load more". */
 const PREVIEW_ROWS = 10;
-/** Mỗi lần bấm "Xem thêm" mở thêm bấy nhiêu dòng. */
+/** Number of rows revealed per "Load more" tap. */
 const LOAD_MORE_STEP = 25;
 
 const num = (v: number | null | undefined, digits = 2) =>
@@ -14,7 +14,7 @@ const num = (v: number | null | undefined, digits = 2) =>
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleString('vi-VN', {
+  return d.toLocaleString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -25,36 +25,39 @@ function formatTime(iso: string): string {
 
 interface Props {
   batteryAssetId?: string | null;
-  /** Thời điểm phát hiện sự cố — mốc để lấy log bằng chứng (±15'). */
+  /** Incident detection timestamp — anchor for fetching the evidence log (±15'). */
   detectedAt?: string | null;
 }
 
 /**
- * Bằng chứng cảnh báo — CHỈ hiển thị reading vượt ngưỡng quanh thời điểm phát hiện sự cố
- * (DetectedAt ±15'), KHÔNG phải log real-time. Để Staff/Manager đối chiếu ticket có thật
- * hay không. Bản mobile của `BatteryWarningEvidencePanel` bên web — giữ cùng cột và cùng
- * ngưỡng để hai nền tảng không hiện hai bộ số khác nhau cho cùng một ticket.
+ * Alert evidence — shows ONLY readings that breached thresholds around the incident
+ * detection time (DetectedAt ±15'), NOT a real-time log. Lets Staff/Manager verify
+ * whether a ticket is genuine. Mobile counterpart of the web `BatteryWarningEvidencePanel`
+ * — keeps the same columns and thresholds so both platforms don't show two different
+ * sets of numbers for the same ticket.
  *
- * Bảng cuộn ngang: 6 cột số không vừa bề ngang điện thoại, ép vừa thì chữ bị bóp không đọc nổi.
+ * Horizontally scrolling table: 6 numeric columns don't fit a phone's width; forcing
+ * them to fit would squeeze the text unreadable.
  */
 export function BatteryWarningEvidencePanel({ batteryAssetId, detectedAt }: Props) {
   const { data, isLoading } = useReadingEvidence(batteryAssetId, detectedAt);
   const warnings = toWarningRows(data?.items ?? []);
 
-  // Cửa sổ ±15' ở tần suất 5s cho ra vài trăm dòng — đổ hết thì bảng nuốt trọn màn hình
-  // và đẩy mọi thứ khác xuống dưới. Mặc định 10 dòng, mỗi lần "Xem thêm" mở thêm 25.
+  // A ±15' window at 5s frequency yields a few hundred rows — rendering all of them
+  // would swallow the entire screen and push everything else down. Default 10 rows,
+  // each "Load more" tap reveals 25 more.
   const [limit, setLimit] = useState(PREVIEW_ROWS);
   const visibleRows = warnings.slice(0, limit);
   const hiddenCount = warnings.length - visibleRows.length;
 
-  // Không có pin hoặc ticket không có mốc phát hiện → không có bằng chứng để hiện.
+  // No battery or ticket has no detection timestamp → no evidence to show.
   if (!batteryAssetId || !detectedAt) return null;
 
   return (
     <View>
       <View style={styles.headRow}>
         <Ionicons name="shield-checkmark" size={15} color={Colors.warningDark} />
-        <Text style={styles.headText}>BẰNG CHỨNG CẢNH BÁO (LÚC PHÁT HIỆN)</Text>
+        <Text style={styles.headText}>ALERT EVIDENCE (AT DETECTION)</Text>
         {warnings.length > 0 && (
           <Text style={styles.headCount}>{warnings.length}</Text>
         )}
@@ -65,18 +68,18 @@ export function BatteryWarningEvidencePanel({ batteryAssetId, detectedAt }: Prop
           <ActivityIndicator color={Colors.primary} />
         </View>
       ) : warnings.length === 0 ? (
-        <Text style={styles.empty}>Không có cảnh báo bất thường quanh thời điểm phát hiện.</Text>
+        <Text style={styles.empty}>No abnormal readings around the detection time.</Text>
       ) : (
         <>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.table}>
             <View style={styles.theadRow}>
-              <Text style={[styles.th, styles.colTime]}>Thời điểm</Text>
+              <Text style={[styles.th, styles.colTime]}>Time</Text>
               <Text style={[styles.th, styles.colNum]}>V</Text>
               <Text style={[styles.th, styles.colNum]}>A</Text>
               <Text style={[styles.th, styles.colNum]}>°C</Text>
               <Text style={[styles.th, styles.colNum]}>SOC%</Text>
-              <Text style={[styles.th, styles.colWarn]}>Cảnh báo</Text>
+              <Text style={[styles.th, styles.colWarn]}>Alert</Text>
             </View>
 
             {visibleRows.map(({ reading: r, reasons }) => (
@@ -98,28 +101,29 @@ export function BatteryWarningEvidencePanel({ batteryAssetId, detectedAt }: Prop
           </View>
         </ScrollView>
 
-        {/* Nút nằm NGOÀI ScrollView ngang — để trong thì nó trôi theo trục ngang và
-            biến mất khỏi khung nhìn khi người dùng đang xem cột "Cảnh báo". */}
+        {/* Button sits OUTSIDE the horizontal ScrollView — inside, it would drift along
+            the horizontal axis and disappear from view while the user is looking at the
+            "Alert" column. */}
         {hiddenCount > 0 && (
           <Pressable
             style={({ pressed }) => [styles.moreBtn, pressed && { opacity: 0.6 }]}
             onPress={() => setLimit((v) => v + LOAD_MORE_STEP)}
           >
             <Text style={styles.moreText}>
-              Xem thêm {Math.min(LOAD_MORE_STEP, hiddenCount)} dòng
+              Load {Math.min(LOAD_MORE_STEP, hiddenCount)} more rows
             </Text>
-            <Text style={styles.moreCount}>còn {hiddenCount}</Text>
+            <Text style={styles.moreCount}>{hiddenCount} left</Text>
             <Ionicons name="chevron-down" size={14} color={Colors.primaryDark} />
           </Pressable>
         )}
 
-        {/* Đã mở hết mà danh sách dài thì cho thu gọn lại, đỡ phải cuộn ngược lâu. */}
+        {/* Once fully expanded, allow collapsing back if the list is long — saves scrolling back up. */}
         {hiddenCount === 0 && warnings.length > PREVIEW_ROWS && (
           <Pressable
             style={({ pressed }) => [styles.moreBtn, pressed && { opacity: 0.6 }]}
             onPress={() => setLimit(PREVIEW_ROWS)}
           >
-            <Text style={styles.moreText}>Thu gọn</Text>
+            <Text style={styles.moreText}>Collapse</Text>
             <Ionicons name="chevron-up" size={14} color={Colors.primaryDark} />
           </Pressable>
         )}

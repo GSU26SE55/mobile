@@ -1,4 +1,4 @@
-// Ambient DTOs — mirror docs/api-battery.md §Nhóm 8 + §Nhóm 13 (ambient-trend).
+// Ambient DTOs — mirror docs/api-battery.md §Group 8 + §Group 13 (ambient-trend).
 import type { AmbientReadingSourceEnum } from '../enums/ambient.enum';
 
 export { AmbientReadingSourceEnum } from '../enums/ambient.enum';
@@ -14,10 +14,10 @@ export interface AmbientReadingDto {
   sourceDeviceId: string | null;
 }
 
-// GET /api/reports/ambient-trend — ⚠️ naming bất đối xứng:
-//   temp dùng prefix avg* ; humidity/irradiance dùng suffix *Avg.
+// GET /api/reports/ambient-trend — ⚠️ asymmetric naming:
+//   temp uses prefix avg* ; humidity/irradiance use suffix *Avg.
 export interface AmbientTrendPoint {
-  date: string; // mốc bucket UTC
+  date: string; // UTC bucket timestamp
   avgTemp: number;
   maxTemp: number;
   minTemp: number;
@@ -28,7 +28,7 @@ export interface AmbientTrendPoint {
 export type AmbientGranularity = 'day' | 'week' | 'month';
 
 export interface AmbientTrendParams {
-  from?: string; // UTC — mặc định 30 ngày gần nhất
+  from?: string; // UTC — defaults to the last 30 days
   to?: string;
   granularity?: AmbientGranularity; // default 'day'
 }

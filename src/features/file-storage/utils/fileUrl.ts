@@ -2,8 +2,8 @@ import { BASE_URL } from '../../../lib/axios';
 import { ENDPOINTS } from '../../../lib/endpoints';
 
 /**
- * URL tuyệt đối của file. BE chỉ trả `publicUrl` khi có cấu hình PublicBaseUrl,
- * ngược lại null — khi đó fallback về endpoint download (api-filestorage.md).
+ * Absolute URL of the file. The BE only returns `publicUrl` when PublicBaseUrl is configured,
+ * otherwise null — in that case, fall back to the download endpoint (api-filestorage.md).
  */
 export function resolveFileUrl(publicUrl: string | null | undefined, fileId: string): string {
   if (publicUrl) return publicUrl;

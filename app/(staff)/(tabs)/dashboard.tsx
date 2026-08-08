@@ -17,45 +17,45 @@ import { ProgressListItem } from '@/src/shared/components/ProgressListItem';
 type FilterTab = 'all' | 'active' | 'waiting' | 'resolved';
 
 const FILTER_TABS: { key: FilterTab; label: string }[] = [
-  { key: 'all', label: 'Tất cả' },
-  { key: 'active', label: 'Đang xử lý' },
-  { key: 'waiting', label: 'Chờ' },
-  { key: 'resolved', label: 'Hoàn thành' },
+  { key: 'all', label: 'All' },
+  { key: 'active', label: 'In progress' },
+  { key: 'waiting', label: 'Waiting' },
+  { key: 'resolved', label: 'Completed' },
 ];
 
 const ACTIVE_STATUSES: TicketStatusEnum[] = ['Assigned', 'InProgress'];
 const WAITING_STATUSES: TicketStatusEnum[] = ['WaitingCustomer', 'WaitingParts', 'WaitingOnsiteSchedule'];
 const RESOLVED_STATUSES: TicketStatusEnum[] = ['Resolved', 'Escalated'];
 
-// status → nhãn tiếng Việt + badge (palette hiện tại) + % tiến độ trong vòng đời + màu thanh.
+// status → English label + badge (current palette) + % progress in the lifecycle + bar color.
 const STATUS_META: Record<string, { label: string; badge: keyof typeof BadgeColors; progress: number }> = {
-  New: { label: 'Mới', badge: 'new', progress: 10 },
-  Open: { label: 'Đang mở', badge: 'open', progress: 15 },
-  Assigned: { label: 'Được giao', badge: 'assigned', progress: 30 },
-  InProgress: { label: 'Đang xử lý', badge: 'progress', progress: 60 },
-  WaitingCustomer: { label: 'Chờ khách', badge: 'waiting', progress: 50 },
-  WaitingParts: { label: 'Chờ linh kiện', badge: 'waiting', progress: 50 },
-  WaitingOnsiteSchedule: { label: 'Chờ lịch', badge: 'waiting', progress: 50 },
-  Resolved: { label: 'Đã xử lý', badge: 'resolved', progress: 100 },
-  Escalated: { label: 'Đã escalate', badge: 'escalated', progress: 80 },
-  ClosedPendingRate: { label: 'Chờ đánh giá', badge: 'closed', progress: 100 },
-  Closed: { label: 'Đã đóng', badge: 'closed', progress: 100 },
-  ClosedRejected: { label: 'Bị từ chối', badge: 'crit', progress: 100 },
-  Incident: { label: 'Sự cố', badge: 'crit', progress: 40 },
+  New: { label: 'New', badge: 'new', progress: 10 },
+  Open: { label: 'Open', badge: 'open', progress: 15 },
+  Assigned: { label: 'Assigned', badge: 'assigned', progress: 30 },
+  InProgress: { label: 'In progress', badge: 'progress', progress: 60 },
+  WaitingCustomer: { label: 'Waiting customer', badge: 'waiting', progress: 50 },
+  WaitingParts: { label: 'Waiting parts', badge: 'waiting', progress: 50 },
+  WaitingOnsiteSchedule: { label: 'Waiting schedule', badge: 'waiting', progress: 50 },
+  Resolved: { label: 'Resolved', badge: 'resolved', progress: 100 },
+  Escalated: { label: 'Escalated', badge: 'escalated', progress: 80 },
+  ClosedPendingRate: { label: 'Pending rating', badge: 'closed', progress: 100 },
+  Closed: { label: 'Closed', badge: 'closed', progress: 100 },
+  ClosedRejected: { label: 'Rejected', badge: 'crit', progress: 100 },
+  Incident: { label: 'Incident', badge: 'crit', progress: 40 },
 };
 
 const CATEGORY_LABEL: Record<string, string> = {
-  Charging: 'Sạc pin',
-  Overheat: 'Quá nhiệt',
-  NoPower: 'Mất điện',
-  Performance: 'Hiệu suất',
-  Repair: 'Sửa chữa',
-  Other: 'Khác',
+  Charging: 'Charging',
+  Overheat: 'Overheat',
+  NoPower: 'No power',
+  Performance: 'Performance',
+  Repair: 'Repair',
+  Other: 'Other',
 };
 
-// Màu vòng tiến độ hôm nay — echo tông cam của mẫu nhưng vẫn trong palette hiện tại.
+// Today's progress ring color — echoes the mockup's orange tone but stays within the current palette.
 function progressColor(p: number): string {
-  // Accent trang trí (tiến độ, không phải mức nguy hiểm): đạt mức khá → xanh lá.
+  // Decorative accent (progress, not a severity indicator): reasonable level → green.
   if (p >= 40) return Colors.primary;
   return Colors.danger;
 }
@@ -67,7 +67,7 @@ export default function StaffDashboardScreen() {
   const { data: stats } = useStaffDashboardStats();
   const { data: profile } = useStaffProfile();
   const { data: unreadCount = 0 } = useUnreadCount();
-  // Chat chưa đọc — tách bạch với unreadCount ở trên (đó là notification).
+  // Unread chats — distinct from unreadCount above (that one is notifications).
   const { data: chatUnread = 0 } = useChatUnreadCount();
 
   const allTickets = apiTickets?.items ?? [];
@@ -79,7 +79,7 @@ export default function StaffDashboardScreen() {
     return true;
   });
 
-  // Tab counts từ stats.countByStatus (single source). Chưa load → null → ẩn số trên tab.
+  // Tab counts from stats.countByStatus (single source). Not loaded yet → null → hide the number on the tab.
   const cbs = stats?.countByStatus;
   const sumOf = (statuses: TicketStatusEnum[]) => statuses.reduce((s, k) => s + (cbs?.[k] ?? 0), 0);
   const counts: Record<FilterTab, number | null> = {
@@ -94,7 +94,7 @@ export default function StaffDashboardScreen() {
   const total = openCount + resolvedCount;
   const progressPct = total > 0 ? Math.round((resolvedCount / total) * 100) : 0;
 
-  const firstName = profile?.fullName ? profile.fullName.split(' ').slice(-1)[0] : 'bạn';
+  const firstName = profile?.fullName ? profile.fullName.split(' ').slice(-1)[0] : 'you';
 
   const renderTicket = ({ item }: { item: TicketDTO }) => {
     const meta = STATUS_META[item.status] ?? { label: item.status, badge: 'new' as const, progress: 10 };
@@ -109,7 +109,7 @@ export default function StaffDashboardScreen() {
         barColor={bc.text}
         caption={
           item.hasUnreadChat
-            ? `${item.code} · ${category} · 💬 tin nhắn mới`
+            ? `${item.code} · ${category} · 💬 new message`
             : `${item.code} · ${category}`
         }
         onPress={() =>
@@ -127,38 +127,38 @@ export default function StaffDashboardScreen() {
       <View style={styles.headerWrap}>
         <HomeHeader
           name={firstName}
-          subtitle={profile?.department || 'Kỹ thuật viên hiện trường'}
+          subtitle={profile?.department || 'Field technician'}
           avatarUrl={profile?.avatarUrl}
           unreadCount={unreadCount}
           onBellPress={() => router.navigate('/(staff)/notifications' as any)}
         />
 
         <StatTrio
-          left={{ value: String(openCount), label: 'Đang xử lý' }}
-          center={{ percent: progressPct, label: 'Tiến độ xử lý', color: progressColor(progressPct) }}
-          right={{ value: String(resolvedCount), label: 'Hoàn thành' }}
+          left={{ value: String(openCount), label: 'In progress' }}
+          center={{ percent: progressPct, label: 'Progress', color: progressColor(progressPct) }}
+          right={{ value: String(resolvedCount), label: 'Completed' }}
         />
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Công việc cần xử lý</Text>
-          {/* Tổng chat chưa đọc trên MỌI ticket — khác chuông thông báo ở header
-              (useUnreadCount = notification). Bấm vào mở thẳng danh sách khách hàng. */}
+          <Text style={styles.sectionTitle}>Work to handle</Text>
+          {/* Total unread chats across ALL tickets — different from the notification bell in the
+              header (useUnreadCount = notifications). Tapping opens the customer list directly. */}
           {chatUnread > 0 && (
             <Pressable
               style={styles.unreadPill}
               onPress={() => router.navigate('/(staff)/(tabs)/customers' as any)}
-              accessibilityLabel={`${chatUnread} tin nhắn chưa đọc`}
+              accessibilityLabel={`${chatUnread} unread messages`}
             >
               <Ionicons name="chatbubble-ellipses" size={13} color="#FFF" />
               <Text style={styles.unreadPillText}>
-                {chatUnread > 99 ? '99+' : chatUnread} tin chưa đọc
+                {chatUnread > 99 ? '99+' : chatUnread} unread
               </Text>
             </Pressable>
           )}
         </View>
 
-        {/* Cuộn ngang thay vì flex:1 chia đều — nhãn dài ("Đang xử lý (3)") không còn bị bóp
-            tràn mép phải. Chip tự co theo nội dung nên thêm bộ lọc mới cũng không vỡ layout. */}
+        {/* Horizontal scroll instead of flex:1 even split — long labels ("In progress (3)") no longer
+            get squeezed against the right edge. Chips size to their content so adding a new filter doesn't break the layout. */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -190,9 +190,9 @@ export default function StaffDashboardScreen() {
       ) : isError ? (
         <View style={styles.center}>
           <Ionicons name="cloud-offline-outline" size={48} color={Colors.textFaint} />
-          <Text style={styles.emptyText}>Không tải được danh sách ticket</Text>
+          <Text style={styles.emptyText}>Failed to load ticket list</Text>
           <Pressable onPress={() => refetch()} style={styles.retryBtn}>
-            <Text style={styles.retryText}>Thử lại</Text>
+            <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
       ) : (
@@ -206,7 +206,7 @@ export default function StaffDashboardScreen() {
           ListEmptyComponent={
             <View style={styles.empty}>
               <Ionicons name="checkmark-done-circle-outline" size={48} color={Colors.textFaint} />
-              <Text style={styles.emptyText}>Không có ticket nào</Text>
+              <Text style={styles.emptyText}>No tickets</Text>
             </View>
           }
         />
@@ -227,8 +227,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 4,
   },
   unreadPillText: { color: '#FFF', fontSize: 11, fontWeight: '800' },
-  // Kéo tràn ra 2 mép để bù paddingHorizontal:20 của headerWrap — chip cuộn hết bề rộng màn hình
-  // thay vì bị cắt cụt tại lề, còn khoảng đệm đầu/cuối trả lại bằng contentContainerStyle.
+  // Stretched to both edges to offset headerWrap's paddingHorizontal:20 — chips scroll the full
+  // screen width instead of being cut off at the edge; start/end padding is restored via contentContainerStyle.
   filterScroll: {
     marginHorizontal: -20,
   },

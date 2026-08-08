@@ -3,29 +3,26 @@ import { StyleSheet, Text, View } from 'react-native';
 import { BadgeColors } from '@/src/lib/theme';
 import { TicketStatusEnum } from '../types/ticket.types';
 
-// Nhãn tiếng Việt — khớp nguyên văn web (`shared/components/ticket/TicketStatusBadge`).
-// Trước đây mobile để tiếng Anh viết hoa ('APPROVED', 'IN PROGRESS') giữa một
-// màn hình toàn tiếng Việt, và 3 trạng thái Waiting gộp chung thành 'WAITING'
-// nên khách không biết mình đang chờ gì.
+// Human-readable ticket status labels.
 const STATUS_CONFIG: Record<TicketStatusEnum, { label: string; badge: keyof typeof BadgeColors }> = {
-  New:                    { label: 'Mới',            badge: 'new' },
-  Open:                   { label: 'Chờ triage',     badge: 'open' },
-  Assigned:               { label: 'Đã gán',         badge: 'assigned' },
-  InProgress:             { label: 'Đang xử lý',     badge: 'progress' },
-  WaitingCustomer:        { label: 'Chờ khách hàng', badge: 'waiting' },
-  WaitingParts:           { label: 'Chờ linh kiện',  badge: 'waiting' },
-  WaitingOnsiteSchedule:  { label: 'Chờ lịch hẹn',   badge: 'waiting' },
-  Resolved:               { label: 'Đã xử lý',       badge: 'resolved' },
-  Escalated:              { label: 'Đã chuyển cấp',  badge: 'escalated' },
-  ClosedPendingRate:      { label: 'Chờ đánh giá',   badge: 'closed' },
-  Closed:                 { label: 'Đã đóng',        badge: 'closed' },
-  ClosedRejected:         { label: 'Bị từ chối',     badge: 'crit' },
-  Incident:               { label: 'Sự cố',          badge: 'crit' },
+  New:                    { label: 'New',                    badge: 'new' },
+  Open:                   { label: 'Awaiting triage',        badge: 'open' },
+  Assigned:               { label: 'Assigned',               badge: 'assigned' },
+  InProgress:             { label: 'In progress',            badge: 'progress' },
+  WaitingCustomer:        { label: 'Waiting for customer',   badge: 'waiting' },
+  WaitingParts:           { label: 'Waiting for parts',      badge: 'waiting' },
+  WaitingOnsiteSchedule:  { label: 'Waiting for appointment', badge: 'waiting' },
+  Resolved:               { label: 'Resolved',               badge: 'resolved' },
+  Escalated:              { label: 'Escalated',              badge: 'escalated' },
+  ClosedPendingRate:      { label: 'Awaiting rating',        badge: 'closed' },
+  Closed:                 { label: 'Closed',                 badge: 'closed' },
+  ClosedRejected:         { label: 'Rejected',               badge: 'crit' },
+  Incident:               { label: 'Incident',               badge: 'crit' },
 };
 
 /**
- * Nhãn tiếng Việt của trạng thái — dùng chung cho chỗ nào chỉ cần chữ, không
- * cần badge (vd ActivityTimeline). Trả nguyên chuỗi gốc nếu BE gửi giá trị lạ.
+ * Status label for places that only need text (for example, ActivityTimeline).
+ * Returns the original string when the backend sends an unknown value.
  */
 export const statusLabel = (status: string) =>
   STATUS_CONFIG[status as TicketStatusEnum]?.label ?? status;

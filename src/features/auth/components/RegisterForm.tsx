@@ -58,7 +58,7 @@ export function RegisterForm() {
       } else if (error instanceof HttpError) {
         setGeneralError(error.message);
       } else if (error instanceof Error) {
-        setGeneralError('Không thể kết nối. Kiểm tra lại mạng.');
+        setGeneralError('Unable to connect. Please check your network.');
       }
     }
   };
@@ -77,10 +77,10 @@ export function RegisterForm() {
     optional?: boolean;
     isValid?: boolean;
   }[] = [
-    { key: 'fullName', label: 'Họ và tên', placeholder: 'Nguyễn Văn A', value: fullName, onChangeText: setFullName, autoCapitalize: 'words', isValid: isNameValid },
+    { key: 'fullName', label: 'Full name', placeholder: 'John Doe', value: fullName, onChangeText: setFullName, autoCapitalize: 'words', isValid: isNameValid },
     { key: 'email', label: 'Email', placeholder: 'name@example.com', value: email, onChangeText: setEmail, keyboardType: 'email-address', autoCapitalize: 'none', isValid: isEmailValid },
-    { key: 'password', label: 'Mật khẩu', placeholder: 'Tối thiểu 8 ký tự', value: password, onChangeText: setPassword, secure: true, showSecure: showPassword, onToggleSecure: () => setShowPassword(!showPassword) },
-    { key: 'confirmPassword', label: 'Xác nhận mật khẩu', placeholder: 'Nhập lại mật khẩu', value: confirmPassword, onChangeText: setConfirmPassword, secure: true, showSecure: showConfirmPassword, onToggleSecure: () => setShowConfirmPassword(!showConfirmPassword) },
+    { key: 'password', label: 'Password', placeholder: 'Minimum 8 characters', value: password, onChangeText: setPassword, secure: true, showSecure: showPassword, onToggleSecure: () => setShowPassword(!showPassword) },
+    { key: 'confirmPassword', label: 'Confirm password', placeholder: 'Re-enter password', value: confirmPassword, onChangeText: setConfirmPassword, secure: true, showSecure: showConfirmPassword, onToggleSecure: () => setShowConfirmPassword(!showConfirmPassword) },
   ];
 
   return (
@@ -132,7 +132,7 @@ export function RegisterForm() {
       ) : null}
 
       <Pressable style={[styles.button, isPending && styles.buttonDisabled]} onPress={handleSubmit} disabled={isPending}>
-        {isPending ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.buttonText}>Tạo tài khoản</Text>}
+        {isPending ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.buttonText}>Create account</Text>}
       </Pressable>
     </View>
   );

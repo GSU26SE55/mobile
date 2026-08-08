@@ -14,7 +14,7 @@ interface AttachmentPreviewStripProps {
   disabled?: boolean;
 }
 
-/** Dải xem trước ảnh đã chọn, hiển thị phía trên thanh chat — chỉ nhô lên khi có ảnh. */
+/** Strip of previews for selected images, shown above the chat bar — only appears when there are images. */
 export function AttachmentPreviewStrip({
   items,
   onRemove,

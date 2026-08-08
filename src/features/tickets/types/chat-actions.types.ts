@@ -1,11 +1,11 @@
-// Edit/Delete/Dịch/Ghi âm cho ticket chat — nhân bản types từ Web
-// (shared/types/chat.types.ts) vì mobile chưa có backend riêng, dùng chung endpoint.
+// Edit/Delete/Translate/Voice for ticket chat — types duplicated from Web
+// (shared/types/chat.types.ts) since mobile has no dedicated backend, uses the shared endpoint.
 import type { ChatAiIntentEnum } from '@/src/features/tickets/enums/chat.enum';
 import type { ActorRoleEnum } from '@/src/shared/enums/ticket.enum';
 
 export interface UpdateChatPayload {
   body: string;
-  /** Bắt buộc khi sửa tin của người khác qua quyền chat.edit.any (ngoài khung 15 phút của author) */
+  /** Required when editing another person's message via the chat.edit.any permission (outside the author's 15-minute window) */
   editReason?: string;
 }
 
@@ -13,7 +13,7 @@ export interface ChatMarkReadPayload {
   chatIds: string[];
 }
 
-/** DELETE /chats/bulk — tối đa 50 id/request (BE ChatBulkDeleteCommand.MaxBatchSize). */
+/** DELETE /chats/bulk — max 50 ids/request (BE ChatBulkDeleteCommand.MaxBatchSize). */
 export const CHAT_BULK_DELETE_MAX = 50;
 
 export interface ChatBulkDeletePayload {
@@ -21,23 +21,24 @@ export interface ChatBulkDeletePayload {
 }
 
 /**
- * Kết quả bulk delete. LƯU Ý: `deleted + skipped` KHÔNG bằng số id đã gửi —
- * chat của người khác bị ẩn riêng (TicketChatHide) và không được đếm ở cả hai.
- * Mobile chỉ cho chọn tin của chính mình nên trên thực tế không rơi vào nhánh đó.
+ * Bulk delete result. NOTE: `deleted + skipped` does NOT equal the number of ids sent —
+ * other people's chats are hidden separately (TicketChatHide) and counted in neither.
+ * Mobile only allows selecting the current user's own messages, so this branch is not
+ * actually hit in practice.
  */
 export interface ChatBulkDeleteResultDTO {
   deleted: number;
   skipped: number;
-  /** Id không tìm thấy / đã bị xoá trước đó. */
+  /** Ids not found / already deleted previously. */
   skippedIds: string[];
 }
 
-// GET /api/tickets/{tid}/chats/{cid}/readers — ai đã đọc 1 chat.
-// Auth: Staff/Manager/Admin ONLY — Customer gọi sẽ nhận 403.
+// GET /api/tickets/{tid}/chats/{cid}/readers — who has read a chat.
+// Auth: Staff/Manager/Admin ONLY — Customer calls get a 403.
 export interface ChatReaderDTO {
   chatId: string;
   userId: string;
-  /** BE resolve từ CustomerAccounts/StaffAccounts; fallback userId nếu không thấy. */
+  /** BE resolves from CustomerAccounts/StaffAccounts; falls back to userId if not found. */
   displayName: string;
   role: ActorRoleEnum;
   readAt: string;
@@ -52,9 +53,9 @@ export interface ChatTranslateDTO {
   fromCache: boolean;
 }
 
-// POST /api/tickets/{id}/chats/voice (application/json — ChatAttachmentInput của file audio
-// đã upload sẵn qua FileStorage). Tạo chat placeholder + transcribe async; response giống
-// TicketActionResponse dùng chung cho các action ticket khác.
+// POST /api/tickets/{id}/chats/voice (application/json — ChatAttachmentInput of an audio file
+// already uploaded via FileStorage). Creates a chat placeholder + transcribes asynchronously;
+// response shape matches TicketActionResponse shared with other ticket actions.
 export interface ChatVoiceActionDTO {
   id: string | null;
   ticketId: string | null;
@@ -64,9 +65,9 @@ export interface ChatVoiceActionDTO {
 }
 
 // ── GH-67 — AI chat actions (Staff/Manager/Admin) ─────────────────────────
-// Verify từ BE .../DTOs/Response/Chats/*.cs + web frontend/src/shared/types/chat.types.ts.
+// Verified against BE .../DTOs/Response/Chats/*.cs + web frontend/src/shared/types/chat.types.ts.
 
-// POST /api/tickets/{id}/chats/suggest — body. `intent` gửi STRING (JsonStringEnumConverter).
+// POST /api/tickets/{id}/chats/suggest — body. `intent` is sent as a STRING (JsonStringEnumConverter).
 export interface ChatSuggestPayload {
   intent: ChatAiIntentEnum;
 }

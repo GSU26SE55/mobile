@@ -8,7 +8,7 @@ export function useResendResetOtp() {
   return useMutation({
     mutationFn: (data: ResendOtpPayload) => authService.resendResetOtp(data),
     onSuccess: () => {
-      Alert.alert('Đã gửi', 'OTP reset mật khẩu mới đã được gửi đến email của bạn.');
+      Alert.alert('Sent', 'A new password reset OTP has been sent to your email.');
     },
     onError: (error) => handleErrorApi({ error }),
   });

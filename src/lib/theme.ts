@@ -61,19 +61,19 @@ export const Colors = {
   stEscalated:  '#DC4F3D',
 } as const;
 
-// Palette "Solar" — lấy từ design chuẩn (nền kem sáng, accent vàng năng lượng mặt trời).
+// "Solar" palette — taken from the standard design (bright cream background, solar-energy yellow accent).
 export const Solar = {
-  bg:          '#FAF6E9', // nền kem sáng toàn màn
+  bg:          '#FAF6E9', // full-screen bright cream background
   bgDeep:      '#F3ECCF',
-  card:        '#FFFFFF', // card trắng tinh khiết
-  cardCream:   '#FFFBEA', // card kem ấm nhạt (khối performance/chart)
-  tile:        '#EFECE1', // ô/segment chưa fill
-  yellow:      '#FFD500', // vàng chói năng lượng chuẩn thiết kế
-  yellowDeep:  '#D9A000', // vàng đậm cho icon/text trên nền sáng
-  yellowSoft:  '#FFF6D6', // nền pill vàng nhạt
-  ink:         '#1C1C1E', // chữ chính sắc nét
+  card:        '#FFFFFF', // pure white card
+  cardCream:   '#FFFBEA', // soft warm cream card (performance/chart blocks)
+  tile:        '#EFECE1', // unfilled cell/segment
+  yellow:      '#FFD500', // vivid design-standard energy yellow
+  yellowDeep:  '#D9A000', // deep yellow for icon/text on light background
+  yellowSoft:  '#FFF6D6', // light yellow pill background
+  ink:         '#1C1C1E', // sharp primary text
   ink2:        '#484742',
-  mute:        '#7C7C80', // chữ phụ xám mờ
+  mute:        '#7C7C80', // muted secondary text
   faint:       '#C4BFB0',
   border:      '#EFE8D6',
   white:       '#FFFFFF',

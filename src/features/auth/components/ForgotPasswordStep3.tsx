@@ -25,7 +25,7 @@ export function ForgotPasswordStep3({ resetToken, expiresInSeconds, onExpired }:
 
   useEffect(() => {
     if (timeLeft <= 0) {
-      Alert.alert('Hết thời gian', 'Phiên đặt lại mật khẩu đã hết hạn. Vui lòng bắt đầu lại.', [
+      Alert.alert('Time expired', 'Your password reset session has expired. Please start over.', [
         { text: 'OK', onPress: onExpired },
       ]);
       return;
@@ -60,7 +60,7 @@ export function ForgotPasswordStep3({ resetToken, expiresInSeconds, onExpired }:
       } else if (error instanceof HttpError) {
         setGeneralError(error.message);
       } else if (error instanceof Error) {
-        setGeneralError('Không thể kết nối. Kiểm tra lại mạng.');
+        setGeneralError('Unable to connect. Please check your network.');
       }
     }
   };
@@ -74,13 +74,13 @@ export function ForgotPasswordStep3({ resetToken, expiresInSeconds, onExpired }:
       <View style={styles.timerBanner}>
         <Ionicons name="time-outline" size={16} color="#E0533C" />
         <Text style={styles.timerText}>
-          Thời gian còn lại: <Text style={{ fontWeight: '700' }}>{minutes}:{String(seconds).padStart(2, '0')}</Text>
+          Time remaining: <Text style={{ fontWeight: '700' }}>{minutes}:{String(seconds).padStart(2, '0')}</Text>
         </Text>
       </View>
 
       {/* New Password */}
       <View>
-        <Text style={styles.label}>Mật khẩu mới</Text>
+        <Text style={styles.label}>New password</Text>
         <View style={[
           styles.inputWrap,
           focusedField === 'newPassword' && styles.inputFocused,
@@ -88,7 +88,7 @@ export function ForgotPasswordStep3({ resetToken, expiresInSeconds, onExpired }:
         ]}>
           <TextInput
             style={styles.input}
-            placeholder="Tối thiểu 8 ký tự"
+            placeholder="Minimum 8 characters"
             placeholderTextColor={Colors.textFaint}
             secureTextEntry={!showPassword}
             value={newPassword}
@@ -105,7 +105,7 @@ export function ForgotPasswordStep3({ resetToken, expiresInSeconds, onExpired }:
 
       {/* Confirm Password */}
       <View>
-        <Text style={styles.label}>Xác nhận mật khẩu mới</Text>
+        <Text style={styles.label}>Confirm new password</Text>
         <View style={[
           styles.inputWrap,
           focusedField === 'confirmPassword' && styles.inputFocused,
@@ -113,7 +113,7 @@ export function ForgotPasswordStep3({ resetToken, expiresInSeconds, onExpired }:
         ]}>
           <TextInput
             style={styles.input}
-            placeholder="Nhập lại mật khẩu mới"
+            placeholder="Re-enter new password"
             placeholderTextColor={Colors.textFaint}
             secureTextEntry={!showConfirmPassword}
             value={confirmPassword}
@@ -139,7 +139,7 @@ export function ForgotPasswordStep3({ resetToken, expiresInSeconds, onExpired }:
         onPress={handleSubmit}
         disabled={isPending || timeLeft <= 0}
       >
-        {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Đặt lại mật khẩu</Text>}
+        {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Reset password</Text>}
       </Pressable>
     </View>
   );

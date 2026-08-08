@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 export const updateProfileSchema = z.object({
-  fullName:    z.string().min(1, 'Họ tên không được để trống').max(150, 'Tối đa 150 ký tự'),
-  phoneNumber: z.string().max(20, 'Tối đa 20 ký tự').optional().or(z.literal('')),
-  address:     z.string().max(500, 'Tối đa 500 ký tự').optional().or(z.literal('')),
+  fullName:    z.string().min(1, 'Full name is required').max(150, 'Maximum 150 characters'),
+  phoneNumber: z.string().max(20, 'Maximum 20 characters').optional().or(z.literal('')),
+  address:     z.string().max(500, 'Maximum 500 characters').optional().or(z.literal('')),
   birthDate:   z.string().optional(),
   timeZone:    z.string().optional(),
 });

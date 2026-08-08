@@ -7,10 +7,10 @@ import {
 } from '../types/notification-matrix.types';
 
 /**
- * Ma trận nhóm × kênh + công tắc toàn cục — nguồn DUY NHẤT cho màn cài đặt thông báo.
+ * Category × channel matrix + global toggle — the ONE source for the notification settings screen.
  *
- * `GET /matrix` trả cả `channels` lẫn `categories` nên không gọi kèm `GET /notification-preferences`.
- * Hai nguồn cho cùng một dữ liệu là cách chắc chắn để chúng lệch nhau.
+ * `GET /matrix` returns both `channels` and `categories` so it's not called alongside `GET /notification-preferences`.
+ * Two sources for the same data is a guaranteed way for them to drift apart.
  */
 export function useNotificationMatrix() {
   const queryClient = useQueryClient();
@@ -28,7 +28,7 @@ export function useNotificationMatrix() {
     mutationFn: (payload: UpdateNotificationMatrixPayload) =>
       notificationMatrixService.updateMatrix(payload),
     onSuccess: (res) => {
-      // PUT trả ma trận đầy đủ sau cập nhật → ghi thẳng cache, tránh refetch thừa.
+      // PUT returns the full matrix after the update → write straight to the cache, avoiding an extra refetch.
       const dto = res.data.data;
       if (dto) {
         queryClient.setQueryData<NotificationPreferenceMatrixDto>(
@@ -43,10 +43,11 @@ export function useNotificationMatrix() {
 }
 
 /**
- * Bảng tra cứu type → nhóm, phục vụ câu "tắt nhóm này thì mất những thông báo nào".
+ * Type → category lookup table, used to answer "what notifications would I lose by disabling this category".
  *
- * Gần như tĩnh (chỉ đổi khi BE thêm NotificationType) nên cache dài. KHÔNG nhân bản bảng này thành
- * hằng số ở client — thêm type mới là lệch ngay, đó là lý do BE mở hẳn endpoint.
+ * Nearly static (only changes when BE adds a NotificationType) so it's cached long. Do NOT duplicate this
+ * table as a client-side constant — adding a new type would go stale immediately, which is exactly why BE
+ * exposes a dedicated endpoint.
  */
 export function useNotificationCategoryMap() {
   return useQuery({

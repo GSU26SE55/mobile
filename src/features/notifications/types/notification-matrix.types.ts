@@ -1,18 +1,18 @@
-// Ma trận tuỳ chọn thông báo theo nhóm × kênh (Sprint 6.3 NOTI3-04).
-// Shape khớp BE `NotificationPreferenceMatrixDto.cs` và web `notification-matrix.types.ts`.
+// Notification preference matrix by category × channel (Sprint 6.3 NOTI3-04).
+// Shape matches BE `NotificationPreferenceMatrixDto.cs` and web `notification-matrix.types.ts`.
 import { NotificationCategoryEnum } from '../enums/notification.enum';
 import { NotificationPreferenceDto } from './notification-preference.types';
 
 /**
- * Một dòng nhóm trong ma trận.
+ * One category row in the matrix.
  *
- * `isCustomized = false` ⇒ 4 giá trị kênh là **kế thừa** từ công tắc toàn cục (`channels`),
- * user chưa đặt tường minh cho nhóm này. UI phải phân biệt được "kế thừa" và "đã đặt",
- * nếu không người dùng tưởng mình đã tuỳ chỉnh trong khi thực tế chưa có record nào.
+ * `isCustomized = false` ⇒ the 4 channel values are **inherited** from the global toggle (`channels`),
+ * the user hasn't set this category explicitly. The UI must distinguish "inherited" from "set explicitly",
+ * otherwise the user would think they've customized it when no record actually exists.
  */
 export interface NotificationCategoryPreferenceDto {
   category: NotificationCategoryEnum;
-  categoryName: string; // "Ticket" | "Sla" | ... — BE trả sẵn, khỏi cần bảng tra ở client
+  categoryName: string; // "Ticket" | "Sla" | ... — returned by BE, no need for a client-side lookup table
   pushEnabled: boolean;
   emailEnabled: boolean;
   smsEnabled: boolean;
@@ -20,17 +20,17 @@ export interface NotificationCategoryPreferenceDto {
   isCustomized: boolean;
 }
 
-/** GET /api/notification-preferences/matrix — `categories` LUÔN đủ 6 phần tử, sort theo enum 1→6. */
+/** GET /api/notification-preferences/matrix — `categories` ALWAYS has 6 elements, sorted by enum 1→6. */
 export interface NotificationPreferenceMatrixDto {
-  channels: NotificationPreferenceDto; // công tắc toàn cục — vẫn THẮNG mọi dòng nhóm
+  channels: NotificationPreferenceDto; // global toggle — still WINS over every category row
   categories: NotificationCategoryPreferenceDto[];
 }
 
 /**
- * PUT /api/notification-preferences/matrix — **vá từng dòng**: chỉ nhóm có trong `items` bị đổi.
+ * PUT /api/notification-preferences/matrix — **patches per row**: only the category present in `items` is changed.
  *
- * ⚠️ Nhưng mỗi dòng phải gửi **đủ 4 kênh**: "vá" là theo NHÓM, không phải theo từng ô kênh.
- * Bỏ trống `emailEnabled` thì BE ghi `false` chứ không giữ giá trị cũ.
+ * ⚠️ But each row must send **all 4 channels**: "patch" is per CATEGORY, not per individual channel cell.
+ * Leaving `emailEnabled` out means BE writes `false`, not keeping the old value.
  */
 export interface NotificationCategoryPreferenceItem {
   category: NotificationCategoryEnum;
@@ -45,8 +45,8 @@ export interface UpdateNotificationMatrixPayload {
 }
 
 /**
- * GET /api/notification-preferences/categories — bảng tra cứu type → nhóm.
- * Số phần tử do BE quyết định, **không hardcode** ở client.
+ * GET /api/notification-preferences/categories — type → category lookup table.
+ * Element count is decided by BE, **do not hardcode** it client-side.
  */
 export interface NotificationCategoryMapDto {
   type: string;

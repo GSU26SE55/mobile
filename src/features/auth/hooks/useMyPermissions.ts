@@ -5,9 +5,9 @@ import { useSessionStore } from '@/src/stores/sessionStore';
 import { permissionService } from '../services/permission.service';
 
 /**
- * GH-47 — fetch permission tươi của role hiện tại rồi đè vào sessionStore.
- * Token perm[] (decode lúc login/hydration) là snapshot/fallback; endpoint là bản tươi.
- * v5 không còn onSuccess trên useQuery → sync bằng useEffect.
+ * GH-47 — fetches fresh permissions for the current role and overwrites sessionStore.
+ * The token's perm[] (decoded at login/hydration) is a snapshot/fallback; the endpoint is the fresh source.
+ * v5 no longer has onSuccess on useQuery → sync via useEffect instead.
  */
 export function useMyPermissions() {
   const user = useSessionStore((s) => s.user);

@@ -46,7 +46,7 @@ export default function CalibrationScreen() {
   const onSubmitCode = () => {
     const parsed = deviceCodeSchema.safeParse(codeInput);
     if (!parsed.success) {
-      setCodeError(parsed.error.issues[0]?.message ?? 'deviceCode không hợp lệ');
+      setCodeError(parsed.error.issues[0]?.message ?? 'Invalid deviceCode');
       return;
     }
     setCodeError(null);
@@ -54,10 +54,10 @@ export default function CalibrationScreen() {
   };
 
   const onDelete = (calibrationId: string) => {
-    Alert.alert('Xoá calibration', 'Bạn chắc chắn muốn xoá bản hiệu chỉnh này?', [
-      { text: 'Huỷ', style: 'cancel' },
+    Alert.alert('Delete calibration', 'Are you sure you want to delete this calibration record?', [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Xoá',
+        text: 'Delete',
         style: 'destructive',
         onPress: () => {
           setDeletingId(calibrationId);
@@ -81,9 +81,9 @@ export default function CalibrationScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      {/* Nhập deviceCode */}
+      {/* Enter deviceCode */}
       <View style={styles.searchSection}>
-        <Text style={styles.hint}>Nhập mã thiết bị (in trên thân máy, vd ESP32-SIM-001)</Text>
+        <Text style={styles.hint}>Enter the device code (printed on the device, e.g. ESP32-SIM-001)</Text>
         <View style={styles.searchRow}>
           <TextInput
             style={styles.input}
@@ -110,11 +110,11 @@ export default function CalibrationScreen() {
       ) : deviceNotFound ? (
         <View style={styles.center}>
           <Ionicons name="help-circle-outline" size={32} color={Colors.textMute} />
-          <Text style={styles.emptyText}>Không tìm thấy thiết bị với mã này.</Text>
+          <Text style={styles.emptyText}>No device found with this code.</Text>
         </View>
       ) : device.data ? (
         <>
-          {/* Thông tin device + nút thêm */}
+          {/* Device info + add button */}
           <View style={[styles.deviceCard, Shadow]}>
             <View style={{ flex: 1 }}>
               <Text style={styles.deviceName}>{device.data.displayName}</Text>
@@ -135,7 +135,7 @@ export default function CalibrationScreen() {
               }
             >
               <Ionicons name="add" size={18} color="#fff" />
-              <Text style={styles.addBtnText}>Thêm</Text>
+              <Text style={styles.addBtnText}>Add</Text>
             </Pressable>
           </View>
 
@@ -155,7 +155,7 @@ export default function CalibrationScreen() {
                     onPress={() => setChannel(c)}
                   >
                     <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                      {c ? CALIBRATION_CHANNEL_LABEL[c] : 'Tất cả'}
+                      {c ? CALIBRATION_CHANNEL_LABEL[c] : 'All'}
                     </Text>
                   </Pressable>
                 );
@@ -163,11 +163,11 @@ export default function CalibrationScreen() {
             />
           </View>
           <View style={styles.expiredToggle}>
-            <Text style={styles.toggleLabel}>Hiện cả đã hết hạn</Text>
+            <Text style={styles.toggleLabel}>Show expired too</Text>
             <Switch value={includeExpired} onValueChange={setIncludeExpired} />
           </View>
 
-          {/* List calibration */}
+          {/* Calibration list */}
           {calibrations.isLoading ? (
             <View style={styles.center}>
               <ActivityIndicator color={Colors.primary} size="large" />
@@ -175,15 +175,15 @@ export default function CalibrationScreen() {
           ) : calibrations.isError ? (
             <View style={styles.center}>
               <Ionicons name="alert-circle-outline" size={32} color={Colors.textMute} />
-              <Text style={styles.emptyText}>Không tải được calibration.</Text>
+              <Text style={styles.emptyText}>Failed to load calibration records.</Text>
               <Pressable onPress={() => calibrations.refetch()} style={[styles.retryBtn, Shadow]}>
-                <Text style={styles.retryText}>Thử lại</Text>
+                <Text style={styles.retryText}>Retry</Text>
               </Pressable>
             </View>
           ) : items.length === 0 ? (
             <View style={styles.center}>
               <Ionicons name="options-outline" size={32} color={Colors.textMute} />
-              <Text style={styles.emptyText}>Thiết bị chưa có bản hiệu chỉnh nào.</Text>
+              <Text style={styles.emptyText}>This device has no calibration records yet.</Text>
             </View>
           ) : (
             <FlatList
@@ -204,7 +204,7 @@ export default function CalibrationScreen() {
       ) : (
         <View style={styles.center}>
           <Ionicons name="hardware-chip-outline" size={32} color={Colors.textMute} />
-          <Text style={styles.emptyText}>Nhập mã thiết bị để xem calibration.</Text>
+          <Text style={styles.emptyText}>Enter a device code to view calibration records.</Text>
         </View>
       )}
     </View>

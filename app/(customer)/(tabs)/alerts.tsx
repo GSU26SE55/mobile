@@ -26,14 +26,14 @@ const SEVERITY_COLORS: Record<AlertSeverityEnum, { label: string; bg: string; ic
 };
 
 const STATUS_LABEL: Record<AlertStatusEnum, string> = {
-  [AlertStatusEnum.Open]: 'Mở',
-  [AlertStatusEnum.Acknowledged]: 'Đã xác nhận',
-  [AlertStatusEnum.Merged]: 'Đã gộp',
-  [AlertStatusEnum.Resolved]: 'Đã xử lý',
+  [AlertStatusEnum.Open]: 'Open',
+  [AlertStatusEnum.Acknowledged]: 'Acknowledged',
+  [AlertStatusEnum.Merged]: 'Merged',
+  [AlertStatusEnum.Resolved]: 'Resolved',
 };
 
 const FILTERS: { key: FilterKey; label: string }[] = [
-  { key: 'all', label: 'Tất cả' },
+  { key: 'all', label: 'All' },
   { key: AlertSeverityEnum.Critical, label: 'Critical' },
   { key: AlertSeverityEnum.Warning, label: 'Warning' },
   { key: AlertSeverityEnum.Info, label: 'Info' },
@@ -78,7 +78,7 @@ export default function AlertsScreen() {
                   </View>
                   {item.status === AlertStatusEnum.Open && <View style={styles.unreadDot} />}
                 </View>
-                <Text style={styles.alertTitle}>{ANOMALY_LABEL[item.anomalyType] ?? 'Cảnh báo'}</Text>
+                <Text style={styles.alertTitle}>{ANOMALY_LABEL[item.anomalyType] ?? 'Alert'}</Text>
                 <Text style={styles.alertMeta}>
                   {item.batterySerialNumber} · {STATUS_LABEL[item.status] ?? ''}
                 </Text>
@@ -108,14 +108,14 @@ export default function AlertsScreen() {
           <BackButton />
         )}
         <View style={styles.headerLeft}>
-          <Text style={styles.title}>Cảnh báo & Sự cố</Text>
+          <Text style={styles.title}>Alerts & Incidents</Text>
           <Text style={styles.subtitle}>
-            {openCount} đang mở · {totalCount} tổng
+            {openCount} open · {totalCount} total
           </Text>
         </View>
       </View>
 
-      {/* Segment: Cảnh báo | Sự cố */}
+      {/* Segment: Alerts | Incidents */}
       <View style={styles.segmentRowWrap}>
         <GlassSurface style={styles.segmentRow}>
           <Pressable
@@ -123,7 +123,7 @@ export default function AlertsScreen() {
             onPress={() => setSegment('alerts')}
           >
             <Text style={[styles.segmentText, segment === 'alerts' && styles.segmentTextActive]}>
-              Cảnh báo
+              Alerts
             </Text>
           </Pressable>
           <Pressable
@@ -131,7 +131,7 @@ export default function AlertsScreen() {
             onPress={() => setSegment('incidents')}
           >
             <Text style={[styles.segmentText, segment === 'incidents' && styles.segmentTextActive]}>
-              Sự cố
+              Incidents
             </Text>
           </Pressable>
         </GlassSurface>
@@ -176,7 +176,7 @@ export default function AlertsScreen() {
                     color={Solar.faint}
                   />
                   <Text style={styles.emptyText}>
-                    {isLoading ? 'Đang tải…' : 'Không có cảnh báo nào'}
+                    {isLoading ? 'Loading…' : 'No alerts'}
                   </Text>
                 </GlassSurface>
               </View>

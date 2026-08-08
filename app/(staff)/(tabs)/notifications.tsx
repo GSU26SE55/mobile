@@ -9,9 +9,9 @@ import { StaffHeader } from '@/src/features/staff/components/StaffHeader';
 export default function StaffNotificationsScreen() {
   return (
     <View style={styles.root}>
-      <StaffHeader title="Thông báo" />
+      <StaffHeader title="Notifications" />
 
-      {/* GH-55 — entry vào màn Cảnh báo & Sự cố */}
+      {/* GH-55 — entry into the Alerts & Incidents screen */}
       <Pressable
         style={[styles.entry, Shadow]}
         onPress={() => router.push('/(staff)/alerts')}
@@ -20,13 +20,13 @@ export default function StaffNotificationsScreen() {
           <Ionicons name="warning-outline" size={20} color="#DC4F3D" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.entryTitle}>Cảnh báo & Sự cố</Text>
-          <Text style={styles.entryMeta}>Xem và xử lý cảnh báo pin, sự cố môi trường</Text>
+          <Text style={styles.entryTitle}>Alerts & Incidents</Text>
+          <Text style={styles.entryMeta}>View and handle battery alerts, environmental incidents</Text>
         </View>
         <Ionicons name="chevron-forward" size={16} color={Solar.mute} />
       </Pressable>
 
-      {/* Route đích tự suy từ entityType + role (notificationHref.ts). */}
+      {/* Target route is auto-derived from entityType + role (notificationHref.ts). */}
       <NotificationList />
     </View>
   );

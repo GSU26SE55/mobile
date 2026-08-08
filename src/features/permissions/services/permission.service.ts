@@ -3,8 +3,8 @@ import { ENDPOINTS } from '@/src/lib/endpoints';
 import { CommonResponse } from '@/src/types/api.types';
 import { PermissionDto, PermissionCatalogParams } from '../types/permission.types';
 
-// GH-68 — catalog toàn bộ permission (mọi role, không cần admin). BE trả
-// CommonResponse<List<PermissionDto>> — flat list sort theo Module rồi Code.
+// GH-68 — catalog of all permissions (every role, no admin required). BE returns
+// CommonResponse<List<PermissionDto>> — flat list sorted by Module then Code.
 export const permissionService = {
   getCatalog: (params?: PermissionCatalogParams) =>
     axiosInstance.get<CommonResponse<PermissionDto[]>>(ENDPOINTS.PERMISSIONS.CATALOG, {

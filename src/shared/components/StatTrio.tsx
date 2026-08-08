@@ -4,10 +4,10 @@ import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { BadgeColors, Colors, Shadow } from '@/src/lib/theme';
 
-// Hai component card tổng quan:
-//  - StatTrio     : layout 3-cột (2 tile tròn + 1 vòng giữa) — staff dashboard vẫn dùng.
-//  - FleetOverview: layout "đèn báo trạng thái" (gauge trái + 2 khung phải) — customer dashboard.
-// Cùng chia sẻ RingStat (vòng SVG) + palette hiện tại.
+// Two overview card components:
+//  - StatTrio     : 3-column layout (2 round tiles + 1 ring in the middle) — still used by staff dashboard.
+//  - FleetOverview: "status light" layout (gauge on the left + 2 boxes on the right) — customer dashboard.
+// Both share RingStat (SVG ring) + the current palette.
 
 interface RingProps {
   percent: number; // 0-100
@@ -15,8 +15,8 @@ interface RingProps {
   strokeWidth?: number;
   color?: string;
   trackColor?: string;
-  value?: string; // text lớn giữa vòng
-  label?: string; // caption nhỏ dưới value
+  value?: string; // large text in the middle of the ring
+  label?: string; // small caption below the value
 }
 
 export function RingStat({
@@ -58,7 +58,7 @@ export function RingStat({
 }
 
 // ============================================================================
-// StatTrio — 3-cột (giữ nguyên cho staff dashboard: đang xử lý / tiến độ / hoàn thành)
+// StatTrio — 3-column (kept as-is for staff dashboard: in progress / progress / completed)
 // ============================================================================
 
 function SideTile({ value, label }: { value: string; label: string }) {
@@ -91,13 +91,13 @@ export function StatTrio({ left, center, right }: TrioProps) {
 }
 
 // ============================================================================
-// FleetOverview — "đèn báo trạng thái" cho customer dashboard
-// Gauge (số pin tốt / tổng) dồn trái; 2 khung metric xếp dọc phải; nền đổi màu theo tone.
+// FleetOverview — "status light" for customer dashboard
+// Gauge (good batteries / total) aligned left; 2 metric boxes stacked right; background color changes by tone.
 // ============================================================================
 
 export type Tone = 'ok' | 'warn' | 'crit';
 
-// Palette theo tone — lấy từ theme tokens, không hardcode giá trị mới.
+// Palette by tone — taken from theme tokens, no hardcoding new values.
 const TONE = {
   ok: { bg: Colors.primaryLight, accent: Colors.primary, chip: BadgeColors.ok },
   warn: { bg: Colors.warningLight, accent: Colors.warning, chip: BadgeColors.warn },
@@ -108,8 +108,8 @@ export interface MetricBox {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   value: string;
-  color?: string; // màu số (mặc định accent tối)
-  barPercent?: number; // có → render mini bar 0-100
+  color?: string; // number color (default dark accent)
+  barPercent?: number; // if present → render mini bar 0-100
 }
 
 function MetricTile({ box, accent }: { box: MetricBox; accent: string }) {
@@ -159,7 +159,7 @@ export function FleetOverview({ tone, gauge, boxes, statusLabel }: FleetOverview
           color={t.accent}
           trackColor={Colors.white}
           value={`${gauge.goodCount}/${gauge.total}`}
-          label="pin tốt"
+          label="healthy batteries"
         />
         <View style={styles.boxes}>
           <MetricTile box={boxes[0]} accent={t.accent} />
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   ringValue: { fontSize: 26, fontWeight: '800', color: Colors.accent },
   ringLabel: { fontSize: 11, color: Colors.gray, fontWeight: '600', marginTop: 2, textAlign: 'center' },
 
-  // --- StatTrio (3-cột) ---
+  // --- StatTrio (3-column) ---
   trioCard: {
     backgroundColor: Colors.white,
     borderRadius: 28,

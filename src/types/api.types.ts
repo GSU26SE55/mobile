@@ -22,7 +22,7 @@ export interface PaginationResponse<T> {
 }
 
 // GH-68 — cursor-based pagination (chat cursor). BE `CursorPaginationResponse.cs`
-// CHỈ có 3 field này — KHÔNG có totalItems (khác PaginationResponse).
+// has ONLY these 3 fields — no totalItems (unlike PaginationResponse).
 export interface CursorPaginationResponse<T> {
   items: T[];
   nextCursor: string | null;

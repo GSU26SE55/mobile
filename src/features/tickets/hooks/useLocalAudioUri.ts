@@ -3,9 +3,10 @@ import { File, Paths } from 'expo-file-system';
 import { fileStorageService } from '@/src/features/file-storage/services/file-storage.service';
 
 /**
- * Tải file audio về cache local (qua axios — interceptor tự gắn Bearer) rồi trả URI local.
- * Phát từ file local giúp expo-audio đọc được TỔNG THỜI LƯỢNG ngay (remote stream + headers
- * thường giữ duration=0 → "--:--"). Cache theo fileId để không tải lại mỗi lần mount.
+ * Downloads the audio file to local cache (via axios — the interceptor auto-attaches Bearer)
+ * then returns the local URI. Playing from a local file lets expo-audio read the TOTAL DURATION
+ * immediately (remote stream + headers often keep duration=0 → "--:--"). Cached by fileId so it
+ * isn't re-downloaded on every mount.
  */
 const cache = new Map<string, string>();
 
@@ -30,7 +31,7 @@ export function useLocalAudioUri(fileId: string, ext = 'm4a'): string | null {
         cache.set(fileId, file.uri);
         if (active) setUri(file.uri);
       } catch {
-        // Tải lỗi — giữ null, player sẽ không phát được (hiếm khi xảy ra).
+        // Download failed — keep null, the player just won't play (rare case).
       }
     })();
     return () => {

@@ -14,13 +14,21 @@ import {
 
 export const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5000';
 
+/**
+ * Timeout for requests that go through AI (Gemini) on the BE — message translation, reply suggestions, conversation summaries.
+ * LLM text generation is much slower than regular CRUD; the default 15s often cuts it off mid-response, so this is raised to 60s.
+ * Only pass this for those specific calls (`{ timeout: AI_TIMEOUT }`) — regular requests keep the 15s timeout
+ * so network errors still surface quickly.
+ */
+export const AI_TIMEOUT = 60_000;
+
 export const axiosInstance = axiosCreate({
   baseURL: BASE_URL,
   timeout: 15_000,
   headers: {
     'Content-Type': 'application/json',
-    // #AUTH-48: UA ổn định per-install (KHÔNG kèm app version) cho fingerprint trust device.
-    // Best-effort: RN Android (OkHttp) có thể ghi đè — fingerprint vẫn deterministic nhờ UA mặc định ổn định.
+    // #AUTH-48: UA is stable per-install (does NOT include app version) for the trusted-device fingerprint.
+    // Best-effort: RN Android (OkHttp) may override this — the fingerprint stays deterministic thanks to the stable default UA.
     'User-Agent': `SolarBatteryMobile (${Platform.OS})`,
   },
 });
@@ -55,7 +63,7 @@ const tryRefresh = async (): Promise<string | null> => {
       { refreshToken },
     );
 
-    // GH-295: refresh trả LoginResultDto — token nằm trong data.tokens
+    // GH-295: refresh returns LoginResultDto — the token is nested in data.tokens
     if (!res.data?.isSuccess || !res.data.data?.tokens) throw new Error('Refresh failed');
     const { accessToken, refreshToken: newRefresh } = res.data.data.tokens;
     await saveTokens(accessToken, newRefresh);
@@ -64,9 +72,9 @@ const tryRefresh = async (): Promise<string | null> => {
   } catch (err) {
     flushQueue(null, err);
     await clearTokens();
-    // Chỉ clear session — KHÔNG router.replace(). Interceptor chạy ngoài React nên
-    // lệnh điều hướng ở đây có thể rơi vào giữa một lần render, đá nhau với <Redirect>
-    // của guard. user = null là đủ: guard khai báo tự đưa về login ở commit kế tiếp.
+    // Only clear the session — do NOT router.replace() here. The interceptor runs outside React,
+    // so a navigation call here could land mid-render and collide with the guard's declarative
+    // <Redirect>. Setting user = null is enough: the guard sends it back to login on the next commit.
     useSessionStore.getState().clearSession();
     return null;
   } finally {
@@ -77,8 +85,8 @@ const tryRefresh = async (): Promise<string | null> => {
 
 const PUBLIC_ENDPOINTS = new Set([
   ENDPOINTS.AUTH.LOGIN,
-  ENDPOINTS.AUTH.LOGIN_VERIFY_2FA, // GH-295 bug-fix: không có token ở bước này → tránh tryRefresh→logout
-  ENDPOINTS.AUTH.LOGIN_2FA_SMS,    // #AUTH-58 — gọi khi đang mid-login (chưa auth)
+  ENDPOINTS.AUTH.LOGIN_VERIFY_2FA, // GH-295 bug-fix: there's no token at this step → avoid tryRefresh→logout
+  ENDPOINTS.AUTH.LOGIN_2FA_SMS,    // #AUTH-58 — called mid-login (not yet authenticated)
   ENDPOINTS.AUTH.REACTIVATE_REQUEST, // #AUTH-50 — public
   ENDPOINTS.AUTH.REACTIVATE_VERIFY,  // #AUTH-50 — public
   ENDPOINTS.AUTH.REGISTER,
@@ -95,7 +103,7 @@ axiosInstance.interceptors.request.use(async (config) => {
   const url = config.url ?? '';
   console.log(`[API] → ${config.method?.toUpperCase()} ${url}`);
 
-  // #AUTH-48: attach X-Device-Id cho MỌI request (kể cả public verify-2fa) — cần cho fingerprint trust device.
+  // #AUTH-48: attach X-Device-Id to EVERY request (including public verify-2fa) — needed for the trusted-device fingerprint.
   config.headers['X-Device-Id'] = await getDeviceId();
 
   if ([...PUBLIC_ENDPOINTS].some((ep) => url.endsWith(ep))) return config;
@@ -111,24 +119,24 @@ axiosInstance.interceptors.request.use(async (config) => {
 });
 
 const HTTP_ERROR_MESSAGES: Record<number, string> = {
-  400: 'Yêu cầu không hợp lệ',
-  401: 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại',
-  403: 'Bạn không có quyền thực hiện thao tác này',
-  404: 'Không tìm thấy dữ liệu yêu cầu',
-  405: 'Phương thức không được hỗ trợ',
-  409: 'Dữ liệu bị xung đột, vui lòng kiểm tra lại',
-  422: 'Dữ liệu không hợp lệ theo quy tắc nghiệp vụ',
-  429: 'Bạn đã gửi quá nhiều yêu cầu, vui lòng thử lại sau',
-  500: 'Lỗi máy chủ nội bộ, vui lòng thử lại sau',
-  502: 'Cổng kết nối lỗi, vui lòng thử lại sau',
-  503: 'Dịch vụ tạm thời không khả dụng, vui lòng thử lại sau',
-  504: 'Kết nối máy chủ hết thời gian chờ, vui lòng thử lại sau',
+  400: 'Invalid request',
+  401: 'Your session has expired, please sign in again',
+  403: 'You do not have permission to perform this action',
+  404: 'The requested data was not found',
+  405: 'Method not supported',
+  409: 'Data conflict, please check and try again',
+  422: 'Data is invalid according to business rules',
+  429: 'You have sent too many requests, please try again later',
+  500: 'Internal server error, please try again later',
+  502: 'Gateway error, please try again later',
+  503: 'Service temporarily unavailable, please try again later',
+  504: 'Server connection timed out, please try again later',
 };
 
 const makeFallbackPayload = (status: number, serverMessage?: string) => ({
   isSuccess: false,
   statusCode: status,
-  message: serverMessage || HTTP_ERROR_MESSAGES[status] || `Đã xảy ra lỗi (${status})`,
+  message: serverMessage || HTTP_ERROR_MESSAGES[status] || `An error occurred (${status})`,
   data: null,
   listErrors: [],
 });
@@ -137,8 +145,8 @@ axiosInstance.interceptors.response.use(
   (res) => {
     console.log(`[API] ← ${res.status} ${res.config.method?.toUpperCase()} ${res.config.url}`);
 
-    // BE có thể trả 200 OK nhưng isSuccess: false cho business logic errors.
-    // Axios không tự throw trong trường hợp này → phải check thủ công.
+    // BE may return 200 OK but isSuccess: false for business logic errors.
+    // Axios doesn't auto-throw in this case → must check it manually.
     const data = res.data;
     console.debug(`[API] response data for ${res.config.url}:`, data);
     if (data && typeof data === 'object' && data.isSuccess === false) {
@@ -161,33 +169,33 @@ axiosInstance.interceptors.response.use(
       payload ?? err,
     );
 
-    // 401 → CHỈ TOKEN_EXPIRED mới thử refresh (token còn hợp lệ nhưng hết hạn).
-    // MISSING_TOKEN (không có token), INVALID_SIGNATURE / INVALID_TOKEN (token hỏng/giả mạo)
-    // → refresh vô nghĩa → logout ngay. Đồng bộ với web (shared/lib/axios.ts).
+    // 401 → ONLY TOKEN_EXPIRED attempts a refresh (token was valid but has expired).
+    // MISSING_TOKEN (no token), INVALID_SIGNATURE / INVALID_TOKEN (corrupted/forged token)
+    // → a refresh is meaningless → logout immediately. Kept in sync with web (shared/lib/axios.ts).
     if (status === 401) {
       const errorCode = payload?.data?.errorCode;
       const retryCount: number = err.config._retryCount ?? 0;
 
-      // clearSession() là đủ để guard khai báo đá về login — xem ghi chú ở tryRefresh.
+      // clearSession() is enough to have the declarative guard bounce to login — see the note in tryRefresh.
       const logoutAndReject = async () => {
         await clearTokens();
         useSessionStore.getState().clearSession();
         return Promise.reject(new HttpError(status, makeFallbackPayload(status, payload?.message)));
       };
 
-      // errorCode khác TOKEN_EXPIRED, hoặc đã retry 1 lần vẫn fail → logout.
+      // errorCode other than TOKEN_EXPIRED, or already retried once and still failed → logout.
       if (errorCode !== 'TOKEN_EXPIRED' || retryCount >= 1) {
         return logoutAndReject();
       }
 
       err.config._retryCount = retryCount + 1;
       const newToken = await tryRefresh();
-      // tryRefresh OK → đã saveTokens (secure-store) với token mới → đệ quy gọi lại request.
+      // tryRefresh OK → already saveTokens (secure-store) with the new token → recursively retry the request.
       if (newToken) {
         err.config.headers.Authorization = `Bearer ${newToken}`;
         return axiosInstance(err.config);
       }
-      // tryRefresh trả null → bên trong đã logout rồi, chỉ cần reject.
+      // tryRefresh returned null → it already logged out internally, just reject.
       return Promise.reject(new HttpError(status, makeFallbackPayload(status, payload?.message)));
     }
 

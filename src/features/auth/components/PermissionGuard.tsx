@@ -12,8 +12,8 @@ interface Props {
 }
 
 /**
- * GH-47 — guard màn theo permission. Có quyền → render children;
- * thiếu quyền → fallback "Không có quyền" + nút quay lại. Dùng cho read-screen + create-screen.
+ * GH-47 — guards a screen by permission. Has permission → render children;
+ * missing permission → "No access" fallback + back button. Used for read-screen + create-screen.
  */
 export function PermissionGuard({ permission, children }: Props) {
   const user = useSessionStore((s) => s.user);
@@ -22,10 +22,10 @@ export function PermissionGuard({ permission, children }: Props) {
     return (
       <View style={styles.container}>
         <Ionicons name="lock-closed-outline" size={44} color={Colors.textFaint} />
-        <Text style={styles.title}>Bạn không có quyền truy cập</Text>
-        <Text style={styles.subtitle}>Nội dung này yêu cầu quyền chưa được cấp cho tài khoản của bạn.</Text>
+        <Text style={styles.title}>You don't have access</Text>
+        <Text style={styles.subtitle}>This content requires a permission that hasn't been granted to your account.</Text>
         <Pressable style={[styles.btn, ShadowPrimary]} onPress={() => router.back()}>
-          <Text style={styles.btnText}>Quay lại</Text>
+          <Text style={styles.btnText}>Go back</Text>
         </Pressable>
       </View>
     );

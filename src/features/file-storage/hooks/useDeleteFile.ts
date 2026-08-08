@@ -3,8 +3,8 @@ import { KEY } from '@/src/lib/queryKeys';
 import { fileStorageService } from '../services/file-storage.service';
 
 /**
- * Xóa file theo fileId. FileStorage chỉ xóa object + metadata — domain service sở hữu
- * resource phải clear reference (e.g. AvatarFileId) TRƯỚC khi gọi hook này.
+ * Delete a file by fileId. FileStorage only deletes the object + metadata — the domain service that
+ * owns the resource must clear the reference (e.g. AvatarFileId) BEFORE calling this hook.
  */
 export function useDeleteFile() {
   const queryClient = useQueryClient();

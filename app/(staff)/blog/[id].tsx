@@ -30,8 +30,8 @@ export default function StaffBlogDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, isLoading, isError, error, refetch } = useBlogDetail(id);
 
-  // BE trả 404 khi bài không ở trạng thái Published (Draft/Archived/đã gỡ).
-  // Lỗi khác (mất mạng, 5xx) KHÔNG phải "bài đã gỡ" — phải cho thử lại.
+  // BE returns 404 when the post is not in Published state (Draft/Archived/removed).
+  // Other errors (network loss, 5xx) are NOT "post removed" — must allow retry.
   const isNotFound = error instanceof HttpError && error.statusCode === 404;
 
   return (
@@ -39,7 +39,7 @@ export default function StaffBlogDetailScreen() {
       <View style={styles.header}>
         <BackButton />
         <Text style={styles.headerTitle} numberOfLines={1}>
-          Tin tức
+          News
         </Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -54,16 +54,16 @@ export default function StaffBlogDetailScreen() {
         ) : (
           <View style={styles.errorWrap}>
             <Ionicons name="cloud-offline-outline" size={32} color={Colors.textFaint} />
-            <Text style={styles.errorTitle}>Không tải được bài viết</Text>
+            <Text style={styles.errorTitle}>Failed to load the post</Text>
             <Pressable onPress={() => refetch()} style={styles.retryBtn}>
-              <Text style={styles.retryText}>Thử lại</Text>
+              <Text style={styles.retryText}>Retry</Text>
             </Pressable>
           </View>
         )
       ) : !data ? (
         <BlogEmptyState variant="notFound" />
       ) : (
-        // WebView tự cuộn nội dung → phần tiêu đề đứng yên, không bọc ScrollView.
+        // WebView scrolls its own content → the title block stays fixed, not wrapped in a ScrollView.
         <View style={styles.body}>
           <View style={styles.headBlock}>
             <Text style={styles.title}>{data.title}</Text>

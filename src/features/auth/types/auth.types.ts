@@ -3,7 +3,7 @@ export interface LoginPayload {
   password: string;
 }
 
-// Google login — mobile gửi idToken lấy từ native Google Sign-In; BE validate + trả JWT.
+// Google login — mobile sends idToken obtained from native Google Sign-In; BE validates and returns JWT.
 export interface GoogleLoginPayload {
   idToken: string;
 }
@@ -45,37 +45,37 @@ export interface TokenDto {
 }
 
 export interface TwoFactorChallengeDto {
-  challengeToken: string; // 32 hex, TTL 5 phút
-  expiresInSeconds: number; // luôn 300
-  methods: string[]; // luôn ["totp", "backupCode"]
+  challengeToken: string; // 32 hex, TTL 5 minutes
+  expiresInSeconds: number; // always 300
+  methods: string[]; // always ["totp", "backupCode"]
 }
 
 // Case A (login complete): tokens set, challenge null.
-// Case B (2FA on, chỉ login): tokens null, challenge set.
+// Case B (2FA on, login only): tokens null, challenge set.
 export interface LoginResultData {
   tokens: TokenDto | null;
   challenge: TwoFactorChallengeDto | null;
   requiresTwoFactor: boolean;
 }
 
-// Bước 2 của 2FA login (POST /api/auth/login/verify-2fa)
+// Step 2 of 2FA login (POST /api/auth/login/verify-2fa)
 export interface Verify2faLoginPayload {
   challengeToken: string;
   code: string;
   isBackupCode: boolean;
-  // #AUTH-58: true ⇒ code là SMS OTP (mutex với isBackupCode — không gửi cả 2 = true).
+  // #AUTH-58: true ⇒ code is an SMS OTP (mutually exclusive with isBackupCode — never send both as true).
   isSmsCode?: boolean;
-  // #AUTH-48: trust device 30 ngày — chỉ hiệu lực khi isBackupCode=false.
+  // #AUTH-48: trust device for 30 days — only effective when isBackupCode=false.
   trustDevice?: boolean;
   trustDeviceLabel?: string;
 }
 
-// #AUTH-58: gửi OTP qua SMS (POST /api/auth/login/2fa/sms) — header X-Challenge-Token kèm theo.
+// #AUTH-58: send OTP via SMS (POST /api/auth/login/2fa/sms) — X-Challenge-Token header included.
 export interface Sms2faPayload {
   challengeToken: string;
 }
 
-// #AUTH-50: khôi phục account đã soft-delete trong 90 ngày.
+// #AUTH-50: restore an account soft-deleted within the last 90 days.
 export interface ReactivateRequestPayload {
   email: string;
 }
@@ -85,7 +85,7 @@ export interface ReactivateVerifyPayload {
   otp: string;
 }
 
-// Key SecureStore giữ challengeToken giữa login → màn hình verify-2fa (TTL 5 phút server-side)
+// SecureStore key holding challengeToken between login → verify-2fa screen (TTL 5 minutes server-side)
 export const CHALLENGE_TOKEN_KEY = 'login_2fa_challenge';
 
 export interface VerifyResetOtpData {

@@ -5,8 +5,8 @@ import { Colors } from '@/src/lib/theme';
 import { EnvironmentalIncidentDto } from '../types/incident.types';
 import { IncidentCard } from './IncidentCard';
 
-// List incident tái dùng cho Customer + Staff. Data + onPressItem truyền từ ngoài.
-// siteNameMap optional — map siteId→siteName để card hiển thị tên site (DTO không có siteName).
+// Incident list reused for Customer + Staff. Data + onPressItem passed in from the parent.
+// siteNameMap optional — maps siteId→siteName so the card can display the site name (DTO has no siteName).
 export function IncidentList({
   data,
   isLoading,
@@ -39,7 +39,7 @@ export function IncidentList({
             color={Colors.textFaint}
           />
           <Text style={styles.emptyText}>
-            {isLoading ? 'Đang tải…' : 'Chưa có sự cố nào'}
+            {isLoading ? 'Loading…' : 'No incidents yet'}
           </Text>
         </View>
       }
