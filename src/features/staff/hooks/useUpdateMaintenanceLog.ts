@@ -9,7 +9,7 @@ interface UpdateLogParams {
   data: UpdateMaintenanceLogPayload;
 }
 
-// GH-44 #4 — PATCH partial update maintenance log (chỉ chủ log).
+// GH-44 #4 — PATCH partial update maintenance log (log owner only).
 export function useUpdateMaintenanceLog(ticketId: string) {
   const queryClient = useQueryClient();
   return useMutation({

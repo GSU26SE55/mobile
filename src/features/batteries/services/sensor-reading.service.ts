@@ -25,7 +25,7 @@ export const sensorReadingService = {
       ENDPOINTS.SENSOR_READINGS.AGGREGATE(assetId),
       { params },
     ),
-  // GH-74 — bucket 1h cố định (continuous aggregate). KHÔNG nhận `interval`.
+  // GH-74 — fixed 1h bucket (continuous aggregate). Does NOT accept `interval`.
   getAggregateHourly: (assetId: string, params?: SensorReadingAggregateHourlyParams) =>
     axiosInstance.get<CommonResponse<SensorReadingAggregateDto[]>>(
       ENDPOINTS.SENSOR_READINGS.AGGREGATE_HOURLY(assetId),

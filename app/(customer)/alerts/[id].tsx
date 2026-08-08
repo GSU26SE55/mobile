@@ -22,10 +22,10 @@ const SEVERITY_STYLE: Record<AlertSeverityEnum, { label: string; color: string; 
 };
 
 const STATUS_LABEL: Record<AlertStatusEnum, string> = {
-  [AlertStatusEnum.Open]: 'Mở',
-  [AlertStatusEnum.Acknowledged]: 'Đã xác nhận',
-  [AlertStatusEnum.Merged]: 'Đã gộp',
-  [AlertStatusEnum.Resolved]: 'Đã xử lý',
+  [AlertStatusEnum.Open]: 'Open',
+  [AlertStatusEnum.Acknowledged]: 'Acknowledged',
+  [AlertStatusEnum.Merged]: 'Merged',
+  [AlertStatusEnum.Resolved]: 'Resolved',
 };
 
 export default function AlertDetailScreen() {
@@ -46,9 +46,9 @@ export default function AlertDetailScreen() {
     return (
       <View style={styles.center}>
         <Ionicons name="alert-circle-outline" size={32} color={Colors.textFaint} />
-        <Text style={styles.notFound}>Không tìm thấy cảnh báo</Text>
+        <Text style={styles.notFound}>Alert not found</Text>
         <Pressable onPress={() => router.back()} style={styles.goBackBtn}>
-          <Text style={styles.goBackText}>Quay lại</Text>
+          <Text style={styles.goBackText}>Go back</Text>
         </Pressable>
       </View>
     );
@@ -60,7 +60,7 @@ export default function AlertDetailScreen() {
   const handleAcknowledge = async () => {
     try {
       await acknowledge(alert.id);
-      Alert.alert('Thành công', 'Đã xác nhận cảnh báo này.');
+      Alert.alert('Success', 'This alert has been acknowledged.');
     } catch (error) {
       handleErrorApi({ error });
     }
@@ -71,7 +71,7 @@ export default function AlertDetailScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <BackButton />
-        <Text style={styles.headerTitle}>Chi tiết cảnh báo</Text>
+        <Text style={styles.headerTitle}>Alert details</Text>
         <View style={{ width: 44 }} />
       </View>
 
@@ -80,28 +80,28 @@ export default function AlertDetailScreen() {
           <View style={[styles.sevPill, { backgroundColor: sev.bg }]}>
             <Text style={[styles.sevText, { color: sev.color }]}>{sev.label}</Text>
           </View>
-          <Text style={styles.title}>{ANOMALY_LABEL[alert.anomalyType] ?? 'Cảnh báo'}</Text>
+          <Text style={styles.title}>{ANOMALY_LABEL[alert.anomalyType] ?? 'Alert'}</Text>
           <Text style={styles.subtitle}>{alert.batterySerialNumber}</Text>
         </View>
 
         <View style={[styles.card, Shadow]}>
-          <Row label="Trạng thái" value={STATUS_LABEL[alert.status] ?? '—'} />
+          <Row label="Status" value={STATUS_LABEL[alert.status] ?? '—'} />
           <Divider />
-          <Row label="Ngưỡng" value={formatMeasure(alert.thresholdValue, alert.unit)} />
+          <Row label="Threshold" value={formatMeasure(alert.thresholdValue, alert.unit)} />
           <Divider />
-          <Row label="Giá trị thực tế" value={formatMeasure(alert.actualValue, alert.unit)} />
+          <Row label="Actual value" value={formatMeasure(alert.actualValue, alert.unit)} />
           <Divider />
-          <Row label="Phát hiện lúc" value={new Date(alert.detectedAt).toLocaleString()} />
+          <Row label="Detected at" value={new Date(alert.detectedAt).toLocaleString()} />
           {alert.acknowledgedAt ? (
             <>
               <Divider />
-              <Row label="Xác nhận lúc" value={new Date(alert.acknowledgedAt).toLocaleString()} />
+              <Row label="Acknowledged at" value={new Date(alert.acknowledgedAt).toLocaleString()} />
             </>
           ) : null}
           {alert.resolvedAt ? (
             <>
               <Divider />
-              <Row label="Xử lý lúc" value={new Date(alert.resolvedAt).toLocaleString()} />
+              <Row label="Resolved at" value={new Date(alert.resolvedAt).toLocaleString()} />
             </>
           ) : null}
         </View>
@@ -118,7 +118,7 @@ export default function AlertDetailScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.linkTitle}>{alert.batterySerialNumber}</Text>
-            <Text style={styles.linkMeta}>Xem chi tiết pin</Text>
+            <Text style={styles.linkMeta}>View battery details</Text>
           </View>
           <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
         </Pressable>
@@ -135,8 +135,8 @@ export default function AlertDetailScreen() {
               <Ionicons name="ticket" size={16} color="#5081C7" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.linkTitle}>Ticket liên kết</Text>
-              <Text style={styles.linkMeta}>Chạm để mở chi tiết</Text>
+              <Text style={styles.linkTitle}>Linked ticket</Text>
+              <Text style={styles.linkMeta}>Tap to open details</Text>
             </View>
             <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
           </Pressable>
@@ -156,7 +156,7 @@ export default function AlertDetailScreen() {
             <>
               <Ionicons name="checkmark-circle-outline" size={16} color="#FF5E13" style={{ marginRight: 6 }} />
               <Text style={styles.ackBtnText}>
-                {canAck ? 'Acknowledge' : 'Đã xác nhận'}
+                {canAck ? 'Acknowledge' : 'Acknowledged'}
               </Text>
             </>
           )}

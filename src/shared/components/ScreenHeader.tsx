@@ -7,19 +7,20 @@ import { Colors, Shadow } from '@/src/lib/theme';
 import { useSessionStore } from '@/src/stores/sessionStore';
 
 interface BackButtonProps {
-  /** Ghi đè hành vi back (mặc định: pop, fallback về tab gốc nếu không pop được). */
+  /** Overrides back behavior (default: pop, falls back to the root tab if pop isn't possible). */
   onPress?: () => void;
-  /** `bare` = chỉ chevron, không nền — dùng cho headerLeft của Stack. */
+  /** `bare` = chevron only, no background — used for the Stack's headerLeft. */
   variant?: 'card' | 'bare';
 }
 
 /**
- * Nút back DÙNG CHUNG cho toàn app — mọi màn hình phải dùng cái này,
- * không tự dựng Pressable + chevron riêng nữa (trước đây mỗi màn một size
- * 18/22/26 và hitSlop khác nhau).
+ * SHARED back button for the whole app — every screen must use this one,
+ * not build its own Pressable + chevron (previously each screen had its own
+ * size 18/22/26 and different hitSlop).
  *
- * `canGoBack()` guard: vào thẳng bằng deep-link (push notification) thì stack
- * rỗng, `router.back()` sẽ no-op và nút chết — nên fallback về tab gốc theo role.
+ * `canGoBack()` guard: entering directly via deep-link (push notification) leaves
+ * the stack empty, so `router.back()` would no-op and the button would be dead —
+ * hence the fallback to the root tab based on role.
  */
 export function BackButton({ onPress, variant = 'card' }: BackButtonProps) {
   const goBack = () => {
@@ -41,7 +42,7 @@ export function BackButton({ onPress, variant = 'card' }: BackButtonProps) {
         pressed && { opacity: 0.6 },
       ]}
       accessibilityRole="button"
-      accessibilityLabel="Quay lại"
+      accessibilityLabel="Go back"
     >
       <Ionicons name="chevron-back" size={variant === 'card' ? 18 : 26} color={Colors.text} />
     </Pressable>
@@ -50,15 +51,15 @@ export function BackButton({ onPress, variant = 'card' }: BackButtonProps) {
 
 interface Props {
   title: string;
-  /** Ghi đè hành vi nút back (mặc định router.back()). */
+  /** Overrides the back button behavior (default router.back()). */
   onBack?: () => void;
-  /** Nút phụ bên phải (optional). */
+  /** Optional secondary button on the right. */
   right?: React.ReactNode;
 }
 
 /**
- * Header dùng chung cho các màn staff/detail (headerShown:false ở Stack) —
- * xử lý safe-area top + nút back nhất quán (44×44, đủ touch target).
+ * Shared header for staff/detail screens (headerShown:false on the Stack) —
+ * handles top safe-area + a consistent back button (44×44, sufficient touch target).
  */
 export function ScreenHeader({ title, onBack, right }: Props) {
   const insets = useSafeAreaInsets();
@@ -66,8 +67,8 @@ export function ScreenHeader({ title, onBack, right }: Props) {
     <View style={[styles.bar, { paddingTop: insets.top + 8 }]}>
       <BackButton onPress={onBack} />
       <Text style={styles.title} numberOfLines={1}>{title}</Text>
-      {/* Không có `right` thì chỉ giữ chỗ cho cân title — KHÔNG vẽ nền card,
-          nếu không sẽ hiện ra ô vuông trắng rỗng bên phải header. */}
+      {/* Without `right`, only reserve space to keep the title centered — do NOT draw
+          the card background, otherwise an empty white square shows on the right of the header. */}
       <View style={right ? styles.btn : styles.btnSpacer}>{right}</View>
     </View>
   );

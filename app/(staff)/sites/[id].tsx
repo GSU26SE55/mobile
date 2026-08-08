@@ -47,9 +47,9 @@ function SiteDetailInner() {
     return (
       <View style={styles.center}>
         <Ionicons name="business-outline" size={40} color={Colors.gray} />
-        <Text style={styles.notFoundTitle}>Không tìm thấy site</Text>
+        <Text style={styles.notFoundTitle}>Site not found</Text>
         <Pressable onPress={() => router.back()} style={styles.goBackBtn}>
-          <Text style={styles.goBackText}>Quay lại</Text>
+          <Text style={styles.goBackText}>Go back</Text>
         </Pressable>
       </View>
     );
@@ -59,7 +59,7 @@ function SiteDetailInner() {
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <BackButton />
-        <Text style={styles.headerTitle}>Chi tiết site</Text>
+        <Text style={styles.headerTitle}>Site Details</Text>
         <View style={{ width: 44 }} />
       </View>
 
@@ -75,15 +75,15 @@ function SiteDetailInner() {
         {dashboard ? (
           <View style={[styles.statsCard, Shadow]}>
             <View style={styles.statsTop}>
-              <Text style={styles.statsTitle}>Sức khỏe hệ thống</Text>
+              <Text style={styles.statsTitle}>System Health</Text>
               <SiteHealthBadge score={dashboard.healthScore} />
             </View>
             <View style={styles.statsRow}>
-              <Stat value={dashboard.totalAssets} label="Tổng pin" />
+              <Stat value={dashboard.totalAssets} label="Total batteries" />
               <View style={styles.statDivider} />
-              <Stat value={dashboard.activeAssets} label="Hoạt động" />
+              <Stat value={dashboard.activeAssets} label="Active" />
               <View style={styles.statDivider} />
-              <Stat value={dashboard.assetsWithActiveAlerts} label="Có cảnh báo" />
+              <Stat value={dashboard.assetsWithActiveAlerts} label="With alerts" />
             </View>
           </View>
         ) : null}
@@ -91,9 +91,9 @@ function SiteDetailInner() {
         <AmbientTile data={ambient} />
         <AmbientTrendChart siteId={siteId} />
 
-        <Text style={styles.sectionTitle}>Danh sách pin ({assets.length})</Text>
+        <Text style={styles.sectionTitle}>Battery List ({assets.length})</Text>
         {assets.length === 0 ? (
-          <Text style={styles.empty}>Site chưa có pin nào.</Text>
+          <Text style={styles.empty}>This site has no batteries yet.</Text>
         ) : (
           assets.map((item: BatteryAssetDto) => (
             <Pressable

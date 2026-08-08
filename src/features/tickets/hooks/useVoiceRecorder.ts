@@ -20,15 +20,15 @@ interface VoiceFile {
 interface UseVoiceRecorderResult {
   isRecording: boolean;
   elapsedSeconds: number;
-  /** BAR_COUNT giá trị 0-1 — lịch sử biên độ mic gần đây, cập nhật mỗi lần poll (~80ms) */
+  /** BAR_COUNT values 0-1 — recent mic amplitude history, updated on each poll (~80ms) */
   waveform: number[];
   start: () => Promise<void>;
   stop: () => Promise<VoiceFile | null>;
   cancel: () => Promise<void>;
 }
 
-// RecorderState.metering là dBFS (thường trong [-160, 0], im lặng ~ -50 trở xuống)
-// — chuẩn hoá về [0,1] để vẽ sóng, giống Web dùng AnalyserNode.
+// RecorderState.metering is dBFS (usually within [-160, 0], silence is ~ -50 or below)
+// — normalized to [0,1] to draw the waveform, similar to Web using AnalyserNode.
 function normalizeMetering(db: number | undefined): number {
   if (db == null || !Number.isFinite(db)) return 0;
   const clamped = Math.max(-50, Math.min(0, db));
@@ -36,10 +36,10 @@ function normalizeMetering(db: number | undefined): number {
 }
 
 /**
- * Ghi âm qua expo-audio (RecordingPresets.HIGH_QUALITY → .m4a, content-type "audio/mp4"
- * — nằm trong whitelist BE ChatVoiceTranscribeCommand, giống Web). Waveform lấy qua
- * RecorderState.metering (polling ~80ms qua useAudioRecorderState) — chỉ để hiển thị UI,
- * không ảnh hưởng file ghi âm.
+ * Records audio via expo-audio (RecordingPresets.HIGH_QUALITY → .m4a, content-type "audio/mp4"
+ * — within the BE ChatVoiceTranscribeCommand whitelist, same as Web). Waveform is read via
+ * RecorderState.metering (polling ~80ms via useAudioRecorderState) — for UI display only,
+ * does not affect the recorded file.
  */
 export function useVoiceRecorder(): UseVoiceRecorderResult {
   const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true });
@@ -54,7 +54,7 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
   const start = useCallback(async () => {
     const { granted } = await requestRecordingPermissionsAsync();
     if (!granted) {
-      throw new Error('Chưa cấp quyền micro.');
+      throw new Error('Microphone permission not granted.');
     }
     await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
     await recorder.prepareToRecordAsync();
@@ -65,8 +65,8 @@ export function useVoiceRecorder(): UseVoiceRecorderResult {
   const stop = useCallback(async (): Promise<VoiceFile | null> => {
     if (!state.isRecording) return null;
     await recorder.stop();
-    // iOS: rời khỏi category PlayAndRecord ngay khi ngừng ghi — nếu để allowsRecording=true,
-    // mic bị loopback ra loa gây vọng lại chính giọng vừa ghi sau khi bấm gửi.
+    // iOS: leave the PlayAndRecord category as soon as recording stops — if allowsRecording=true
+    // stays on, the mic loops back to the speaker causing an echo of the just-recorded voice after sending.
     await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
     setWaveform(SILENT_WAVEFORM);
     const uri = recorder.uri;

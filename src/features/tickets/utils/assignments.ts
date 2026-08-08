@@ -1,16 +1,16 @@
-// #697 — đọc phân công Staff trên ticket (thay `assignedStaffId` BE đã bỏ).
-// BE chỉ trả staffId (UUID), KHÔNG kèm tên.
+// #697 — read ticket staff assignments (replacing the removed `assignedStaffId`).
+// The backend only returns staffId (UUID), without a name.
 
 import { TicketAssignmentDTO } from '../types/ticket.types';
 
-/** Staff chịu trách nhiệm chính — null khi ticket chưa được gán. */
+/** Primary responsible staff member; null when the ticket is unassigned. */
 export function getPrimaryHandlerId(
   assignments: TicketAssignmentDTO[] | undefined | null,
 ): string | null {
   return assignments?.find((a) => a.role === 'PrimaryHandler')?.staffId ?? null;
 }
 
-/** Số Staff hỗ trợ (Supporter) — không tính vào workload. */
+/** Number of supporting staff members; excluded from workload. */
 export function countSupporters(
   assignments: TicketAssignmentDTO[] | undefined | null,
 ): number {
@@ -18,15 +18,14 @@ export function countSupporters(
 }
 
 /**
- * Tên hiển thị của 1 dòng phân công. BE trả sẵn `staffName` (từ StaffAccount đã
- * sync) nên mọi role đọc được — không cần gọi /api/staff (chỉ Admin/Manager).
- * Chưa sync kịp thì fallback staffId để còn định danh được.
+ * Display name for an assignment. The backend includes `staffName` from the synced
+ * StaffAccount, so no `/api/staff` call is required. Fall back to the staff ID.
  */
 export function assignmentDisplayName(a: TicketAssignmentDTO): string {
   return a.staffName?.trim() || a.staffId;
 }
 
-/** Tên Primary Handler — null khi chưa gán. */
+/** Primary handler name; null when unassigned. */
 export function getPrimaryHandlerName(
   assignments: TicketAssignmentDTO[] | undefined | null,
 ): string | null {
@@ -34,7 +33,7 @@ export function getPrimaryHandlerName(
   return primary ? assignmentDisplayName(primary) : null;
 }
 
-/** Tên các Staff hỗ trợ. */
+/** Supporting staff names. */
 export function getSupporterNames(
   assignments: TicketAssignmentDTO[] | undefined | null,
 ): string[] {
@@ -44,24 +43,20 @@ export function getSupporterNames(
 }
 
 /**
- * Chuỗi gọn cho card DANH SÁCH — cố tình KHÔNG liệt kê tên khi có nhiều người:
- * - 0 người  → "Chưa phân công"
- * - 1 người  → "Nguyễn Văn A"          (1 người thì hiện thẳng tên)
- * - 2+ người → "3 người phụ trách"     (ghép tên vào card hẹp là tràn/xuống dòng xấu)
- *
- * Tên đầy đủ của từng người hiện ở màn CHI TIẾT ticket, không nhồi vào card.
+ * Compact list-card summary. Names are omitted when multiple people are assigned
+ * to avoid overflow; the detail screen shows every assignee.
  */
 export function assignmentSummary(
   assignments: TicketAssignmentDTO[] | undefined | null,
 ): string {
   const primary = getPrimaryHandlerName(assignments);
   const names = [...(primary ? [primary] : []), ...getSupporterNames(assignments)];
-  if (names.length === 0) return 'Chưa phân công';
+  if (names.length === 0) return 'Unassigned';
   if (names.length === 1) return names[0];
-  return `${names.length} người phụ trách`;
+  return `${names.length} assignees`;
 }
 
-/** `userId` có phải Primary Handler của ticket không (dùng gate quyền thao tác). */
+/** Whether `userId` is the primary handler (used to gate actions). */
 export function isPrimaryHandler(
   assignments: TicketAssignmentDTO[] | undefined | null,
   userId: string | null | undefined,

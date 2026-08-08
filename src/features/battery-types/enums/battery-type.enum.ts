@@ -1,5 +1,5 @@
-// GH-56 — Battery Types. Nguồn: docs/api-battery.md §BatteryChemistryEnum (dòng 61–69).
-// Pattern `as const` object + type alias — KHÔNG dùng TypeScript enum.
+// GH-56 — Battery Types. Source: docs/api-battery.md §BatteryChemistryEnum (lines 61-69).
+// Pattern `as const` object + type alias — do NOT use TypeScript enum.
 
 export const BatteryChemistryEnum = {
   LiFePO4: 1,
@@ -11,11 +11,11 @@ export const BatteryChemistryEnum = {
 export type BatteryChemistryEnum =
   (typeof BatteryChemistryEnum)[keyof typeof BatteryChemistryEnum];
 
-// Nhãn hiển thị theo int value (BE trả số).
+// Display label keyed by int value (BE returns a number).
 export const BATTERY_CHEMISTRY_LABEL: Record<BatteryChemistryEnum, string> = {
   [BatteryChemistryEnum.LiFePO4]: 'LiFePO4',
   [BatteryChemistryEnum.Nmc]: 'NMC',
   [BatteryChemistryEnum.Nca]: 'NCA',
   [BatteryChemistryEnum.Lco]: 'LCO',
-  [BatteryChemistryEnum.Other]: 'Khác',
+  [BatteryChemistryEnum.Other]: 'Other',
 };

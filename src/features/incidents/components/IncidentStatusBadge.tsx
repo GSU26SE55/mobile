@@ -5,7 +5,7 @@ import {
   INCIDENT_STATUS_LABEL,
 } from '../types/incident.types';
 
-// ⚠️ Badge RIÊNG cho incident — KHÔNG tái dùng badge alert (Resolved khác giá trị: 3 vs 4).
+// ⚠️ SEPARATE badge for incident — do NOT reuse the alert badge (Resolved has a different value: 3 vs 4).
 const STATUS_COLORS: Record<EnvironmentalIncidentStatusEnum, { bg: string; text: string }> = {
   [EnvironmentalIncidentStatusEnum.Open]: { bg: '#FAD9D2', text: '#B73221' },
   [EnvironmentalIncidentStatusEnum.Acknowledged]: { bg: '#FBE6C2', text: '#946011' },

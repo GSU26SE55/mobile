@@ -24,9 +24,9 @@ export function useUploadTicketAttachment() {
         fileName:    data.fileName,
         contentType: data.contentType,
         sizeBytes:   data.size,
-        // BE ticket create bắt buộc `url`. publicUrl null khi PublicBaseUrl chưa
-        // cấu hình → resolveFileUrl fallback về endpoint download, và ghép sẵn
-        // origin nên trả URL tuyệt đối (BE chỉ validate non-empty).
+        // BE ticket create requires `url`. publicUrl is null when PublicBaseUrl isn't
+        // configured → resolveFileUrl falls back to the download endpoint, and already
+        // prepends the origin so it returns an absolute URL (BE only validates non-empty).
         url:         resolveFileUrl(data.publicUrl, data.fileId),
       };
     },

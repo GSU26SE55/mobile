@@ -15,14 +15,14 @@ import {
   statsDtoToView,
 } from '../types/sensor-reading.types';
 
-// GH-57 — SSE telemetry live cho Battery detail (docs/battery-realtime-description.md).
-// Realtime AUGMENTS, polling /realtime (useBatteryAssetRealtime) là seed + fallback + re-seed.
-// Merge field WHITELIST vào cache realtime — KHÔNG đè nguyên payload (mất serialNumber/status/activeAlerts).
-// GH-74 — thêm event `stats` (§5.3bis): min/max nạp-xả rolling, ghi vào cache key stats(assetId, window),
-// useBatteryStats đọc ra. `stats` đẩy incremental → seed ban đầu do useBatteryStats lo.
+// GH-57 — live SSE telemetry for the Battery detail screen (docs/battery-realtime-description.md).
+// Realtime AUGMENTS; polling /realtime (useBatteryAssetRealtime) is the seed + fallback + reseed.
+// Merges a field WHITELIST into the realtime cache — does NOT overwrite the whole payload (would lose serialNumber/status/activeAlerts).
+// GH-74 — adds event `stats` (§5.3bis): rolling min/max charge-discharge, written to cache key stats(assetId, window),
+// read by useBatteryStats. `stats` pushes incrementally → the initial seed is handled by useBatteryStats.
 type StreamEvent = 'reading' | 'stats' | 'ping';
 
-// BE chốt ĐÚNG 2 window (§5.3bis). Window lạ → bỏ qua, không ghi cache.
+// BE fixes EXACTLY 2 windows (§5.3bis). An unknown window → ignored, not written to cache.
 const VALID_WINDOWS: StatsWindow[] = ['1h', 'today'];
 
 export function useBatterySensorStream(assetId: string) {
@@ -39,14 +39,14 @@ export function useBatterySensorStream(assetId: string) {
       const token = await getAccessToken();
       if (cancelled || !token) return;
 
-      // BASE_URL không có /api (axios.ts); .replace phòng env có đuôi /api.
+      // BASE_URL has no /api (axios.ts); .replace guards against an env value with a trailing /api.
       const base = BASE_URL.replace(/\/api$/, '');
       const url =
         `${base}${ENDPOINTS.SENSOR_READINGS.STREAM}` +
         `?scope=asset:${assetId}&access_token=${encodeURIComponent(token)}`;
 
       const es = new EventSource<StreamEvent>(url, {
-        // Token đã ở query (native EventSource không set header) — header chỉ best-effort thêm.
+        // Token is already in the query (native EventSource doesn't set headers) — the header is only a best-effort addition.
         headers: { Authorization: `Bearer ${token}` },
       });
       esRef.current = es;
@@ -61,9 +61,9 @@ export function useBatterySensorStream(assetId: string) {
         try {
           dto = JSON.parse(event.data) as LiveReadingDto;
         } catch {
-          return; // payload lỗi → bỏ qua, polling vẫn chạy
+          return; // malformed payload → ignore, polling keeps running
         }
-        // Chỉ nhận đúng pin + source primary (hoặc vắng — coi như primary).
+        // Only accept the matching battery + primary source (or absent — treated as primary).
         if (dto.batteryAssetId !== assetId) return;
         if (dto.sensorSourceCode && dto.sensorSourceCode !== 'primary') return;
 
@@ -78,12 +78,12 @@ export function useBatterySensorStream(assetId: string) {
                   current: dto.current,
                   temperature: dto.temperature,
                   socPercent: dto.socPercent,
-                  // field nullable có thể VẮNG trong JSON SSE → ?? null.
+                  // nullable fields may be ABSENT in the SSE JSON → ?? null.
                   sohPercent: dto.sohPercent ?? null,
                   cycleCount: dto.cycleCount ?? null,
                   chargingState: (dto.chargingState ?? null) as ChargingStateEnum | null,
                 }
-              : old, // chưa có seed từ polling → chờ, không tạo object thiếu field
+              : old, // no seed from polling yet → wait, don't create an object missing fields
         );
       });
 
@@ -93,21 +93,21 @@ export function useBatterySensorStream(assetId: string) {
         try {
           dto = JSON.parse(event.data) as BatteryStatsDto;
         } catch {
-          return; // payload lỗi → bỏ qua, giữ giá trị cũ
+          return; // malformed payload → ignore, keep the old value
         }
-        // Chỉ nhận đúng pin (giống event `reading`).
+        // Only accept the matching battery (same as the `reading` event).
         if (dto.batteryAssetId !== assetId) return;
-        // Window lạ (BE thêm window thứ 3) → bỏ qua thay vì ghi cache key rác.
+        // Unknown window (BE adds a 3rd window) → ignore instead of writing a junk cache key.
         if (!VALID_WINDOWS.includes(dto.window)) return;
 
-        // Đè seed REST của useBatteryStats — stats từ SSE luôn mới hơn.
+        // Overwrites useBatteryStats' REST seed — SSE stats are always newer.
         queryClient.setQueryData<BatteryStatsView | null>(
           QUERY_KEY.sensorReadings.stats(assetId, dto.window),
           statsDtoToView(dto),
         );
       });
 
-      // 'ping' (30s keepalive) → bỏ qua. error → swallow, giữ polling fallback.
+      // 'ping' (30s keepalive) → ignore. error → swallow, keep the polling fallback.
       es.addEventListener('error', () => {
         if (!cancelled) setIsConnected(false);
       });

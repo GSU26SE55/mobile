@@ -26,9 +26,9 @@ export default function VerifyOtpScreen() {
 
       <View style={[styles.container, { paddingTop: insets.top + 76 }]}>
         <View style={styles.header}>
-          <Text style={styles.title}>Xác thực mã OTP</Text>
+          <Text style={styles.title}>Verify OTP</Text>
           <Text style={styles.subtitle}>
-            Mã OTP đã gửi đến <Text style={styles.emailHighlight}>{email}</Text>
+            OTP sent to <Text style={styles.emailHighlight}>{email}</Text>
           </Text>
         </View>
 

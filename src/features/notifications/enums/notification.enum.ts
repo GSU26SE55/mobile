@@ -1,5 +1,5 @@
-// Int-based enums khớp BE — xem docs/api-notification.md §Enums.
-// Pattern `as const` object + type alias (KHÔNG dùng TypeScript native enum).
+// Int-based enums matching BE — see docs/api-notification.md §Enums.
+// Pattern: `as const` object + type alias (do NOT use TypeScript native enum).
 
 export const NotificationTypeEnum = {
   TicketCreated: 1,
@@ -20,7 +20,7 @@ export const NotificationTypeEnum = {
   BatteryAlertEscalationPending: 16,
   AlertTicketSagaFailed: 17,
   IotDeviceWentOffline: 18,
-  // GH-83 — sync Sprint 6.2/6.3 (mobile trước đó dừng ở 18, thiếu 15 type).
+  // GH-83 — sync Sprint 6.2/6.3 (mobile previously stopped at 18, missing 15 types).
   ChatCreated: 19,
   ChatMentioned: 20,
   ChatReacted: 21,
@@ -36,7 +36,7 @@ export const NotificationTypeEnum = {
   TicketRatingRequested: 31,
   BatteryAnomalyWarning: 32,
   BatteryAnomalyInfo: 33,
-  // GH-83 — BE đổi 27 → 34 vì 27 đã thuộc ChatEscalatedToAdmin. KHÔNG dùng lại 27.
+  // GH-83 — BE changed 27 → 34 because 27 already belongs to ChatEscalatedToAdmin. Do NOT reuse 27.
   TicketMerged: 34,
   System: 99,
 } as const;
@@ -47,18 +47,18 @@ export const NotificationStatusEnum = {
   Sent: 2,
   Failed: 3,
   Read: 4,
-  // Sprint 6.3 NOTI3-14 — provider xác nhận đã đẩy tới thiết bị (Expo receipt "ok").
+  // Sprint 6.3 NOTI3-14 — provider confirmed delivery to the device (Expo receipt "ok").
   Delivered: 5,
-  // Sprint 6.3 NOTI3-14 — user chủ động mở notification. MẠNH HƠN Read, không phải trạng thái cộng thêm.
+  // Sprint 6.3 NOTI3-14 — user actively opened the notification. STRONGER than Read, not an additive status.
   Opened: 6,
-  // GH-792 — đã CHIẾM để gửi, chưa biết kết quả. Trạng thái tạm; vẫn tính là chưa đọc
-  // (isUnread chỉ loại Read và Opened nên không cần sửa gì thêm).
+  // GH-792 — CLAIMED for sending, outcome not yet known. Transient status; still counts as unread
+  // (isUnread only excludes Read and Opened, so nothing else needs to change).
   Processing: 7,
 } as const;
 export type NotificationStatusEnum = (typeof NotificationStatusEnum)[keyof typeof NotificationStatusEnum];
 
-// Nhóm nghiệp vụ của notification (Sprint 6.3 NOTI3-04) — dùng cho ma trận nhóm × kênh.
-// Giá trị khớp BE NotificationCategoryEnum.
+// Business category of a notification (Sprint 6.3 NOTI3-04) — used for the category × channel matrix.
+// Values match BE NotificationCategoryEnum.
 export const NotificationCategoryEnum = {
   Ticket: 1,
   Sla: 2,

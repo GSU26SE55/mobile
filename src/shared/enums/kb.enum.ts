@@ -9,7 +9,7 @@ export const KbArticleStatusEnum = {
 export type KbArticleStatusEnum =
   (typeof KbArticleStatusEnum)[keyof typeof KbArticleStatusEnum];
 
-// GH-44 — loại tham chiếu khi gán bài KB vào ticket. BE nhận/trả dạng CHUỖI (không gửi int).
+// GH-44 — reference type when attaching a KB article to a ticket. BE accepts/returns as STRING (do not send int).
 export const KbReferenceTypeEnum = {
   ConsultedDuringResolve: 'ConsultedDuringResolve',
   ProvidedToCustomer: 'ProvidedToCustomer',
@@ -19,9 +19,9 @@ export type KbReferenceTypeEnum =
   (typeof KbReferenceTypeEnum)[keyof typeof KbReferenceTypeEnum];
 
 export const KbReferenceTypeLabel: Record<KbReferenceTypeEnum, string> = {
-  [KbReferenceTypeEnum.ConsultedDuringResolve]: 'Tham khảo khi xử lý',
-  [KbReferenceTypeEnum.ProvidedToCustomer]: 'Cung cấp cho khách hàng',
-  [KbReferenceTypeEnum.GeneratedAfterResolve]: 'Tạo sau khi xử lý',
+  [KbReferenceTypeEnum.ConsultedDuringResolve]: 'Consulted during resolution',
+  [KbReferenceTypeEnum.ProvidedToCustomer]: 'Provided to customer',
+  [KbReferenceTypeEnum.GeneratedAfterResolve]: 'Generated after resolution',
 };
 
 export const KbCategoryCode: Record<TicketCategoryEnum, number> = {
@@ -34,12 +34,12 @@ export const KbCategoryCode: Record<TicketCategoryEnum, number> = {
 };
 
 export const KbCategoryLabel: Record<TicketCategoryEnum, string> = {
-  [TicketCategoryEnum.Charging]: 'Sạc pin',
-  [TicketCategoryEnum.Overheat]: 'Quá nhiệt',
-  [TicketCategoryEnum.NoPower]: 'Mất điện',
-  [TicketCategoryEnum.Performance]: 'Hiệu suất',
-  [TicketCategoryEnum.Other]: 'Khác',
-  [TicketCategoryEnum.Repair]: 'Sửa chữa',
+  [TicketCategoryEnum.Charging]: 'Charging',
+  [TicketCategoryEnum.Overheat]: 'Overheat',
+  [TicketCategoryEnum.NoPower]: 'No Power',
+  [TicketCategoryEnum.Performance]: 'Performance',
+  [TicketCategoryEnum.Other]: 'Other',
+  [TicketCategoryEnum.Repair]: 'Repair',
 };
 
 export const KbCategoryIcon: Record<TicketCategoryEnum, string> = {

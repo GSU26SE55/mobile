@@ -7,11 +7,12 @@ import { ENDPOINTS } from '@/src/lib/endpoints';
 import { getAccessToken } from '@/src/lib/secureStore';
 import { ticketChatActionsService } from '../services/ticketChatActions.service';
 
-// GH-68 — tải attachment chat qua virus-scan gate rồi mở share sheet.
-// Endpoint download ({attachmentId}=FileId) trả HTTP 200/202/451/404 — validateStatus:()=>true
-// nên axios KHÔNG throw; branch status THỦ CÔNG ở đây (KHÔNG dùng handleErrorApi vì 202/451
-// là "success-path" của axios). Tải file từ gateway route (như ChatBubble tải ảnh) để chắc
-// reachable từ device — response URL của BE có thể là host nội bộ FileStorage.
+// GH-68 — download a chat attachment through the virus-scan gate then open the share sheet.
+// The download endpoint ({attachmentId}=FileId) returns HTTP 200/202/451/404 — validateStatus:()=>true
+// so axios does NOT throw; status is branched MANUALLY here (NOT using handleErrorApi because 202/451
+// are axios "success-path" statuses). Download the file via the gateway route (like ChatBubble does
+// for images) to ensure it's reachable from the device — the BE's response URL may be an internal
+// FileStorage host.
 export function useDownloadChatAttachment(ticketId: string) {
   return useMutation({
     mutationFn: async ({
@@ -26,11 +27,11 @@ export function useDownloadChatAttachment(ticketId: string) {
       const res = await ticketChatActionsService.downloadAttachment(ticketId, chatId, fileId);
       const status = res.status;
 
-      if (status === 202) throw new Error('File đang được quét virus. Vui lòng thử lại sau.');
-      if (status === 451) throw new Error('File bị nhiễm virus, không thể tải.');
-      if (status === 404) throw new Error('Không tìm thấy tệp đính kèm.');
+      if (status === 202) throw new Error('File is being scanned for viruses. Please try again later.');
+      if (status === 451) throw new Error('File is infected with a virus and cannot be downloaded.');
+      if (status === 404) throw new Error('Attachment not found.');
       if (status !== 200 || !res.data?.isSuccess) {
-        throw new Error(res.data?.message ?? 'Không tải được tệp đính kèm.');
+        throw new Error(res.data?.message ?? 'Failed to download attachment.');
       }
 
       const token = await getAccessToken();

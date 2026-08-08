@@ -6,25 +6,25 @@ import { NotificationCategoryEnum } from '../enums/notification.enum';
 import { useNotificationMatrix } from '../hooks/useNotificationMatrix';
 import { NotificationCategoryPreferenceDto } from '../types/notification-matrix.types';
 
-// 4 kênh dùng chung key giữa dòng nhóm và công tắc toàn cục ⇒ tra cứu được cả hai bằng 1 key.
+// The 4 channels share a key between the category row and the global toggle ⇒ both can be looked up with 1 key.
 type ChannelKey = 'pushEnabled' | 'emailEnabled' | 'smsEnabled' | 'inAppEnabled';
 
 const CHANNELS: { key: ChannelKey; label: string }[] = [
-  { key: 'pushEnabled', label: 'Đẩy' },
+  { key: 'pushEnabled', label: 'Push' },
   { key: 'emailEnabled', label: 'Email' },
   { key: 'smsEnabled', label: 'SMS' },
-  { key: 'inAppEnabled', label: 'Trong app' },
+  { key: 'inAppEnabled', label: 'In-app' },
 ];
 
-// BE trả categoryName tiếng Anh ("Sla", "Environmental"…) — map sang nhãn tiếng Việt cho người dùng.
-// Fallback về categoryName nếu BE thêm nhóm mới mà mobile chưa kịp sync.
+// BE returns English categoryName ("Sla", "Environmental"...) — mapped to a user-facing label here.
+// Falls back to categoryName if BE adds a new category before mobile syncs.
 const CATEGORY_LABEL: Record<NotificationCategoryEnum, string> = {
   [NotificationCategoryEnum.Ticket]: 'Ticket',
-  [NotificationCategoryEnum.Sla]: 'SLA & leo thang',
-  [NotificationCategoryEnum.Battery]: 'Pin & thiết bị',
-  [NotificationCategoryEnum.Environmental]: 'Sự cố môi trường',
-  [NotificationCategoryEnum.Chat]: 'Trao đổi',
-  [NotificationCategoryEnum.Account]: 'Tài khoản & hệ thống',
+  [NotificationCategoryEnum.Sla]: 'SLA & Escalation',
+  [NotificationCategoryEnum.Battery]: 'Battery & Devices',
+  [NotificationCategoryEnum.Environmental]: 'Environmental Incidents',
+  [NotificationCategoryEnum.Chat]: 'Chat',
+  [NotificationCategoryEnum.Account]: 'Account & System',
 };
 
 export function CategoryMatrixTable() {
@@ -43,8 +43,9 @@ export function CategoryMatrixTable() {
 
   if (!channels || categories.length === 0) return null;
 
-  // Vá TỪNG DÒNG: chỉ gửi nhóm vừa đổi. Gửi cả 6 sẽ khiến 2 thiết bị mở song song xoá thiết lập
-  // của nhau. Nhưng trong 1 dòng phải gửi ĐỦ 4 kênh — BE coi field vắng là `false`.
+  // Patch PER ROW: only send the category that changed. Sending all 6 would let two devices open
+  // in parallel wipe each other's settings. But within one row, ALL 4 channels must be sent —
+  // BE treats a missing field as `false`.
   const toggle = (row: NotificationCategoryPreferenceDto, key: ChannelKey) => {
     updateMatrix.mutate({
       items: [
@@ -62,9 +63,9 @@ export function CategoryMatrixTable() {
 
   return (
     <View style={[styles.card, Shadow]}>
-      <Text style={styles.title}>Tuỳ chọn theo nhóm</Text>
+      <Text style={styles.title}>Per-category Options</Text>
       <Text style={styles.subtitle}>
-        Công tắc kênh ở trên luôn thắng. Tắt một kênh toàn cục thì cột đó ngừng tác dụng với mọi nhóm.
+        The global channel toggle above always wins. Turning off a channel globally disables that column for every category.
       </Text>
 
       <View style={styles.headerRow}>
@@ -86,11 +87,12 @@ export function CategoryMatrixTable() {
             <Text style={styles.rowLabel} numberOfLines={2}>
               {CATEGORY_LABEL[row.category] ?? row.categoryName}
             </Text>
-            {!row.isCustomized ? <Text style={styles.inherited}>kế thừa</Text> : null}
+            {!row.isCustomized ? <Text style={styles.inherited}>inherited</Text> : null}
           </View>
 
           {CHANNELS.map((c) => {
-            // Kênh tắt toàn cục ⇒ ô vô nghĩa: khoá lại thay vì để user bật rồi tưởng đã nhận được.
+            // A globally disabled channel makes the cell meaningless: lock it instead of letting
+            // the user toggle it on and think they'll actually receive it.
             const globalOff = !channels[c.key];
             const on = row[c.key];
             return (

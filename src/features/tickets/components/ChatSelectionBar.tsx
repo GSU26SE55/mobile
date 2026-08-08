@@ -7,17 +7,17 @@ interface HeaderProps {
   onCancel: () => void;
 }
 
-/** Header khi đang chọn nhiều tin — thay thanh tiêu đề thường của màn hình chat. */
+/** Header shown while selecting multiple messages — replaces the chat screen's normal title bar. */
 export function ChatSelectionHeader({ count, onCancel }: HeaderProps) {
   return (
     <View style={styles.header}>
       <Pressable onPress={onCancel} hitSlop={8}>
-        <Text style={styles.cancel}>Hủy</Text>
+        <Text style={styles.cancel}>Cancel</Text>
       </Pressable>
       <Text style={styles.title}>
-        {count > 0 ? `Đã chọn ${count}` : 'Chọn tin nhắn'}
+        {count > 0 ? `${count} selected` : 'Select messages'}
       </Text>
-      {/* Giữ chỗ cân đối với nút Hủy để title nằm chính giữa. */}
+      {/* Placeholder to balance the Cancel button so the title stays centered. */}
       <View style={styles.spacer} />
     </View>
   );
@@ -29,7 +29,7 @@ interface FooterProps {
   onDelete: () => void;
 }
 
-/** Nút xoá cố định đáy màn hình — disable khi chưa chọn gì hoặc vượt giới hạn BE. */
+/** Delete button pinned to the bottom of the screen — disabled when nothing is selected or the BE limit is exceeded. */
 export function ChatSelectionFooter({ count, pending, onDelete }: FooterProps) {
   const overLimit = count > CHAT_BULK_DELETE_MAX;
   const disabled = count === 0 || pending || overLimit;
@@ -38,7 +38,7 @@ export function ChatSelectionFooter({ count, pending, onDelete }: FooterProps) {
     <View style={styles.footer}>
       {overLimit && (
         <Text style={styles.limitWarn}>
-          Chỉ xoá được tối đa {CHAT_BULK_DELETE_MAX} tin mỗi lần.
+          You can only delete up to {CHAT_BULK_DELETE_MAX} messages at a time.
         </Text>
       )}
       <Pressable
@@ -50,7 +50,7 @@ export function ChatSelectionFooter({ count, pending, onDelete }: FooterProps) {
           <ActivityIndicator size="small" color={Colors.danger} />
         ) : (
           <Text style={[styles.deleteText, disabled && styles.deleteTextOff]}>
-            {count > 0 ? `Xóa (${count})` : 'Xóa'}
+            {count > 0 ? `Delete (${count})` : 'Delete'}
           </Text>
         )}
       </Pressable>
@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
     backgroundColor: Colors.card,
   },
-  // primary là vàng #FFD500 — trên nền card trắng phải dùng primaryDark mới đọc được.
+  // primary is yellow #FFD500 — on a white card background, primaryDark is needed for legibility.
   cancel: { fontSize: 16, color: Colors.primaryDark },
   title: { fontSize: 16, fontWeight: '600', color: Colors.text },
   spacer: { width: 36 },

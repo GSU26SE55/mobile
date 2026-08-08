@@ -14,7 +14,7 @@ export function useUploadCommentAttachment() {
       });
       const data = res.data.data;
       if (!res.data.isSuccess || !data) {
-        throw new Error(res.data.message ?? 'Upload thất bại');
+        throw new Error(res.data.message ?? 'Upload failed');
       }
       return {
         fileId:      data.fileId,

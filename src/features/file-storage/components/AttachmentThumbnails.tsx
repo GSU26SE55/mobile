@@ -2,17 +2,17 @@ import { Pressable, ScrollView, StyleSheet } from 'react-native';
 import { AuthImage } from './AuthImage';
 
 interface Props {
-  // BE trả mảng FileId (string[]) — không kèm metadata.
+  // BE returns an array of FileId (string[]) — no metadata included.
   fileIds?: string[] | null;
   size?: number;
-  // Optional — bấm vào thumbnail để mở viewer full-screen (truyền fileId).
+  // Optional — tap a thumbnail to open the full-screen viewer (passes fileId).
   onPressImage?: (fileId: string) => void;
 }
 
 /**
- * Hiển thị ảnh đính kèm (ticket attachment / comment / maintenance) theo fileId.
- * Tải qua AuthImage (axios + base64) — KHÔNG dùng <Image headers> vì iOS/New Arch
- * bỏ qua request khi có custom Authorization header.
+ * Displays attached images (ticket attachment / comment / maintenance) by fileId.
+ * Loaded via AuthImage (axios + base64) — do NOT use <Image headers> since iOS/New Arch
+ * ignores the request when a custom Authorization header is set.
  */
 export function AttachmentThumbnails({ fileIds, size = 72, onPressImage }: Props) {
   if (!fileIds || fileIds.length === 0) return null;

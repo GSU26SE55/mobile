@@ -7,9 +7,9 @@ interface Props {
   html: string;
 }
 
-// CSP chặn mọi script/frame; chỉ cho ảnh https + data, style inline của chính doc này.
-// Kết hợp với javaScriptEnabled={false} bên dưới → HTML từ BE (kể cả bài AI sinh)
-// không thực thi được gì.
+// CSP blocks all scripts/frames; only allows https + data images, and inline
+// styles from this document itself. Combined with javaScriptEnabled={false}
+// below → HTML from the BE (including AI-generated posts) cannot execute anything.
 const CSP =
   "default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; font-src data:;";
 
@@ -64,10 +64,10 @@ export function BlogContent({ html }: Props) {
       style={styles.web}
       originWhitelist={['*']}
       source={source}
-      // Không cần JS: WebView tự cuộn nên không phải inject script đo chiều cao.
+      // No JS needed: WebView scrolls on its own, so no need to inject a height-measuring script.
       javaScriptEnabled={false}
-      // Chặn mọi điều hướng. Link http/https mở bằng trình duyệt hệ thống;
-      // scheme khác (javascript:, file:, intent:) bị bỏ qua.
+      // Block all navigation. http/https links open in the system browser;
+      // other schemes (javascript:, file:, intent:) are ignored.
       onShouldStartLoadWithRequest={(req) => {
         if (req.url === 'about:blank' || req.url.startsWith('data:')) return true;
         if (/^https?:\/\//i.test(req.url)) {

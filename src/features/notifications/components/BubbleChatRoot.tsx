@@ -117,12 +117,12 @@ const queryClient = new QueryClient({
 });
 
 const CATEGORY_LABEL: Record<string, string> = {
-  Charging: 'Sạc pin',
-  Overheat: 'Quá nhiệt',
-  NoPower: 'Mất điện',
-  Performance: 'Hiệu suất',
-  Repair: 'Sửa chữa',
-  Other: 'Khác',
+  Charging: 'Charging',
+  Overheat: 'Overheating',
+  NoPower: 'Power Loss',
+  Performance: 'Performance',
+  Repair: 'Repair',
+  Other: 'Other',
 };
 
 const PRIORITY_LABEL: Record<string, string> = {
@@ -272,14 +272,14 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
       setAiSuggestions([]);
       if (!isConnected) void commentsQuery.refetch();
     } catch {
-      Alert.alert('Lỗi', 'Không thể gửi tin nhắn. Vui lòng thử lại.');
+      Alert.alert('Error', 'Could not send the message. Please try again.');
     }
   };
 
   const handleCustomerPickAttachment = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Quyền truy cập', 'Cần quyền truy cập thư viện ảnh để đính kèm file.');
+      Alert.alert('Permission Required', 'Photo library access is required to attach a file.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -297,7 +297,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
       });
       setAttachments((current) => [...current, uploaded]);
     } catch {
-      Alert.alert('Lỗi', 'Không thể tải file lên. Vui lòng thử lại.');
+      Alert.alert('Error', 'Could not upload the file. Please try again.');
     }
   };
 
@@ -305,7 +305,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
     try {
       await voiceRecorder.start();
     } catch {
-      Alert.alert('Quyền truy cập', 'Cần quyền truy cập micro để ghi âm.');
+      Alert.alert('Permission Required', 'Microphone access is required to record audio.');
     }
   };
 
@@ -326,10 +326,10 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
           await downloadAttachment.mutateAsync({
             chatId: commentId,
             fileId,
-            fileName: `tep-${fileId.slice(0, 8)}`,
+            fileName: `file-${fileId.slice(0, 8)}`,
           });
         } catch (error) {
-          Alert.alert('Tải tệp', (error as Error).message);
+          Alert.alert('Download File', (error as Error).message);
           break;
         }
       }
@@ -370,9 +370,9 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
               <Ionicons name="chatbubbles" size={20} color={Colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.headerMainTitle}>Yêu cầu Hỗ trợ</Text>
+              <Text style={styles.headerMainTitle}>Support Requests</Text>
               <Text style={styles.headerSubTitle}>
-                {user.role === 'CUSTOMER' ? 'Danh sách ticket của bạn' : 'Danh sách ticket cần xử lý'}
+                {user.role === 'CUSTOMER' ? 'Your ticket list' : 'Tickets awaiting action'}
               </Text>
             </View>
           </View>
@@ -382,7 +382,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
             <Ionicons name="search-outline" size={16} color={Colors.textMute} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Tìm theo mã ticket, tiêu đề..."
+              placeholder="Search by ticket code, title..."
               placeholderTextColor={Colors.textFaint}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -417,7 +417,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Ionicons name="document-text-outline" size={44} color={Colors.textFaint} />
-                <Text style={styles.emptyText}>Chưa có ticket nào</Text>
+                <Text style={styles.emptyText}>No tickets yet</Text>
               </View>
             }
             renderItem={({ item }) =>
@@ -450,7 +450,14 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
   const operatorSendDisabled = customerSendDisabled || operatorUploading || voiceRecorder.isRecording;
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      // The view spans from y=0 so KAV can't subtract the bottom safe area on its own: it adds
+      // extra padding equal to the home indicator height, leaving a gap between the composer and
+      // the keyboard. This negative offset compensates for that.
+      keyboardVerticalOffset={-insets.bottom}
+    >
       {/* Top Messenger Single-Row Compact Header Bar */}
       <View style={[styles.headerCompact, { paddingTop: Math.max(insets.top, 8) }]}>
         {/* Back Arrow -> Goes back to Ticket List */}
@@ -536,8 +543,6 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
             showTabs={false}
             activeTab={chatTab}
             onTabChange={setChatTab}
-            canEditAny={checkPermission(user, P.CHAT_EDIT_ANY)}
-            canDeleteAny={checkPermission(user, P.CHAT_DELETE_ANY)}
             ticketClosed={ticketClosed}
             onEdit={(comment, body, editReason) =>
               updateChat.mutate({ chatId: comment.id, payload: { body, editReason } })
@@ -628,7 +633,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                     notifyTyping();
                   }}
                   placeholder={
-                    chatTab === 'internal' ? 'Ghi chú nội bộ (khách không thấy)...' : 'Nhập tin nhắn...'
+                    chatTab === 'internal' ? 'Internal note (not visible to customer)...' : 'Type a message...'
                   }
                   placeholderTextColor={Colors.textFaint}
                   multiline
@@ -682,7 +687,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                   setCommentText(text);
                   notifyTyping();
                 }}
-                placeholder="Nhập tin nhắn..."
+                placeholder="Type a message..."
                 placeholderTextColor={Colors.textFaint}
                 multiline
                 maxLength={1000}
@@ -724,7 +729,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
               onPress={() => setDetailSubTab('details')}
             >
               <Text style={[styles.subTabLabel, detailSubTab === 'details' && styles.subTabLabelActive]}>
-                Thông tin
+                Details
               </Text>
             </Pressable>
 
@@ -733,7 +738,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
               onPress={() => setDetailSubTab('activities')}
             >
               <Text style={[styles.subTabLabel, detailSubTab === 'activities' && styles.subTabLabelActive]}>
-                Lịch sử
+                History
               </Text>
             </Pressable>
 
@@ -743,7 +748,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                 onPress={() => setDetailSubTab('logs')}
               >
                 <Text style={[styles.subTabLabel, detailSubTab === 'logs' && styles.subTabLabelActive]}>
-                  Nhật ký
+                  Logs
                 </Text>
               </Pressable>
             )}
@@ -754,7 +759,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                 onPress={() => setDetailSubTab('kb')}
               >
                 <Text style={[styles.subTabLabel, detailSubTab === 'kb' && styles.subTabLabelActive]}>
-                  Bài KB
+                  KB Articles
                 </Text>
               </Pressable>
             )}
@@ -777,25 +782,25 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
 
                     <View style={styles.metaGrid}>
                       <View style={styles.metaItem}>
-                        <Text style={styles.metaLabel}>Trạng thái</Text>
+                        <Text style={styles.metaLabel}>Status</Text>
                         <TicketStatusBadge status={ticketDetail.status} />
                       </View>
                       <View style={styles.metaItem}>
-                        <Text style={styles.metaLabel}>Danh mục</Text>
+                        <Text style={styles.metaLabel}>Category</Text>
                         <Text style={styles.metaVal}>
                           {CATEGORY_LABEL[ticketDetail.category] ?? ticketDetail.category}
                         </Text>
                       </View>
                       <View style={styles.metaItem}>
-                        <Text style={styles.metaLabel}>Độ ưu tiên</Text>
+                        <Text style={styles.metaLabel}>Priority</Text>
                         <Text style={styles.metaVal}>
                           {ticketDetail.priority
                             ? PRIORITY_LABEL[ticketDetail.priority] ?? ticketDetail.priority
-                            : 'Chưa phân loại'}
+                            : 'Not classified'}
                         </Text>
                       </View>
                       <View style={styles.metaItem}>
-                        <Text style={styles.metaLabel}>Ngày tạo</Text>
+                        <Text style={styles.metaLabel}>Created</Text>
                         <Text style={styles.metaVal}>
                           {new Date(ticketDetail.createdAt).toLocaleDateString('vi-VN')}
                         </Text>
@@ -806,7 +811,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                   {/* Description */}
                   {ticketDetail.description ? (
                     <View style={[styles.detailCard, Shadow]}>
-                      <Text style={styles.sectionTitle}>Mô tả vấn đề</Text>
+                      <Text style={styles.sectionTitle}>Issue Description</Text>
                       <Text style={styles.descriptionText}>{ticketDetail.description}</Text>
                     </View>
                   ) : null}
@@ -814,13 +819,13 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                   {/* Battery / Serial info if exists */}
                   {ticketDetail.batterySerialNumber && (
                     <View style={[styles.detailCard, Shadow]}>
-                      <Text style={styles.sectionTitle}>Thiết bị liên quan</Text>
+                      <Text style={styles.sectionTitle}>Related Device</Text>
                       <View style={styles.assetRow}>
                         <Ionicons name="battery-charging" size={20} color={Colors.primary} />
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.assetModel}>Pin Lithium-Ion</Text>
+                          <Text style={styles.assetModel}>Lithium-Ion Battery</Text>
                           <Text style={styles.assetSerial}>
-                            Mã pin: {ticketDetail.batterySerialNumber}
+                            Battery code: {ticketDetail.batterySerialNumber}
                           </Text>
                         </View>
                       </View>
@@ -852,20 +857,20 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                       {ticketDetail.status === 'Resolved' && (
                         <Pressable style={styles.rateBtn} onPress={() => setShowRateModal(true)}>
                           <Ionicons name="star" size={16} color="#FFF" />
-                          <Text style={styles.rateBtnText}>Đánh giá dịch vụ</Text>
+                          <Text style={styles.rateBtnText}>Rate Service</Text>
                         </Pressable>
                       )}
                       {['Closed', 'ClosedRejected'].includes(ticketDetail.status) && (
                         <Pressable style={styles.reopenBtn} onPress={() => setShowReopenModal(true)}>
                           <Ionicons name="refresh-circle" size={18} color={Colors.primary} />
-                          <Text style={styles.reopenBtnText}>Yêu cầu Reopen</Text>
+                          <Text style={styles.reopenBtnText}>Request Reopen</Text>
                         </Pressable>
                       )}
                     </View>
                   )}
                 </>
               ) : (
-                <Text style={styles.emptyText}>Không tải được thông tin ticket.</Text>
+                <Text style={styles.emptyText}>Could not load ticket information.</Text>
               )}
             </ScrollView>
           )}
@@ -885,14 +890,14 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
             <ScrollView contentContainerStyle={styles.detailsScroll}>
               <Pressable style={styles.addLogBtn} onPress={() => setShowLogForm(true)}>
                 <Ionicons name="add-circle" size={18} color="#FFF" />
-                <Text style={styles.addLogBtnText}>Thêm nhật ký bảo trì</Text>
+                <Text style={styles.addLogBtnText}>Add Maintenance Log</Text>
               </Pressable>
 
               {ticketDetail?.maintenanceLogs && ticketDetail.maintenanceLogs.length > 0 ? (
                 ticketDetail.maintenanceLogs.map((log) => (
                   <View key={log.id} style={[styles.detailCard, Shadow, { marginTop: 10 }]}>
                     <View style={styles.cardHeader}>
-                      <Text style={styles.logTitle}>{log.summary || 'Nhật ký bảo trì'}</Text>
+                      <Text style={styles.logTitle}>{log.summary || 'Maintenance Log'}</Text>
                       <Text style={styles.logTime}>
                         {new Date(log.createdAt).toLocaleDateString('vi-VN')}
                       </Text>
@@ -903,7 +908,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                   </View>
                 ))
               ) : (
-                <Text style={[styles.emptyText, { marginTop: 20 }]}>Chưa có nhật ký bảo trì nào.</Text>
+                <Text style={[styles.emptyText, { marginTop: 20 }]}>No maintenance logs yet.</Text>
               )}
             </ScrollView>
           )}
@@ -913,7 +918,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
             <ScrollView contentContainerStyle={styles.detailsScroll}>
               <Pressable style={styles.addLogBtn} onPress={() => setShowKbPicker(true)}>
                 <Ionicons name="book" size={18} color="#FFF" />
-                <Text style={styles.addLogBtnText}>Thêm tham chiếu bài KB</Text>
+                <Text style={styles.addLogBtnText}>Add KB Reference</Text>
               </Pressable>
 
               {kbRefsQuery.data && kbRefsQuery.data.length > 0 ? (
@@ -925,11 +930,11 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                         <Ionicons name="trash-outline" size={18} color={Colors.danger} />
                       </Pressable>
                     </View>
-                    <Text style={styles.metaLabel}>Mã bài: {ref.kbArticleCode}</Text>
+                    <Text style={styles.metaLabel}>Article code: {ref.kbArticleCode}</Text>
                   </View>
                 ))
               ) : (
-                <Text style={[styles.emptyText, { marginTop: 20 }]}>Chưa có bài KB tham chiếu nào.</Text>
+                <Text style={[styles.emptyText, { marginTop: 20 }]}>No referenced KB articles yet.</Text>
               )}
             </ScrollView>
           )}
@@ -1005,7 +1010,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
           <View style={styles.imageOverlay}>
             <View style={{ width: '92%', maxHeight: '85%', backgroundColor: '#FFF', borderRadius: 20, padding: 16 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={styles.sectionTitle}>{editingLog ? 'Sửa nhật ký bảo trì' : 'Ghi nhật ký bảo trì'}</Text>
+                <Text style={styles.sectionTitle}>{editingLog ? 'Edit Maintenance Log' : 'Add Maintenance Log'}</Text>
                 <Pressable onPress={() => { setShowLogForm(false); setEditingLog(null); }}>
                   <Ionicons name="close" size={22} color={Colors.text} />
                 </Pressable>
@@ -1017,6 +1022,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                     editingLog
                       ? {
                           summary: editingLog.summary ?? '',
+                          logType: editingLog.logType,
                           actionsTaken: editingLog.actionsTaken ?? '',
                           partsUsed: '',
                           durationMinutes: editingLog.durationMinutes,

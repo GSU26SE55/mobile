@@ -11,7 +11,7 @@ interface Props {
   isConfirming?: boolean;
 }
 
-// GH-295: bước 2 enroll — quét QR rồi nhập mã 6 số để activate
+// GH-295: enroll step 2 — scan QR then enter the 6-digit code to activate
 export function TwoFASetup({ secret, otpAuthUri, onConfirm, onCancel, isConfirming }: Props) {
   const [code, setCode] = useState('');
 
@@ -19,7 +19,7 @@ export function TwoFASetup({ secret, otpAuthUri, onConfirm, onCancel, isConfirmi
     <ScrollView style={styles.root} contentContainerStyle={styles.container}>
       <View style={styles.disclaimer}>
         <Text style={styles.disclaimerText}>
-          Quét mã QR (hoặc nhập khóa bí mật) bằng Google Authenticator / Authy, rồi nhập mã 6 số để kích hoạt 2FA.
+          Scan the QR code (or enter the secret key manually) with Google Authenticator / Authy, then enter the 6-digit code to enable 2FA.
         </Text>
       </View>
 
@@ -27,12 +27,12 @@ export function TwoFASetup({ secret, otpAuthUri, onConfirm, onCancel, isConfirmi
         <QRCode value={otpAuthUri} size={200} />
       </View>
 
-      <Text style={styles.secretLabel}>Hoặc tự nhập mã thủ công:</Text>
+      <Text style={styles.secretLabel}>Or enter the code manually:</Text>
       <View style={styles.secretBox}>
         <Text style={styles.secretText} selectable>{secret}</Text>
       </View>
 
-      <Text style={styles.secretLabel}>Mã TOTP (6 số):</Text>
+      <Text style={styles.secretLabel}>TOTP code (6 digits):</Text>
       <TextInput
         style={styles.input}
         keyboardType="number-pad"
@@ -51,12 +51,12 @@ export function TwoFASetup({ secret, otpAuthUri, onConfirm, onCancel, isConfirmi
         {isConfirming ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.confirmText}>Xác nhận bật 2FA</Text>
+          <Text style={styles.confirmText}>Confirm enable 2FA</Text>
         )}
       </Pressable>
 
       <Pressable style={styles.cancelButton} onPress={onCancel} disabled={isConfirming}>
-        <Text style={styles.cancelText}>Hủy / Quay lại</Text>
+        <Text style={styles.cancelText}>Cancel / Go back</Text>
       </Pressable>
     </ScrollView>
   );

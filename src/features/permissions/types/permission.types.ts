@@ -1,15 +1,15 @@
-// GH-68 — catalog permission (BE PermissionDto). GET /api/permissions trả
-// CommonResponse<List<PermissionDto>> — mọi role, KHÔNG cần quyền admin.
+// GH-68 — permission catalog (BE PermissionDto). GET /api/permissions returns
+// CommonResponse<List<PermissionDto>> — every role, admin permission NOT required.
 export interface PermissionDto {
   id: string;
-  code: string; // dạng module.action, khớp P.* constant
+  code: string; // format module.action, matches the P.* constant
   module: string;
   description: string | null;
   isSystemPermission: boolean;
   createdAt: string;
 }
 
-// Query param cho catalog
+// Query params for the catalog
 export interface PermissionCatalogParams {
   module?: string;
 }

@@ -12,7 +12,7 @@ interface Props {
 
 /** Đếm lùi dạng `3h 59m` / `12m 30s` — dưới 1 giờ thì hiện giây để thấy nó đang chạy. */
 function formatRemaining(ms: number): string {
-  if (ms <= 0) return 'Quá hạn';
+  if (ms <= 0) return 'Overdue';
   const h = Math.floor(ms / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
   const s = Math.floor((ms % 60_000) / 1000);
@@ -88,11 +88,11 @@ export function SlaCountdown({ sla, compact = false }: Props) {
         : 'time-outline';
 
   const label = isBreached
-    ? 'Vi phạm SLA'
+    ? 'SLA breached'
     : isPaused
-      ? 'SLA tạm dừng'
+      ? 'SLA paused'
       : isMet
-        ? 'Hoàn thành đúng hạn'
+        ? 'Completed on time'
         : formatRemaining(remainingMs);
 
   if (compact) {
@@ -119,7 +119,7 @@ export function SlaCountdown({ sla, compact = false }: Props) {
         <View style={styles.row}>
           <Ionicons name={icon} size={15} color={color} />
           <Text style={styles.caption}>
-            {isBreached || isPaused || isMet ? 'SLA' : 'Còn lại'}
+            {isBreached || isPaused || isMet ? 'SLA' : 'Remaining'}
           </Text>
         </View>
         <Text style={[styles.time, { color }]} numberOfLines={1}>
@@ -133,7 +133,7 @@ export function SlaCountdown({ sla, compact = false }: Props) {
             <View style={[styles.fill, { width: `${percent}%`, backgroundColor: color }]} />
           </View>
           <View style={styles.footRow}>
-            <Text style={styles.footText}>Hạn {formatDeadline(sla.dueAt)}</Text>
+            <Text style={styles.footText}>Due {formatDeadline(sla.dueAt)}</Text>
             <Text style={[styles.footPercent, { color }]}>{Math.round(percent)}%</Text>
           </View>
         </>

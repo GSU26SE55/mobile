@@ -3,13 +3,13 @@ import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { ticketChatActionsService } from '../services/ticketChatActions.service';
 
 /**
- * Ai đã đọc 1 chat — GET /api/tickets/{tid}/chats/{cid}/readers.
+ * Who has read a chat — GET /api/tickets/{tid}/chats/{cid}/readers.
  *
- * ⚠️ BE giới hạn `[Authorize(Roles = "Staff,Manager,Admin")]` — Customer gọi sẽ
- * nhận 403. CHỈ dùng ở màn Staff, không wire vào (customer)/tickets/[id].tsx.
+ * Warning: BE restricts with `[Authorize(Roles = "Staff,Manager,Admin")]` — Customer calls
+ * get a 403. ONLY use on Staff screens, do not wire into (customer)/tickets/[id].tsx.
  *
- * `enabled` mặc định false: chỉ fetch khi user chủ động mở danh sách người đọc,
- * tránh N+1 request khi thread có nhiều chat.
+ * `enabled` defaults to false: only fetch when the user actively opens the readers list,
+ * to avoid N+1 requests when a thread has many chats.
  */
 export function useChatReaders(
   ticketId: string | undefined,

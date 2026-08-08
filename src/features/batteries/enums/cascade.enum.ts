@@ -1,5 +1,5 @@
 // Cascade risk enums (Sprint 7 B4) — mirror docs/api-battery.md.
-// ⚠️ BE trả các field này dạng STRING ("High", "SeriesString"), không phải int.
+// ⚠️ BE returns these fields as STRING ("High", "SeriesString"), not int.
 
 export const CascadeRiskLevel = {
   Low: 'Low',       // score < 0.5
@@ -9,10 +9,10 @@ export const CascadeRiskLevel = {
 export type CascadeRiskLevel = (typeof CascadeRiskLevel)[keyof typeof CascadeRiskLevel];
 
 export const ElectricalTopologyEnum = {
-  Independent: 'Independent',     // pin đơn lẻ
-  SeriesString: 'SeriesString',  // nối tiếp
-  ParallelBank: 'ParallelBank',  // song song
-  SeriesParallel: 'SeriesParallel', // hỗn hợp
+  Independent: 'Independent',     // single battery
+  SeriesString: 'SeriesString',  // series
+  ParallelBank: 'ParallelBank',  // parallel
+  SeriesParallel: 'SeriesParallel', // mixed
 } as const;
 export type ElectricalTopologyEnum =
   (typeof ElectricalTopologyEnum)[keyof typeof ElectricalTopologyEnum];

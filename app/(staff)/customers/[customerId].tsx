@@ -35,30 +35,30 @@ function avatarInitials(id: string): string {
 }
 
 function displayName(id: string): string {
-  return 'Khách ' + (id.split('-')[0] ?? id.substring(0, 8)).toUpperCase();
+  return 'Customer ' + (id.split('-')[0] ?? id.substring(0, 8)).toUpperCase();
 }
 
 function timeAgo(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 60_000) return 'vừa xong';
-  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}p trước`;
-  if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h trước`;
+  if (ms < 60_000) return 'just now';
+  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
+  if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
   return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
 }
 
 const STATUS_LABEL: Partial<Record<TicketStatusEnum, string>> = {
-  New: 'Mới',
-  Open: 'Đang mở',
-  Assigned: 'Đã gán',
-  InProgress: 'Đang xử lý',
-  WaitingCustomer: 'Chờ KH',
-  WaitingParts: 'Chờ phụ tùng',
-  WaitingOnsiteSchedule: 'Chờ lịch',
-  Resolved: 'Đã giải quyết',
-  Escalated: 'Leo thang',
-  Closed: 'Đã đóng',
-  ClosedPendingRate: 'Chờ đánh giá',
-  ClosedRejected: 'Từ chối',
+  New: 'New',
+  Open: 'Open',
+  Assigned: 'Assigned',
+  InProgress: 'In progress',
+  WaitingCustomer: 'Waiting customer',
+  WaitingParts: 'Waiting parts',
+  WaitingOnsiteSchedule: 'Waiting schedule',
+  Resolved: 'Resolved',
+  Escalated: 'Escalated',
+  Closed: 'Closed',
+  ClosedPendingRate: 'Pending rating',
+  ClosedRejected: 'Rejected',
 };
 
 type BadgeKey = keyof typeof BadgeColors;
@@ -84,16 +84,16 @@ function CustomerTicketsScreenInner() {
 
   const { data, isLoading, isError, isRefetching, refetch } = useStaffTickets({ PageSize: 100 });
 
-  // @mention tới mình — BE trả flat cross-ticket, gom thành Set ticketId để tra O(1).
-  // Tách khỏi hasUnreadChat: một ticket có thể tag mình mà mình đã đọc, và ngược lại.
+  // @mentions of me — BE returns a flat cross-ticket list, gathered into a Set of ticketId for O(1) lookup.
+  // Separate from hasUnreadChat: a ticket can tag me while I've already read it, and vice versa.
   const { data: mentions } = useMyMentions({ pageSize: 100 });
   const mentionedTicketIds = useMemo(
     () => new Set((mentions ?? []).map((m) => m.ticketId).filter((id): id is string => !!id)),
     [mentions],
   );
 
-  // Ticket có tin chưa đọc / được tag lên đầu — thứ cần xử lý không nên nằm dưới đáy.
-  // Cùng nhóm thì mới nhất trước.
+  // Tickets with unread messages / tagged mentions rise to the top — things needing action shouldn't
+  // sit at the bottom. Within the same group, most recent first.
   const tickets = useMemo(() => {
     if (!data?.items || !customerId) return [];
     const rank = (t: TicketDTO) =>
@@ -141,9 +141,9 @@ function CustomerTicketsScreenInner() {
       ) : isError ? (
         <View style={styles.center}>
           <Ionicons name="alert-circle-outline" size={40} color={Colors.textFaint} />
-          <Text style={styles.errMsg}>Không thể tải dữ liệu</Text>
+          <Text style={styles.errMsg}>Unable to load data</Text>
           <Pressable style={styles.retryBtn} onPress={() => refetch()}>
-            <Text style={styles.retryText}>Thử lại</Text>
+            <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
       ) : (
@@ -161,7 +161,7 @@ function CustomerTicketsScreenInner() {
           ListEmptyComponent={
             <View style={styles.center}>
               <Ionicons name="ticket-outline" size={48} color={Colors.textFaint} />
-              <Text style={styles.errMsg}>Chưa có ticket nào</Text>
+              <Text style={styles.errMsg}>No tickets yet</Text>
             </View>
           }
         />
@@ -184,8 +184,8 @@ function TicketRow({ ticket, isMentioned }: { ticket: TicketDTO; isMentioned: bo
         unread && styles.cardUnread,
         pressed && { opacity: 0.7 },
       ]}
-      // jumpToUnread: mở thẳng tab chat và cuộn tới tin CŨ NHẤT chưa đọc,
-      // thay vì bắt Staff tự lần ngược lịch sử.
+      // jumpToUnread: opens the chat tab directly and scrolls to the OLDEST unread message,
+      // instead of making Staff manually scroll back through history.
       onPress={() =>
         router.push({
           pathname: '/(staff)/tickets/[id]',
@@ -215,13 +215,13 @@ function TicketRow({ ticket, isMentioned }: { ticket: TicketDTO; isMentioned: bo
           {unread && (
             <View style={styles.unreadChip}>
               <Ionicons name="chatbubble-ellipses" size={12} color="#FFF" />
-              <Text style={styles.unreadChipText}>Tin nhắn chưa đọc</Text>
+              <Text style={styles.unreadChipText}>Unread message</Text>
             </View>
           )}
           {isMentioned && (
             <View style={styles.mentionChip}>
               <Ionicons name="at" size={12} color={Colors.primary} />
-              <Text style={styles.mentionChipText}>Nhắc tên bạn</Text>
+              <Text style={styles.mentionChipText}>Mentioned you</Text>
             </View>
           )}
         </View>
@@ -235,7 +235,7 @@ function TicketRow({ ticket, isMentioned }: { ticket: TicketDTO; isMentioned: bo
         <Ionicons name="chatbubble-ellipses-outline" size={13} color={Colors.textFaint} />
         <Text style={styles.timeText}>{time}</Text>
         <View style={{ flex: 1 }} />
-        <Text style={styles.goText}>{unread ? 'Đọc tin mới' : 'Xem chat'}</Text>
+        <Text style={styles.goText}>{unread ? 'Read new message' : 'View chat'}</Text>
         <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
       </View>
     </Pressable>
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   list: { padding: 16, paddingBottom: 100 },
 
   card:      { backgroundColor: Colors.card, borderRadius: 16, padding: 14, marginBottom: 10, overflow: 'hidden' },
-  // Ticket chưa đọc: viền + nền ấm để bật hẳn khỏi các card đã đọc.
+  // Unread ticket: border + warm background so it stands out from read cards.
   cardUnread: {
     borderWidth: 1.5,
     borderColor: Colors.primary,

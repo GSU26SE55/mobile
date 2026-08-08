@@ -4,27 +4,28 @@ import { sensorReadingService } from '../services/sensor-reading.service';
 import { SensorReadingInterval } from '../types/sensor-reading.types';
 
 interface UseSensorReadingAggregateOptions {
-  hours: number; // khoảng thời gian lùi từ hiện tại — `from` tính lại mỗi lần fetch
+  hours: number; // how far back from now — `from` is recomputed on every fetch
   interval: SensorReadingInterval;
 }
 
-// GH-74 — ngưỡng chuyển endpoint. `/aggregate` materialize rows in-memory (bounded ~7 ngày);
-// range dài hơn nên dùng `/aggregate/hourly` (continuous aggregate, ~O(số bucket)).
-// docs/api-battery.md L957: range ≤ 7 ngày → /aggregate; range dài + interval 1h cố định → /aggregate/hourly.
-const HOURLY_THRESHOLD_HOURS = 168; // 7 ngày
+// GH-74 — endpoint switch threshold. `/aggregate` materializes rows in-memory (bounded to ~7 days);
+// longer ranges should use `/aggregate/hourly` (continuous aggregate, ~O(bucket count)).
+// docs/api-battery.md L957: range ≤ 7 days → /aggregate; longer range + fixed 1h interval → /aggregate/hourly.
+const HOURLY_THRESHOLD_HOURS = 168; // 7 days
 
 /**
- * Chỉ chuyển sang /aggregate/hourly khi range dài VÀ caller thực sự muốn bucket 1h.
+ * Only switches to /aggregate/hourly when the range is long AND the caller actually wants 1h buckets.
  *
- * ⚠️ Điều kiện `interval === '1h'` là BẮT BUỘC, không thừa: /aggregate/hourly cố định bucket 1h.
- * Nếu chỉ xét `hours`, range 30 ngày của SensorChart (interval '1d', 30 bucket) sẽ bị đẩy sang
- * hourly và nhận 720 bucket — gấp 24 lần, đổi hình dạng chart + hiệu năng của component NGOÀI scope.
+ * ⚠️ The `interval === '1h'` condition is REQUIRED, not redundant: /aggregate/hourly fixes the
+ * bucket at 1h. If only `hours` were checked, SensorChart's 30-day range (interval '1d', 30
+ * buckets) would get pushed to hourly and receive 720 buckets — 24x more, changing the chart's
+ * shape and the performance of a component OUTSIDE this scope.
  */
 function shouldUseHourly(opts: UseSensorReadingAggregateOptions): boolean {
   return opts.hours > HOURLY_THRESHOLD_HOURS && opts.interval === '1h';
 }
 
-// Dữ liệu bucket cho chart — poll mỗi 30s để chart tự cập nhật khi có reading mới.
+// Bucket data for the chart — polls every 30s so the chart auto-updates on new readings.
 export function useSensorReadingAggregate(
   assetId: string,
   opts: UseSensorReadingAggregateOptions,
@@ -37,7 +38,7 @@ export function useSensorReadingAggregate(
       : QUERY_KEY.sensorReadings.aggregate(assetId, opts as unknown as Record<string, unknown>),
     queryFn: () => {
       const from = new Date(Date.now() - opts.hours * 3_600_000).toISOString();
-      // Range dài → hourly (KHÔNG gửi `interval` — endpoint cố định bucket 1h).
+      // Long range → hourly (do NOT send `interval` — the endpoint has a fixed 1h bucket).
       return useHourly
         ? sensorReadingService.getAggregateHourly(assetId, { from }).then((r) => r.data.data ?? [])
         : sensorReadingService

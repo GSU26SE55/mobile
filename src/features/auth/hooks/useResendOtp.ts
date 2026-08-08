@@ -8,7 +8,7 @@ export function useResendOtp() {
   return useMutation({
     mutationFn: (data: ResendOtpPayload) => authService.resendOtp(data),
     onSuccess: () => {
-      Alert.alert('Đã gửi', 'OTP mới đã được gửi đến email của bạn.');
+      Alert.alert('Sent', 'A new OTP has been sent to your email.');
     },
     onError: (error) => handleErrorApi({ error }),
   });

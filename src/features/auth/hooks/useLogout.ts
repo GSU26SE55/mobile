@@ -15,7 +15,7 @@ export function useLogout() {
         try {
           await authService.logout(refreshToken);
         } catch {
-          // best-effort — vẫn clear local state dù server call fail
+          // best-effort — still clear local state even if the server call fails
         }
       }
       await clearLastSeen();

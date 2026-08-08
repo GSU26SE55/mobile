@@ -20,9 +20,9 @@ import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard'
 import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 const STATUS_META: Record<number, { label: string; bg: string; text: string }> = {
-  1: { label: 'Hoạt động', bg: BadgeColors.ok.bg, text: BadgeColors.ok.text },
-  2: { label: 'Tạm ngưng', bg: BadgeColors.new.bg, text: BadgeColors.new.text },
-  3: { label: 'Ngừng dùng', bg: BadgeColors.crit.bg, text: BadgeColors.crit.text },
+  1: { label: 'Active', bg: BadgeColors.ok.bg, text: BadgeColors.ok.text },
+  2: { label: 'Suspended', bg: BadgeColors.new.bg, text: BadgeColors.new.text },
+  3: { label: 'Decommissioned', bg: BadgeColors.crit.bg, text: BadgeColors.crit.text },
 };
 
 export default function StaffBatteryViewScreen() {
@@ -40,7 +40,7 @@ function StaffBatteryViewScreenInner() {
 
   const { data: battery, isLoading, isError } = useBatteryAsset(assetId);
   const { data: realtime } = useBatteryAssetRealtime(assetId);
-  // SSE realtime — merge vào cache realtime(assetId); polling là seed + fallback.
+  // SSE realtime — merges into the realtime(assetId) cache; polling is the seed + fallback.
   useBatterySensorStream(assetId);
   const { data: cascade } = useCascadeRisk(assetId);
   const { data: alerts = [] } = useAssetAlerts(assetId);
@@ -57,9 +57,9 @@ function StaffBatteryViewScreenInner() {
     return (
       <View style={styles.center}>
         <Ionicons name="battery-dead-outline" size={40} color={Colors.gray} />
-        <Text style={styles.notFoundTitle}>Không tìm thấy pin</Text>
+        <Text style={styles.notFoundTitle}>Battery not found</Text>
         <Pressable onPress={() => router.back()} style={styles.goBackBtn}>
-          <Text style={styles.goBackText}>Quay lại</Text>
+          <Text style={styles.goBackText}>Go back</Text>
         </Pressable>
       </View>
     );
@@ -69,12 +69,12 @@ function StaffBatteryViewScreenInner() {
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <BackButton />
-        <Text style={styles.headerTitle}>Thông tin pin</Text>
+        <Text style={styles.headerTitle}>Battery Info</Text>
         <View style={{ width: 44 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Title block: icon + serial/loại + trạng thái */}
+        {/* Title block: icon + serial/type + status */}
         <View style={styles.titleBlock}>
           <View style={styles.batteryIcon}>
             <Ionicons name="battery-charging" size={24} color={Colors.primary} />
@@ -108,22 +108,22 @@ function StaffBatteryViewScreenInner() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.linkTitle} numberOfLines={1}>
-                {battery.siteName ?? 'Trạm lắp đặt'}
+                {battery.siteName ?? 'Installation site'}
               </Text>
-              <Text style={styles.linkSub}>Xem chi tiết trạm</Text>
+              <Text style={styles.linkSub}>View site details</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={Colors.textMute} />
           </Pressable>
         ) : null}
 
-        <Text style={styles.sectionTitle}>Biểu đồ</Text>
+        <Text style={styles.sectionTitle}>Charts</Text>
         <SensorChart assetId={assetId} />
         <ChargeDischargeChart assetId={assetId} />
 
-        <Text style={styles.sectionTitle}>Chi tiết</Text>
+        <Text style={styles.sectionTitle}>Details</Text>
         <BatteryInfoCard battery={battery} />
 
-        <Text style={styles.sectionTitle}>Cảnh báo</Text>
+        <Text style={styles.sectionTitle}>Alerts</Text>
         <AssetAlertList
           alerts={alerts}
           limit={4}

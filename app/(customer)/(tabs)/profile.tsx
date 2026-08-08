@@ -18,9 +18,9 @@ import { ProfileForm } from '@/src/features/profile/components/ProfileForm';
 import { EnergyBackdrop, GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
 
 const BATTERY_STATUS_MAP: Record<number, { label: string; color: string }> = {
-  1: { label: 'Đang hoạt động', color: Colors.success },
-  2: { label: 'Tạm dừng', color: Solar.mute },
-  3: { label: 'Ngừng sử dụng', color: Colors.danger },
+  1: { label: 'Active', color: Colors.success },
+  2: { label: 'Paused', color: Solar.mute },
+  3: { label: 'Decommissioned', color: Colors.danger },
 };
 
 function LinkRow({
@@ -60,9 +60,9 @@ export default function ProfileScreen() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleLogout = () => {
-    Alert.alert('Đăng xuất', 'Bạn có chắc muốn đăng xuất khỏi ứng dụng?', [
-      { text: 'Hủy', style: 'cancel' },
-      { text: 'Đăng xuất', style: 'destructive', onPress: () => logout.mutate() },
+    Alert.alert('Sign out', 'Are you sure you want to sign out of the app?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign out', style: 'destructive', onPress: () => logout.mutate() },
     ]);
   };
 
@@ -96,7 +96,7 @@ export default function ProfileScreen() {
   ).length;
   const unreadAlertsCount = alerts.filter((a) => a.status === AlertStatusEnum.Open).length;
 
-  const initials = (account.fullName ?? 'KH')
+  const initials = (account.fullName ?? 'CU')
     .split(' ')
     .map((w: string) => w[0])
     .join('')
@@ -118,8 +118,8 @@ export default function ProfileScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.pageTitle}>Tài khoản</Text>
-            <Text style={styles.pageSub}>Thông tin cá nhân & Cài đặt hệ thống</Text>
+            <Text style={styles.pageTitle}>Account</Text>
+            <Text style={styles.pageSub}>Personal info & system settings</Text>
           </View>
         </View>
 
@@ -144,7 +144,7 @@ export default function ProfileScreen() {
               <Text style={styles.profileName}>{account.fullName}</Text>
               <Text style={styles.profileEmail}>{account.email}</Text>
               <View style={styles.roleTag}>
-                <Text style={styles.roleTagText}>KHÁCH HÀNG</Text>
+                <Text style={styles.roleTagText}>CUSTOMER</Text>
               </View>
             </View>
             <Pressable
@@ -163,27 +163,27 @@ export default function ProfileScreen() {
         <GlassSurface style={styles.statsCard}>
           <View style={styles.statCol}>
             <Text style={styles.statVal}>{batteriesLoading ? '-' : batteries.length}</Text>
-            <Text style={styles.statLabel}>Thiết bị</Text>
+            <Text style={styles.statLabel}>Devices</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statCol}>
             <Text style={styles.statVal}>{openCount}</Text>
-            <Text style={styles.statLabel}>Ticket mở</Text>
+            <Text style={styles.statLabel}>Open tickets</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statCol}>
             <Text style={styles.statVal}>{unreadAlertsCount}</Text>
-            <Text style={styles.statLabel}>Cảnh báo</Text>
+            <Text style={styles.statLabel}>Alerts</Text>
           </View>
         </GlassSurface>
 
         {/* Devices list */}
         {batteries.length > 0 && (
           <>
-            <Text style={styles.sectionH}>Thiết bị lưu trữ của tôi</Text>
+            <Text style={styles.sectionH}>My storage devices</Text>
             <GlassSurface style={styles.menuCard}>
               {batteries.map((device: BatteryAssetDto, idx: number) => {
-                const statusInfo = BATTERY_STATUS_MAP[device.status] ?? { label: 'Chưa rõ', color: Solar.mute };
+                const statusInfo = BATTERY_STATUS_MAP[device.status] ?? { label: 'Unknown', color: Solar.mute };
                 return (
                   <View key={device.id}>
                     {idx > 0 && <View style={styles.separator} />}
@@ -192,7 +192,7 @@ export default function ProfileScreen() {
                         <Ionicons name="battery-charging" size={16} color={Solar.yellowDeep} />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.deviceLabel}>{device.batteryTypeName || 'Pin lưu trữ'}</Text>
+                        <Text style={styles.deviceLabel}>{device.batteryTypeName || 'Storage battery'}</Text>
                         <Text style={styles.deviceSub}>{device.serialNumber}</Text>
                       </View>
                       <Text style={[styles.deviceStatus, { color: statusInfo.color }]}>{statusInfo.label}</Text>
@@ -206,21 +206,21 @@ export default function ProfileScreen() {
         )}
 
         {/* Security */}
-        <Text style={styles.sectionH}>Bảo mật & Tài khoản</Text>
+        <Text style={styles.sectionH}>Security & Account</Text>
         <GlassSurface style={styles.menuCard}>
           <LinkRow
             icon="lock-closed-outline"
-            label="Đổi mật khẩu"
+            label="Change password"
             onPress={() => router.push('/(customer)/settings/change-password')}
           />
           <View style={styles.separator} />
           <LinkRow
             icon="shield-checkmark-outline"
-            label="Xác thực 2 yếu tố (2FA)"
+            label="Two-factor authentication (2FA)"
             right={
               account.twoFactorEnabled ? (
                 <View style={styles.activeTag}>
-                  <Text style={styles.activeTagText}>ĐÃ BẬT</Text>
+                  <Text style={styles.activeTagText}>ENABLED</Text>
                 </View>
               ) : undefined
             }
@@ -229,13 +229,13 @@ export default function ProfileScreen() {
           <View style={styles.separator} />
           <LinkRow
             icon="phone-portrait-outline"
-            label="Phiên đăng nhập"
+            label="Login sessions"
             onPress={() => router.push('/(customer)/settings/sessions')}
           />
           <View style={styles.separator} />
           <LinkRow
             icon="warning-outline"
-            label="Cấu hình nâng cao"
+            label="Advanced settings"
             onPress={() => router.push('/(customer)/settings/danger-zone')}
           />
         </GlassSurface>
@@ -245,10 +245,10 @@ export default function ProfileScreen() {
           style={styles.logoutBtn}
           onPress={handleLogout}
           accessibilityRole="button"
-          accessibilityLabel="Đăng xuất"
+          accessibilityLabel="Sign out"
         >
           <Ionicons name="log-out-outline" size={18} color={Colors.danger} style={{ marginRight: 6 }} />
-          <Text style={styles.logoutText}>Đăng xuất khỏi tài khoản</Text>
+          <Text style={styles.logoutText}>Sign out of account</Text>
         </Pressable>
       </ScrollView>
 
@@ -261,6 +261,9 @@ export default function ProfileScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboardOverlayView}
+          // Bottom-anchored sheet: KAV spans from y=0 so it doesn't auto-subtract the bottom safe area,
+          // which overshoots by exactly the home-indicator height. The negative offset compensates.
+          keyboardVerticalOffset={-insets.bottom}
         >
           <Pressable style={styles.modalOverlay} onPress={() => setIsEditModalVisible(false)}>
             <Pressable
@@ -268,7 +271,7 @@ export default function ProfileScreen() {
               onPress={() => {}}
             >
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Chỉnh sửa hồ sơ</Text>
+                <Text style={styles.modalTitle}>Edit profile</Text>
                 <Pressable
                   style={styles.modalCloseBtn}
                   onPress={() => setIsEditModalVisible(false)}

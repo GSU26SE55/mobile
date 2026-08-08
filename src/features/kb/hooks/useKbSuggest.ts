@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { kbService } from '../services/kb.service';
 
-// GH-44 #7 — gợi ý KB theo ticket (server-driven, ≤5 bài Published). Thay useRelatedKb cũ (client-side).
+// GH-44 #7 — KB suggestions per ticket (server-driven, ≤5 Published articles). Replaces the old useRelatedKb (client-side).
 export function useKbSuggest(ticketId: string | undefined) {
   return useQuery({
     queryKey: QUERY_KEY.kb.suggest(ticketId ?? ''),

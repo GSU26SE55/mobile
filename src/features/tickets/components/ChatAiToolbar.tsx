@@ -6,26 +6,27 @@ import { BottomSheet } from '@/src/shared/components/BottomSheet';
 import { ChatAiIntentEnum } from '@/src/features/tickets/enums/chat.enum';
 import { useSuggestChat, useSummarizeThread } from '../hooks/useTicketChatActions';
 
-// GH-67 — thanh AI/Export cho Staff, đặt trên ô soạn reply. CHỈ dùng ở màn Staff ticket detail.
-// Toolbar disable khi ticket đã đóng (prop disabled = ticketClosed từ [id].tsx).
+// GH-67 — AI/Export bar for Staff, placed above the reply composer. ONLY used on the Staff ticket detail screen.
+// Toolbar disables when the ticket is closed (prop disabled = ticketClosed from [id].tsx).
 
 const INTENTS: { key: ChatAiIntentEnum; label: string }[] = [
-  { key: ChatAiIntentEnum.RequestInfo, label: 'Hỏi thêm' },
-  { key: ChatAiIntentEnum.TechnicalAnswer, label: 'Kỹ thuật' },
-  { key: ChatAiIntentEnum.Resolution, label: 'Giải pháp' },
-  { key: ChatAiIntentEnum.FollowUp, label: 'Theo dõi' },
+  { key: ChatAiIntentEnum.RequestInfo, label: 'Ask more' },
+  { key: ChatAiIntentEnum.TechnicalAnswer, label: 'Technical' },
+  { key: ChatAiIntentEnum.Resolution, label: 'Solution' },
+  { key: ChatAiIntentEnum.FollowUp, label: 'Follow up' },
 ];
 
 interface Props {
   ticketId: string;
   disabled?: boolean;
-  /** Kết quả gợi ý → parent render thành bong bóng CUỐI luồng chat (giống web). */
+  /** Suggestion result → parent renders it as a bubble at the END of the chat thread (like web). */
   onSuggestions: (suggestions: string[]) => void;
 }
 
 export function ChatAiToolbar({ ticketId, disabled = false, onSuggestions }: Props) {
   const [sheet, setSheet] = useState<'summary' | null>(null);
-  // Bấm "Gợi ý" → hiện hàng chip intent (compact). Chọn chip mới gen → đẩy bong bóng vào chat.
+  // Tap "Suggest" → shows the intent chip row (compact). Selecting a chip generates and
+  // pushes a bubble into the chat.
   const [intentRowOpen, setIntentRowOpen] = useState(false);
   const [intent, setIntent] = useState<ChatAiIntentEnum | null>(null);
   const [summary, setSummary] = useState('');
@@ -38,14 +39,14 @@ export function ChatAiToolbar({ ticketId, disabled = false, onSuggestions }: Pro
     suggest.mutate(it, {
       onSuccess: (dto) => {
         onSuggestions(dto?.suggestions ?? []);
-        setIntentRowOpen(false); // gen xong → thu hàng chip, bong bóng đã hiện trong chat
+        setIntentRowOpen(false); // generation done → collapse the chip row, bubble already shown in chat
       },
     });
   };
 
   const openSuggest = () => {
     setIntent(null);
-    setIntentRowOpen((v) => !v); // toggle hàng chip
+    setIntentRowOpen((v) => !v); // toggle the chip row
   };
 
   const openSummary = () => {
@@ -57,11 +58,11 @@ export function ChatAiToolbar({ ticketId, disabled = false, onSuggestions }: Pro
   return (
     <>
       <View style={styles.bar}>
-        <ToolBtn icon="sparkles-outline" label="Gợi ý" loading={suggest.isPending} disabled={disabled} onPress={openSuggest} />
-        <ToolBtn icon="document-text-outline" label="Tóm tắt" loading={summarize.isPending} disabled={disabled} onPress={openSummary} />
+        <ToolBtn icon="sparkles-outline" label="Suggest" loading={suggest.isPending} disabled={disabled} onPress={openSuggest} />
+        <ToolBtn icon="document-text-outline" label="Summarize" loading={summarize.isPending} disabled={disabled} onPress={openSummary} />
       </View>
 
-      {/* Gợi ý AI — chỉ hàng chip intent. Chọn 1 loại → gen → bong bóng hiện CUỐI chat. */}
+      {/* AI suggestion — just the intent chip row. Pick a type → generate → bubble appears at the END of chat. */}
       {intentRowOpen && (
         <View style={styles.intentPanel}>
           <View style={styles.intentRow}>
@@ -82,14 +83,14 @@ export function ChatAiToolbar({ ticketId, disabled = false, onSuggestions }: Pro
         </View>
       )}
 
-      {/* Tóm tắt */}
+      {/* Summary */}
       <BottomSheet visible={sheet === 'summary'} onClose={() => setSheet(null)}>
         <View style={styles.sheet}>
-          <Text style={styles.sheetTitle}>Tóm tắt hội thoại</Text>
+          <Text style={styles.sheetTitle}>Conversation summary</Text>
           {summarize.isPending ? (
             <ActivityIndicator color={Colors.primary} style={styles.sheetLoading} />
           ) : (
-            <Text style={styles.summaryText}>{summary || 'Không có nội dung.'}</Text>
+            <Text style={styles.summaryText}>{summary || 'No content.'}</Text>
           )}
         </View>
       </BottomSheet>
@@ -128,9 +129,10 @@ const styles = StyleSheet.create({
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
     paddingVertical: 7, borderRadius: 10, backgroundColor: Colors.primaryLight,
   },
-  // Trước dùng opacity 0.5 chồng lên chữ vàng #D9A000 trên nền #FFF6D6 (vốn đã
-  // yếu ~2.4:1) → nút mờ hẳn, không đọc được. Nay đổi NỀN sang xám thay vì hạ
-  // opacity, chữ vẫn đủ đậm để biết nút tên gì dù đang bị khoá.
+  // Previously used opacity 0.5 layered on top of yellow text #D9A000 on background
+  // #FFF6D6 (already weak ~2.4:1) → button became too faint to read. Now changing the
+  // BACKGROUND to gray instead of lowering opacity keeps the text dark enough to read
+  // the button's label even while it's disabled.
   btnOff: { backgroundColor: Colors.card2 },
   btnText: { fontSize: 12, fontWeight: '700', color: Colors.text },
   btnTextOff: { color: Colors.textMute },

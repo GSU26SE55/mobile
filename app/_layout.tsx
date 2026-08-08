@@ -8,12 +8,12 @@ import { NotificationBootstrap } from '@/src/features/notifications/components/N
 import { NotificationsRealtimeSync } from '@/src/features/notifications/components/NotificationsRealtimeSync';
 import { configureGoogleSignin } from '@/src/config/googleAuth';
 
-// Import side-effect: TaskManager.defineTask phải chạy ở top-level, TRƯỚC khi React tree dựng.
-// OS khởi động lại JS runtime để chạy background task khi app đã bị kill — lúc đó không có
-// component nào cả, task phải đăng ký sẵn từ module scope.
+// Import side-effect: TaskManager.defineTask MUST run at top-level, BEFORE the React tree builds.
+// The OS restarts the JS runtime to run the background task when the app has been killed — at that
+// point there's no component at all, so the task must already be registered from module scope.
 import '@/src/features/notifications/lib/backgroundSync';
 
-// Cấu hình Google Sign-In 1 lần khi app boot.
+// Configure Google Sign-In once when the app boots.
 configureGoogleSignin();
 
 const queryClient = new QueryClient({
@@ -27,10 +27,10 @@ const queryClient = new QueryClient({
   },
 });
 
-// Guard auth là KHAI BÁO (<Redirect> ở app/index.tsx + (customer)/(staff) layout).
-// KHÔNG thêm router.replace() theo auth state ở đây: nó chạy trong effect nên bắn
-// cùng commit với <Redirect>, hai lệnh điều hướng chồng nhau lúc hydrate xong làm
-// Fabric crash `addViewAt: The specified child already has a parent`.
+// Auth guard is DECLARATIVE (<Redirect> in app/index.tsx + (customer)/(staff) layout).
+// Do NOT add a router.replace() based on auth state here: it runs in an effect, so it fires
+// in the same commit as <Redirect>, and the two overlapping navigations right after hydration
+// cause a Fabric crash `addViewAt: The specified child already has a parent`.
 function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
@@ -49,13 +49,13 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <PermissionsSync />
-          {/* Quyền + kênh Android, SignalR realtime, background sync, badge.
-              Thông báo tới qua SignalR rồi hiển thị bằng local notification — KHÔNG dùng
-              Expo remote push, nên không đăng ký device token với BE (xem
-              device-token.service.ts). PushResponseHandler của GH-83 đã gỡ theo. */}
+          {/* Permissions + Android channel, SignalR realtime, background sync, badge.
+              Notifications arrive via SignalR and are shown via local notification — does NOT use
+              Expo remote push, so no device token is registered with the BE (see
+              device-token.service.ts). GH-83's PushResponseHandler was removed accordingly. */}
           <NotificationBootstrap />
-          {/* Realtime feed + badge qua /hubs/notifications — thay polling 30s. Phải mount đúng
-              1 lần ở đây: mỗi lần mount là một WebSocket riêng. */}
+          {/* Realtime feed + badge via /hubs/notifications — replaces 30s polling. Must be mounted
+              exactly once here: each mount opens its own WebSocket. */}
           <NotificationsRealtimeSync />
           <RootLayoutNav />
           <StatusBar style="dark" />

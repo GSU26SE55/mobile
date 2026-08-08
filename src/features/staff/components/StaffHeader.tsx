@@ -43,7 +43,7 @@ export function StaffHeader({ showGreeting = false, title, subtitle }: Props) {
       <View style={styles.left}>
         {showGreeting ? (
           <Text style={styles.name}>
-            <Text style={styles.greeting}>Xin chào, </Text>
+            <Text style={styles.greeting}>Hello, </Text>
             {profile?.fullName ?? 'Staff'}
           </Text>
         ) : (

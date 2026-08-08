@@ -7,11 +7,11 @@ import type { KbArticleSuggestDTO } from '../types/kb.types';
 interface Props {
   article: KbArticleSuggestDTO;
   onPress?: () => void;
-  // Slot bên phải — vd nút "Gán" trong KbReferencePicker. Mặc định hiện chevron.
+  // Right-hand slot — e.g. the "Attach" button in KbReferencePicker. Defaults to a chevron.
   rightSlot?: React.ReactNode;
 }
 
-// GH-44 — card cho KbArticleSuggestDTO (shape suggest: không có category/status, có symptoms).
+// GH-44 — card for KbArticleSuggestDTO (suggest shape: no category/status, has symptoms).
 export function KbSuggestCard({ article, onPress, rightSlot }: Props) {
   return (
     <Pressable style={styles.card} onPress={onPress} disabled={!onPress}>

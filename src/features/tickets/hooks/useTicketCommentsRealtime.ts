@@ -9,7 +9,7 @@ import { TicketCommentDTO } from '../types/ticket.types';
 
 const HUB_PATH = '/hubs/ticket-chats';
 const TYPING_TIMEOUT = 3000;
-const TYPING_THROTTLE = 1500; // tối đa 1 lần invoke Typing mỗi 1.5s (tránh spam hub mỗi keystroke)
+const TYPING_THROTTLE = 1500; // at most 1 Typing invoke every 1.5s (avoids spamming the hub on every keystroke)
 
 type CommentsPage = CursorPaginationResponse<TicketCommentDTO> | null;
 
@@ -18,8 +18,9 @@ export interface TypingUser {
   displayName: string;
 }
 
-// Prepend comment mới vào page đầu (BE sort DESC ⇒ mới nhất lên đầu), dedup theo id.
-// Idempotent: nếu id đã tồn tại ở bất kỳ page nào → giữ nguyên (chống trùng khi POST + realtime cùng về).
+// Prepend a new comment to the first page (BE sorts DESC ⇒ newest first), dedup by id.
+// Idempotent: if the id already exists on any page → leave unchanged (guards against
+// duplicates when POST and realtime both arrive).
 function prependComment(
   data: InfiniteData<CommentsPage> | undefined,
   dto: TicketCommentDTO,
@@ -29,8 +30,8 @@ function prependComment(
   if (exists) return data;
   const [first, ...rest] = data.pages;
   if (!first) return data;
-  // GH-68: cursor page (CursorPaginationResponse) KHÔNG có totalItems → chỉ prepend items,
-  // không đụng totalItems (tránh NaN). CommentThread/screens không đọc totalItems.
+  // GH-68: cursor page (CursorPaginationResponse) does NOT have totalItems → only prepend items,
+  // don't touch totalItems (avoids NaN). CommentThread/screens don't read totalItems.
   const updatedFirst: CommentsPage = {
     ...first,
     items: [dto, ...first.items],
@@ -38,11 +39,11 @@ function prependComment(
   return { ...data, pages: [updatedFirst, ...rest] };
 }
 
-// GH-44 #8 — realtime comment cho ticket detail. Realtime là NGUỒN CẬP NHẬT CHÍNH:
-// BE broadcast "ChatAdded" (SignalRTicketChatNotifier.cs:33) tới group của ticket —
-// gồm CẢ người gửi (SendAsync tới Group, không loại caller) → người gửi cũng nhận lại
-// → setQueryData prepend (dedup theo id), KHÔNG cần refetch.
-// Lỗi connect chỉ swallow — UI fallback hoàn toàn về REST (useTicketComments).
+// GH-44 #8 — realtime comments for ticket detail. Realtime is the MAIN UPDATE SOURCE:
+// BE broadcasts "ChatAdded" (SignalRTicketChatNotifier.cs:33) to the ticket's group —
+// including the SENDER too (SendAsync to Group, caller not excluded) → the sender also
+// receives it back → setQueryData prepend (dedup by id), NO refetch needed.
+// Connection errors are just swallowed — UI falls back entirely to REST (useTicketComments).
 export function useTicketCommentsRealtime(ticketId: string | undefined) {
   const queryClient = useQueryClient();
   const [isConnected, setIsConnected] = useState(false);
@@ -54,7 +55,7 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
   useEffect(() => {
     if (!ticketId) return;
 
-    // BASE_URL không có /api (axios.ts) ⇒ ghép thẳng; .replace chỉ phòng trường hợp env có đuôi /api.
+    // BASE_URL has no /api (axios.ts) ⇒ concatenate directly; .replace just guards against an env with an /api suffix.
     const hubUrl = `${BASE_URL.replace(/\/api$/, '')}${HUB_PATH}`;
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(hubUrl, {
@@ -64,10 +65,11 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
       .build();
     connectionRef.current = connection;
 
-    // Event "ChatAdded" khớp BE (SignalRTicketChatNotifier.cs:33). Customer join được
-    // public group; comment public gửi lên → BE broadcast ChatAdded về group → prepend.
-    // Badge chưa đọc ở header đọc key riêng — tin đến/bị xóa đều làm số đổi, phải
-    // invalidate kèm, không thì badge chỉ đúng lúc mở màn hình rồi đứng yên.
+    // Event "ChatAdded" matches BE (SignalRTicketChatNotifier.cs:33). Customer can join the
+    // public group; a public comment sent up → BE broadcasts ChatAdded to the group → prepend.
+    // The unread badge in the header reads a separate key — new/deleted messages both change
+    // the count, so it must be invalidated alongside, otherwise the badge is only correct when
+    // the screen opens and then stays frozen.
     const invalidateUnread = () => {
       queryClient.invalidateQueries({
         queryKey: QUERY_KEY.tickets.chatUnreadCount(ticketId),
@@ -82,8 +84,8 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
       invalidateUnread();
     });
 
-    // Sửa/xóa tin nhắn (BE: "ChatEdited"/"ChatDeleted") — không có payload dùng được để
-    // splice trực tiếp vào InfiniteData nên invalidate cả list, đơn giản & đúng.
+    // Edit/delete message (BE: "ChatEdited"/"ChatDeleted") — no usable payload to splice
+    // directly into InfiniteData, so invalidate the whole list, simple & correct.
     const invalidateChats = () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY.tickets.chats(ticketId) });
     };
@@ -94,8 +96,8 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
     });
 
     // Reaction realtime (BE: "ReactionChanged", payload { chatId, reactions }). Mobile
-    // hiển thị reactions NHÚNG trong comment của list chats(id) (comment.reactions), KHÔNG
-    // dùng key chatReactions riêng như web → invalidate chats(id) để list refetch aggregate.
+    // displays reactions EMBEDDED in the comment within the chats(id) list (comment.reactions),
+    // NOT via a separate chatReactions key like web → invalidate chats(id) so the list refetches the aggregate.
     connection.on('ReactionChanged', invalidateChats);
 
     connection.on('UserTyping', (_ticketId: string, userId: string, displayName: string) => {
@@ -116,9 +118,9 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
     connection.onclose(() => setIsConnected(false));
 
     let cancelled = false;
-    // Giữ promise start() để cleanup CHỜ nó settle trước khi stop(). Gọi stop() khi
-    // start() còn pending → SignalR ném "Failed to start the HttpConnection before
-    // stop() was called" (lỗi thấy khi Fast Refresh / remount nhanh).
+    // Keep the start() promise so cleanup WAITS for it to settle before calling stop(). Calling
+    // stop() while start() is still pending → SignalR throws "Failed to start the HttpConnection
+    // before stop() was called" (seen during Fast Refresh / rapid remount).
     const startPromise = connection
       .start()
       .then(() => {
@@ -127,7 +129,7 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
         return connection.invoke('JoinTicket', ticketId);
       })
       .catch(() => {
-        // swallow — fallback REST
+        // swallow — fall back to REST
       });
 
     return () => {
@@ -137,14 +139,15 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
       const conn = connectionRef.current;
       connectionRef.current = null;
       if (conn) {
-        // Gỡ handler TRƯỚC khi stop — chống event treo bắn vào connection đang
-        // teardown (Fast Refresh remount) gây xử lý CommentAdded / UserTyping 2 lần.
+        // Remove handlers BEFORE stopping — prevents a lingering event from firing into a
+        // connection mid-teardown (Fast Refresh remount), which would process
+        // CommentAdded / UserTyping twice.
         conn.off('ChatAdded');
         conn.off('ChatEdited');
         conn.off('ChatDeleted');
         conn.off('ReactionChanged');
         conn.off('UserTyping');
-        // CHỜ start() xong rồi mới leave + stop — tránh stop-trước-start.
+        // WAIT for start() to finish before leave + stop — avoids stop-before-start.
         void startPromise.finally(() => {
           if (conn.state === signalR.HubConnectionState.Connected) {
             conn
@@ -161,8 +164,8 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
     };
   }, [ticketId, queryClient]);
 
-  // Broadcast typing indicator (server dùng OthersInGroup ⇒ người gửi không tự nhận lại).
-  // Throttle: tối đa 1 invoke mỗi TYPING_THROTTLE để không gọi hub mỗi keystroke.
+  // Broadcast typing indicator (server uses OthersInGroup ⇒ the sender doesn't receive their own).
+  // Throttle: at most 1 invoke per TYPING_THROTTLE to avoid calling the hub on every keystroke.
   const notifyTyping = () => {
     const conn = connectionRef.current;
     if (!ticketId || !conn || conn.state !== signalR.HubConnectionState.Connected) return;

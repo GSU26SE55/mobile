@@ -4,25 +4,25 @@ import { ticketService } from '../services/ticket.service';
 import { useSessionStore } from '@/src/stores/sessionStore';
 
 export interface MentionTarget {
-  /** userId — BE nhận mention qua { userId, displayName }, không parse '@' từ body. */
+  /** userId — BE receives mentions via { userId, displayName }, does not parse '@' from the body. */
   id: string;
-  /** Chuỗi chèn vào ô nhập: '@Tên_Hiển_Thị'. */
+  /** String inserted into the input box: '@Display_Name'. */
   tag: string;
   displayName: string;
-  /** Xem được chat nội bộ — dùng để cảnh báo khi soạn chat nội bộ. */
+  /** Can view internal chat — used to warn when composing an internal chat. */
   canViewInternal: boolean;
 }
 
 /**
- * Người có thể @-tag trong composer chat.
+ * People who can be @-tagged in the chat composer.
  *
- * Nguồn đúng là participant active của ticket (GET .../participants) — KHÔNG
- * phải tác giả đã chat: người mới được add vào ticket nhưng chưa nhắn gì vẫn
- * phải tag được.
+ * The correct source is the ticket's active participants (GET .../participants) — NOT
+ * authors who have already chatted: someone newly added to the ticket who hasn't sent
+ * a message yet must still be taggable.
  *
- * Chỉ lọc bỏ chính mình. Cố ý không lọc `canPost`/`canViewInternal` — BE
- * (ChatAddCommandHandler) validate mention duy nhất bằng "có phải participant
- * active không", nên lọc chặt hơn sẽ ẩn mất người mà BE vẫn cho mention.
+ * Only filters out the current user. Deliberately does not filter by `canPost`/`canViewInternal` —
+ * BE (ChatAddCommandHandler) validates mentions solely by "is an active participant", so a
+ * stricter filter here would hide people BE would still allow to be mentioned.
  */
 export function useMentionTargets(ticketId?: string, enabled: boolean = true) {
   const currentUserId = useSessionStore((s) => s.user?.accountId);

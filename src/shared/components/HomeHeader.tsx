@@ -3,16 +3,16 @@ import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Colors } from '@/src/lib/theme';
 
-// Header Home mới (dùng chung staff + customer): avatar tròn + lời chào + subtitle,
-// action bên phải (chuông thông báo). Màu giữ nguyên palette hiện tại.
+// New Home header (shared between staff + customer): round avatar + greeting + subtitle,
+// action on the right (notification bell). Colors keep the current palette.
 
 interface Props {
   name: string;
   subtitle?: string;
   avatarUrl?: string | null;
-  avatarColor?: string; // nền avatar khi không có ảnh
+  avatarColor?: string; // avatar background when there's no image
   unreadCount?: number;
-  showDot?: boolean; // chấm đỏ nhỏ (khi không dùng số)
+  showDot?: boolean; // small red dot (when not using a number)
   onBellPress?: () => void;
 }
 
@@ -42,7 +42,7 @@ export function HomeHeader({
 
       <View style={styles.textWrap}>
         <Text style={styles.greeting} numberOfLines={1}>
-          Chào {name}
+          Hello {name}
         </Text>
         {subtitle ? (
           <Text style={styles.subtitle} numberOfLines={1}>

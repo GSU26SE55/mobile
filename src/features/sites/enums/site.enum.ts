@@ -1,4 +1,4 @@
-// Site enums — mirror docs/api-battery.md §SiteStatusEnum. BE trả int.
+// Site enums — mirror docs/api-battery.md §SiteStatusEnum. BE returns int.
 export const SiteStatusEnum = {
   Active: 1,
   UnderMaintenance: 2,

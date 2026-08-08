@@ -2,12 +2,12 @@ import type { FilePurposeEnum, FileStatusEnum } from '../enums/file-storage.enum
 export { FilePurposeEnum, FileStatusEnum } from '../enums/file-storage.enum';
 
 export interface FileUploadResponse {
-  fileId: string;          // UUID — lưu vào domain service để tham chiếu
-  objectKey: string;       // khóa trong object storage — dùng cho endpoint legacy
-  fileName: string;        // tên file gốc client gửi lên
+  fileId: string;          // UUID — store in the domain service for reference
+  objectKey: string;       // key in object storage — used for the legacy endpoint
+  fileName: string;        // original filename sent by the client
   contentType: string;     // MIME type (e.g. "image/png")
   size: number;            // bytes
-  publicUrl: string | null; // có giá trị nếu PublicBaseUrl được cấu hình — fallback GET /{id}/download khi null
+  publicUrl: string | null; // set when PublicBaseUrl is configured — fallback to GET /{id}/download when null
 }
 
 export interface FileMetadataResponse {
@@ -24,16 +24,16 @@ export interface FileMetadataResponse {
   updatedAt: string | null;
 }
 
-// RN: dùng { uri, name, type } thay cho File của browser khi append vào FormData.
+// RN: use { uri, name, type } instead of the browser's File when appending to FormData.
 export interface UploadFilePayload {
   uri: string;
   name: string;
   type: string;
-  size?: number;           // bytes — nếu có, validate ≤20MB trước upload (ImagePicker asset.fileSize)
+  size?: number;           // bytes — if present, validate ≤20MB before upload (ImagePicker asset.fileSize)
   folderName?: string;
   purpose?: FilePurposeEnum;
 }
 
 export interface PresignedUrlOptions {
-  expiresInMinutes?: number; // 1–1440, mặc định BE 15
+  expiresInMinutes?: number; // 1–1440, BE default 15
 }

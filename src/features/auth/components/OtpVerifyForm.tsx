@@ -31,7 +31,7 @@ export function OtpVerifyForm({ email }: Props) {
     setGeneralError('');
     const result = otpSchema.safeParse({ otp });
     if (!result.success) {
-      setOtpError(result.error.flatten().fieldErrors.otp?.[0] ?? 'OTP không hợp lệ');
+      setOtpError(result.error.flatten().fieldErrors.otp?.[0] ?? 'Invalid OTP');
       return;
     }
     try {
@@ -44,7 +44,7 @@ export function OtpVerifyForm({ email }: Props) {
       } else if (error instanceof HttpError) {
         setGeneralError(error.message);
       } else if (error instanceof Error) {
-        setGeneralError('Không thể kết nối. Kiểm tra lại mạng.');
+        setGeneralError('Unable to connect. Please check your network.');
       }
     }
   };
@@ -110,11 +110,11 @@ export function OtpVerifyForm({ email }: Props) {
       >
         {countdown > 0 ? (
           <Text style={styles.resendDisabled}>
-            Gửi lại mã sau <Text style={{ fontWeight: '700' }}>{countdown}s</Text>
+            Resend code in <Text style={{ fontWeight: '700' }}>{countdown}s</Text>
           </Text>
         ) : (
           <Text style={styles.resendText}>
-            Không nhận được OTP? <Text style={styles.resendLink}>Gửi lại mã</Text>
+            Didn't receive the OTP? <Text style={styles.resendLink}>Resend code</Text>
           </Text>
         )}
       </Pressable>
@@ -125,7 +125,7 @@ export function OtpVerifyForm({ email }: Props) {
         onPress={handleVerify}
         disabled={verifying}
       >
-        {verifying ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.buttonText}>Xác thực</Text>}
+        {verifying ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.buttonText}>Verify</Text>}
       </Pressable>
     </View>
   );

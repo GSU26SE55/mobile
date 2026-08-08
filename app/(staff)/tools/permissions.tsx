@@ -4,13 +4,13 @@ import { ScreenHeader } from '@/src/shared/components/ScreenHeader';
 import { usePermissionCatalog } from '@/src/features/permissions/hooks/usePermissionCatalog';
 import { PermissionCatalogList } from '@/src/features/permissions/components/PermissionCatalogList';
 
-// GH-68 — catalog permission read-only cho Staff (trong Công cụ kỹ thuật).
+// GH-68 — read-only permission catalog for Staff (inside Technical Tools).
 export default function StaffPermissionCatalogScreen() {
   const { data: permissions = [], isLoading } = usePermissionCatalog();
 
   return (
     <View style={styles.root}>
-      <ScreenHeader title="Danh mục quyền" />
+      <ScreenHeader title="Permission Catalog" />
       {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={Colors.primary} />

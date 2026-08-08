@@ -101,7 +101,7 @@ export function VoiceRecordingModal({ visible, elapsedSeconds, level, transcribi
         </View>
 
         <Text style={styles.timer}>{formatElapsed(elapsedSeconds)}</Text>
-        <Text style={styles.hint}>{transcribing ? 'Đang xử lý...' : 'Đang nghe...'}</Text>
+        <Text style={styles.hint}>{transcribing ? 'Processing...' : 'Listening...'}</Text>
 
         <View style={styles.actions}>
           <Pressable style={styles.cancelBtn} onPress={onCancel} disabled={transcribing}>

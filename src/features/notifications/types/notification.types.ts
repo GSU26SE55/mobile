@@ -27,12 +27,13 @@ export interface NotificationDTO {
 }
 
 /**
- * Unread = chưa Read **và** chưa Opened (BE không trả field `isRead`).
+ * Unread = not Read **and** not Opened (BE doesn't return an `isRead` field).
  *
- * GH-83: phải loại cả `Opened` cho khớp định nghĩa của BE (`GetUnreadCountQueryHandler`:
- * `Status ∉ {Read, Opened}`). Chỉ loại `Read` thì notification vừa bấm mở (`status = 6`) vẫn hiện
- * "chưa đọc" → badge lấy từ server báo 0 trong khi danh sách còn dòng tô đậm, và bấm lại chỉ gọi
- * `/read` mà BE giữ nguyên `Opened` nên dòng đó không bao giờ hết đậm.
+ * GH-83: must also exclude `Opened` to match BE's definition (`GetUnreadCountQueryHandler`:
+ * `Status ∉ {Read, Opened}`). Excluding only `Read` would leave a notification that was just opened
+ * (`status = 6`) still showing as "unread" → the server-reported badge shows 0 while the list still has
+ * a bolded row, and tapping it again only calls `/read`, which BE leaves `Opened` untouched — so that row
+ * would never stop being bolded.
  */
 export const isUnread = (n: NotificationDTO): boolean =>
   n.status !== NotificationStatusEnum.Read && n.status !== NotificationStatusEnum.Opened;

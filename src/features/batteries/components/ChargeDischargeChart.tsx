@@ -6,21 +6,22 @@ import { useSensorReadingAggregate } from '../hooks/useSensorReadingAggregate';
 import { useBatteryStats } from '../hooks/useBatteryStats';
 import { SensorReadingInterval, StatsWindow } from '../types/sensor-reading.types';
 
-// GH-74 (NS-01/02) — min/max dòng nạp/xả. BE trả CẢ 2 chiều dạng DƯƠNG (chiều nằm trong tên field),
-// nên không xử lý dấu ở đây. null = bucket không có mẫu chiều đó → gap, KHÔNG vẽ thành 0.
+// GH-74 (NS-01/02) — min/max charge/discharge current. BE returns BOTH directions as POSITIVE
+// values (direction is encoded in the field name), so no sign handling here. null = bucket has
+// no sample for that direction → gap, do NOT render as 0.
 
-// Range dài dùng interval '1h' để hook chuyển sang /aggregate/hourly (continuous aggregate).
+// Long ranges use interval '1h' so the hook switches to /aggregate/hourly (continuous aggregate).
 const RANGES: Record<string, { hours: number; interval: SensorReadingInterval; label: string }> = {
-  '24h': { hours: 24, interval: '1h', label: '24 giờ' },
-  '7d': { hours: 24 * 7, interval: '1h', label: '7 ngày' },
-  '30d': { hours: 24 * 30, interval: '1h', label: '30 ngày' },
+  '24h': { hours: 24, interval: '1h', label: '24h' },
+  '7d': { hours: 24 * 7, interval: '1h', label: '7d' },
+  '30d': { hours: 24 * 30, interval: '1h', label: '30d' },
 };
 type RangeKey = keyof typeof RANGES;
 const RANGE_KEYS = Object.keys(RANGES) as RangeKey[];
 
 const WINDOWS: { key: StatsWindow; label: string }[] = [
-  { key: '1h', label: '1 giờ' },
-  { key: 'today', label: 'Hôm nay' },
+  { key: '1h', label: '1h' },
+  { key: 'today', label: 'Today' },
 ];
 
 const CHART_HEIGHT = 190;
@@ -29,15 +30,15 @@ const MAX_X_LABELS = 4;
 const CHARGE_COLOR = Colors.success;
 const DISCHARGE_COLOR = Colors.info;
 
-// null (không có mẫu) ≠ 0A (giá trị đo hợp lệ) → hiện '—'.
+// null (no sample) ≠ 0A (a valid measured value) → show '—'.
 function formatAmp(v?: number | null): string {
   return v == null ? '—' : `${v.toFixed(2)} A`;
 }
 
 function formatBucketLabel(iso: string, range: RangeKey): string {
   const d = new Date(iso);
-  if (range === '24h') return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-  return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+  if (range === '24h') return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit' });
 }
 
 export function ChargeDischargeChart({ assetId }: { assetId: string }) {
@@ -48,7 +49,7 @@ export function ChargeDischargeChart({ assetId }: { assetId: string }) {
   const { data = [], isLoading } = useSensorReadingAggregate(assetId, { hours, interval });
   const { data: stats } = useBatteryStats(assetId, window);
 
-  // yKeys nhận null (victory-native `MaybeNumber`) → gap tự nhiên, không nội suy.
+  // yKeys accept null (victory-native `MaybeNumber`) → a natural gap, no interpolation.
   const chartData = useMemo(
     () =>
       data.map((d) => ({
@@ -74,20 +75,20 @@ export function ChargeDischargeChart({ assetId }: { assetId: string }) {
       return (
         <View style={styles.empty}>
           <ActivityIndicator color={Colors.primary} />
-          <Text style={styles.emptyText}>Đang tải dữ liệu…</Text>
+          <Text style={styles.emptyText}>Loading data…</Text>
         </View>
       );
     }
     if (chartData.length < 2) {
       return (
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>Chưa đủ dữ liệu để vẽ biểu đồ</Text>
+          <Text style={styles.emptyText}>Not enough data to render the chart</Text>
         </View>
       );
     }
     return (
       <View style={{ height: CHART_HEIGHT }}>
-        {/* font không truyền → Skia không vẽ nhãn trục; nhãn X render bằng <Text> bên dưới. */}
+        {/* no font passed → Skia won't render axis labels; X labels render via <Text> below. */}
         <CartesianChart
           data={chartData}
           xKey="t"
@@ -124,7 +125,7 @@ export function ChargeDischargeChart({ assetId }: { assetId: string }) {
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Nạp/Xả đỉnh</Text>
+        <Text style={styles.title}>Peak charge/discharge</Text>
         <View style={styles.tabs}>
           {RANGE_KEYS.map((k) => (
             <Pressable
@@ -140,16 +141,16 @@ export function ChargeDischargeChart({ assetId }: { assetId: string }) {
         </View>
       </View>
 
-      {/* Đỉnh realtime — SSE `stats`; chưa có event thì là seed từ REST /aggregate. */}
+      {/* Realtime peak — SSE `stats`; before the first event it's the seed from REST /aggregate. */}
       <View style={styles.statsRow}>
         <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Nạp đỉnh</Text>
+          <Text style={styles.statLabel}>Peak charge</Text>
           <Text style={[styles.statValue, { color: CHARGE_COLOR }]}>
             {formatAmp(stats?.maxChargeCurrent)}
           </Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Xả đỉnh</Text>
+          <Text style={styles.statLabel}>Peak discharge</Text>
           <Text style={[styles.statValue, { color: DISCHARGE_COLOR }]}>
             {formatAmp(stats?.maxDischargeCurrent)}
           </Text>
@@ -184,11 +185,11 @@ export function ChargeDischargeChart({ assetId }: { assetId: string }) {
       <View style={styles.legend}>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: CHARGE_COLOR }]} />
-          <Text style={styles.legendText}>Nạp (min–max)</Text>
+          <Text style={styles.legendText}>Charge (min–max)</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: DISCHARGE_COLOR }]} />
-          <Text style={styles.legendText}>Xả (min–max)</Text>
+          <Text style={styles.legendText}>Discharge (min–max)</Text>
         </View>
       </View>
     </View>

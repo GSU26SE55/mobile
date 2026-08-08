@@ -6,24 +6,24 @@ import { BottomSheet } from '@/src/shared/components/BottomSheet';
 import { useChatReaders } from '../hooks/useChatReaders';
 import type { ActorRoleEnum } from '@/src/shared/enums/ticket.enum';
 
-const ROLE_VI: Record<ActorRoleEnum, string> = {
-  Admin: 'Quản trị viên',
-  Manager: 'Quản lý',
-  Staff: 'Kỹ thuật viên',
-  Customer: 'Khách hàng',
-  System: 'Hệ thống',
+const ROLE_LABEL: Record<ActorRoleEnum, string> = {
+  Admin: 'Admin',
+  Manager: 'Manager',
+  Staff: 'Technician',
+  Customer: 'Customer',
+  System: 'System',
 };
 
 interface Props {
   ticketId: string;
-  /** null = đóng sheet. Khác null thì fetch readers của chat đó. */
+  /** null = sheet closed. Non-null triggers a fetch of that chat's readers. */
   chatId: string | null;
   onClose: () => void;
 }
 
 /**
- * "Đã đọc bởi" — danh sách user đã đọc 1 chat.
- * CHỈ dùng ở màn Staff: BE giới hạn Staff/Manager/Admin, Customer gọi sẽ 403.
+ * "Read by" — list of users who have read a chat.
+ * ONLY used on the Staff screen: BE restricts this to Staff/Manager/Admin, Customer gets a 403.
  */
 export function ChatReadersSheet({ ticketId, chatId, onClose }: Props) {
   const { data: readers = [], isLoading } = useChatReaders(ticketId, chatId ?? undefined, !!chatId);
@@ -31,19 +31,19 @@ export function ChatReadersSheet({ ticketId, chatId, onClose }: Props) {
   return (
     <BottomSheet visible={!!chatId} onClose={onClose}>
       <View style={styles.sheet}>
-        <Text style={styles.title}>Đã đọc bởi</Text>
+        <Text style={styles.title}>Read by</Text>
 
         {isLoading ? (
           <ActivityIndicator color={Colors.primary} style={styles.loading} />
         ) : readers.length === 0 ? (
-          <Text style={styles.empty}>Chưa có ai đọc tin này.</Text>
+          <Text style={styles.empty}>No one has read this message yet.</Text>
         ) : (
           readers.map((r) => (
             <View key={`${r.userId}-${r.readAt}`} style={styles.row}>
               <Ionicons name="checkmark-done" size={16} color={Colors.primaryDark} />
               <View style={styles.who}>
                 <Text style={styles.name} numberOfLines={1}>{r.displayName}</Text>
-                <Text style={styles.role}>{ROLE_VI[r.role] ?? r.role}</Text>
+                <Text style={styles.role}>{ROLE_LABEL[r.role] ?? r.role}</Text>
               </View>
               <Text style={styles.time}>
                 {new Date(r.readAt).toLocaleString('vi-VN', {

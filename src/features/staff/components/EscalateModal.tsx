@@ -6,10 +6,10 @@ import { BottomSheet } from '@/src/shared/components/BottomSheet';
 import { EscalationReasonEnum } from '@/src/features/tickets/types/ticket.types';
 
 const ESCALATION_OPTIONS: { value: EscalationReasonEnum; label: string }[] = [
-  { value: 'SkillGap',          label: 'Vượt quá năng lực xử lý' },
-  { value: 'PartsRequired',     label: 'Cần thiết bị/linh kiện đặc biệt' },
-  { value: 'SafetyConcern',     label: 'Vấn đề an toàn' },
-  { value: 'CustomerComplaint', label: 'Khách hàng phàn nàn' },
+  { value: 'SkillGap',          label: 'Beyond handling capability' },
+  { value: 'PartsRequired',     label: 'Requires special equipment/parts' },
+  { value: 'SafetyConcern',     label: 'Safety concern' },
+  { value: 'CustomerComplaint', label: 'Customer complaint' },
 ];
 
 interface Props {
@@ -36,8 +36,8 @@ export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) 
   return (
     <BottomSheet visible={visible} onClose={handleClose}>
       <View style={styles.body}>
-        <Text style={styles.title}>Yêu cầu escalate</Text>
-        <Text style={styles.desc}>Manager sẽ xem xét và reassign cho Staff cấp cao hơn.</Text>
+        <Text style={styles.title}>Escalation request</Text>
+        <Text style={styles.desc}>Manager will review and reassign to a higher-tier Staff.</Text>
 
         <View style={styles.options}>
           {ESCALATION_OPTIONS.map((opt) => {
@@ -59,7 +59,7 @@ export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) 
           style={styles.noteInput}
           value={note}
           onChangeText={setNote}
-          placeholder="Ghi chú thêm (tùy chọn)..."
+          placeholder="Additional note (optional)..."
           placeholderTextColor={Colors.textFaint}
           multiline
           maxLength={500}
@@ -68,7 +68,7 @@ export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) 
 
         <View style={styles.actions}>
           <Pressable style={styles.cancelBtn} onPress={handleClose}>
-            <Text style={styles.cancelText}>Hủy</Text>
+            <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
           <Pressable
             style={[styles.submitBtn, !selected && styles.btnDisabled]}
@@ -78,7 +78,7 @@ export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) 
             {isLoading ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.submitText}>Gửi yêu cầu</Text>
+              <Text style={styles.submitText}>Send request</Text>
             )}
           </Pressable>
         </View>

@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Colors } from '@/src/lib/theme';
 
 interface Props {
-  /** `notFound` — bài đã bị gỡ/archive (BE trả 404 ở màn chi tiết). */
+  /** `notFound` — post has been removed/archived (BE returns 404 on the detail screen). */
   variant?: 'list' | 'notFound';
 }
 
@@ -21,12 +21,12 @@ export function BlogEmptyState({ variant = 'list' }: Props) {
         />
       </View>
       <Text style={styles.title}>
-        {isNotFound ? 'Bài viết không còn khả dụng' : 'Chưa có bài viết nào'}
+        {isNotFound ? 'Post no longer available' : 'No posts yet'}
       </Text>
       <Text style={styles.subtitle}>
         {isNotFound
-          ? 'Bài viết có thể đã được gỡ hoặc lưu trữ.'
-          : 'Quay lại sau khi có nội dung mới được xuất bản.'}
+          ? 'This post may have been removed or archived.'
+          : 'Check back later for new published content.'}
       </Text>
     </View>
   );

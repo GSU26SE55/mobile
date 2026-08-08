@@ -19,8 +19,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const clearSession = useSessionStore((s) => s.clearSession);
 
   useEffect(() => {
-    // ADMIN/MANAGER không dùng mobile (redirectByRole → null). Chặn ngay lúc hydrate,
-    // ngoài render, thay vì để guard trên cây phải clearTokens() giữa lúc điều hướng.
+    // ADMIN/MANAGER don't use mobile (redirectByRole → null). Block right at hydration,
+    // outside render, instead of leaving the guard on the tree to clearTokens() mid-navigation.
     const applySession = async (token: string) => {
       const user = decodeToken(token);
       if (!redirectByRole(user.role)) {
@@ -36,15 +36,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const accessToken = await getAccessToken();
 
         if (accessToken && !isTokenExpired(accessToken)) {
-          // Case 1: accessToken còn hạn
+          // Case 1: accessToken is still valid
           await applySession(accessToken);
         } else {
           const refreshToken = await getRefreshToken();
           if (!refreshToken) {
-            // Case 2: không có refreshToken
+            // Case 2: no refreshToken
             clearSession();
           } else {
-            // Case 3: có refreshToken → thử refresh
+            // Case 3: has refreshToken → try to refresh
             try {
               const res = await axiosInstance.post<{ data: { tokens: { accessToken: string; refreshToken: string } | null } }>(
                 ENDPOINTS.AUTH.REFRESH_TOKEN,

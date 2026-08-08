@@ -22,7 +22,7 @@ export function ForgotPasswordStep1({ onSuccess }: Props) {
     setGeneralError('');
     const result = loginSchema.shape.email.safeParse(email.trim());
     if (!result.success) {
-      setEmailError(result.error.issues[0]?.message ?? 'Email không hợp lệ');
+      setEmailError(result.error.issues[0]?.message ?? 'Invalid email');
       return;
     }
     try {
@@ -36,14 +36,14 @@ export function ForgotPasswordStep1({ onSuccess }: Props) {
       } else if (error instanceof HttpError) {
         setGeneralError(error.message);
       } else if (error instanceof Error) {
-        setGeneralError('Không thể kết nối. Kiểm tra lại mạng.');
+        setGeneralError('Unable to connect. Please check your network.');
       }
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Email tài khoản</Text>
+      <Text style={styles.label}>Account email</Text>
       <View style={[
         styles.inputRow,
         focused && styles.inputRowFocused,
@@ -81,7 +81,7 @@ export function ForgotPasswordStep1({ onSuccess }: Props) {
         onPress={handleSubmit}
         disabled={isPending}
       >
-        {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Gửi mã OTP</Text>}
+        {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Send OTP code</Text>}
       </Pressable>
     </View>
   );

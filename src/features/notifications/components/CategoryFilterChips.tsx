@@ -3,24 +3,24 @@ import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { Colors } from '@/src/lib/theme';
 import { NotificationCategoryEnum } from '../enums/notification.enum';
 
-// `null` = "Tất cả" (không lọc). Dùng null thay vì một giá trị enum giả để không đụng dải giá trị BE.
+// `null` = "All" (no filter). Use null instead of a fake enum value to avoid colliding with the BE value range.
 export type CategoryFilter = NotificationCategoryEnum | null;
 
-// Thứ tự hiển thị = thứ tự giá trị enum của BE, giữ nguyên để khớp màn cài đặt nhóm.
+// Display order = BE enum value order, kept as-is to match the category settings screen.
 const CATEGORY_TABS: { key: CategoryFilter; label: string }[] = [
-  { key: null, label: 'Tất cả' },
+  { key: null, label: 'All' },
   { key: NotificationCategoryEnum.Ticket, label: 'Ticket' },
   { key: NotificationCategoryEnum.Sla, label: 'SLA' },
-  { key: NotificationCategoryEnum.Battery, label: 'Pin' },
-  { key: NotificationCategoryEnum.Environmental, label: 'Môi trường' },
-  { key: NotificationCategoryEnum.Chat, label: 'Trao đổi' },
-  { key: NotificationCategoryEnum.Account, label: 'Tài khoản' },
+  { key: NotificationCategoryEnum.Battery, label: 'Battery' },
+  { key: NotificationCategoryEnum.Environmental, label: 'Environmental' },
+  { key: NotificationCategoryEnum.Chat, label: 'Chat' },
+  { key: NotificationCategoryEnum.Account, label: 'Account' },
 ];
 
 interface Props {
   value: CategoryFilter;
   onChange: (next: CategoryFilter) => void;
-  /** Số dòng của mỗi nhóm trong phần đã tải — nhóm không có dòng nào vẫn hiện, chỉ làm mờ. */
+  /** Row count per category among loaded items — a category with zero rows still shows, just dimmed. */
   counts: Record<string, number>;
   total: number;
 }
@@ -56,8 +56,8 @@ export function CategoryFilterChips({ value, onChange, counts, total }: Props) {
 }
 
 const styles = StyleSheet.create({
-  // Không set marginHorizontal âm ở đây — component tự nằm trong vùng có lề của màn hình cha,
-  // lề trái/phải do `row` cấp để chip cuộn sát mép mà vẫn có khoảng thở ở hai đầu.
+  // No negative marginHorizontal here — the component sits inside the parent screen's padded area;
+  // left/right padding comes from `row` so chips scroll edge-to-edge while still having breathing room at both ends.
   scroll: { flexGrow: 0 },
   row: {
     flexDirection: 'row',
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
-  // Nhóm rỗng vẫn bấm được (trang sau có thể có) — chỉ giảm nổi bật, không disable.
+  // An empty category is still tappable (a later page might have items) — just dimmed, not disabled.
   chipEmpty: { opacity: 0.45 },
   text: { fontSize: 12, fontWeight: '600', color: Colors.textMute },
   textActive: { color: '#FFFFFF', fontWeight: '800' },

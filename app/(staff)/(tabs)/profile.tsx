@@ -38,16 +38,16 @@ export default function StaffProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert('Đăng xuất', 'Bạn có chắc muốn đăng xuất?', [
-      { text: 'Hủy', style: 'cancel' },
-      { text: 'Đăng xuất', style: 'destructive', onPress: doLogout },
+    Alert.alert('Log out', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Log out', style: 'destructive', onPress: doLogout },
     ]);
   };
 
   if (isLoading) {
     return (
       <View style={styles.root}>
-        <StaffHeader title="Cá nhân" />
+        <StaffHeader title="Profile" />
         <View style={styles.center}>
           <ActivityIndicator color={Colors.primary} size="large" />
         </View>
@@ -55,20 +55,20 @@ export default function StaffProfileScreen() {
     );
   }
 
-  // Không fallback mock — API lỗi thì báo lỗi thật + cho retry + vẫn có nút đăng xuất.
+  // No mock fallback — if the API fails, show a real error + allow retry + still show the logout button.
   if (isError || !profile) {
     return (
       <View style={styles.root}>
-        <StaffHeader title="Cá nhân" />
+        <StaffHeader title="Profile" />
         <View style={styles.center}>
           <Ionicons name="cloud-offline-outline" size={48} color={Colors.textFaint} />
-          <Text style={styles.errText}>Không tải được thông tin cá nhân</Text>
+          <Text style={styles.errText}>Failed to load profile</Text>
           <Pressable onPress={() => refetch()} style={styles.retryBtn}>
-            <Text style={styles.retryText}>Thử lại</Text>
+            <Text style={styles.retryText}>Retry</Text>
           </Pressable>
           <Pressable style={styles.logoutBtn} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={18} color={Colors.danger} />
-            <Text style={styles.logoutText}>Đăng xuất</Text>
+            <Text style={styles.logoutText}>Log out</Text>
           </Pressable>
         </View>
       </View>
@@ -77,7 +77,7 @@ export default function StaffProfileScreen() {
 
   return (
     <View style={styles.root}>
-      <StaffHeader title="Cá nhân" />
+      <StaffHeader title="Profile" />
       <ScrollView contentContainerStyle={styles.content}>
       <View style={[styles.profileCard, Shadow]}>
         <View style={styles.avatarCircle}>
@@ -89,25 +89,25 @@ export default function StaffProfileScreen() {
           <View style={[styles.availDot, { backgroundColor: profile.isAvailable ? Colors.success : Colors.textFaint }]} />
           <Text style={styles.tierText}>
             {profile.skillTier ? `${TIER_LABEL[profile.skillTier]} · ` : ''}
-            {profile.isAvailable ? 'Sẵn sàng' : 'Bận'}
+            {profile.isAvailable ? 'Available' : 'Busy'}
           </Text>
         </View>
       </View>
 
-      {/* Đang xử lý / Còn trống chỉ hiện khi BE cấp currentTicketCount thật (tránh hiển thị 0 giả). */}
+      {/* In progress / Available slots only shown when BE provides a real currentTicketCount (avoid showing a fake 0). */}
       <View style={[styles.statsCard, Shadow]}>
         {profile.currentTicketCount != null && (
           <>
             <View style={styles.statItem}>
               <Text style={styles.statNum}>{profile.currentTicketCount}</Text>
-              <Text style={styles.statLabel}>Đang xử lý</Text>
+              <Text style={styles.statLabel}>In progress</Text>
             </View>
             <View style={styles.statDivider} />
           </>
         )}
         <View style={styles.statItem}>
           <Text style={styles.statNum}>{profile.maxConcurrentTickets}</Text>
-          <Text style={styles.statLabel}>Tối đa</Text>
+          <Text style={styles.statLabel}>Max</Text>
         </View>
         {profile.currentTicketCount != null && (
           <>
@@ -116,7 +116,7 @@ export default function StaffProfileScreen() {
               <Text style={[styles.statNum, { color: Colors.primary }]}>
                 {profile.maxConcurrentTickets - profile.currentTicketCount}
               </Text>
-              <Text style={styles.statLabel}>Còn trống</Text>
+              <Text style={styles.statLabel}>Available</Text>
             </View>
           </>
         )}
@@ -124,13 +124,13 @@ export default function StaffProfileScreen() {
 
       <View style={[styles.infoCard, Shadow]}>
         <InfoRow icon="mail-outline" label="Email" value={profile.email} />
-        <InfoRow icon="call-outline" label="Điện thoại" value={profile.phone ?? 'Chưa cập nhật'} />
-        <InfoRow icon="business-outline" label="Phòng ban" value={profile.department ?? 'Chưa cập nhật'} />
+        <InfoRow icon="call-outline" label="Phone" value={profile.phone ?? 'Not set'} />
+        <InfoRow icon="business-outline" label="Department" value={profile.department ?? 'Not set'} />
       </View>
 
       {(profile.skills?.length ?? 0) > 0 && (
         <View style={[styles.skillsCard, Shadow]}>
-          <Text style={styles.sectionTitle}>Chuyên môn</Text>
+          <Text style={styles.sectionTitle}>Skills</Text>
           <View style={styles.skillsWrap}>
             {(profile.skills ?? []).map((skill) => (
               <View key={skill} style={styles.skillChip}>
@@ -146,7 +146,7 @@ export default function StaffProfileScreen() {
         onPress={() => router.push('/(staff)/tools')}
       >
         <Ionicons name="build-outline" size={18} color={Colors.text} />
-        <Text style={styles.settingsText}>Công cụ kỹ thuật</Text>
+        <Text style={styles.settingsText}>Technical Tools</Text>
         <Ionicons name="chevron-forward" size={18} color={Colors.textMute} />
       </Pressable>
 
@@ -155,7 +155,7 @@ export default function StaffProfileScreen() {
         onPress={() => router.push('/(staff)/maintenance-history')}
       >
         <Ionicons name="construct-outline" size={18} color={Colors.text} />
-        <Text style={styles.settingsText}>Lịch sử bảo trì</Text>
+        <Text style={styles.settingsText}>Maintenance History</Text>
         <Ionicons name="chevron-forward" size={18} color={Colors.textMute} />
       </Pressable>
 
@@ -164,13 +164,13 @@ export default function StaffProfileScreen() {
         onPress={() => router.push('/(staff)/notification-preferences')}
       >
         <Ionicons name="notifications-outline" size={18} color={Solar.ink} />
-        <Text style={styles.settingsText}>Cài đặt thông báo</Text>
+        <Text style={styles.settingsText}>Notification Settings</Text>
         <Ionicons name="chevron-forward" size={18} color={Solar.mute} />
       </Pressable>
 
       <Pressable style={styles.logoutBtn} onPress={handleLogout}>
         <Ionicons name="log-out-outline" size={18} color={Colors.danger} />
-        <Text style={styles.logoutText}>Đăng xuất</Text>
+        <Text style={styles.logoutText}>Log out</Text>
       </Pressable>
       </ScrollView>
     </View>

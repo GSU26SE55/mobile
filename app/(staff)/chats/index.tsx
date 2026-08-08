@@ -5,13 +5,13 @@ import { ScreenHeader } from '@/src/shared/components/ScreenHeader';
 import { useMyChats } from '@/src/features/tickets/hooks/useChatInbox';
 import { ChatInboxList } from '@/src/features/tickets/components/ChatInboxList';
 
-// GH-68 — inbox chat của Staff. Tap → mở ticket (staff route).
+// GH-68 — Staff chat inbox. Tap → open ticket (staff route).
 export default function StaffChatInboxScreen() {
   const { data: chats = [], isLoading, refetch, isRefetching } = useMyChats();
 
   return (
     <View style={styles.root}>
-      <ScreenHeader title="Hộp thư chat" />
+      <ScreenHeader title="Chat Inbox" />
       {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={Colors.primary} />

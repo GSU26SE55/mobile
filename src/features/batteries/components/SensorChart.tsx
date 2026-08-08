@@ -9,17 +9,17 @@ type MetricKey = 'socPercent' | 'voltage' | 'current' | 'temperature';
 
 const METRICS: { key: MetricKey; label: string; unit: string; pick: (d: SensorReadingAggregateDto) => number }[] = [
   { key: 'socPercent', label: 'SOC', unit: '%', pick: (d) => d.avgSocPercent },
-  { key: 'voltage', label: 'Điện áp', unit: 'V', pick: (d) => d.avgVoltage },
-  { key: 'current', label: 'Dòng điện', unit: 'A', pick: (d) => d.avgCurrent },
-  { key: 'temperature', label: 'Nhiệt độ', unit: '°C', pick: (d) => d.avgTemperature },
+  { key: 'voltage', label: 'Voltage', unit: 'V', pick: (d) => d.avgVoltage },
+  { key: 'current', label: 'Current', unit: 'A', pick: (d) => d.avgCurrent },
+  { key: 'temperature', label: 'Temperature', unit: '°C', pick: (d) => d.avgTemperature },
 ];
 
-// Range lớn dùng bucket thô hơn — khớp cách BE tổng hợp qua TimescaleDB time_bucket.
+// Large ranges use a coarser bucket — matches how BE aggregates via TimescaleDB time_bucket.
 const RANGES: Record<string, { hours: number; interval: SensorReadingInterval; label: string }> = {
-  '1h': { hours: 1, interval: '1m', label: '1 giờ' },
-  '24h': { hours: 24, interval: '1h', label: '24 giờ' },
-  '7d': { hours: 24 * 7, interval: '1h', label: '7 ngày' },
-  '30d': { hours: 24 * 30, interval: '1d', label: '30 ngày' },
+  '1h': { hours: 1, interval: '1m', label: '1h' },
+  '24h': { hours: 24, interval: '1h', label: '24h' },
+  '7d': { hours: 24 * 7, interval: '1h', label: '7d' },
+  '30d': { hours: 24 * 30, interval: '1d', label: '30d' },
 };
 type RangeKey = keyof typeof RANGES;
 const RANGE_KEYS = Object.keys(RANGES) as RangeKey[];
@@ -29,9 +29,9 @@ const MAX_X_LABELS = 5;
 
 function formatBucketLabel(iso: string, range: RangeKey): string {
   const d = new Date(iso);
-  if (range === '1h') return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-  if (range === '30d') return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-  return d.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  if (range === '1h') return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  if (range === '30d') return d.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit' });
+  return d.toLocaleString('en-US', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
 export function SensorChart({ assetId }: { assetId: string }) {
@@ -63,7 +63,7 @@ export function SensorChart({ assetId }: { assetId: string }) {
       return (
         <View style={styles.empty}>
           <ActivityIndicator color={Solar.yellowDeep} />
-          <Text style={styles.emptyText}>Đang tải dữ liệu…</Text>
+          <Text style={styles.emptyText}>Loading data…</Text>
         </View>
       );
     }
@@ -71,7 +71,7 @@ export function SensorChart({ assetId }: { assetId: string }) {
     if (data.length < 2) {
       return (
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>Chưa đủ dữ liệu để vẽ biểu đồ</Text>
+          <Text style={styles.emptyText}>Not enough data to render the chart</Text>
         </View>
       );
     }
@@ -136,7 +136,7 @@ export function SensorChart({ assetId }: { assetId: string }) {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.titleRow}>
-            <Text style={styles.title}>Biểu đồ cảm biến</Text>
+            <Text style={styles.title}>Sensor chart</Text>
             {isFetching && !isLoading ? <ActivityIndicator size="small" color={Colors.textFaint} /> : null}
           </View>
           <View style={styles.rangeTabs}>

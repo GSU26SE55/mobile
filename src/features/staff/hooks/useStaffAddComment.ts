@@ -3,8 +3,8 @@ import { StaffAddCommentPayload } from '../types/staff.types';
 import { staffTicketService } from '../services/staffTicket.service';
 import { handleErrorApi } from '@/src/lib/errors';
 
-// GH-44: KHÔNG invalidate ở đây. Comment list (KEY.tickets.chats) cập nhật qua realtime;
-// màn hình tự fallback refetch khi hub mất kết nối. Tránh refetch detail thừa.
+// GH-44: do NOT invalidate here. The comment list (KEY.tickets.chats) updates via realtime;
+// the screen falls back to a refetch if the hub disconnects. Avoids a redundant detail refetch.
 export function useStaffAddComment(ticketId: string) {
   return useMutation({
     mutationFn: (data: StaffAddCommentPayload) => staffTicketService.addComment(ticketId, data),

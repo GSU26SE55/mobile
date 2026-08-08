@@ -45,9 +45,9 @@ function ToggleRow({ label, desc, value, onValueChange }: ToggleRowProps) {
 }
 
 export function NotificationPreferencesForm() {
-  // GH-83 — nguồn dữ liệu là `GET /matrix` (trả cả `channels` lẫn `categories`) thay vì
-  // `GET /notification-preferences`. Một nguồn cho một dữ liệu; hai nguồn là cách chắc chắn để lệch.
-  // Ghi thì vẫn qua `PUT /notification-preferences` vì `PUT /matrix` chỉ nhận `items` (dòng nhóm).
+  // GH-83 — the data source is `GET /matrix` (returns both `channels` and `categories`) instead of
+  // `GET /notification-preferences`. One source per piece of data; two sources is a guaranteed way to drift.
+  // Writes still go through `PUT /notification-preferences` because `PUT /matrix` only accepts `items` (category rows).
   const { matrix: pref } = useNotificationMatrix();
   const updatePref = useUpdateNotificationPreference();
 
@@ -59,17 +59,17 @@ export function NotificationPreferencesForm() {
   const [quietStart, setQuietStart] = useState('22:00');
   const [quietEnd, setQuietEnd] = useState('07:00');
   const [timeZone, setTimeZone] = useState('Asia/Ho_Chi_Minh');
-  // GH-83 — 3 tuỳ chọn chat (#570). Trước đây mobile không khai nên mỗi lần Lưu là BE ghi default đè lên.
+  // GH-83 — 3 chat options (#570). Previously mobile didn't declare these, so every Save had BE overwrite them with defaults.
   const [notifyOnChat, setNotifyOnChat] = useState(true);
   const [notifyOnMention, setNotifyOnMention] = useState(true);
   const [notifyOnReaction, setNotifyOnReaction] = useState(false);
-  // Pass-through: giữ nguyên giá trị BE trả về, mobile chưa có UI Frequency.
+  // Pass-through: keep the value BE returns as-is, mobile has no Frequency UI yet.
   const [digestWindowMinutes, setDigestWindowMinutes] = useState<number | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  // Load flow — fill form khi data về.
+  // Load flow — fill the form once data arrives.
   useEffect(() => {
-    // `/matrix` bọc công tắc toàn cục trong `channels`; phần `categories` do CategoryMatrixTable lo.
+    // `/matrix` wraps the global toggle in `channels`; the `categories` part is handled by CategoryMatrixTable.
     const d = pref.data?.channels;
     if (!d) return;
     setPushEnabled(d.pushEnabled);
@@ -98,9 +98,9 @@ export function NotificationPreferencesForm() {
   if (pref.isError) {
     return (
       <View style={styles.center}>
-        <Text style={styles.errorMsg}>Không tải được cài đặt thông báo.</Text>
+        <Text style={styles.errorMsg}>Could not load notification settings.</Text>
         <Pressable style={CommonStyles.btnOutline} onPress={() => pref.refetch()}>
-          <Text style={CommonStyles.btnOutlineText}>Thử lại</Text>
+          <Text style={CommonStyles.btnOutlineText}>Retry</Text>
         </Pressable>
       </View>
     );
@@ -138,7 +138,7 @@ export function NotificationPreferencesForm() {
 
     try {
       await updatePref.mutateAsync(parsed.data);
-      Alert.alert('Thành công', 'Đã lưu cài đặt thông báo');
+      Alert.alert('Success', 'Notification settings saved');
     } catch (error) {
       handleErrorApi({ error, setFieldError });
     }
@@ -147,62 +147,62 @@ export function NotificationPreferencesForm() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={[styles.card, Shadow]}>
-        <Text style={styles.cardTitle}>Kênh nhận thông báo</Text>
-        <ToggleRow label="Push notification" desc="Thông báo đẩy trên thiết bị" value={pushEnabled} onValueChange={setPushEnabled} />
+        <Text style={styles.cardTitle}>Notification Channels</Text>
+        <ToggleRow label="Push notification" desc="Push notification on device" value={pushEnabled} onValueChange={setPushEnabled} />
         <ToggleRow label="Email" value={emailEnabled} onValueChange={setEmailEnabled} />
         <ToggleRow label="SMS" value={smsEnabled} onValueChange={setSmsEnabled} />
-        <ToggleRow label="Trong ứng dụng" desc="Hiển thị trong danh sách thông báo" value={inAppEnabled} onValueChange={setInAppEnabled} />
+        <ToggleRow label="In-app" desc="Show in the notification list" value={inAppEnabled} onValueChange={setInAppEnabled} />
       </View>
 
       {Platform.OS === 'android' ? (
         <View style={[styles.card, Shadow]}>
-          <Text style={styles.cardTitle}>Bong bóng chat</Text>
+          <Text style={styles.cardTitle}>Chat Bubbles</Text>
           <Text style={styles.rowDesc}>
-            Cho phép tin nhắn ticket xuất hiện bên ngoài ứng dụng như cuộc trò chuyện nổi.
+            Allow ticket messages to appear outside the app as a floating conversation.
           </Text>
           <Pressable style={CommonStyles.btnOutline} onPress={() => void openNotificationSettings()}>
-            <Text style={CommonStyles.btnOutlineText}>Mở cài đặt Android</Text>
+            <Text style={CommonStyles.btnOutlineText}>Open Android Settings</Text>
           </Pressable>
         </View>
       ) : null}
 
       <View style={[styles.card, Shadow]}>
-        <Text style={styles.cardTitle}>Trao đổi trên ticket</Text>
+        <Text style={styles.cardTitle}>Ticket Conversation</Text>
         <ToggleRow
-          label="Bình luận mới"
-          desc="Có người bình luận trên ticket của bạn"
+          label="New comment"
+          desc="Someone commented on your ticket"
           value={notifyOnChat}
           onValueChange={setNotifyOnChat}
         />
         <ToggleRow
-          label="Khi được nhắc tên"
-          desc="Có người @nhắc bạn trong bình luận"
+          label="When mentioned"
+          desc="Someone @mentioned you in a comment"
           value={notifyOnMention}
           onValueChange={setNotifyOnMention}
         />
         <ToggleRow
-          label="Cảm xúc bình luận"
-          desc="Có người thả cảm xúc vào bình luận của bạn"
+          label="Comment reactions"
+          desc="Someone reacted to your comment"
           value={notifyOnReaction}
           onValueChange={setNotifyOnReaction}
         />
       </View>
 
-      {/* Ma trận nhóm × kênh — lưu ngay khi chạm ô (PUT /matrix), độc lập với nút Lưu bên dưới
-          (nút đó chỉ dành cho công tắc toàn cục qua PUT /notification-preferences). */}
+      {/* Category × channel matrix — saves immediately on tapping a cell (PUT /matrix), independent of the
+          Save button below (that button is only for the global toggle via PUT /notification-preferences). */}
       <CategoryMatrixTable />
 
       <View style={[styles.card, Shadow]}>
         <ToggleRow
-          label="Giờ im lặng"
-          desc="Không nhận thông báo trong khung giờ này"
+          label="Quiet Hours"
+          desc="Don't receive notifications during this time window"
           value={quietEnabled}
           onValueChange={setQuietEnabled}
         />
         {quietEnabled ? (
           <View style={styles.quietRow}>
             <View style={styles.quietField}>
-              <Text style={CommonStyles.inputLabel}>Bắt đầu</Text>
+              <Text style={CommonStyles.inputLabel}>Start</Text>
               <TextInput
                 style={[CommonStyles.input, !!fieldErrors.quietHoursStart && CommonStyles.inputError]}
                 value={quietStart}
@@ -217,7 +217,7 @@ export function NotificationPreferencesForm() {
               ) : null}
             </View>
             <View style={styles.quietField}>
-              <Text style={CommonStyles.inputLabel}>Kết thúc</Text>
+              <Text style={CommonStyles.inputLabel}>End</Text>
               <TextInput
                 style={[CommonStyles.input, !!fieldErrors.quietHoursEnd && CommonStyles.inputError]}
                 value={quietEnd}
@@ -236,7 +236,7 @@ export function NotificationPreferencesForm() {
       </View>
 
       <View style={[styles.card, Shadow]}>
-        <Text style={CommonStyles.inputLabel}>Múi giờ</Text>
+        <Text style={CommonStyles.inputLabel}>Time Zone</Text>
         <TextInput
           style={[CommonStyles.input, !!fieldErrors.timeZone && CommonStyles.inputError]}
           value={timeZone}
@@ -259,7 +259,7 @@ export function NotificationPreferencesForm() {
         {updatePref.isPending ? (
           <ActivityIndicator color={Colors.white} />
         ) : (
-          <Text style={CommonStyles.btnPrimaryText}>Lưu cài đặt</Text>
+          <Text style={CommonStyles.btnPrimaryText}>Save Settings</Text>
         )}
       </Pressable>
     </ScrollView>

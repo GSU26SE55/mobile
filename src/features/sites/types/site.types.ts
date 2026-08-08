@@ -1,4 +1,4 @@
-// Site DTOs — mirror docs/api-battery.md §Nhóm 5.
+// Site DTOs — mirror docs/api-battery.md §Group 5.
 import type { SiteStatusEnum } from '../enums/site.enum';
 
 export { SiteStatusEnum } from '../enums/site.enum';
@@ -20,16 +20,16 @@ export interface SiteDto {
   createdAt: string;
 }
 
-// GET /api/sites/{id}/dashboard — ⚠️ KHÔNG có capacityKw/totalCapacityKw (doc cảnh báo rõ).
+// GET /api/sites/{id}/dashboard — ⚠️ does NOT have capacityKw/totalCapacityKw (doc warns explicitly).
 export interface SiteDashboardDto {
   siteId: string;
   name: string;
   customerId: string;
-  totalAssets: number;       // gồm cả Inactive/Decommissioned
+  totalAssets: number;       // includes Inactive/Decommissioned
   activeAssets: number;
-  assetsWithActiveAlerts: number; // chỉ alert Open/Acknowledged
+  assetsWithActiveAlerts: number; // only Open/Acknowledged alerts
   lastAlertAt: string | null;
-  healthScore: number;       // 0–100, clamp; ngưỡng màu 80/50
+  healthScore: number;       // 0-100, clamp; color thresholds 80/50
 }
 
 export interface SiteListParams {

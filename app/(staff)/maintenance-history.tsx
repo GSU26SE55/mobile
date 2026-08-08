@@ -7,7 +7,7 @@ import { Colors, Shadow } from '@/src/lib/theme';
 import { useMyMaintenanceLogs } from '@/src/features/staff/hooks/useMyMaintenanceLogs';
 import { BackButton } from '@/src/shared/components/ScreenHeader';
 
-// GH-44 #3 — lịch sử bảo trì cá nhân của Staff, gom nhóm theo ticket.
+// GH-44 #3 — Staff's personal maintenance history, grouped by ticket.
 export default function MaintenanceHistoryScreen() {
   const insets = useSafeAreaInsets();
   const { data: groups = [], isLoading, isError, refetch } = useMyMaintenanceLogs();
@@ -16,7 +16,7 @@ export default function MaintenanceHistoryScreen() {
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <BackButton />
-        <Text style={styles.topTitle}>Lịch sử bảo trì</Text>
+        <Text style={styles.topTitle}>Maintenance History</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -27,15 +27,15 @@ export default function MaintenanceHistoryScreen() {
       ) : isError ? (
         <View style={styles.center}>
           <Ionicons name="alert-circle-outline" size={32} color={Colors.textFaint} />
-          <Text style={styles.emptyText}>Không tải được lịch sử.</Text>
+          <Text style={styles.emptyText}>Failed to load history.</Text>
           <Pressable onPress={() => refetch()} style={[styles.retryBtn, Shadow]}>
-            <Text style={styles.retryText}>Thử lại</Text>
+            <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
       ) : groups.length === 0 ? (
         <View style={styles.center}>
           <Ionicons name="construct-outline" size={32} color={Colors.textFaint} />
-          <Text style={styles.emptyText}>Chưa có nhật ký bảo trì nào.</Text>
+          <Text style={styles.emptyText}>No maintenance logs yet.</Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -61,7 +61,7 @@ export default function MaintenanceHistoryScreen() {
                 <View key={log.id} style={styles.logItem}>
                   {!!log.summary && <Text style={styles.logSummary}>{log.summary}</Text>}
                   {log.durationMinutes > 0 && (
-                    <Text style={styles.logMeta}>Thời gian: {log.durationMinutes} phút</Text>
+                    <Text style={styles.logMeta}>Duration: {log.durationMinutes} min</Text>
                   )}
                   <Text style={styles.logTime}>
                     {new Date(log.createdAt).toLocaleString('vi-VN')}

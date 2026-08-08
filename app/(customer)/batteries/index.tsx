@@ -52,8 +52,8 @@ export default function BatteriesListScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <BackButton />
         <View style={styles.titleWrap}>
-          <Text style={styles.title}>Tất cả cục pin</Text>
-          <Text style={styles.subtitle}>{batteries.length} thiết bị lưu trữ</Text>
+          <Text style={styles.title}>All batteries</Text>
+          <Text style={styles.subtitle}>{batteries.length} storage devices</Text>
         </View>
         <View style={{ width: 42 }} />
       </View>
@@ -63,7 +63,7 @@ export default function BatteriesListScreen() {
         <Ionicons name="search-outline" size={18} color={Solar.mute} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Tìm theo mã Serial hoặc loại pin..."
+          placeholder="Search by serial number or battery type..."
           placeholderTextColor={Solar.faint}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -84,8 +84,8 @@ export default function BatteriesListScreen() {
         <View style={styles.emptyWrap}>
           <GlassSurface style={styles.emptyCard}>
             <Ionicons name="battery-dead-outline" size={50} color={Solar.faint} />
-            <Text style={styles.emptyTitle}>Không tìm thấy cục pin nào</Text>
-            <Text style={styles.emptySub}>Thử tìm kiếm với từ khóa khác hoặc kiểm tra lại danh sách.</Text>
+            <Text style={styles.emptyTitle}>No batteries found</Text>
+            <Text style={styles.emptySub}>Try a different search term or check the list again.</Text>
           </GlassSurface>
         </View>
       ) : (
@@ -132,7 +132,7 @@ export default function BatteriesListScreen() {
                         {live ? `${live.voltage.toFixed(1)} V` : '—'}
                       </Text>
                       <Text style={styles.typeNameText} numberOfLines={1}>
-                        {item.batteryTypeName || 'Thiết bị lưu trữ'}
+                        {item.batteryTypeName || 'Storage device'}
                       </Text>
                     </View>
                   </GlassSurface>

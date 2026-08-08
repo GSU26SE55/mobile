@@ -34,14 +34,14 @@ export function ForgotPasswordStep2({ email, onSuccess }: Props) {
     setGeneralError('');
     const result = otpSchema.safeParse({ otp });
     if (!result.success) {
-      setOtpError(result.error.flatten().fieldErrors.otp?.[0] ?? 'OTP không hợp lệ');
+      setOtpError(result.error.flatten().fieldErrors.otp?.[0] ?? 'Invalid OTP');
       return;
     }
     try {
       const res = await verifyAsync({ email, otp: result.data.otp });
       const data = res.data.data;
       if (!data) {
-        setGeneralError('Phản hồi không hợp lệ từ server.');
+        setGeneralError('Invalid response from server.');
         return;
       }
       onSuccess(data.resetToken, data.expiresInSeconds);
@@ -53,7 +53,7 @@ export function ForgotPasswordStep2({ email, onSuccess }: Props) {
       } else if (error instanceof HttpError) {
         setGeneralError(error.message);
       } else if (error instanceof Error) {
-        setGeneralError('Không thể kết nối. Kiểm tra lại mạng.');
+        setGeneralError('Unable to connect. Please check your network.');
       }
     }
   };
@@ -118,11 +118,11 @@ export function ForgotPasswordStep2({ email, onSuccess }: Props) {
       >
         {countdown > 0 ? (
           <Text style={styles.resendDisabled}>
-            Gửi lại mã sau <Text style={{ fontWeight: '700' }}>{countdown}s</Text>
+            Resend code in <Text style={{ fontWeight: '700' }}>{countdown}s</Text>
           </Text>
         ) : (
           <Text style={styles.resendText}>
-            Không nhận được OTP? <Text style={styles.resendLink}>Gửi lại mã</Text>
+            Didn't receive the OTP? <Text style={styles.resendLink}>Resend code</Text>
           </Text>
         )}
       </Pressable>
@@ -132,7 +132,7 @@ export function ForgotPasswordStep2({ email, onSuccess }: Props) {
         onPress={handleVerify}
         disabled={verifying}
       >
-        {verifying ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Xác thực</Text>}
+        {verifying ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Verify</Text>}
       </Pressable>
     </View>
   );

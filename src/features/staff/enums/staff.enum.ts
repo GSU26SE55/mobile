@@ -1,5 +1,5 @@
-// Hold reason dùng PauseReasonEnum chuẩn từ shared/enums/ticket.enum (khớp api-ticket.md).
-// HoldReasonEnum cũ đã bỏ — tránh trùng lặp source-of-truth.
+// Hold reason uses the standard PauseReasonEnum from shared/enums/ticket.enum (matches api-ticket.md).
+// The old HoldReasonEnum has been removed — avoid a duplicate source of truth.
 
 export const StaffSkillTierEnum = {
   Tier1: 'Tier1',

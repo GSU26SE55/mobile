@@ -12,7 +12,7 @@ import {
 import { useThresholdByType } from '@/src/features/battery-types/hooks/useThresholdByType';
 import { BackButton } from '@/src/shared/components/ScreenHeader';
 
-/** `0` là ngưỡng hợp lệ nên phải check null/undefined, không dùng falsy check. */
+/** `0` is a valid threshold, so check null/undefined — do not use a falsy check. */
 const fmt = (v: number | null | undefined, unit: string) =>
   v === null || v === undefined ? '—' : `${v} ${unit}`;
 
@@ -29,14 +29,14 @@ export default function BatteryTypeDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, isLoading, isError, refetch } = useBatteryTypeDetail(id ?? '');
-  // Ngưỡng cấu hình riêng endpoint — loading/lỗi độc lập, không chặn phần thông số.
+  // Threshold config is a separate endpoint — its loading/error state is independent and doesn't block the specs section.
   const { data: threshold, isLoading: loadingThreshold } = useThresholdByType(id ?? '');
 
   return (
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <BackButton />
-        <Text style={styles.topTitle} numberOfLines={1}>Chi tiết loại pin</Text>
+        <Text style={styles.topTitle} numberOfLines={1}>Battery Type Details</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -47,57 +47,57 @@ export default function BatteryTypeDetailScreen() {
       ) : isError || !data ? (
         <View style={styles.center}>
           <Ionicons name="alert-circle-outline" size={32} color={Colors.textMute} />
-          <Text style={styles.emptyText}>Không tải được chi tiết.</Text>
+          <Text style={styles.emptyText}>Failed to load details.</Text>
           <Pressable onPress={() => refetch()} style={[styles.retryBtn, Shadow]}>
-            <Text style={styles.retryText}>Thử lại</Text>
+            <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <Text style={styles.name}>{data.name}</Text>
           <View style={[styles.card, Shadow]}>
-            <Row label="Nhà sản xuất" value={data.manufacturer ?? '—'} />
+            <Row label="Manufacturer" value={data.manufacturer ?? '—'} />
             <Row
-              label="Hoá học"
+              label="Chemistry"
               value={BATTERY_CHEMISTRY_LABEL[data.chemistry as BatteryChemistryEnum] ?? '—'}
             />
-            <Row label="Dung lượng danh định" value={`${data.nominalCapacityAh} Ah`} />
-            <Row label="Điện áp danh định" value={`${data.nominalVoltage} V`} />
-            <Row label="Chu kỳ tối đa" value={`${data.maxCycleCount}`} />
+            <Row label="Nominal capacity" value={`${data.nominalCapacityAh} Ah`} />
+            <Row label="Nominal voltage" value={`${data.nominalVoltage} V`} />
+            <Row label="Max cycle count" value={`${data.maxCycleCount}`} />
           </View>
           {data.description ? (
             <View style={[styles.card, Shadow]}>
-              <Text style={styles.descLabel}>Mô tả</Text>
+              <Text style={styles.descLabel}>Description</Text>
               <Text style={styles.descText}>{data.description}</Text>
             </View>
           ) : null}
 
-          {/* Ngưỡng cảnh báo — reading vượt các mốc này thì hệ thống bắn Alert.
-              Staff chỉ đọc; chỉnh sửa là quyền Admin (BE chặn ở role). */}
-          <Text style={styles.sectionTitle}>Ngưỡng cảnh báo</Text>
+          {/* Alert thresholds — when a reading crosses these marks, the system fires an Alert.
+              Staff can only view; editing is an Admin permission (enforced by BE at the role level). */}
+          <Text style={styles.sectionTitle}>Alert Thresholds</Text>
           {loadingThreshold ? (
             <View style={[styles.card, Shadow, styles.cardCenter]}>
               <ActivityIndicator color={Colors.primary} />
             </View>
           ) : !threshold ? (
             <View style={[styles.card, Shadow]}>
-              <Text style={styles.emptyText}>Loại pin này chưa được cấu hình ngưỡng.</Text>
+              <Text style={styles.emptyText}>This battery type has no configured thresholds yet.</Text>
             </View>
           ) : (
             <View style={[styles.card, Shadow]}>
-              <Row label="Điện áp" value={`${threshold.voltageMin} – ${threshold.voltageMax} V`} />
+              <Row label="Voltage" value={`${threshold.voltageMin} – ${threshold.voltageMax} V`} />
               <Row
-                label="Nhiệt độ"
+                label="Temperature"
                 value={`${threshold.temperatureMin} – ${threshold.temperatureMax} °C`}
               />
-              <Row label="SOC cảnh báo" value={fmt(threshold.socWarningThreshold, '%')} />
-              <Row label="SOC nguy hiểm" value={fmt(threshold.socCriticalThreshold, '%')} />
-              <Row label="Dòng sạc tối đa" value={fmt(threshold.currentMaxCharge, 'A')} />
-              <Row label="Dòng xả tối đa" value={fmt(threshold.currentMaxDischarge, 'A')} />
-              <Row label="SOH cảnh báo" value={fmt(threshold.sohWarningThreshold, '%')} />
-              <Row label="SOH nguy hiểm" value={fmt(threshold.sohCriticalThreshold, '%')} />
+              <Row label="SOC warning" value={fmt(threshold.socWarningThreshold, '%')} />
+              <Row label="SOC critical" value={fmt(threshold.socCriticalThreshold, '%')} />
+              <Row label="Max charge current" value={fmt(threshold.currentMaxCharge, 'A')} />
+              <Row label="Max discharge current" value={fmt(threshold.currentMaxDischarge, 'A')} />
+              <Row label="SOH warning" value={fmt(threshold.sohWarningThreshold, '%')} />
+              <Row label="SOH critical" value={fmt(threshold.sohCriticalThreshold, '%')} />
               {!threshold.isActive ? (
-                <Text style={styles.inactiveNote}>Cấu hình này đang ngưng áp dụng.</Text>
+                <Text style={styles.inactiveNote}>This configuration is currently inactive.</Text>
               ) : null}
             </View>
           )}

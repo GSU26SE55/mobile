@@ -1,4 +1,4 @@
-// GH-56 — Battery Types. Mirror docs/api-battery.md §Nhóm 3 (dòng 584–623).
+// GH-56 — Battery Types. Mirror docs/api-battery.md §Group 3 (lines 584-623).
 import type { BatteryChemistryEnum } from '../enums/battery-type.enum';
 export { BatteryChemistryEnum } from '../enums/battery-type.enum';
 
@@ -17,6 +17,6 @@ export interface BatteryTypeDto {
 export interface BatteryTypeListParams {
   pageNumber?: number;
   pageSize?: number;
-  keyword?: string; // tìm theo Name + Manufacturer (case-insensitive)
-  includeDeleted?: boolean; // mặc định false
+  keyword?: string; // search by Name + Manufacturer (case-insensitive)
+  includeDeleted?: boolean; // default false
 }

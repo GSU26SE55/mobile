@@ -1,4 +1,4 @@
-// GH-47 — shape của GET /api/auth/me/permissions
+// GH-47 — shape of GET /api/auth/me/permissions
 export interface PermissionDto {
   id: string;
   code: string;

@@ -6,16 +6,16 @@ import { CascadeRiskDto } from '../types/cascade.types';
 import { CascadeRiskLevel } from '../enums/cascade.enum';
 
 const LEVEL_STYLE: Record<CascadeRiskLevel, { bg: string; text: string; label: string }> = {
-  [CascadeRiskLevel.Low]: { bg: Colors.successLight, text: Colors.successDark, label: 'Thấp' },
-  [CascadeRiskLevel.Medium]: { bg: Colors.warningLight, text: Colors.warningDark, label: 'Trung bình' },
-  [CascadeRiskLevel.High]: { bg: Colors.dangerLight, text: Colors.dangerDark, label: 'Cao' },
+  [CascadeRiskLevel.Low]: { bg: Colors.successLight, text: Colors.successDark, label: 'Low' },
+  [CascadeRiskLevel.Medium]: { bg: Colors.warningLight, text: Colors.warningDark, label: 'Medium' },
+  [CascadeRiskLevel.High]: { bg: Colors.dangerLight, text: Colors.dangerDark, label: 'High' },
 };
 
-// null/undefined (404 / chưa tính) → render null (ẩn badge).
+// null/undefined (404 / not yet computed) → render null (hide the badge).
 export function CascadeRiskBadge({ data }: { data: CascadeRiskDto | null | undefined }) {
   if (!data) return null;
-  // Domain an toàn cháy nổ: level lạ (BE thêm mức mới) → fallback mức thận trọng (Cao/đỏ),
-  // KHÔNG hiển thị "Thấp/an toàn" giả gây hiểu nhầm nguy hiểm.
+  // Fire-safety domain: an unknown level (BE adds a new tier) → fall back to the cautious
+  // tier (High/red), NEVER show a false "Low/safe" that could mislead into a dangerous situation.
   const s = LEVEL_STYLE[data.level] ?? LEVEL_STYLE[CascadeRiskLevel.High];
   const pct = Math.max(0, Math.min(100, data.cascadeRiskScore * 100));
 
@@ -25,8 +25,8 @@ export function CascadeRiskBadge({ data }: { data: CascadeRiskDto | null | undef
         <Ionicons name="git-network-outline" size={20} color={s.text} />
       </View>
       <View style={styles.body}>
-        <Text style={styles.label}>Rủi ro lan truyền</Text>
-        {/* Thanh mức trực quan theo score */}
+        <Text style={styles.label}>Cascade risk</Text>
+        {/* Visual level bar driven by the score */}
         <View style={styles.track}>
           <View style={[styles.fill, { width: `${pct}%`, backgroundColor: s.text }]} />
         </View>

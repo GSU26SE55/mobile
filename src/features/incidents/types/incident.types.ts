@@ -1,5 +1,5 @@
-// Environmental Incident DTOs — mirror docs/api-battery.md §Nhóm 9.
-// ⚠️ DTO KHÔNG có siteName (chỉ siteId) — map tên site client-side từ battery assets.
+// Environmental Incident DTOs — mirror docs/api-battery.md §Group 9.
+// ⚠️ DTO has NO siteName (only siteId) — map the site name client-side from battery assets.
 import {
   EnvironmentalIncidentTypeEnum,
   EnvironmentalIncidentStatusEnum,
@@ -42,17 +42,17 @@ export interface ResolveIncidentPayload {
 }
 
 export const INCIDENT_TYPE_LABEL: Record<EnvironmentalIncidentTypeEnum, string> = {
-  [EnvironmentalIncidentTypeEnum.Smoke]: 'Khói',
-  [EnvironmentalIncidentTypeEnum.FireDetected]: 'Cháy',
-  [EnvironmentalIncidentTypeEnum.GasLeak]: 'Rò rỉ khí',
-  [EnvironmentalIncidentTypeEnum.Flood]: 'Ngập nước',
-  [EnvironmentalIncidentTypeEnum.OverheatHazard]: 'Nguy cơ quá nhiệt',
-  [EnvironmentalIncidentTypeEnum.Other]: 'Khác',
+  [EnvironmentalIncidentTypeEnum.Smoke]: 'Smoke',
+  [EnvironmentalIncidentTypeEnum.FireDetected]: 'Fire',
+  [EnvironmentalIncidentTypeEnum.GasLeak]: 'Gas Leak',
+  [EnvironmentalIncidentTypeEnum.Flood]: 'Flood',
+  [EnvironmentalIncidentTypeEnum.OverheatHazard]: 'Overheat Hazard',
+  [EnvironmentalIncidentTypeEnum.Other]: 'Other',
 };
 
 export const INCIDENT_STATUS_LABEL: Record<EnvironmentalIncidentStatusEnum, string> = {
-  [EnvironmentalIncidentStatusEnum.Open]: 'Mở',
-  [EnvironmentalIncidentStatusEnum.Acknowledged]: 'Đã xác nhận',
-  [EnvironmentalIncidentStatusEnum.Resolved]: 'Đã xử lý',
-  [EnvironmentalIncidentStatusEnum.FalseAlarm]: 'Báo nhầm',
+  [EnvironmentalIncidentStatusEnum.Open]: 'Open',
+  [EnvironmentalIncidentStatusEnum.Acknowledged]: 'Acknowledged',
+  [EnvironmentalIncidentStatusEnum.Resolved]: 'Resolved',
+  [EnvironmentalIncidentStatusEnum.FalseAlarm]: 'False Alarm',
 };

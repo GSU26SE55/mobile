@@ -3,8 +3,8 @@ import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { alertService } from '../services/alert.service';
 import { AlertListParams } from '../types/alert.types';
 
-// GH-55 — list alert chung (Staff xem toàn bộ, không scope theo pin).
-// Khác useMyAlerts (Customer — gom theo batteryAssetId của pin mình).
+// GH-55 — general alert list (Staff sees everything, not scoped by battery).
+// Different from useMyAlerts (Customer — aggregated by their own batteryAssetId).
 export function useAlerts(params?: AlertListParams) {
   const merged: AlertListParams = { pageSize: 100, ...params };
   return useQuery({

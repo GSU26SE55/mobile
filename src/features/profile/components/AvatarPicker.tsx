@@ -23,8 +23,8 @@ export function AvatarPicker({ displayAvatarUrl, fullName, onPress, isLoading }:
 
   const avatarUri = displayAvatarUrl ? `${BASE_URL}${displayAvatarUrl}` : null;
 
-  // displayAvatarUrl trỏ tới GET /api/files/{id}/download — endpoint CẦN auth.
-  // RN <Image> không tự gắn Bearer → phải truyền header thủ công, nếu không avatar trả 401.
+  // displayAvatarUrl points to GET /api/files/{id}/download — the endpoint REQUIRES auth.
+  // RN <Image> doesn't auto-attach Bearer → we must pass the header manually, otherwise the avatar returns 401.
   const [authHeaders, setAuthHeaders] = useState<{ Authorization: string } | undefined>(undefined);
   useEffect(() => {
     let active = true;

@@ -30,7 +30,7 @@ function CreateTicketScreenInner() {
   const [selectedBatteryIds, setSelectedBatteryIds] = useState<string[]>([]);
   const [category, setCategory] = useState<TicketCategoryEnum | ''>('');
   const [description, setDescription] = useState('');
-  const [detectedLabel, setDetectedLabel] = useState(''); // label chip hoặc '' nếu không nêu
+  const [detectedLabel, setDetectedLabel] = useState(''); // chip label, or '' if unspecified
   const [attachedFiles, setAttachedFiles] = useState<UploadedTicketAttachment[]>([]);
 
   const [createdTicketCode, setCreatedTicketCode] = useState<string>('');
@@ -38,17 +38,17 @@ function CreateTicketScreenInner() {
 
   const handleCancel = () => {
     Alert.alert(
-      'Hủy tạo ticket',
-      'Bạn có chắc không? Toàn bộ thông tin đã nhập sẽ bị mất.',
+      'Cancel ticket creation',
+      'Are you sure? All entered information will be lost.',
       [
-        { text: 'Không', style: 'cancel' },
-        { text: 'Hủy', style: 'destructive', onPress: () => router.back() },
+        { text: 'No', style: 'cancel' },
+        { text: 'Cancel', style: 'destructive', onPress: () => router.back() },
       ]
     );
   };
 
   const handleSubmit = async () => {
-    // Chặn tạo trùng: đã tạo thành công (có id) hoặc đang gửi thì bỏ qua.
+    // Prevent duplicate creation: skip if already created successfully (has id) or currently submitting.
     if (createdTicketId || isPending) return;
 
     const categoryLabels: Record<TicketCategoryEnum, string> = {
@@ -61,26 +61,26 @@ function CreateTicketScreenInner() {
     };
 
     const catLabel = categoryLabels[category as TicketCategoryEnum] ?? 'Support Request';
-    // Title theo pin: 1 pin → "Loại - SERIAL"; nhiều pin → "Loại - SERIAL +N".
+    // Title based on battery: 1 battery → "Type - SERIAL"; multiple batteries → "Type - SERIAL +N".
     const firstBattery = batteries.find((b) => b.id === selectedBatteryIds[0]);
     const extra = selectedBatteryIds.length - 1;
     const title = firstBattery
       ? `${catLabel} - ${firstBattery.serialNumber}${extra > 0 ? ` +${extra}` : ''}`
       : catLabel;
 
-    // Validate bằng schema (rule mobile: parse thủ công qua safeParse) — bắt lỗi
-    // tại chỗ thay vì để BE trả 400 sau khi đã round-trip.
+    // Validate via schema (mobile rule: manual parse via safeParse) — catch errors
+    // locally instead of letting BE return 400 after a round trip.
     const parsed = createTicketSchema.safeParse({
       title,
       description,
       category,
       batteryAssetIds: selectedBatteryIds,
-      // GH-866 — BE required IncidentDetectedAt (1 mốc, không phải khoảng).
-      // User không chọn thì fallback về hiện tại. ISO tính tại thời điểm submit.
+      // GH-866 — BE requires IncidentDetectedAt (a single point in time, not a range).
+      // Falls back to now if the user didn't select one. ISO computed at submit time.
       incidentDetectedAt: detectedLabelToIso(detectedLabel) || new Date().toISOString(),
     });
     if (!parsed.success) {
-      Alert.alert('Thiếu thông tin', parsed.error.issues[0].message);
+      Alert.alert('Missing information', parsed.error.issues[0].message);
       return;
     }
 
@@ -107,7 +107,7 @@ function CreateTicketScreenInner() {
         throw new Error(res.data?.message ?? 'System error occurred');
       }
     } catch (err: any) {
-      Alert.alert('Lỗi', err?.message ?? 'Không thể tạo ticket. Vui lòng thử lại.');
+      Alert.alert('Error', err?.message ?? 'Could not create ticket. Please try again.');
     }
   };
 

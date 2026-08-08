@@ -8,14 +8,15 @@ interface Props {
   onChangeText: (text: string) => void;
   placeholder?: string;
   autoFocus?: boolean;
-  /** `white` = nền trắng nổi trên nền kem; `sunken` = nền chìm (mặc định cũ). */
+  /** `white` = white background standing out on the cream background; `sunken` = recessed background (old default). */
   variant?: 'white' | 'sunken';
 }
 
 /**
- * Ô tìm kiếm dùng chung — nền chìm (card2), bo 12, KHÔNG viền.
- * Tách ra từ KbSearchBar khi màn "Loại pin" cần đúng kiểu này; để mỗi màn tự
- * dựng lại thì kiểu ô search sẽ lệch nhau như trước (nền trắng + viền).
+ * Shared search input — recessed background (card2), 12 border radius, NO border.
+ * Split out from KbSearchBar when the "Battery Type" screen needed exactly this style;
+ * if each screen builds its own, the search input style will drift as it did before
+ * (white background + border).
  */
 export function SearchBar({
   value,

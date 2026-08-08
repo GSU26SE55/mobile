@@ -24,8 +24,8 @@ const tabMeta: Record<
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 8);
-  // Tổng tin chưa đọc — BE đếm theo chat row nên tin có @mention đã nằm trong
-  // số này, KHÔNG cộng thêm list mention (sẽ đếm gấp đôi cùng 1 tin).
+  // Total unread messages — BE counts by chat row so messages with @mention are already
+  // included in this count, do NOT add the mention list on top (would double-count the same message).
   const { data: unread = 0 } = useChatUnreadCount();
 
   return (

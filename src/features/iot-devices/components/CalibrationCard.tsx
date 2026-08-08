@@ -34,7 +34,7 @@ export function CalibrationCard({
         </View>
         {expired && (
           <View style={styles.expiredBadge}>
-            <Text style={styles.expiredText}>Hết hạn</Text>
+            <Text style={styles.expiredText}>Expired</Text>
           </View>
         )}
         <Pressable hitSlop={10} onPress={onDelete} disabled={deleting} style={styles.deleteBtn}>
@@ -55,13 +55,13 @@ export function CalibrationCard({
       </View>
 
       <Text style={styles.line}>Calib: {formatDate(item.calibratedAt)}</Text>
-      <Text style={styles.line}>Hết hạn: {formatDate(item.expiresAt)}</Text>
+      <Text style={styles.line}>Expires: {formatDate(item.expiresAt)}</Text>
       {item.batteryAssetId ? (
         <Text style={styles.line} numberOfLines={1}>
-          Pin: {item.batteryAssetId}
+          Battery: {item.batteryAssetId}
         </Text>
       ) : (
-        <Text style={styles.line}>Phạm vi: cấp device</Text>
+        <Text style={styles.line}>Scope: device-level</Text>
       )}
       {item.notes ? (
         <Text style={styles.notes} numberOfLines={2}>

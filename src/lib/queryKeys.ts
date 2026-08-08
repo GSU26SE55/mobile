@@ -8,7 +8,7 @@ export const KEY = {
   sites:         ['sites'] as const,   // GH-57
   ambient:       ['ambient'] as const, // GH-57
   alerts:        ['alerts'] as const,
-  incidents:     ['incidents'] as const, // GH-55 — environmental incidents
+  incidents:     ['incidents'] as const, // GH-55 — environmental incidents (unchanged)
   tickets:       ['tickets'] as const,
   staffProfile:  ['staffProfile'] as const,
   staffTickets:  ['staffTickets'] as const,
@@ -21,8 +21,8 @@ export const KEY = {
   batteryTypes:  ['batteryTypes'] as const, // GH-56
   iotDevices:    ['iotDevices'] as const,   // GH-56
   loginHistory:  ['loginHistory'] as const,
-  chatsInbox:    ['chatsInbox'] as const,   // GH-68 — /chats/me
-  chatMentions:  ['chatMentions'] as const, // GH-68 — /chats/mentions/me
+  chatsInbox:    ['chatsInbox'] as const,   // GH-68 — /chats/me (unchanged)
+  chatMentions:  ['chatMentions'] as const, // GH-68 — /chats/mentions/me (unchanged)
 } as const;
 
 export const QUERY_KEY = {
@@ -57,10 +57,10 @@ export const QUERY_KEY = {
       [...KEY.sensorReadings, 'history', assetId, params] as const,
     aggregate: (assetId: string, params?: Record<string, unknown>) =>
       [...KEY.sensorReadings, 'aggregate', assetId, params] as const,
-    // GH-74 — key TÁCH RIÊNG khỏi `aggregate` để 2 endpoint không đè cache nhau.
+    // GH-74 — key KEPT SEPARATE from `aggregate` so the two endpoints don't overwrite each other's cache.
     aggregateHourly: (assetId: string, params?: Record<string, unknown>) =>
       [...KEY.sensorReadings, 'aggregate-hourly', assetId, params] as const,
-    // GH-74 — stats realtime từ SSE (§5.3bis). Key theo (assetId, window) — BE đẩy 2 window độc lập.
+    // GH-74 — realtime stats from SSE (§5.3bis). Keyed by (assetId, window) — BE pushes 2 independent windows.
     stats: (assetId: string, window: string) =>
       [...KEY.sensorReadings, 'stats', assetId, window] as const,
   },
@@ -76,11 +76,12 @@ export const QUERY_KEY = {
   tickets: {
     list:           (params?: Record<string, unknown>) => [...KEY.tickets, 'list', params] as const,
     detail:         (id: string) => [...KEY.tickets, 'detail', id] as const,
-    chats:          (id: string) => [...KEY.tickets, 'chats', id] as const,   // GH-44/GH-68 — infinite (cursor). Giữ key cho realtime prepend
+    chats:          (id: string) => [...KEY.tickets, 'chats', id] as const,   // GH-44/GH-68 — infinite (cursor). Key kept stable for realtime prepend
     chatUnreadCount:(id: string) => [...KEY.tickets, 'chat-unread-count', id] as const, // GH-68
     chatReactions:  (tid: string, cid: string) => [...KEY.tickets, 'chat-reactions', tid, cid] as const, // GH-68
     chatReaders:    (tid: string, cid: string) => [...KEY.tickets, 'chat-readers', tid, cid] as const, // Staff/Manager/Admin only
     activities:     (id: string) => [...KEY.tickets, 'activities', id] as const, // GH-44
+    kbSuggestions:  (id: string, topN: number) => [...KEY.tickets, 'kb-suggestions', id, topN] as const,
   },
   staffProfile: {
     me: () => [...KEY.staffProfile, 'me'] as const,
@@ -93,16 +94,16 @@ export const QUERY_KEY = {
   },
   notifications: {
     list: (params?: Record<string, unknown>) => [...KEY.notifications, 'list', params] as const,
-    // Feed cuộn vô hạn — tách khỏi `list` vì shape cache khác hẳn (pages[] của useInfiniteQuery),
-    // dùng chung key sẽ khiến hai hook ghi đè nhau.
+    // Infinite-scroll feed — kept separate from `list` since its cache shape is entirely different
+    // (pages[] from useInfiniteQuery); sharing a key would make the two hooks overwrite each other.
     infinite: (params?: Record<string, unknown>) => [...KEY.notifications, 'infinite', params] as const,
     unreadCount: () => [...KEY.notifications, 'unread-count'] as const,
   },
   notificationPreferences: {
-    // GH-83 — ma trận nhóm × kênh; chứa luôn `channels` nên đây là nguồn DUY NHẤT cho màn cài đặt.
-    // `detail()` cũ đã bỏ: giữ lại là tạo nguồn thứ hai cho cùng dữ liệu, và không ai đọc nữa.
+    // GH-83 — group × channel matrix; already includes `channels`, so this is the ONLY source for the settings screen.
+    // The old `detail()` was removed: keeping it would create a second source for the same data, and nothing reads it anymore.
     matrix: () => [...KEY.notificationPreferences, 'matrix'] as const,
-    // Bảng tra cứu type → nhóm; gần như tĩnh nên staleTime dài.
+    // Type → group lookup table; nearly static, so a long staleTime is fine.
     categories: () => [...KEY.notificationPreferences, 'categories'] as const,
   },
   files: {

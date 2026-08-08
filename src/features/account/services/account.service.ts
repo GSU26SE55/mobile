@@ -35,7 +35,7 @@ export const accountService = {
   verifyPhoneOtp: (data: PhoneOtpPayload) =>
     axiosInstance.post<CommonResponse<null>>(ACCOUNT.VERIFY_PHONE_OTP, data),
 
-  // GH-295: 2FA enroll flow 2 bước
+  // GH-295: 2FA enroll flow — 2 steps
   init2FA: () =>
     axiosInstance.post<CommonResponse<Init2faResponse>>(ACCOUNT.INIT_2FA),
 
@@ -54,11 +54,11 @@ export const accountService = {
   deleteAccount: () =>
     axiosInstance.delete<CommonResponse<null>>(ACCOUNT.DELETE),
 
-  // #AUTH-62: GDPR export — trả full data; hook đọc res.data.data (axios không unwrap).
+  // #AUTH-62: GDPR export — returns full data; the hook reads res.data.data (axios doesn't unwrap).
   exportMyData: () =>
     axiosInstance.get<CommonResponse<AccountDataExportDto>>(ACCOUNT.EXPORT),
 
-  // #AUTH-62: login history (audit log dạng phân trang)
+  // #AUTH-62: login history (paginated audit log)
   getLoginHistory: (params?: LoginHistoryParams) =>
     axiosInstance.get<CommonResponse<{ items: LoginHistoryDto[]; totalItems: number; pageNumber: number; pageSize: number; hasNextPage: boolean }>>(
       ACCOUNT.LOGIN_HISTORY,

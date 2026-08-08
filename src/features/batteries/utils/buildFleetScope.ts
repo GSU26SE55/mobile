@@ -1,11 +1,11 @@
 import { UserRole } from '@/src/shared/enums/session.enum';
 
-// GH-58 — dựng query `scope` cho SSE summary stream (docs/battery-realtime-description.md §4/§6).
+// GH-58 — builds the `scope` query for the SSE summary stream (docs/battery-realtime-description.md §4/§6).
 // Verified BE (BatteryRealtimeAuthorizationHelper): BatteryAsset.CustomerId == JWT AccountId
-// → Customer truyền `customer:{accountId}` (BE check customerId == actorUserId).
-// RBAC mobile: Customer chỉ `customer:{self}` / `assets:{pin sở hữu}`; Staff `assets:{bất kỳ}`.
+// → Customer passes `customer:{accountId}` (BE checks customerId == actorUserId).
+// Mobile RBAC: Customer only gets `customer:{self}` / `assets:{owned batteries}`; Staff gets `assets:{any}`.
 
-// BE giới hạn list `assets:` tối đa 50 id (TelemetryScope.MaxIds). KHÔNG áp cho `customer:` (1 id).
+// BE caps the `assets:` list at 50 ids (TelemetryScope.MaxIds). Does NOT apply to `customer:` (1 id).
 export const FLEET_MAX_ASSET_IDS = 50;
 
 export interface FleetScopeInput {
@@ -14,9 +14,9 @@ export interface FleetScopeInput {
 }
 
 /**
- * Customer → `customer:{accountId}` (mọi pin của mình, không giới hạn số pin).
- * Staff    → `assets:{id1,…}` (cap 50). Cần truyền assetIds.
- * Trả `null` nếu thiếu dữ liệu (Staff không có assetIds, hoặc role không hỗ trợ) → caller không mở stream.
+ * Customer → `customer:{accountId}` (all of their own batteries, no count limit).
+ * Staff    → `assets:{id1,…}` (capped at 50). Requires assetIds.
+ * Returns `null` if data is missing (Staff has no assetIds, or the role isn't supported) → caller does not open the stream.
  */
 export function buildFleetScope(role: UserRole, input: FleetScopeInput): string | null {
   if (role === UserRole.CUSTOMER) {
@@ -29,12 +29,12 @@ export function buildFleetScope(role: UserRole, input: FleetScopeInput): string 
     if (ids.length === 0) return null;
     if (ids.length > FLEET_MAX_ASSET_IDS) {
       console.warn(
-        `[buildFleetScope] ${ids.length} assetIds > ${FLEET_MAX_ASSET_IDS} (BE limit) — cắt còn ${FLEET_MAX_ASSET_IDS}.`,
+        `[buildFleetScope] ${ids.length} assetIds > ${FLEET_MAX_ASSET_IDS} (BE limit) — truncating to ${FLEET_MAX_ASSET_IDS}.`,
       );
     }
     return `assets:${ids.slice(0, FLEET_MAX_ASSET_IDS).join(',')}`;
   }
 
-  // Admin/Manager — scope rộng (customer/site/all…) ngoài phạm vi mobile.
+  // Admin/Manager — broad scopes (customer/site/all…) are outside mobile's scope.
   return null;
 }

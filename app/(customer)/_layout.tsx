@@ -33,8 +33,8 @@ export default function CustomerLayout() {
         name="edit-profile"
         options={{
           headerShown: true,
-          title: 'Chỉnh sửa thông tin',
-          headerBackTitle: 'Quay lại',
+          title: 'Edit Information',
+          headerBackTitle: 'Back',
           headerStyle: { backgroundColor: Colors.white },
           headerTintColor: Colors.primary,
           headerTitleStyle: { fontWeight: '600', color: Colors.text },

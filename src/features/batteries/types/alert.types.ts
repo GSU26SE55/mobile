@@ -1,4 +1,4 @@
-// Alert DTOs — mirror docs/api-battery.md §Nhóm 1.
+// Alert DTOs — mirror docs/api-battery.md §Group 1.
 import type {
   AlertSeverityEnum,
   AlertStatusEnum,
@@ -13,11 +13,11 @@ export {
 
 export interface AlertDto {
   id: string;
-  /** Chuỗi rỗng `""` cho alert cấp SITE (ambient 9/10/11, EnvironmentalIncident 14) — khi đó dùng `siteId`. */
+  /** Empty string `""` for SITE-level alerts (ambient 9/10/11, EnvironmentalIncident 14) — use `siteId` in that case. */
   batteryAssetId: string;
-  /** Sprint Bonus NS-21 (#661) — ID Site cho alert cấp site. `null` với alert gắn 1 pin cụ thể. */
+  /** Sprint Bonus NS-21 (#661) — Site ID for site-level alerts. `null` for alerts tied to a specific battery. */
   siteId: string | null;
-  /** Rỗng `""` cho alert cấp site (không gắn pin). */
+  /** Empty `""` for site-level alerts (not tied to a battery). */
   batterySerialNumber: string;
   anomalyType: AnomalyTypeEnum;
   severity: AlertSeverityEnum;
@@ -45,7 +45,7 @@ export interface AlertListParams {
   to?: string;
 }
 
-// Giá trị đo có thể null từ BE (thresholdValue/actualValue/unit là nullable).
+// Measured values may be null from BE (thresholdValue/actualValue/unit are nullable).
 export const formatMeasure = (
   value?: number | null,
   unit?: string | null,

@@ -42,16 +42,16 @@ export function NotificationList() {
     [data],
   );
 
-  // type → nhóm lấy từ BE (`GET /notification-preferences/categories`), KHÔNG nhân bản bảng ở client:
-  // thêm NotificationType mới mà client tự giữ bảng riêng là lệch ngay.
+  // type → category comes from BE (`GET /notification-preferences/categories`), NOT duplicated client-side:
+  // adding a new NotificationType while the client keeps its own table would go stale immediately.
   const typeToCategory = useMemo(() => {
     const map = new Map<number, NotificationCategoryEnum>();
     categoryMap?.forEach((e) => map.set(e.typeValue, e.categoryValue as NotificationCategoryEnum));
     return map;
   }, [categoryMap]);
 
-  // Type BE chưa khai báo trong map rơi về `Account` — khớp đúng nhánh mặc định của
-  // `NotificationCategoryMap.Resolve()` phía BE, để dòng đó không biến mất khỏi mọi chip.
+  // A BE type not yet declared in the map falls back to `Account` — matches the default branch of
+  // `NotificationCategoryMap.Resolve()` on the BE, so that row doesn't disappear from every chip.
   const categoryOf = useCallback(
     (n: NotificationDTO): NotificationCategoryEnum =>
       typeToCategory.get(n.type) ?? NotificationCategoryEnum.Account,
@@ -72,15 +72,15 @@ export function NotificationList() {
     [allItems, category, categoryOf],
   );
 
-  // Dùng chung notificationHref với luồng bấm-từ-banner (useNotificationTap) để 2 đường
-  // không điều hướng lệch nhau. Trước đây chỗ này chỉ xử lý entityType === 'Ticket'.
+  // Shares notificationHref with the tap-from-banner flow (useNotificationTap) so the two paths
+  // don't navigate differently. Previously this only handled entityType === 'Ticket'.
   const handlePress = (n: NotificationDTO) => {
-    // GH-83 — deep-link = mở được nội dung thật, mới tính là "Opened" (bằng chứng user chủ động mở).
-    // Bấm dòng không dẫn đi đâu chỉ là "Read". Tách 2 nhánh để open-rate không bị loãng — đúng lý do
-    // BE tách /opened khỏi /read, và khớp với logic web (NotificationBell).
+    // GH-83 — a deep-link that opens real content counts as "Opened" (proof the user actively opened it).
+    // Tapping a row that leads nowhere is just "Read". Split into 2 branches so open-rate isn't diluted —
+    // matches why BE separates /opened from /read, and matches the web logic (NotificationBell).
     //
-    // Đích đến lấy từ notificationHref (không phải ticketHref như bản GH-83 gốc) để phủ cả
-    // chat/mention, và để trùng đường với luồng bấm-từ-banner — xem chú thích ngay trên.
+    // Destination comes from notificationHref (not ticketHref like the original GH-83 version) to also
+    // cover chat/mention, and to match the tap-from-banner flow — see the comment right above.
     const deepLink = notificationHref(
       n.entityType,
       n.entityId,
@@ -89,7 +89,7 @@ export function NotificationList() {
     );
 
     if (isUnread(n)) {
-      // BE tự set ReadAt khi chuyển Opened ⇒ KHÔNG gọi kèm markRead, sẽ thừa một request.
+      // BE auto-sets ReadAt when transitioning to Opened ⇒ do NOT also call markRead, that would be an extra request.
       if (deepLink) markOpened.mutate(n.id);
       else markRead.mutate(n.id);
     }
@@ -109,9 +109,9 @@ export function NotificationList() {
     return (
       <View style={styles.center}>
         <Ionicons name="cloud-offline-outline" size={48} color={Colors.textFaint} />
-        <Text style={styles.emptyText}>Không tải được thông báo</Text>
+        <Text style={styles.emptyText}>Could not load notifications</Text>
         <Pressable style={styles.retryBtn} onPress={() => refetch()}>
-          <Text style={styles.retryText}>Thử lại</Text>
+          <Text style={styles.retryText}>Retry</Text>
         </Pressable>
       </View>
     );
@@ -121,14 +121,14 @@ export function NotificationList() {
     <View style={styles.root}>
       {unreadCount > 0 && (
         <View style={styles.actionRow}>
-          <Text style={styles.unreadText}>{unreadCount} chưa đọc</Text>
+          <Text style={styles.unreadText}>{unreadCount} unread</Text>
           <Pressable
             onPress={() => markAllRead.mutate()}
             disabled={markAllRead.isPending}
             style={styles.markAllBtn}
           >
             <Ionicons name="checkmark-done-outline" size={15} color={Colors.primary} />
-            <Text style={styles.markAllText}>Đánh dấu tất cả đã đọc</Text>
+            <Text style={styles.markAllText}>Mark all as read</Text>
           </Pressable>
         </View>
       )}
@@ -151,8 +151,8 @@ export function NotificationList() {
         refreshControl={
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />
         }
-        // Lọc chạy ở client nên một trang có thể không còn dòng nào thuộc nhóm đang chọn.
-        // Ngưỡng rộng + tải tiếp ngay cả khi `items` rỗng để chip nhóm hiếm không kẹt ở màn trống.
+        // Filtering runs client-side so a page may end up with no rows in the selected category.
+        // Wide threshold + keep loading even when `items` is empty, so a rare category chip doesn't get stuck on an empty screen.
         onEndReachedThreshold={0.5}
         onEndReached={() => {
           if (hasNextPage && !isFetchingNextPage) fetchNextPage();
@@ -166,7 +166,7 @@ export function NotificationList() {
           <View style={styles.empty}>
             <Ionicons name="notifications-off-outline" size={48} color={Colors.textFaint} />
             <Text style={styles.emptyText}>
-              {category === null ? 'Chưa có thông báo' : 'Không có thông báo thuộc nhóm này'}
+              {category === null ? 'No notifications yet' : 'No notifications in this category'}
             </Text>
           </View>
         }

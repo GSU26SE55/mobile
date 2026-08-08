@@ -5,7 +5,7 @@ import { Colors, Radius, Shadow } from '@/src/lib/theme';
 import { useAmbientTrend } from '../hooks/useAmbientTrend';
 import { AmbientGranularity, AmbientTrendPoint } from '../types/ambient.types';
 
-// Vẽ avg/max/min nhiệt độ theo bucket — react-native-gifted-charts (LineChart dataSet nhiều series).
+// Plots avg/max/min temperature per bucket — react-native-gifted-charts (LineChart dataSet with multiple series).
 const SERIES: { key: keyof Pick<AmbientTrendPoint, 'avgTemp' | 'maxTemp' | 'minTemp'>; color: string; label: string }[] = [
   { key: 'maxTemp', color: Colors.danger, label: 'Max' },
   { key: 'avgTemp', color: Colors.primary, label: 'Avg' },
@@ -13,9 +13,9 @@ const SERIES: { key: keyof Pick<AmbientTrendPoint, 'avgTemp' | 'maxTemp' | 'minT
 ];
 
 const GRANULARITIES: { key: AmbientGranularity; label: string }[] = [
-  { key: 'day', label: 'Ngày' },
-  { key: 'week', label: 'Tuần' },
-  { key: 'month', label: 'Tháng' },
+  { key: 'day', label: 'Day' },
+  { key: 'week', label: 'Week' },
+  { key: 'month', label: 'Month' },
 ];
 
 const CHART_HEIGHT = 180;
@@ -55,7 +55,7 @@ export function AmbientTrendChart({ siteId }: { siteId: string }) {
       return (
         <View style={styles.empty}>
           <ActivityIndicator color={Colors.primary} />
-          <Text style={styles.emptyText}>Đang tải dữ liệu…</Text>
+          <Text style={styles.emptyText}>Loading data…</Text>
         </View>
       );
     }
@@ -63,7 +63,7 @@ export function AmbientTrendChart({ siteId }: { siteId: string }) {
     if (data.length < 2) {
       return (
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>Chưa đủ dữ liệu để vẽ biểu đồ</Text>
+          <Text style={styles.emptyText}>Not enough data to draw a chart</Text>
         </View>
       );
     }
@@ -119,7 +119,7 @@ export function AmbientTrendChart({ siteId }: { siteId: string }) {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.titleRow}>
-            <Text style={styles.title}>Xu hướng nhiệt độ môi trường</Text>
+            <Text style={styles.title}>Ambient temperature trend</Text>
             {isFetching && !isLoading ? <ActivityIndicator size="small" color={Colors.textFaint} /> : null}
           </View>
           <View style={styles.rangeTabs}>

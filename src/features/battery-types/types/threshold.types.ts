@@ -1,6 +1,6 @@
-// Ngưỡng cảnh báo theo loại pin — BE: BatteryService ThresholdConfigsController
-// (GET /api/thresholds/by-type/{batteryTypeId}, role Admin/Manager/Staff đọc được).
-// Staff cần xem để biết vì sao 1 reading bị bắn Alert.
+// Alert threshold per battery type — BE: BatteryService ThresholdConfigsController
+// (GET /api/thresholds/by-type/{batteryTypeId}, readable by Admin/Manager/Staff roles).
+// Staff need to view this to understand why a reading triggered an Alert.
 export interface ThresholdConfigDto {
   id: string;
   batteryTypeId: string;
@@ -11,7 +11,7 @@ export interface ThresholdConfigDto {
   temperatureMin: number;
   socWarningThreshold: number;
   socCriticalThreshold: number;
-  // 4 field dưới nullable ở BE (decimal?) — không phải loại pin nào cũng cấu hình.
+  // The 4 fields below are nullable at BE (decimal?) — not every battery type has them configured.
   currentMaxCharge: number | null;
   currentMaxDischarge: number | null;
   sohWarningThreshold: number | null;

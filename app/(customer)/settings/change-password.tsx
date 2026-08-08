@@ -12,7 +12,7 @@ export default function ChangePasswordScreen() {
   const setFieldError = (field: string, msg: string) =>
     setFieldErrors((prev) => ({ ...prev, [field]: msg }));
 
-  // Form submit — dùng mutateAsync + try-catch + handleErrorApi (pattern giống FE)
+  // Form submit — use mutateAsync + try-catch + handleErrorApi (same pattern as FE)
   const handleSubmit = async (data: ChangePasswordInput) => {
     setFieldErrors({});
     try {

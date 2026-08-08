@@ -64,29 +64,29 @@ function useLiveWeather(siteId?: string, lat?: number | null, lon?: number | nul
   const temp = ambient?.ambientTemperature ?? openMeteoQuery.data?.temperature ?? 26;
   const weatherCode = openMeteoQuery.data?.weathercode ?? 0;
 
-  let label = 'Trời nắng';
+  let label = 'Sunny';
   let iconName: keyof typeof Ionicons.glyphMap = 'sunny-outline';
 
   if (ambient) {
     if (ambient.humidity != null && ambient.humidity > 80) {
-      label = 'Có mưa';
+      label = 'Rainy';
       iconName = 'rainy-outline';
     } else if (ambient.solarIrradiance != null && ambient.solarIrradiance < 100) {
-      label = 'Nhiều mây';
+      label = 'Cloudy';
       iconName = 'cloudy-outline';
     } else {
-      label = 'Trời nắng';
+      label = 'Sunny';
       iconName = 'sunny-outline';
     }
   } else if (openMeteoQuery.data) {
     if (weatherCode === 0 || weatherCode === 1) {
-      label = 'Trời nắng';
+      label = 'Sunny';
       iconName = 'sunny-outline';
     } else if (weatherCode === 2 || weatherCode === 3) {
-      label = 'Nhiều mây';
+      label = 'Cloudy';
       iconName = 'cloudy-outline';
     } else if (weatherCode >= 51) {
-      label = 'Có mưa';
+      label = 'Rainy';
       iconName = 'rainy-outline';
     }
   }
@@ -211,7 +211,7 @@ export default function DashboardScreen() {
             <View style={styles.weatherLine}>
               <Ionicons name={weather.iconName} size={20} color={Solar.ink} />
               <Text style={styles.tempText}>{weather.temp}</Text>
-              <Text style={styles.weatherDateText}>{weather.label} / Hôm nay, {todayString}</Text>
+              <Text style={styles.weatherDateText}>{weather.label} / Today, {todayString}</Text>
             </View>
           </View>
 
@@ -235,18 +235,18 @@ export default function DashboardScreen() {
         <View style={styles.hero}>
           <View style={styles.heroCopy}>
             <Text style={styles.heroValue}>{avgSoc != null ? `${Math.round(avgSoc)}%` : '—'}</Text>
-            <Text style={styles.heroLabel}>Dung lượng pin trung bình</Text>
+            <Text style={styles.heroLabel}>Average battery charge</Text>
           </View>
 
           <Image source={BATTERY_IMAGE} style={styles.heroBattery} contentFit="contain" transition={220} />
         </View>
 
-        {/* Main Chart Glass Card — Chuẩn Liquid Glass mờ ấm nhạt */}
+        {/* Main Chart Glass Card — warm, softly blurred Liquid Glass style */}
         <GlassSurface style={styles.waveCard} warm>
           <View style={styles.waveTop}>
             <View>
-              <Text style={styles.waveCaption}>Số lượng pin</Text>
-              <Text style={styles.waveCount}>{countLabel} Pin</Text>
+              <Text style={styles.waveCaption}>Battery count</Text>
+              <Text style={styles.waveCount}>{countLabel} Batteries</Text>
             </View>
           </View>
 
@@ -295,19 +295,19 @@ export default function DashboardScreen() {
             ) : (
               <View style={styles.waveEmpty}>
                 <Text style={styles.waveEmptyText}>
-                  {batteriesLoading ? 'Đang tải dữ liệu…' : 'Chưa có dữ liệu realtime'}
+                  {batteriesLoading ? 'Loading data…' : 'No realtime data yet'}
                 </Text>
               </View>
             )}
           </View>
 
-          {/* 3 ô thẻ: Điện áp, Dòng điện, Nhiệt độ */}
+          {/* 3 stat cells: Voltage, Current, Temperature */}
           <View style={styles.statStrip}>
             <Pressable
               style={[styles.statCell, activeTab === 'volt' && styles.statCellActive]}
               onPress={() => setActiveTab('volt')}
             >
-              <Text style={[styles.statLabel, activeTab === 'volt' && styles.statLabelActive]}>Điện áp</Text>
+              <Text style={[styles.statLabel, activeTab === 'volt' && styles.statLabelActive]}>Voltage</Text>
               <Text style={[styles.statValue, activeTab === 'volt' && styles.statValueActive]}>
                 {avgVolt != null ? `${avgVolt.toFixed(1)} V` : '20.0 V'}
               </Text>
@@ -317,7 +317,7 @@ export default function DashboardScreen() {
               style={[styles.statCell, activeTab === 'curr' && styles.statCellActive]}
               onPress={() => setActiveTab('curr')}
             >
-              <Text style={[styles.statLabel, activeTab === 'curr' && styles.statLabelActive]}>Dòng điện</Text>
+              <Text style={[styles.statLabel, activeTab === 'curr' && styles.statLabelActive]}>Current</Text>
               <Text style={[styles.statValue, activeTab === 'curr' && styles.statValueActive]}>
                 {avgCurr != null ? `${avgCurr.toFixed(1)} A` : '5.5 A'}
               </Text>
@@ -327,7 +327,7 @@ export default function DashboardScreen() {
               style={[styles.statCell, activeTab === 'temp' && styles.statCellActive]}
               onPress={() => setActiveTab('temp')}
             >
-              <Text style={[styles.statLabel, activeTab === 'temp' && styles.statLabelActive]}>Nhiệt độ</Text>
+              <Text style={[styles.statLabel, activeTab === 'temp' && styles.statLabelActive]}>Temperature</Text>
               <Text style={[styles.statValue, activeTab === 'temp' && styles.statValueActive]}>
                 {avgTemp != null ? `${Math.round(avgTemp)} °C` : '34 °C'}
               </Text>
@@ -335,11 +335,11 @@ export default function DashboardScreen() {
           </View>
         </GlassSurface>
 
-        {/* Section Header: "Các cục pin" */}
+        {/* Section Header: "My batteries" */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Các cục pin</Text>
+          <Text style={styles.sectionTitle}>My batteries</Text>
           <Pressable onPress={() => router.push('/(customer)/batteries' as any)}>
-            <Text style={styles.sectionCount}>Xem tất cả</Text>
+            <Text style={styles.sectionCount}>View all</Text>
           </Pressable>
         </View>
 
@@ -389,7 +389,7 @@ export default function DashboardScreen() {
                           {live ? `${live.voltage.toFixed(1)} V` : '—'}
                         </Text>
                         <Text style={styles.batteryCaption} numberOfLines={1}>
-                          {item.batteryTypeName || 'Điện áp hiện tại'}
+                          {item.batteryTypeName || 'Current voltage'}
                         </Text>
                       </View>
                     </GlassSurface>
@@ -400,7 +400,7 @@ export default function DashboardScreen() {
           />
         )}
 
-        {/* GH-78 — điểm vào Blog cho Customer. */}
+        {/* GH-78 — Blog entry point for Customer. */}
         <Pressable
           style={styles.blogEntry}
           onPress={() => router.push('/(customer)/blog' as never)}
@@ -409,8 +409,8 @@ export default function DashboardScreen() {
             <Ionicons name="newspaper-outline" size={20} color={Colors.primary} />
           </View>
           <View style={styles.blogBody}>
-            <Text style={styles.blogTitle}>Tin tức</Text>
-            <Text style={styles.blogDesc}>Bài viết mới từ hệ thống</Text>
+            <Text style={styles.blogTitle}>News</Text>
+            <Text style={styles.blogDesc}>Latest posts from the system</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={Colors.gray} />
         </Pressable>
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
   waveEmpty: { height: 95, justifyContent: 'center', alignItems: 'center' },
   waveEmptyText: { fontSize: 12, color: Solar.mute, fontWeight: '600' },
 
-  // GH-78 — hàng điểm vào Blog.
+  // GH-78 — Blog entry row.
   blogEntry: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardVisible } from '@/src/hooks/useKeyboardVisible';
 import { Ionicons } from '@expo/vector-icons';
 import { HttpError } from '@/src/lib/errors';
 import { P } from '@/src/lib/authz';
@@ -88,7 +89,7 @@ function PriorityBadge({ priority }: { priority: string | null }) {
   // priority null khi ticket chưa triage — hiển thị nhãn trung tính, không nhầm P3.
   const cfg = priority
     ? (PRIORITY_MAP[priority] ?? { label: priority, badge: 'p3' as const })
-    : { label: 'Chưa phân loại', badge: 'p3' as const };
+    : { label: 'Unclassified', badge: 'p3' as const };
   const bc = BadgeColors[cfg.badge];
   return (
     <View style={[styles.badge, { backgroundColor: bc.bg }]}>
@@ -99,12 +100,12 @@ function PriorityBadge({ priority }: { priority: string | null }) {
 }
 
 const STEP_CONFIGS = [
-  { key: 'create', label: 'Tạo mới' },
-  { key: 'accept', label: 'Tiếp nhận' },
-  { key: 'assign', label: 'Phân công' },
-  { key: 'progress', label: 'Đang xử lý' },
-  { key: 'resolve', label: 'Đã xử lý' },
-  { key: 'close', label: 'Đã đóng' },
+  { key: 'create', label: 'Created' },
+  { key: 'accept', label: 'Accepted' },
+  { key: 'assign', label: 'Assigned' },
+  { key: 'progress', label: 'Processing' },
+  { key: 'resolve', label: 'Resolved' },
+  { key: 'close', label: 'Closed' },
 ];
 
 function HorizontalStepper({ status }: { status: TicketStatusEnum }) {
@@ -121,7 +122,7 @@ function HorizontalStepper({ status }: { status: TicketStatusEnum }) {
 
   return (
     <View style={[styles.stepperContainer, Shadow]}>
-      <Text style={styles.stepperTitle}>Tiến độ xử lý</Text>
+      <Text style={styles.stepperTitle}>Processing progress</Text>
       <View style={styles.stepperRow}>
         {STEP_CONFIGS.map((step, idx) => {
           const done = idx < activeIndex;
@@ -181,6 +182,7 @@ export function CustomerTicketDetailScreen() {
 
 function TicketDetailScreenInner() {
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardVisible();
   const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const { data: ticket, isLoading, isError, refetch } = useTicketDetail(id ?? '');
   const imageHeaders = useAuthImageHeaders();
@@ -243,9 +245,9 @@ function TicketDetailScreenInner() {
     return (
       <View style={styles.center}>
         <Ionicons name="alert-circle-outline" size={32} color={Colors.textFaint} />
-        <Text style={styles.errorMsg}>Không thể tải ticket.</Text>
+        <Text style={styles.errorMsg}>Failed to load ticket.</Text>
         <Pressable onPress={() => refetch()} style={[styles.retryBtn, ShadowPrimary]}>
-          <Text style={styles.retryText}>Thử lại</Text>
+          <Text style={styles.retryText}>Retry</Text>
         </Pressable>
       </View>
     );
@@ -278,7 +280,7 @@ function TicketDetailScreenInner() {
   const handlePickAttachment = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Quyền truy cập', 'Cần quyền truy cập thư viện ảnh để đính kèm file.');
+      Alert.alert('Access Permission', 'Photo library permission is required to attach files.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -290,7 +292,7 @@ function TicketDetailScreenInner() {
     const asset = result.assets[0];
     const mimeType = asset.mimeType ?? 'image/jpeg';
     if (!ALLOWED_MIME.includes(mimeType)) {
-      Alert.alert('Định dạng không hỗ trợ', 'Chỉ chấp nhận ảnh JPG, PNG, PDF, DOC, DOCX.');
+      Alert.alert('Unsupported Format', 'Only JPG, PNG, PDF, DOC, and DOCX files are accepted.');
       return;
     }
     const name = asset.fileName ?? `attachment_${Date.now()}.jpg`;
@@ -298,7 +300,7 @@ function TicketDetailScreenInner() {
       const uploaded = await uploadAttachment({ uri: asset.uri, name, type: mimeType });
       setAttachments((prev) => [...prev, uploaded]);
     } catch {
-      Alert.alert('Lỗi', 'Không thể tải file lên. Vui lòng thử lại.');
+      Alert.alert('Error', 'Failed to upload file. Please try again.');
     }
   };
 
@@ -311,12 +313,12 @@ function TicketDetailScreenInner() {
     const ids = [...selectedChatIds];
     if (ids.length === 0) return;
     Alert.alert(
-      'Xóa tin nhắn',
-      `Xóa ${ids.length} tin nhắn đã chọn? Không thể hoàn tác.`,
+      'Delete Messages',
+      `Delete ${ids.length} selected message(s)? This action cannot be undone.`,
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Xóa',
+          text: 'Delete',
           style: 'destructive',
           onPress: () => {
             void (async () => {
@@ -325,7 +327,7 @@ function TicketDetailScreenInner() {
                 exitSelectMode();
                 // BE partial success: id không tìm thấy / đã xoá trước đó rơi vào skipped.
                 if (res && res.skipped > 0) {
-                  Alert.alert('Đã xóa', `Đã xóa ${res.deleted} tin. ${res.skipped} tin không xóa được.`);
+                  Alert.alert('Deleted', `Deleted ${res.deleted} message(s). ${res.skipped} message(s) could not be deleted.`);
                 }
               } catch {
                 // handleErrorApi trong hook đã hiện toast/alert.
@@ -363,7 +365,7 @@ function TicketDetailScreenInner() {
       // Chỉ fallback refetch khi hub không kết nối (WS bị chặn / chưa connect).
       if (!isConnected) commentsQuery.refetch();
     } catch {
-      Alert.alert('Lỗi', 'Không thể gửi bình luận. Vui lòng thử lại.');
+      Alert.alert('Error', 'Failed to send comment. Please try again.');
     }
   };
 
@@ -376,7 +378,7 @@ function TicketDetailScreenInner() {
     try {
       await voiceRecorder.start();
     } catch {
-      Alert.alert('Quyền truy cập', 'Cần quyền truy cập micro để ghi âm.');
+      Alert.alert('Access Permission', 'Microphone permission is required to record audio.');
     }
   };
   const handleStopRecording = async () => {
@@ -394,7 +396,7 @@ function TicketDetailScreenInner() {
       await rateTicket(data);
       setShowRateModal(false);
     } catch {
-      Alert.alert('Lỗi', 'Không thể gửi đánh giá. Vui lòng thử lại.');
+      Alert.alert('Error', 'Failed to submit rating. Please try again.');
     }
   };
 
@@ -404,9 +406,9 @@ function TicketDetailScreenInner() {
       setShowReopenModal(false);
     } catch (err) {
       const msg = err instanceof HttpError && err.statusCode === 403
-        ? 'Đã quá 7 ngày để mở lại ticket.'
-        : 'Không thể mở lại ticket. Vui lòng thử lại.';
-      Alert.alert('Lỗi', msg);
+        ? 'More than 7 days have passed, cannot reopen ticket.'
+        : 'Failed to reopen ticket. Please try again.';
+      Alert.alert('Error', msg);
     }
   };
 
@@ -429,6 +431,10 @@ function TicketDetailScreenInner() {
       style={styles.root}
       behavior="padding"
       enabled={Platform.OS === 'ios'}
+      // View trải từ y=0 nên KAV không tự trừ được safe-area dưới: nó đẩy dư
+      // đúng bằng chiều cao home indicator, tạo khoảng trắng giữa composer và
+      // bàn phím. Offset âm bù lại phần đó.
+      keyboardVerticalOffset={-insets.bottom}
     >
       {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
@@ -445,13 +451,13 @@ function TicketDetailScreenInner() {
           style={[styles.tab, activeTab === 'info' && styles.tabActive]}
           onPress={() => setActiveTab('info')}
         >
-          <Text style={[styles.tabText, activeTab === 'info' && styles.tabTextActive]}>Thông tin</Text>
+          <Text style={[styles.tabText, activeTab === 'info' && styles.tabTextActive]}>Information</Text>
         </Pressable>
         <Pressable
           style={[styles.tab, activeTab === 'chat' && styles.tabActive]}
           onPress={() => setActiveTab('chat')}
         >
-          <Text style={[styles.tabText, activeTab === 'chat' && styles.tabTextActive]}>Trao đổi</Text>
+          <Text style={[styles.tabText, activeTab === 'chat' && styles.tabTextActive]}>Discussion</Text>
           {/* Số CHƯA ĐỌC, không phải tổng số tin. Ẩn khi đang mở chính tab này:
               tin mới về qua SignalR làm badge nháy lên trước khi thread kịp
               mark-read, mà user thì đang đọc ngay tin đó. */}
@@ -487,7 +493,7 @@ function TicketDetailScreenInner() {
           {isWaiting && (
             <View style={styles.waitBanner}>
               <Ionicons name="time-outline" size={14} color="#fff" />
-              <Text style={styles.waitText}>Đang chờ phản hồi của bạn</Text>
+              <Text style={styles.waitText}>Awaiting your response</Text>
             </View>
           )}
 
@@ -503,15 +509,15 @@ function TicketDetailScreenInner() {
                 {battery
                   ? battery.batteryTypeName
                   : ticket.batteryAssetId
-                    ? 'Đang tải thiết bị…'
-                    : 'Chưa liên kết thiết bị'}
+                    ? 'Loading device...'
+                    : 'No device linked'}
               </Text>
               <Text style={styles.batteryLinkSub} numberOfLines={1}>
                 {battery
                   ? `${battery.serialNumber}${battery.siteName ? ` · ${battery.siteName}` : ''}`
                   : ticket.batteryAssetId
-                    ? 'Chạm để xem chi tiết'
-                    : 'Ticket không gắn với pin cụ thể'}
+                    ? 'Tap to view details'
+                    : 'Ticket not linked to a specific battery'}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
@@ -535,22 +541,22 @@ function TicketDetailScreenInner() {
                   </View>
                   <View style={styles.assignInfo}>
                     <Text style={styles.assignLabel}>
-                      Kỹ thuật viên
+                      Technicians
                       {/* >1 người thì nói rõ tổng số ngay ở nhãn; danh sách tên nằm ngay dưới. */}
                       {supporterNames.length > 0 &&
-                        ` · ${supporterNames.length + (primaryName ? 1 : 0)} người`}
+                        ` · ${supporterNames.length + (primaryName ? 1 : 0)} assignees`}
                     </Text>
                     <Text style={styles.assignValue}>
-                      {primaryName ?? 'Chưa phân công'}
+                      {primaryName ?? 'Unassigned'}
                       {primaryName && supporterNames.length > 0 && (
-                        <Text style={styles.assignTime}> · phụ trách chính</Text>
+                        <Text style={styles.assignTime}> · primary handler</Text>
                       )}
                     </Text>
                     {/* Mỗi supporter một dòng — nối bằng dấu phẩy thì tên dài bị cắt cụt. */}
                     {supporterNames.map((name) => (
                       <Text key={name} style={styles.assignSupporter} numberOfLines={1}>
                         {name}
-                        <Text style={styles.assignTime}> · hỗ trợ</Text>
+                        <Text style={styles.assignTime}> · support</Text>
                       </Text>
                     ))}
                   </View>
@@ -561,7 +567,7 @@ function TicketDetailScreenInner() {
                       <Ionicons name="person-add-outline" size={16} color={Colors.textMute} />
                     </View>
                     <View style={styles.assignInfo}>
-                      <Text style={styles.assignLabel}>Phân công bởi</Text>
+                      <Text style={styles.assignLabel}>Assigned by</Text>
                       <Text style={styles.assignValue}>
                         {assignActivity.actorDisplayName ?? assignActivity.actorRole}
                         <Text style={styles.assignTime}>
@@ -578,13 +584,13 @@ function TicketDetailScreenInner() {
           {/* Descriptions & resolution info */}
           {ticket.description ? (
             <View style={[styles.descCard, Shadow]}>
-              <Text style={styles.sectionH}>Mô tả ban đầu</Text>
+              <Text style={styles.sectionH}>Initial description</Text>
               <Text style={styles.descText}>{ticket.description}</Text>
 
               {/* Thời điểm phát hiện — Customer đã nhập khi tạo ticket. */}
               {ticket.detectedAt ? (
                 <Text style={styles.detectedInfo}>
-                  Phát hiện lúc:{' '}
+                  Detected at:{' '}
                   {fmtDateTime(ticket.detectedAt)}
                 </Text>
               ) : null}
@@ -592,7 +598,7 @@ function TicketDetailScreenInner() {
               {/* Attachments — BE trả mảng FileId (string[]) */}
               {(ticket.attachmentFileIds?.length ?? 0) > 0 && (
                 <>
-                  <Text style={[styles.sectionH, { marginTop: 14, marginBottom: 8 }]}>Ảnh đính kèm</Text>
+                  <Text style={[styles.sectionH, { marginTop: 14, marginBottom: 8 }]}>Attached images</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.attachRow}>
                     {ticket.attachmentFileIds!.map((fileId, i) => (
                       <Pressable key={fileId ?? `att-${i}`} style={styles.attachCard} onPress={() => setViewingImage(fileId)}>
@@ -607,7 +613,7 @@ function TicketDetailScreenInner() {
 
           {ticket.resolutionSummary ? (
             <View style={[styles.descCard, Shadow]}>
-              <Text style={styles.sectionH}>Kết quả xử lý</Text>
+              <Text style={styles.sectionH}>Resolution details</Text>
               <Text style={styles.descText}>{ticket.resolutionSummary}</Text>
             </View>
           ) : null}
@@ -617,8 +623,8 @@ function TicketDetailScreenInner() {
             <View style={[styles.resolvedCard, Shadow]}>
               <Ionicons name="checkmark-circle" size={24} color="#2F7A2F" />
               <View style={{ flex: 1 }}>
-                <Text style={styles.resolvedTitle}>Ticket đã được xử lý</Text>
-                <Text style={styles.resolvedSub}>Vui lòng đánh giá để đóng ticket</Text>
+                <Text style={styles.resolvedTitle}>Ticket has been resolved</Text>
+                <Text style={styles.resolvedSub}>Please rate to close the ticket</Text>
               </View>
             </View>
           )}
@@ -628,10 +634,10 @@ function TicketDetailScreenInner() {
             <View style={[styles.actionCard, Shadow]}>
               <Pressable style={[styles.rateBtn, ShadowPrimary]} onPress={() => setShowRateModal(true)}>
                 <Ionicons name="star" size={16} color="#fff" />
-                <Text style={styles.actionBtnText}>Đánh giá ticket</Text>
+                <Text style={styles.actionBtnText}>Rate ticket</Text>
               </Pressable>
               <Pressable style={styles.reopenLink} onPress={() => setShowReopenModal(true)}>
-                <Text style={styles.reopenLinkText}>Yêu cầu mở lại ticket</Text>
+                <Text style={styles.reopenLinkText}>Request to reopen ticket</Text>
               </Pressable>
             </View>
           )}
@@ -639,14 +645,14 @@ function TicketDetailScreenInner() {
           {isClosed && (
             <View style={[styles.closedCard, Shadow]}>
               <Ionicons name="lock-closed-outline" size={18} color={Colors.textMute} />
-              <Text style={styles.closedText}>Ticket đã được đóng hoàn toàn</Text>
+              <Text style={styles.closedText}>Ticket has been closed completely</Text>
             </View>
           )}
 
           {/* Historical activities timeline — GH-44: GET /activities standalone */}
           {activities.length > 0 && (
             <View style={[styles.timelineCard, Shadow]}>
-              <Text style={styles.sectionH}>Lịch sử hoạt động</Text>
+              <Text style={styles.sectionH}>Activity history</Text>
               <ActivityTimeline activities={activities} />
             </View>
           )}
@@ -704,7 +710,7 @@ function TicketDetailScreenInner() {
                   try {
                     await downloadAttachment({ chatId: comment.id, fileId: fid, fileName: `tep-${fid.slice(0, 8)}` });
                   } catch (e) {
-                    Alert.alert('Tải tệp', (e as Error).message);
+                    Alert.alert('Download File', (e as Error).message);
                     break;
                   }
                 }
@@ -766,7 +772,9 @@ function TicketDetailScreenInner() {
           <View
             style={[
               styles.composer,
-              { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 12 }
+              // Bàn phím mở đã che vùng home indicator — cộng thêm insets.bottom
+              // lúc này chỉ tạo khoảng trắng thừa giữa ô nhập và bàn phím.
+              { paddingBottom: !keyboardVisible && insets.bottom > 0 ? insets.bottom + 8 : 12 }
             ]}
           >
             <Pressable style={styles.composerIcon} onPress={handlePickAttachment} disabled={isUploading}>
@@ -778,7 +786,7 @@ function TicketDetailScreenInner() {
               style={styles.composerInput}
               value={commentText}
               onChangeText={(t) => { setCommentText(t); setCommentError(''); notifyTyping(); }}
-              placeholder="Nhập tin nhắn..."
+              placeholder="Type a message..."
               placeholderTextColor={Colors.textFaint}
               multiline
               maxLength={1000}

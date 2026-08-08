@@ -1,7 +1,7 @@
-// Environmental Incident enums — cấp site (smoke/fire/flood…).
-// Mirror docs/api-battery.md §Nhóm 9 (EnvironmentalIncidentTypeEnum / StatusEnum).
-// ⚠️ StatusEnum.Resolved = 3 (KHÁC AlertStatusEnum.Resolved = 4) — KHÔNG tái dùng badge alert.
-// Severity dùng chung AlertSeverityEnum (shared/enums/alert.enum.ts).
+// Environmental Incident enums — site-level (smoke/fire/flood…).
+// Mirror docs/api-battery.md §Group 9 (EnvironmentalIncidentTypeEnum / StatusEnum).
+// ⚠️ StatusEnum.Resolved = 3 (DIFFERENT from AlertStatusEnum.Resolved = 4) — do NOT reuse the alert badge.
+// Severity shares AlertSeverityEnum (shared/enums/alert.enum.ts).
 
 export const EnvironmentalIncidentTypeEnum = {
   Smoke: 1,

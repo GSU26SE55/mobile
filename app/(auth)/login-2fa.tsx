@@ -20,13 +20,13 @@ import { CHALLENGE_TOKEN_KEY, Verify2faLoginPayload } from '@/src/features/auth/
 import { handleErrorApi } from '@/src/lib/errors';
 import { Colors } from '@/src/lib/theme';
 
-// 3 mode loại trừ nhau — KHÔNG bao giờ gửi isBackupCode & isSmsCode cùng true (BE trả 400).
+// 3 mutually exclusive modes — NEVER send isBackupCode & isSmsCode both true (BE returns 400).
 type Mode = 'totp' | 'backup' | 'sms';
 
 const SUBTITLES: Record<Mode, string> = {
-  totp: 'Nhập mã 6 số từ ứng dụng Authenticator để tiếp tục.',
-  backup: 'Nhập mã dự phòng (backup code) định dạng xxxx-xxxx.',
-  sms: 'Nhập mã xác thực 6 số đã gửi qua tin nhắn SMS.',
+  totp: 'Enter the 6-digit code from your Authenticator app to continue.',
+  backup: 'Enter a backup code in xxxx-xxxx format.',
+  sms: 'Enter the 6-digit verification code sent via SMS.',
 };
 
 export default function Login2faScreen() {
@@ -59,8 +59,8 @@ export default function Login2faScreen() {
     return () => {
       active = false;
     };
-    // Chạy 1 lần lúc mount. `router` của expo-router là singleton ổn định —
-    // thêm vào deps không đổi hành vi, chỉ làm nhiễu ý đồ "mount-only".
+    // Runs once on mount. expo-router's `router` is a stable singleton —
+    // adding it to deps wouldn't change behavior, just muddy the "mount-only" intent.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -91,7 +91,7 @@ export default function Login2faScreen() {
       isBackupCode: mode === 'backup',
       isSmsCode: mode === 'sms',
     };
-    // trust device chỉ áp dụng TOTP/SMS (server bỏ qua với backup code).
+    // trust device only applies to TOTP/SMS (server ignores it for backup code).
     if (mode !== 'backup' && trustDevice) {
       payload.trustDevice = true;
       const label = trustLabel.trim();
@@ -120,10 +120,10 @@ export default function Login2faScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Xác thực 2 lớp</Text>
+          <Text style={styles.title}>Two-Factor Authentication</Text>
           <Text style={styles.subtitle}>{SUBTITLES[mode]}</Text>
           {mode === 'sms' && maskedPhone ? (
-            <Text style={styles.smsHint}>Đã gửi tới số {maskedPhone}</Text>
+            <Text style={styles.smsHint}>Sent to {maskedPhone}</Text>
           ) : null}
         </View>
 
@@ -164,7 +164,7 @@ export default function Login2faScreen() {
             </>
           ) : (
             <View style={styles.inputFieldSection}>
-              <Text style={styles.label}>Mã dự phòng</Text>
+              <Text style={styles.label}>Backup Code</Text>
               <View style={[styles.inputRow, focused && styles.inputRowFocused]}>
                 <TextInput
                   style={styles.input}
@@ -188,15 +188,15 @@ export default function Login2faScreen() {
                   size={22}
                   color={trustDevice ? '#34C759' : '#B0AEA6'}
                 />
-                <Text style={styles.trustText}>Tin cậy thiết bị này trong 30 ngày</Text>
+                <Text style={styles.trustText}>Trust this device for 30 days</Text>
               </Pressable>
               {trustDevice && (
                 <View style={styles.inputFieldSection}>
-                  <Text style={styles.label}>Tên thiết bị (tuỳ chọn)</Text>
+                  <Text style={styles.label}>Device Name (optional)</Text>
                   <View style={styles.inputRow}>
                     <TextInput
                       style={styles.input}
-                      placeholder="vd: Điện thoại của tôi"
+                      placeholder="e.g. My Phone"
                       placeholderTextColor={Colors.textFaint}
                       maxLength={120}
                       value={trustLabel}
@@ -216,7 +216,7 @@ export default function Login2faScreen() {
             {verify.isPending ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.submitText}>Xác thực</Text>
+              <Text style={styles.submitText}>Verify</Text>
             )}
           </Pressable>
 
@@ -226,18 +226,18 @@ export default function Login2faScreen() {
                 {sendSms.isPending ? (
                   <ActivityIndicator color={Colors.primary} size="small" />
                 ) : (
-                  <Text style={styles.toggleText}>Gửi mã qua tin nhắn SMS</Text>
+                  <Text style={styles.toggleText}>Send Code via SMS</Text>
                 )}
               </Pressable>
             )}
 
             {mode !== 'backup' ? (
               <Pressable onPress={() => switchMode('backup')} style={styles.toggleBtn}>
-                <Text style={styles.toggleText}>Sử dụng mã dự phòng</Text>
+                <Text style={styles.toggleText}>Use a Backup Code</Text>
               </Pressable>
             ) : (
               <Pressable onPress={() => switchMode('totp')} style={styles.toggleBtn}>
-                <Text style={styles.toggleText}>Sử dụng ứng dụng Authenticator</Text>
+                <Text style={styles.toggleText}>Use Authenticator App</Text>
               </Pressable>
             )}
           </View>

@@ -4,7 +4,7 @@ import { Colors } from '@/src/lib/theme';
 import { useMyChats } from '@/src/features/tickets/hooks/useChatInbox';
 import { ChatInboxList } from '@/src/features/tickets/components/ChatInboxList';
 
-// GH-68 — inbox chat của tôi (FLAT, BE không group). Tap → mở ticket chứa chat.
+// GH-68 — my chat inbox (FLAT, BE does not group). Tap → open the ticket containing the chat.
 export default function ChatInboxScreen() {
   const { data: chats = [], isLoading, refetch, isRefetching } = useMyChats();
 

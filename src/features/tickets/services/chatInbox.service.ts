@@ -3,7 +3,7 @@ import { ENDPOINTS } from '@/src/lib/endpoints';
 import { CommonResponse, PaginationResponse } from '@/src/types/api.types';
 import { TicketCommentDTO, TicketChatMentionDTO } from '../types/ticket.types';
 
-// GH-68 — chat cross-ticket (Mọi role): inbox tổng, mentions, GDPR erase.
+// GH-68 — cross-ticket chat (All roles): combined inbox, mentions, GDPR erase.
 export interface ChatInboxParams {
   page?: number;
   pageSize?: number;
@@ -14,9 +14,9 @@ export interface MentionListParams {
 }
 
 /**
- * Số tin chưa đọc của 1 khách hàng.
- * BE đếm theo bản ghi chat nên 1 tin có kèm @mention vẫn là 1 — KHÔNG cộng
- * thêm list mention vào, làm vậy sẽ đếm gấp đôi.
+ * Unread message count for one customer.
+ * BE counts by chat record, so a message with an @mention still counts as 1 — do NOT
+ * add the mention list on top, that would double-count.
  */
 export interface UnreadCountByCustomerDTO {
   customerId: string;
@@ -24,17 +24,17 @@ export interface UnreadCountByCustomerDTO {
 }
 
 export const chatInboxService = {
-  /** Tổng unread chat toàn hệ thống (đã bao gồm cả tin có mention). */
+  /** Total unread chat count system-wide (includes messages with mentions). */
   getMyUnreadCount: () =>
     axiosInstance.get<CommonResponse<number>>(ENDPOINTS.CHATS.UNREAD_COUNT),
 
-  /** Unread gom theo từng khách hàng — 1 call cho cả màn Khách hàng. */
+  /** Unread counts grouped by customer — 1 call for the whole Customers screen. */
   getUnreadByCustomer: () =>
     axiosInstance.get<CommonResponse<UnreadCountByCustomerDTO[]>>(
       ENDPOINTS.CHATS.UNREAD_BY_CUSTOMER,
     ),
 
-  // BE trả FLAT TicketChatDTO[] (sort DESC), KHÔNG group theo ticket.
+  // BE returns a FLAT TicketChatDTO[] (sorted DESC), NOT grouped by ticket.
   getMyChats: (params?: ChatInboxParams) =>
     axiosInstance.get<CommonResponse<PaginationResponse<TicketCommentDTO>>>(
       ENDPOINTS.CHATS.ME,
@@ -47,9 +47,9 @@ export const chatInboxService = {
       { params },
     ),
 
-  // GDPR — overwrite body toàn bộ chat của mình bằng [ERASED].
-  // `data` LUÔN null — ChatEraseUserDataCommandHandler không set Data ở nhánh nào.
-  // Số lượng đã xoá chỉ nằm trong `message`, KHÔNG có field erasedCount.
+  // GDPR — overwrite the body of all of this user's chats with [ERASED].
+  // `data` is ALWAYS null — ChatEraseUserDataCommandHandler doesn't set Data on any branch.
+  // The erased count only appears in `message`, there is NO erasedCount field.
   eraseMyData: () =>
     axiosInstance.post<CommonResponse<null>>(ENDPOINTS.CHATS.ERASE_MY_DATA),
 };

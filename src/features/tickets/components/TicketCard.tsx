@@ -21,12 +21,12 @@ const PRIORITY_LABEL: Record<string, string> = {
 };
 
 const CATEGORY_LABEL: Record<string, string> = {
-  Charging: 'Sạc pin',
-  Overheat: 'Quá nhiệt',
-  NoPower: 'Mất điện',
-  Performance: 'Hiệu suất',
-  Repair: 'Sửa chữa',
-  Other: 'Khác',
+  Charging: 'Charging',
+  Overheat: 'Overheating',
+  NoPower: 'Power outage',
+  Performance: 'Performance',
+  Repair: 'Repair',
+  Other: 'Other',
 };
 
 interface Props {
@@ -39,7 +39,7 @@ export function TicketCard({ ticket, onPress }: Props) {
   const pColors = BadgeColors[pKey];
   const pLabel = ticket.priority
     ? (PRIORITY_LABEL[ticket.priority] ?? ticket.priority)
-    : 'Chưa phân loại';
+    : 'Unclassified';
 
   // BE trả kèm `staffName` trong assignments nên card hiện được TÊN thật.
   // Nhiều người thì chỉ show 2 tên đầu, dư bao nhiêu đếm số (xem assignmentSummary).
@@ -60,7 +60,7 @@ export function TicketCard({ ticket, onPress }: Props) {
                 name="chatbubble-ellipses"
                 size={14}
                 color={Solar.yellowDeep}
-                accessibilityLabel="Có tin nhắn chưa đọc"
+                accessibilityLabel="Unread messages"
               />
             )}
 

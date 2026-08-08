@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { batteryService } from '../services/battery.service';
 
-// Snapshot realtime — poll mỗi 30s (nhất quán Web: staleTime 0 + refetchInterval).
+// Realtime snapshot — polls every 30s (consistent with Web: staleTime 0 + refetchInterval).
 export function useBatteryAssetRealtime(id: string) {
   return useQuery({
     queryKey: QUERY_KEY.batteryAssets.realtime(id),

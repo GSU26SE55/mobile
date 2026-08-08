@@ -10,7 +10,7 @@ export const staffTicketService = {
   getMyTickets: (params?: StaffTicketListParams) =>
     axiosInstance.get<CommonResponse<PaginationResponse<TicketDTO>>>(STAFF_TICKETS.MY_LIST, { params }),
 
-  // GH-67 — KPI snapshot theo JWT (không query param).
+  // GH-67 — KPI snapshot scoped by JWT (no query param).
   getDashboardStats: () =>
     axiosInstance.get<CommonResponse<StaffTicketDashboardStatsDto>>(STAFF_TICKETS.DASHBOARD_STATS),
 

@@ -10,7 +10,7 @@ import {
 
 // GH-56 — IoT device lookup + calibration (Staff).
 export const iotDeviceService = {
-  // Cầu nối deviceCode → deviceId (GUID). 404 nếu không khớp.
+  // Bridges deviceCode → deviceId (GUID). 404 if no match.
   getByCode: (deviceCode: string) =>
     axiosInstance.get<CommonResponse<IotDeviceDto>>(ENDPOINTS.IOT_DEVICES.BY_CODE(deviceCode)),
 
@@ -26,7 +26,7 @@ export const iotDeviceService = {
       payload,
     ),
 
-  // G1: DELETE trả HTTP 200 + CommonResponse<object> → caller check isSuccess, KHÔNG check 204.
+  // G1: DELETE returns HTTP 200 + CommonResponse<object> → caller checks isSuccess, does NOT check 204.
   deleteCalibration: (deviceId: string, calibrationId: string) =>
     axiosInstance.delete<CommonResponse<object>>(
       ENDPOINTS.IOT_DEVICES.CALIBRATION_ITEM(deviceId, calibrationId),

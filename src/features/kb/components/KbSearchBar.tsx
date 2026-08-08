@@ -8,11 +8,11 @@ interface Props {
   autoFocus?: boolean;
 }
 
-/** Ô tìm kiếm của KB — chỉ là SearchBar dùng chung + placeholder riêng. */
+/** KB search field — just the shared SearchBar with its own placeholder. */
 export function KbSearchBar({
   value,
   onChangeText,
-  placeholder = 'Tìm theo tiêu đề, mã hoặc tag…',
+  placeholder = 'Search by title, code, or tag…',
   autoFocus,
 }: Props) {
   return (

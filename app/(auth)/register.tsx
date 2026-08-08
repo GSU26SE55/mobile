@@ -34,13 +34,13 @@ export default function RegisterScreen() {
           <RegisterForm />
         </View>
 
-        {/* TODO(BE): Google OAuth chưa có backend — ẩn nút thay vì để dead-end. */}
+        {/* TODO(BE): Google OAuth has no backend yet — hide the button instead of leaving a dead-end. */}
 
         {/* Footer */}
         <View style={styles.loginRow}>
-          <Text style={styles.loginText}>Đã có tài khoản? </Text>
+          <Text style={styles.loginText}>Already have an account? </Text>
           <Link href="/(auth)/login" style={styles.link}>
-            Đăng nhập
+            Log In
           </Link>
         </View>
       </ScrollView>

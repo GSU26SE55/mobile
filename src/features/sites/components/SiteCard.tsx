@@ -16,7 +16,7 @@ export function SiteCard({ item, onPress }: { item: SiteDto; onPress: () => void
           <Text style={styles.sub} numberOfLines={1}>{item.address}</Text>
         ) : null}
         <Text style={styles.count}>
-          {item.activeBatteryAssetCount}/{item.batteryAssetCount} pin hoạt động
+          {item.activeBatteryAssetCount}/{item.batteryAssetCount} batteries active
         </Text>
       </View>
       <Ionicons name="chevron-forward" size={16} color={Colors.gray} />

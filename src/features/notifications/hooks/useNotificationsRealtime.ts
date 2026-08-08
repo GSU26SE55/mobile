@@ -9,17 +9,17 @@ import { KEY, QUERY_KEY } from '@/src/lib/queryKeys';
 const HUB_PATH = '/hubs/notifications';
 
 /**
- * SignalR realtime cho feed thông báo in-app — thay polling 30s của `useUnreadCount`.
+ * SignalR realtime for the in-app notification feed — replaces `useUnreadCount`'s 30s polling.
  *
- * Tên event PHẢI khớp BE (`SignalRNotificationNotifier`):
- *   - "NotificationCreated"  → ghi 1 noti in-app mới
- *   - "NotificationReceived" → kênh push qua SignalR (có thêm isCritical)
- *   - "UnreadCountChanged"   → payload là SỐ NGUYÊN trần, không bọc object
+ * Event names MUST match BE (`SignalRNotificationNotifier`):
+ *   - "NotificationCreated"  → writes a new in-app notification
+ *   - "NotificationReceived" → push channel via SignalR (also carries isCritical)
+ *   - "UnreadCountChanged"   → payload is a RAW INTEGER, not wrapped in an object
  *
- * Hub tự ghép nhóm theo claim trong JWT (`NotificationHub.OnConnectedAsync`) nên client
- * KHÔNG invoke gì sau khi connect — khác `useTicketCommentsRealtime` phải gọi `JoinTicket`.
+ * The hub auto-groups by the claim in the JWT (`NotificationHub.OnConnectedAsync`), so the client
+ * does NOT invoke anything after connecting — unlike `useTicketCommentsRealtime`, which must call `JoinTicket`.
  *
- * Chỉ mount MỘT lần toàn app (root layout): mỗi lần mount là một WebSocket riêng.
+ * Mounted only ONCE app-wide (root layout): each mount opens its own WebSocket.
  */
 export function useNotificationsRealtime(enabled = true) {
   const queryClient = useQueryClient();
@@ -28,7 +28,7 @@ export function useNotificationsRealtime(enabled = true) {
   useEffect(() => {
     if (!enabled) return;
 
-    // BASE_URL không có /api (axios.ts) ⇒ ghép thẳng; .replace phòng trường hợp env có đuôi /api.
+    // BASE_URL has no /api (axios.ts) ⇒ concatenated directly; .replace guards against an env with a trailing /api.
     const hubUrl = `${BASE_URL.replace(/\/api$/, '')}${HUB_PATH}`;
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(hubUrl, {
@@ -38,11 +38,11 @@ export function useNotificationsRealtime(enabled = true) {
       .build();
     connectionRef.current = connection;
 
-    // Feed có phân trang + lọc theo params nên không patch tay được → invalidate để BE trả lại.
+    // The feed is paginated + filtered by params, so it can't be patched by hand → invalidate to let BE return it fresh.
     //
-    // CHỪA unread-count ra: badge đã được "UnreadCountChanged" ghi thẳng số chính xác. Invalidate
-    // cả nhánh thì mỗi noti mới lại kéo thêm một request unread-count — đúng thứ vừa bỏ polling
-    // để tránh. Predicate lọc theo key[1] nên bao cả `list` lẫn `infinite`.
+    // EXCLUDES unread-count: the badge already gets the exact number written by "UnreadCountChanged". Invalidating
+    // that branch too would make every new notification trigger an extra unread-count request — exactly what
+    // dropping polling was meant to avoid. The predicate filters by key[1] so it covers both `list` and `infinite`.
     const invalidateFeed = () => {
       queryClient.invalidateQueries({
         predicate: (q) => q.queryKey[0] === KEY.notifications[0] && q.queryKey[1] !== 'unread-count',
@@ -52,30 +52,30 @@ export function useNotificationsRealtime(enabled = true) {
     connection.on('NotificationCreated', invalidateFeed);
     connection.on('NotificationReceived', invalidateFeed);
 
-    // Badge: BE gửi thẳng số chưa đọc → ghi vào cache, KHÔNG refetch.
-    // Đây chính là request mà polling 30s trước đây bắn liên tục.
+    // Badge: BE sends the unread count directly → write it to the cache, do NOT refetch.
+    // This is exactly the request the previous 30s polling used to fire repeatedly.
     connection.on('UnreadCountChanged', (unreadCount: number) => {
       if (typeof unreadCount !== 'number') return;
       queryClient.setQueryData(QUERY_KEY.notifications.unreadCount(), unreadCount);
     });
 
-    // Nối lại sau khi rớt → có thể đã lỡ event. Ở đây invalidate CẢ unread-count (khác các handler
-    // trên): badge lúc này thực sự có thể sai vì "UnreadCountChanged" phát lúc mất kết nối không
-    // được gửi lại.
+    // Reconnected after a drop → may have missed an event. Here it invalidates unread-count TOO (unlike the
+    // handlers above): the badge could genuinely be wrong now, because "UnreadCountChanged" events fired while
+    // disconnected are not resent.
     connection.onreconnected(() => {
       queryClient.invalidateQueries({ queryKey: KEY.notifications });
     });
 
-    // Giữ promise start() để cleanup CHỜ nó settle trước khi stop(). Gọi stop() khi start() còn
-    // pending → SignalR ném "Failed to start the HttpConnection before stop() was called".
+    // Keeps the start() promise so cleanup WAITS for it to settle before calling stop(). Calling stop() while
+    // start() is still pending → SignalR throws "Failed to start the HttpConnection before stop() was called".
     const startPromise = connection.start().catch(() => {
-      // Realtime không khả dụng → im lặng. REST vẫn phục vụ đủ dữ liệu (BE cũng coi realtime là
-      // lớp tăng tốc, không phải nguồn dữ liệu).
+      // Realtime unavailable → fail silently. REST still serves enough data (BE also treats realtime as
+      // an acceleration layer, not a data source).
     });
 
-    // Khác web: OS có thể đóng socket khi app xuống background mà không bắn onclose kịp, và
-    // `withAutomaticReconnect` chỉ chạy lại khi phát hiện đứt. Quay lại foreground thì ép nối lại
-    // nếu đã Disconnected, đồng thời đồng bộ lại badge cho khoảng thời gian app không nghe.
+    // Unlike web: the OS can close the socket when the app goes to background without firing onclose in time,
+    // and `withAutomaticReconnect` only kicks in once a drop is detected. On returning to foreground, force a
+    // reconnect if Disconnected, and re-sync the badge for the period the app wasn't listening.
     const appStateSub = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
       const conn = connectionRef.current;
@@ -91,7 +91,7 @@ export function useNotificationsRealtime(enabled = true) {
       const conn = connectionRef.current;
       connectionRef.current = null;
       if (!conn) return;
-      // Gỡ handler TRƯỚC khi stop — chống event treo bắn vào connection đang teardown.
+      // Remove handlers BEFORE stop — guards against a stray event firing into a connection mid-teardown.
       conn.off('NotificationCreated');
       conn.off('NotificationReceived');
       conn.off('UnreadCountChanged');

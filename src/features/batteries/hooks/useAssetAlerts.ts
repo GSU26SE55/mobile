@@ -3,7 +3,7 @@ import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { alertService } from '../services/alert.service';
 import { AlertListParams } from '../types/alert.types';
 
-// Danh sách alert của một asset (read-only). excludeMerged mặc định true ở BE.
+// Alert list for a single asset (read-only). excludeMerged defaults to true on BE.
 export function useAssetAlerts(batteryAssetId: string) {
   const params: AlertListParams = { batteryAssetId, pageSize: 50 };
   return useQuery({

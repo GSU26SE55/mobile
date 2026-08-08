@@ -4,11 +4,12 @@ import { HttpError } from '@/src/lib/errors';
 import { batteryTypeService } from '../services/battery-type.service';
 
 /**
- * Ngưỡng cảnh báo hiện hành của 1 loại pin.
+ * Current alert threshold for a single battery type.
  *
- * BE trả 404 khi loại pin chưa được Admin cấu hình ngưỡng — đó là trạng thái
- * hợp lệ chứ không phải lỗi, nên nuốt 404 thành `null` để UI hiện "chưa cấu
- * hình" thay vì bắn toast đỏ. Các lỗi khác (403/500) vẫn ném ra như thường.
+ * BE returns 404 when the battery type has no threshold configured by
+ * Admin yet — that is a valid state, not an error, so the 404 is swallowed
+ * into `null` so the UI shows "not configured" instead of firing a red
+ * toast. Other errors (403/500) are still thrown as usual.
  */
 export function useThresholdByType(batteryTypeId: string) {
   return useQuery({
@@ -22,6 +23,6 @@ export function useThresholdByType(batteryTypeId: string) {
           throw err;
         }),
     enabled: !!batteryTypeId,
-    staleTime: 10 * 60 * 1000, // ngưỡng hiếm khi đổi — cache lâu như battery config
+    staleTime: 10 * 60 * 1000, // threshold rarely changes — cache long like battery config
   });
 }

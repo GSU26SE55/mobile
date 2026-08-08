@@ -29,7 +29,7 @@ export default function StaffKbDetailScreen() {
   const handleMarkHelpful = () => {
     if (!id || markedHelpful || markingHelpful) return;
     setMarkedHelpful(true);
-    // Fail → mở lại nút để user thử lại.
+    // On failure → re-enable the button so the user can retry.
     markHelpful(id, { onError: () => setMarkedHelpful(false) });
   };
 
@@ -45,15 +45,15 @@ export default function StaffKbDetailScreen() {
     return (
       <View style={[styles.center, { paddingTop: insets.top }]}>
         <Ionicons name="document-text-outline" size={36} color={Colors.textFaint} />
-        <Text style={styles.errorTitle}>Không tìm thấy bài viết</Text>
+        <Text style={styles.errorTitle}>Article not found</Text>
         <Text style={styles.errorSub}>
-          Có thể bài viết đã được gỡ hoặc đang được cập nhật.
+          The article may have been removed or is currently being updated.
         </Text>
         <Pressable
           onPress={() => (id ? refetch() : router.back())}
           style={styles.retryBtn}
         >
-          <Text style={styles.retryText}>{id ? 'Thử lại' : 'Quay lại'}</Text>
+          <Text style={styles.retryText}>{id ? 'Retry' : 'Go back'}</Text>
         </Pressable>
       </View>
     );
@@ -87,7 +87,7 @@ export default function StaffKbDetailScreen() {
                 styles.visibilityText,
                 article.isInternalOnly ? styles.visibilityTextInternal : styles.visibilityTextPublic,
               ]}>
-                {article.isInternalOnly ? 'Nội bộ' : 'Công khai'}
+                {article.isInternalOnly ? 'Internal' : 'Public'}
               </Text>
             </View>
           </View>
@@ -95,12 +95,12 @@ export default function StaffKbDetailScreen() {
           <View style={styles.metaRow}>
             <View style={styles.metaItem}>
               <Ionicons name="eye-outline" size={14} color={Colors.textMute} />
-              <Text style={styles.metaText}>{article.viewCount} lượt xem</Text>
+              <Text style={styles.metaText}>{article.viewCount} views</Text>
             </View>
             {article.updatedAt && (
               <View style={styles.metaItem}>
                 <Ionicons name="time-outline" size={14} color={Colors.textMute} />
-                <Text style={styles.metaText}>Cập nhật {formatRelative(article.updatedAt)}</Text>
+                <Text style={styles.metaText}>Updated {formatRelative(article.updatedAt)}</Text>
               </View>
             )}
           </View>
@@ -116,7 +116,7 @@ export default function StaffKbDetailScreen() {
               color={markedHelpful ? Colors.primary : Colors.textMute}
             />
             <Text style={[styles.helpfulText, markedHelpful && styles.helpfulTextActive]}>
-              Hữu ích ({article.helpfulCount})
+              Helpful ({article.helpfulCount})
             </Text>
           </Pressable>
         </View>
@@ -125,7 +125,7 @@ export default function StaffKbDetailScreen() {
           icon="alert-circle-outline"
           iconColor="#B73221"
           iconBg="#FAD9D2"
-          title="Triệu chứng"
+          title="Symptoms"
         >
           <Text style={styles.bodyText}>{article.symptoms}</Text>
         </KbDetailSection>
@@ -134,7 +134,7 @@ export default function StaffKbDetailScreen() {
           icon="search-outline"
           iconColor="#946011"
           iconBg="#FBE6C2"
-          title="Cách chẩn đoán"
+          title="Diagnosis Steps"
         >
           <KbStepList text={article.diagnosisSteps} variant="numbered" />
         </KbDetailSection>
@@ -143,7 +143,7 @@ export default function StaffKbDetailScreen() {
           icon="checkmark-circle-outline"
           iconColor={Colors.primaryDark}
           iconBg={Colors.primaryLight}
-          title="Hướng giải quyết"
+          title="Resolution"
         >
           <KbStepList text={article.solutionSteps} variant="numbered" emphasis />
         </KbDetailSection>
@@ -153,7 +153,7 @@ export default function StaffKbDetailScreen() {
             icon="construct-outline"
             iconColor="#1E6F84"
             iconBg="#D6EDF3"
-            title="Linh kiện đề xuất"
+            title="Recommended Parts"
           >
             <View style={styles.partsList}>
               {article.recommendedParts!.map((part, idx) => (
@@ -197,15 +197,15 @@ function formatRelative(iso: string): string {
     const diffMs = Date.now() - new Date(iso).getTime();
     if (Number.isNaN(diffMs)) return '';
     const minutes = Math.floor(diffMs / 60000);
-    if (minutes < 1) return 'vừa xong';
-    if (minutes < 60) return `${minutes} phút trước`;
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes} minutes ago`;
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} giờ trước`;
+    if (hours < 24) return `${hours} hours ago`;
     const days = Math.floor(hours / 24);
-    if (days < 30) return `${days} ngày trước`;
+    if (days < 30) return `${days} days ago`;
     const months = Math.floor(days / 30);
-    if (months < 12) return `${months} tháng trước`;
-    return `${Math.floor(months / 12)} năm trước`;
+    if (months < 12) return `${months} months ago`;
+    return `${Math.floor(months / 12)} years ago`;
   } catch {
     return '';
   }

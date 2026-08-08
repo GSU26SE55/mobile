@@ -4,13 +4,13 @@ import { Colors } from '@/src/lib/theme';
 import { ScreenHeader } from '@/src/shared/components/ScreenHeader';
 import { useMyMentions } from '@/src/features/tickets/hooks/useChatInbox';
 
-// GH-68 — @mention tới Staff. GH-866: BE bỏ endpoint acknowledge; chấm vàng = chat nội bộ.
+// GH-68 — @mentions to Staff. GH-866: BE removed the acknowledge endpoint; yellow dot = internal chat.
 export default function StaffMentionsScreen() {
   const { data: mentions = [], isLoading, refetch, isRefetching } = useMyMentions();
 
   return (
     <View style={styles.root}>
-      <ScreenHeader title="Nhắc đến tôi" />
+      <ScreenHeader title="Mentions" />
       {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={Colors.primary} />
@@ -22,7 +22,7 @@ export default function StaffMentionsScreen() {
           contentContainerStyle={styles.content}
           onRefresh={refetch}
           refreshing={isRefetching}
-          ListEmptyComponent={<Text style={styles.empty}>Chưa có ai nhắc đến bạn.</Text>}
+          ListEmptyComponent={<Text style={styles.empty}>No one has mentioned you yet.</Text>}
           renderItem={({ item }) => (
             <Pressable
               style={styles.row}
@@ -32,10 +32,10 @@ export default function StaffMentionsScreen() {
               <View style={styles.body}>
                 <View style={styles.nameRow}>
                   <Text style={styles.name} numberOfLines={1}>
-                    {item.mentionedDisplayName ?? 'Bạn được nhắc đến'}
+                    {item.mentionedDisplayName ?? 'You were mentioned'}
                   </Text>
-                  {/* Nhãn chữ đi kèm chấm vàng — chỉ chấm màu thì không ai đoán ra nghĩa. */}
-                  {item.isInternal && <Text style={styles.internalTag}>Nội bộ</Text>}
+                  {/* Text label alongside the yellow dot — a color-only dot wouldn't convey the meaning. */}
+                  {item.isInternal && <Text style={styles.internalTag}>Internal</Text>}
                 </View>
                 <Text style={styles.time}>
                   {new Date(item.createdAt).toLocaleString('vi-VN', {
