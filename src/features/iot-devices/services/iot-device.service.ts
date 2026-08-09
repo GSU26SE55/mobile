@@ -1,11 +1,14 @@
 import { axiosInstance } from '@/src/lib/axios';
 import { ENDPOINTS } from '@/src/lib/endpoints';
-import { CommonResponse } from '@/src/types/api.types';
+import { CommonResponse, PaginationResponse } from '@/src/types/api.types';
 import {
   IotDeviceDto,
   IotDeviceCalibrationDto,
   CreateCalibrationPayload,
   CalibrationListParams,
+  IotDeviceListParams,
+  IotDeviceHeartbeatListDto,
+  HeartbeatListParams,
 } from '../types/iot-device.types';
 
 // GH-56 — IoT device lookup + calibration (Staff).
@@ -13,6 +16,21 @@ export const iotDeviceService = {
   // Bridges deviceCode → deviceId (GUID). 404 if no match.
   getByCode: (deviceCode: string) =>
     axiosInstance.get<CommonResponse<IotDeviceDto>>(ENDPOINTS.IOT_DEVICES.BY_CODE(deviceCode)),
+
+  // IOT3-57 — danh sách thiết bị. Backend KHÔNG lọc theo site của người gọi (quyết định #7):
+  // Staff hay bị điều sang site khác giữa ca, chặn theo site là chặn đúng lúc cần nhất.
+  getList: (params?: IotDeviceListParams) =>
+    axiosInstance.get<CommonResponse<PaginationResponse<IotDeviceDto>>>(
+      ENDPOINTS.IOT_DEVICES.LIST,
+      { params },
+    ),
+
+  // IOT3-58 — lịch sử heartbeat. Con trỏ, không offset: đây là hypertable hàng triệu dòng.
+  getHeartbeats: (deviceId: string, params?: HeartbeatListParams) =>
+    axiosInstance.get<CommonResponse<IotDeviceHeartbeatListDto>>(
+      ENDPOINTS.IOT_DEVICES.HEARTBEATS(deviceId),
+      { params },
+    ),
 
   getCalibrations: (deviceId: string, params?: CalibrationListParams) =>
     axiosInstance.get<CommonResponse<IotDeviceCalibrationDto[]>>(

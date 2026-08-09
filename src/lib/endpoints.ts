@@ -217,5 +217,9 @@ export const ENDPOINTS = {
     CALIBRATIONS:     (deviceId: string) => `/api/iot-devices/${deviceId}/calibrations`,           // GET ?channel&includeExpired + POST
     CALIBRATION_ITEM: (deviceId: string, calibrationId: string) =>
       `/api/iot-devices/${deviceId}/calibrations/${calibrationId}`,                                // DELETE
+    // IOT3-57 — danh sách thiết bị cho Staff (KHÔNG trả apiKey/mqttPassword; đường admin mới có)
+    LIST:             '/api/iot-devices',
+    // IOT3-58 — lịch sử heartbeat, phân trang theo CON TRỎ (không offset)
+    HEARTBEATS:       (deviceId: string) => `/api/iot-devices/${deviceId}/heartbeats`,
   },
 } as const;
