@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/src/context/authContext';
 import { PermissionsSync } from '@/src/features/auth/components/PermissionsSync';
 import { NotificationBootstrap } from '@/src/features/notifications/components/NotificationBootstrap';
