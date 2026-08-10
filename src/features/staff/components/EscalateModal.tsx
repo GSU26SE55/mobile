@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { Colors } from '@/src/lib/theme';
 import { BottomSheet } from '@/src/shared/components/BottomSheet';
 import { EscalationReasonEnum } from '@/src/features/tickets/types/ticket.types';
+import { handleErrorApi } from '@/src/lib/errors';
 
 const ESCALATION_OPTIONS: { value: EscalationReasonEnum; label: string }[] = [
   { value: 'SkillGap',          label: 'Beyond handling capability' },
@@ -16,20 +17,33 @@ interface Props {
   visible: boolean;
   isLoading: boolean;
   onClose: () => void;
-  onSubmit: (reason: EscalationReasonEnum, note?: string) => void;
+  onSubmit: (reason: EscalationReasonEnum, note?: string) => Promise<void>;
 }
 
 export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) {
   const [selected, setSelected] = useState<EscalationReasonEnum | null>(null);
   const [note, setNote] = useState('');
+  const [reasonError, setReasonError] = useState('');
 
-  const handleSubmit = () => {
-    if (selected) onSubmit(selected, note.trim() || undefined);
+  const handleSubmit = async () => {
+    if (!selected) return;
+    setReasonError('');
+    try {
+      await onSubmit(selected, note.trim() || undefined);
+    } catch (error) {
+      handleErrorApi({
+        error,
+        setFieldError: (field, message) => {
+          if (field === 'reason') setReasonError(message);
+        },
+      });
+    }
   };
 
   const handleClose = () => {
     setSelected(null);
     setNote('');
+    setReasonError('');
     onClose();
   };
 
@@ -54,6 +68,7 @@ export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) 
             );
           })}
         </View>
+        {reasonError ? <Text style={styles.errorText}>{reasonError}</Text> : null}
 
         <TextInput
           style={styles.noteInput}
@@ -89,6 +104,11 @@ export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) 
 
 const styles = StyleSheet.create({
   body: { gap: 16 },
+  errorText: {
+    fontSize: 12,
+    color: Colors.danger,
+    marginTop: -8,
+  },
   title: {
     fontSize: 18,
     fontWeight: '800',

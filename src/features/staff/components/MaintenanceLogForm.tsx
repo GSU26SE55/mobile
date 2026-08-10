@@ -4,6 +4,7 @@ import { Colors, Shadow } from '@/src/lib/theme';
 import { AttachmentPicker, UploadedAttachment } from '@/src/features/file-storage/components/AttachmentPicker';
 import { FilePurposeEnum } from '@/src/features/file-storage/enums/file-storage.enum';
 import { MaintenanceLogTypeEnum } from '@/src/shared/enums/ticket.enum';
+import { handleErrorApi } from '@/src/lib/errors';
 import type { MaintenanceLogPayload } from '../types/staff.types';
 
 // BE distinguishes 4 types for compliance reporting — don't hardcode one value for every log.
@@ -16,7 +17,7 @@ const LOG_TYPE_OPTIONS: { value: MaintenanceLogTypeEnum; label: string }[] = [
 
 interface Props {
   isLoading: boolean;
-  onSubmit: (data: MaintenanceLogPayload) => void;
+  onSubmit: (data: MaintenanceLogPayload) => Promise<void>;
   // GH-44 — reused for editing a log (PATCH): prefill text fields. Photos are not prefilled (PATCH partial — leaving blank keeps them unchanged).
   initialValues?: Pick<
     MaintenanceLogPayload,
@@ -44,7 +45,7 @@ export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, 
   const [error, setError] = useState('');
   const [durationError, setDurationError] = useState('');
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const trimmed = description.trim();
     if (trimmed.length < 5) {
       setError('Description must be at least 5 characters');
@@ -62,17 +63,29 @@ export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, 
     const completedAt = new Date();
     const startedAt = new Date(completedAt.getTime() - durationMinutes * 60_000);
 
-    onSubmit({
-      summary: trimmed,
-      logType,
-      actionsTaken: actionTaken.trim() || undefined,
-      partsUsed: partsUsed.trim() || undefined,
-      durationMinutes,
-      startedAt: startedAt.toISOString(),
-      completedAt: completedAt.toISOString(),
-      beforePhotos: beforePhotos.length > 0 ? beforePhotos : undefined,
-      afterPhotos: afterPhotos.length > 0 ? afterPhotos : undefined,
-    });
+    try {
+      await onSubmit({
+        summary: trimmed,
+        logType,
+        actionsTaken: actionTaken.trim() || undefined,
+        partsUsed: partsUsed.trim() || undefined,
+        durationMinutes,
+        startedAt: startedAt.toISOString(),
+        completedAt: completedAt.toISOString(),
+        beforePhotos: beforePhotos.length > 0 ? beforePhotos : undefined,
+        afterPhotos: afterPhotos.length > 0 ? afterPhotos : undefined,
+      });
+    } catch (err) {
+      handleErrorApi({
+        error: err,
+        setFieldError: (field, message) => {
+          if (field === 'summary') setError(message);
+          // startedAt has no dedicated input — surface it next to duration, which drives it.
+          else if (field === 'durationMinutes' || field === 'startedAt') setDurationError(message);
+        },
+      });
+      return;
+    }
     setLogType(MaintenanceLogTypeEnum.OnSite);
     setDescription('');
     setActionTaken('');

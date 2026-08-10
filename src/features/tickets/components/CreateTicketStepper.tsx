@@ -11,6 +11,8 @@ import {
   ActionSheetIOS,
   Alert,
   Platform,
+  Keyboard,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -181,6 +183,18 @@ export function CreateTicketStepper({
   onCancel,
 }: Props) {
   const insets = useSafeAreaInsets();
+
+  const [keyboardVisible, setKeyboardVisible] = React.useState(false);
+  React.useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvt, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const { data: batteries = [] } = useMyBatteryAssets();
   const selectedBatteries = batteries.filter((b: BatteryAssetDto) =>
@@ -642,7 +656,15 @@ export function CreateTicketStepper({
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior="padding"
+      enabled={Platform.OS === 'ios'}
+      // Root trải từ y=0 nên KAV không tự trừ được safe-area dưới: nó đẩy dư
+      // đúng bằng chiều cao home indicator, tạo khoảng trắng giữa footer và
+      // bàn phím. Offset âm bù lại phần đó (giống CustomerTicketDetailScreen).
+      keyboardVerticalOffset={-insets.bottom}
+    >
       {renderHeader()}
       {renderProgress()}
 
@@ -650,7 +672,14 @@ export function CreateTicketStepper({
         {renderStepContent()}
       </View>
 
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
+      <View
+        style={[
+          styles.footer,
+          // Bàn phím mở đã che vùng home indicator — cộng thêm insets.bottom
+          // lúc này chỉ tạo khoảng trắng thừa giữa nút và bàn phím.
+          { paddingBottom: !keyboardVisible && insets.bottom > 0 ? insets.bottom + 8 : 12 },
+        ]}
+      >
         {step > 1 ? (
           <Pressable style={styles.backBtn} onPress={() => setStep((s) => s - 1)}>
             <Text style={styles.backBtnText}>Back</Text>
@@ -681,7 +710,7 @@ export function CreateTicketStepper({
           </Pressable>
         )}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

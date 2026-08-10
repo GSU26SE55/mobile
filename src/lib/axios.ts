@@ -101,7 +101,7 @@ const PUBLIC_ENDPOINTS = new Set([
 
 axiosInstance.interceptors.request.use(async (config) => {
   const url = config.url ?? '';
-  console.log(`[API] → ${config.method?.toUpperCase()} ${url}`);
+  if (__DEV__) console.log(`[API] → ${config.method?.toUpperCase()} ${url}`);
 
   // #AUTH-48: attach X-Device-Id to EVERY request (including public verify-2fa) — needed for the trusted-device fingerprint.
   config.headers['X-Device-Id'] = await getDeviceId();
@@ -133,41 +133,25 @@ const HTTP_ERROR_MESSAGES: Record<number, string> = {
   504: 'Server connection timed out, please try again later',
 };
 
-const makeFallbackPayload = (status: number, serverMessage?: string) => ({
-  isSuccess: false,
-  statusCode: status,
-  message: serverMessage || HTTP_ERROR_MESSAGES[status] || `An error occurred (${status})`,
-  data: null,
-  listErrors: [],
-});
+const getErrorMessage = (status: number, serverMessage?: string): string =>
+  serverMessage ||
+  HTTP_ERROR_MESSAGES[status] ||
+  `An error occurred (${status})`;
 
 axiosInstance.interceptors.response.use(
   (res) => {
-    console.log(`[API] ← ${res.status} ${res.config.method?.toUpperCase()} ${res.config.url}`);
-
-    // BE may return 200 OK but isSuccess: false for business logic errors.
-    // Axios doesn't auto-throw in this case → must check it manually.
-    const data = res.data;
-    console.debug(`[API] response data for ${res.config.url}:`, data);
-    if (data && typeof data === 'object' && data.isSuccess === false) {
-      
-      const hasFieldErrors = Array.isArray(data.listErrors) && data.listErrors.length > 0;
-      if (hasFieldErrors) {
-        console.warn(`[API] entity error ${res.config.url}:`, data);
-        return Promise.reject(new EntityError(data, res.status));
-      }
-      console.warn(`[API] business error ${res.config.url}:`, data);
-      return Promise.reject(new HttpError(res.status, data));
-    }
+    if (__DEV__) console.log(`[API] ← ${res.status} ${res.config.method?.toUpperCase()} ${res.config.url}`);
     return res;
   },
   async (err) => {
     const status: number = err.response?.status;
     const payload = err.response?.data;
-    console.error(
-      `[API] ✗ ${status ?? 'NETWORK'} ${err.config?.method?.toUpperCase()} ${err.config?.url}:`,
-      payload ?? err,
-    );
+    if (__DEV__) {
+      console.error(
+        `[API] ✗ ${status ?? 'NETWORK'} ${err.config?.method?.toUpperCase()} ${err.config?.url}:`,
+        payload ?? err,
+      );
+    }
 
     // 401 → ONLY TOKEN_EXPIRED attempts a refresh (token was valid but has expired).
     // MISSING_TOKEN (no token), INVALID_SIGNATURE / INVALID_TOKEN (corrupted/forged token)
@@ -180,7 +164,7 @@ axiosInstance.interceptors.response.use(
       const logoutAndReject = async () => {
         await clearTokens();
         useSessionStore.getState().clearSession();
-        return Promise.reject(new HttpError(status, makeFallbackPayload(status, payload?.message)));
+        return Promise.reject(new HttpError(status, getErrorMessage(status, payload?.message)));
       };
 
       // errorCode other than TOKEN_EXPIRED, or already retried once and still failed → logout.
@@ -196,20 +180,22 @@ axiosInstance.interceptors.response.use(
         return axiosInstance(err.config);
       }
       // tryRefresh returned null → it already logged out internally, just reject.
-      return Promise.reject(new HttpError(status, makeFallbackPayload(status, payload?.message)));
+      return Promise.reject(new HttpError(status, getErrorMessage(status, payload?.message)));
     }
 
-    // Wrap BE error into HttpError / EntityError so screens can catch them
-    if (payload && typeof payload === 'object') {
-      const hasFieldErrors = Array.isArray(payload.listErrors) && payload.listErrors.length > 0;
-      if (hasFieldErrors) {
-        return Promise.reject(new EntityError(payload, status));
+    // 400 / 422 — parse listErrors for form field mapping
+    if (status === 400 || status === 422) {
+      if (Array.isArray(payload?.listErrors) && payload.listErrors.length > 0) {
+        return Promise.reject(new EntityError(payload.listErrors, status));
       }
-      return Promise.reject(new HttpError(status, payload));
+      return Promise.reject(new HttpError(status, getErrorMessage(status, payload?.message)));
     }
 
-    // No structured payload (502/503/504, network timeout, HTML error pages)
-    const fallback = makeFallbackPayload(status, err.message);
-    return Promise.reject(new HttpError(status ?? 0, fallback));
+    if (status !== undefined) {
+      return Promise.reject(new HttpError(status, getErrorMessage(status, payload?.message)));
+    }
+
+    // No response (network error, timeout) — status is undefined
+    return Promise.reject(new HttpError(0, getErrorMessage(0, err.message)));
   },
 );

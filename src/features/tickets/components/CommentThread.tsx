@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/src/lib/theme';
 import { ChatBubble } from './ChatBubble';
 import { ReactionTypeEnum, TicketCommentDTO } from '../types/ticket.types';
+import type { OutboxMessage } from '../types/chat-outbox.types';
 
 export type ChatTab = 'public' | 'internal';
 
@@ -14,7 +15,8 @@ const EDIT_WINDOW_MS = 15 * 60 * 1000;
 type ThreadItem =
   | { kind: 'comment'; key: string; comment: TicketCommentDTO }
   | { kind: 'date'; key: string; label: string }
-  | { kind: 'unread'; key: string; count: number };
+  | { kind: 'unread'; key: string; count: number }
+  | { kind: 'pending'; key: string; message: OutboxMessage };
 
 function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -135,6 +137,64 @@ interface CommentThreadProps {
   aiSuggestions?: string[];
   onPickSuggestion?: (text: string) => void;
   onDismissSuggestions?: () => void;
+
+  // Chat outbox — messages waiting to send, rendered as an optimistic bubble at the end of
+  // the thread (mirrors Web's PendingBubble). Opt-in — off when not passed.
+  pendingMessages?: OutboxMessage[];
+  onRetryPending?: (tempId: string) => void;
+  onDiscardPending?: (tempId: string) => void;
+}
+
+/**
+ * Bubble for a message waiting to send (outbox) — looks like the sender's own bubble (right
+ * side), the only difference is the bottom line: status instead of timestamp.
+ *  - queued/sending: "Sending…" (gray) — still shown this way during a silent retry.
+ *  - failed (timed out): "⚠ Send failed · Tap to retry" (red) — tap to resend that message.
+ * Mirrors Web's PendingBubble in TicketCommentThread.tsx.
+ */
+function PendingBubble({
+  message,
+  accentColor = Colors.primary,
+  onRetry,
+  onDiscard,
+}: {
+  message: OutboxMessage;
+  accentColor?: string;
+  onRetry?: (tempId: string) => void;
+  onDiscard?: (tempId: string) => void;
+}) {
+  const failed = message.status === 'failed';
+  const attachCount = message.payload.attachments?.length ?? 0;
+  return (
+    <View style={styles.pendingRow}>
+      <View style={styles.pendingStack}>
+        <View style={[styles.pendingBubble, { backgroundColor: accentColor }]}>
+          <Text style={styles.pendingBubbleText}>{message.payload.body}</Text>
+        </View>
+        {attachCount > 0 && (
+          <Text style={styles.pendingMeta}>{attachCount} attachments</Text>
+        )}
+        {failed ? (
+          <View style={styles.pendingStatusRow}>
+            {/* Has failReason = BE rejected it due to content (e.g. duplicate message) →
+                resending would fail too, so state the reason instead of a pointless retry. */}
+            {message.failReason ? (
+              <Text style={styles.pendingFailText}>⚠ {message.failReason}</Text>
+            ) : (
+              <Pressable onPress={() => onRetry?.(message.tempId)} hitSlop={4}>
+                <Text style={styles.pendingFailText}>⚠ Send failed · Tap to retry</Text>
+              </Pressable>
+            )}
+            <Pressable onPress={() => onDiscard?.(message.tempId)} hitSlop={4}>
+              <Text style={styles.pendingDiscardText}>Discard</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Text style={styles.pendingMeta}>Sending…</Text>
+        )}
+      </View>
+    </View>
+  );
 }
 
 /** Chat list shared by customer + staff — top to bottom, pull to load older history. */
@@ -172,6 +232,9 @@ export function CommentThread({
   aiSuggestions = [],
   onPickSuggestion,
   onDismissSuggestions,
+  pendingMessages = [],
+  onRetryPending,
+  onDiscardPending,
 }: CommentThreadProps) {
   const [internalTab, setInternalTab] = useState<ChatTab>('public');
   const tab = activeTab ?? internalTab;
@@ -179,6 +242,15 @@ export function CommentThread({
     setInternalTab(t);
     onTabChange?.(t);
   };
+
+  // Pending (outbox) messages belonging to the current tab — optimistic bubble at the end of the thread.
+  const pendingForTab = useMemo(
+    () =>
+      showTabs
+        ? pendingMessages.filter((m) => (tab === 'internal' ? m.payload.isInternal : !m.payload.isInternal))
+        : pendingMessages,
+    [pendingMessages, showTabs, tab],
+  );
 
   const publicCount = useMemo(() => comments.filter((c) => !c.isInternal).length, [comments]);
   const internalCount = comments.length - publicCount;
@@ -217,8 +289,16 @@ export function CommentThread({
       }
     }
 
-    return buildThreadItems(ascComments, anchorIdRef.current);
-  }, [visible]);
+    const base = buildThreadItems(ascComments, anchorIdRef.current);
+    // Pending (outbox) messages render after the real ones — newest-last, matching Web's
+    // PendingBubble placement at the end of the thread.
+    const pending: ThreadItem[] = pendingForTab.map((m) => ({
+      kind: 'pending',
+      key: `pending-${m.tempId}`,
+      message: m,
+    }));
+    return [...base, ...pending];
+  }, [visible, pendingForTab]);
 
   // Always scroll to the newest message (the bottom). Non-inverted list + ASC data ⇒ bottom
   // = newest message. onContentSizeChange fires on mount, on data load, on new messages, and
@@ -400,6 +480,16 @@ export function CommentThread({
                 </View>
               );
             }
+            if (item.kind === 'pending') {
+              return (
+                <PendingBubble
+                  message={item.message}
+                  accentColor={accentColor}
+                  onRetry={onRetryPending}
+                  onDiscard={onDiscardPending}
+                />
+              );
+            }
             const comment = item.comment;
             const isOwn = !!currentUserId && comment.authorUserId === currentUserId;
             const authorWindowOk = isOwn && now - new Date(comment.createdAt).getTime() <= EDIT_WINDOW_MS;
@@ -554,6 +644,20 @@ const styles = StyleSheet.create({
   selectBubble: { flex: 1 },
   selectBubbleDim: { opacity: 0.45 },
   loadingMore: { paddingVertical: 14, alignItems: 'center' },
+
+  // Outbox — optimistic bubble for a message waiting to send, right-aligned like the sender's own bubble.
+  pendingRow: { flexDirection: 'row', justifyContent: 'flex-end' },
+  pendingStack: { gap: 4, maxWidth: '78%', alignItems: 'flex-end' },
+  pendingBubble: {
+    borderRadius: 18, borderBottomRightRadius: 4,
+    paddingHorizontal: 14, paddingVertical: 10,
+    opacity: 0.65,
+  },
+  pendingBubbleText: { fontSize: 13.5, fontWeight: '500', color: Colors.text, lineHeight: 19 },
+  pendingMeta: { fontSize: 10.5, color: Colors.textMute, paddingHorizontal: 4 },
+  pendingStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 4 },
+  pendingFailText: { fontSize: 10.5, color: Colors.danger, fontWeight: '600' },
+  pendingDiscardText: { fontSize: 10.5, color: Colors.textMute, textDecorationLine: 'underline' },
 
   // AI suggestion — bubble cluster at the end of the chat, right-aligned (chat sender's side) like web.
   aiWrap: { alignItems: 'flex-end', gap: 6, paddingTop: 6 },
