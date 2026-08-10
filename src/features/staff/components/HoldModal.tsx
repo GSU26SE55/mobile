@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { Colors } from '@/src/lib/theme';
 import { BottomSheet } from '@/src/shared/components/BottomSheet';
 import { PauseReasonEnum } from '@/src/features/tickets/types/ticket.types';
+import { handleErrorApi } from '@/src/lib/errors';
 
 const HOLD_OPTIONS: { value: PauseReasonEnum; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { value: PauseReasonEnum.WaitingCustomer,       label: 'Waiting for customer reply', icon: 'person-outline' },
@@ -15,20 +16,33 @@ interface Props {
   visible: boolean;
   isLoading: boolean;
   onClose: () => void;
-  onSubmit: (reason: PauseReasonEnum, note?: string) => void;
+  onSubmit: (reason: PauseReasonEnum, note?: string) => Promise<void>;
 }
 
 export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
   const [selected, setSelected] = useState<PauseReasonEnum | null>(null);
   const [note, setNote] = useState('');
+  const [reasonError, setReasonError] = useState('');
 
-  const handleSubmit = () => {
-    if (selected) onSubmit(selected, note.trim() || undefined);
+  const handleSubmit = async () => {
+    if (!selected) return;
+    setReasonError('');
+    try {
+      await onSubmit(selected, note.trim() || undefined);
+    } catch (error) {
+      handleErrorApi({
+        error,
+        setFieldError: (field, message) => {
+          if (field === 'reason') setReasonError(message);
+        },
+      });
+    }
   };
 
   const handleClose = () => {
     setSelected(null);
     setNote('');
+    setReasonError('');
     onClose();
   };
 
@@ -54,6 +68,7 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
             );
           })}
         </View>
+        {reasonError ? <Text style={styles.errorText}>{reasonError}</Text> : null}
 
         <TextInput
           style={styles.noteInput}
@@ -93,6 +108,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: Colors.text,
+  },
+  errorText: {
+    fontSize: 12,
+    color: Colors.danger,
+    marginTop: -8,
   },
   desc: {
     fontSize: 13,

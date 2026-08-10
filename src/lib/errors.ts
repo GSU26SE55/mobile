@@ -1,20 +1,23 @@
 import { Alert } from 'react-native';
-import { CommonResponse } from '@/src/types/api.types';
+import { ErrorEntity } from '@/src/types/api.types';
 
 export class HttpError extends Error {
-  statusCode: number;
-  payload: CommonResponse<unknown>;
+  readonly statusCode: number;
 
-  constructor(statusCode: number, payload: CommonResponse<unknown>) {
-    super(payload.message ?? 'Unknown error');
+  constructor(statusCode: number, message: string) {
+    super(message);
+    this.name = 'HttpError';
     this.statusCode = statusCode;
-    this.payload = payload;
   }
 }
 
 export class EntityError extends HttpError {
-  constructor(payload: CommonResponse<unknown>, statusCode: number = 422) {
-    super(statusCode, payload);
+  readonly errors: ErrorEntity[];
+
+  constructor(errors: ErrorEntity[], statusCode: number = 422) {
+    super(statusCode, 'Validation error');
+    this.name = 'EntityError';
+    this.errors = errors;
   }
 }
 
@@ -49,16 +52,15 @@ interface HandleErrorApiOptions {
  * - other Error:                  shows a generic Alert
  */
 export function handleErrorApi({ error, setFieldError }: HandleErrorApiOptions) {
-  if (error instanceof EntityError && setFieldError) {
-    const { listErrors } = error.payload;
-    if (listErrors?.length) {
-      listErrors.forEach(({ field, detail }) => {
+  if (error instanceof EntityError) {
+    if (setFieldError) {
+      error.errors.forEach(({ field, detail }) => {
         // field from BE is PascalCase (e.g. "FullName") — normalize to camelCase
         const key = field.charAt(0).toLowerCase() + field.slice(1);
         setFieldError(key, detail);
       });
-      return;
     }
+    return;
   }
 
   if (error instanceof HttpError) {

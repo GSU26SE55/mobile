@@ -46,7 +46,7 @@ export function LoginForm() {
     } catch (error) {
       if (error instanceof EntityError) {
         const errs: Record<string, string> = {};
-        error.payload.listErrors?.forEach(({ field, detail }) => {
+        error.errors.forEach(({ field, detail }) => {
           const key = field.charAt(0).toLowerCase() + field.slice(1);
           errs[key] = detail;
         });

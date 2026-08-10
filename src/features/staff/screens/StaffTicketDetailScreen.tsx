@@ -33,7 +33,8 @@ import { useHoldTicket } from '@/src/features/staff/hooks/useHoldTicket';
 import { useResumeTicket } from '@/src/features/staff/hooks/useResumeTicket';
 import { useResolveTicket } from '@/src/features/staff/hooks/useResolveTicket';
 import { useEscalateTicket } from '@/src/features/staff/hooks/useEscalateTicket';
-import { useStaffAddComment } from '@/src/features/staff/hooks/useStaffAddComment';
+import { useChatSender } from '@/src/features/tickets/hooks/useChatSender';
+import { staffTicketService } from '@/src/features/staff/services/staffTicket.service';
 import { useAddMaintenanceLog } from '@/src/features/staff/hooks/useAddMaintenanceLog';
 import { useUpdateMaintenanceLog } from '@/src/features/staff/hooks/useUpdateMaintenanceLog';
 import { useTicketChatsCursor } from '@/src/features/tickets/hooks/useTicketChatsCursor';
@@ -153,13 +154,15 @@ function StaffTicketDetailScreenInner() {
   const canResolve = checkPermission(user, P.TICKET_RESOLVE); // GH-47
   const { data: ticket, isLoading, isError, refetch } = useStaffTicketDetail(ticketId);
   const { mutate: startTicket, isPending: isStarting } = useStartTicket(ticketId);
-  const { mutate: holdTicket, isPending: isHolding } = useHoldTicket(ticketId);
+  const { mutateAsync: holdTicket, isPending: isHolding } = useHoldTicket(ticketId);
   const { mutate: resumeTicket, isPending: isResuming } = useResumeTicket(ticketId);
-  const { mutate: resolveTicket, isPending: isResolving } = useResolveTicket(ticketId);
-  const { mutate: escalateTicket, isPending: isEscalating } = useEscalateTicket(ticketId);
-  const { mutate: addComment, isPending: isSending } = useStaffAddComment(ticketId);
-  const { mutate: addLog, isPending: isAddingLog } = useAddMaintenanceLog(ticketId);
-  const { mutate: updateLog, isPending: isUpdatingLog } = useUpdateMaintenanceLog(ticketId);
+  const { mutateAsync: resolveTicket, isPending: isResolving } = useResolveTicket(ticketId);
+  const { mutateAsync: escalateTicket, isPending: isEscalating } = useEscalateTicket(ticketId);
+  // Outbox — enqueue() doesn't await the BE, the worker sends sequentially with backoff retry.
+  const { pending: pendingChats, enqueue: enqueueComment, retry: retryPendingComment, discard: discardPendingComment } =
+    useChatSender(ticketId, staffTicketService.addComment);
+  const { mutateAsync: addLog, isPending: isAddingLog } = useAddMaintenanceLog(ticketId);
+  const { mutateAsync: updateLog, isPending: isUpdatingLog } = useUpdateMaintenanceLog(ticketId);
   const { data: kbRefs, isLoading: kbRefsLoading } = useTicketKbRefs(ticketId || undefined);
   const { mutate: removeKbRef } = useRemoveKbRef(ticketId);
 
@@ -236,24 +239,18 @@ function StaffTicketDetailScreenInner() {
     const activeMentions = pickedMentions.filter((m) =>
       trimmed.includes(`@${m.displayName.replace(/\s+/g, '_')}`),
     );
-    addComment(
-      {
-        body: trimmed,
-        isInternal: chatTab === 'internal',
-        mentions: activeMentions.length > 0 ? activeMentions : undefined,
-        attachments: commentAttachments.length > 0 ? commentAttachments : undefined,
-      },
-      {
-        onSuccess: () => {
-          setCommentText('');
-          setPickedMentions([]);
-          setCommentAttachments([]);
-          setAiSuggestions([]);
-          // Realtime pushes CommentAdded back (to the sender too) → setQueryData. Only falls back if disconnected.
-          if (!isConnected) commentsQuery.refetch();
-        },
-      },
-    );
+    // Outbox — doesn't await the BE. The optimistic bubble shows right away; a failure (if
+    // any) shows on that same bubble via PendingBubble (retry/discard), not the composer.
+    void enqueueComment({
+      body: trimmed,
+      isInternal: chatTab === 'internal',
+      mentions: activeMentions.length > 0 ? activeMentions : undefined,
+      attachments: commentAttachments.length > 0 ? commentAttachments : undefined,
+    });
+    setCommentText('');
+    setPickedMentions([]);
+    setCommentAttachments([]);
+    setAiSuggestions([]);
   };
 
   const handleMarkRead = (chatIds: string[]) => markChatsRead(chatIds);
@@ -279,9 +276,11 @@ function StaffTicketDetailScreenInner() {
   };
 
   // GH-44 #4 — edit maintenance log (PATCH). The form returns MaintenanceLogPayload (assignable to UpdateMaintenanceLogPayload).
-  const handleUpdateLog = (data: UpdateMaintenanceLogPayload) => {
+  // mutateAsync (not mutate) — the form's try/catch needs the rejection to map EntityError to the right field.
+  const handleUpdateLog = async (data: UpdateMaintenanceLogPayload) => {
     if (!editingLog) return;
-    updateLog({ logId: editingLog.id, data }, { onSuccess: () => setEditingLog(null) });
+    await updateLog({ logId: editingLog.id, data });
+    setEditingLog(null);
   };
 
   // GH-44 #6 — remove KB reference (with confirmation).
@@ -293,11 +292,24 @@ function StaffTicketDetailScreenInner() {
   };
 
   const handleStart = () => { startTicket(undefined); };
-  const handleHold = (reason: PauseReasonEnum, note?: string) => { holdTicket({ reason, note }, { onSuccess: () => setShowHold(false) }); };
+  // mutateAsync (not mutate) — each modal's try/catch needs the rejection to map EntityError to the right field.
+  const handleHold = async (reason: PauseReasonEnum, note?: string) => {
+    await holdTicket({ reason, note });
+    setShowHold(false);
+  };
   const handleResume = () => { resumeTicket(undefined); };
-  const handleResolve = (summary: string) => { resolveTicket({ resolutionSummary: summary }, { onSuccess: () => setShowResolve(false) }); };
-  const handleEscalate = (reason: EscalationReasonEnum, note?: string) => { escalateTicket({ reason, note }, { onSuccess: () => setShowEscalate(false) }); };
-  const handleAddLog = (log: MaintenanceLogPayload) => { addLog(log, { onSuccess: () => setShowLogForm(false) }); };
+  const handleResolve = async (summary: string) => {
+    await resolveTicket({ resolutionSummary: summary });
+    setShowResolve(false);
+  };
+  const handleEscalate = async (reason: EscalationReasonEnum, note?: string) => {
+    await escalateTicket({ reason, note });
+    setShowEscalate(false);
+  };
+  const handleAddLog = async (log: MaintenanceLogPayload) => {
+    await addLog(log);
+    setShowLogForm(false);
+  };
 
   if (isLoading) {
     return (
@@ -365,6 +377,9 @@ function StaffTicketDetailScreenInner() {
             activeTab={chatTab}
             onTabChange={setChatTab}
             ticketClosed={ticketClosed}
+            pendingMessages={pendingChats}
+            onRetryPending={retryPendingComment}
+            onDiscardPending={discardPendingComment}
             onEdit={(comment, body, editReason) =>
               updateChat({ chatId: comment.id, payload: { body, editReason } })
             }
@@ -471,16 +486,12 @@ function StaffTicketDetailScreenInner() {
                 )}
               </Pressable>
               <Pressable
-                style={[styles.sendBtn, ((!commentText.trim() && commentAttachments.length === 0) || isSending || uploadingComment || voiceRecorder.isRecording) && styles.sendBtnDisabled]}
+                style={[styles.sendBtn, ((!commentText.trim() && commentAttachments.length === 0) || uploadingComment || voiceRecorder.isRecording) && styles.sendBtnDisabled]}
                 onPress={handleSendComment}
-                disabled={(!commentText.trim() && commentAttachments.length === 0) || isSending || uploadingComment || voiceRecorder.isRecording}
+                disabled={(!commentText.trim() && commentAttachments.length === 0) || uploadingComment || voiceRecorder.isRecording}
               >
                 {/* Send button has a yellow background → white icon gets lost, use dark ink instead. */}
-                {isSending ? (
-                  <ActivityIndicator size="small" color={Colors.text} />
-                ) : (
-                  <Ionicons name="send" size={18} color={Colors.text} />
-                )}
+                <Ionicons name="send" size={18} color={Colors.text} />
               </Pressable>
             </View>
           </View>

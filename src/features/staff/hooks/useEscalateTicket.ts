@@ -1,9 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { KEY } from '@/src/lib/queryKeys';
 import { staffTicketService } from '../services/staffTicket.service';
-import { handleErrorApi } from '@/src/lib/errors';
 import { EscalatePayload } from '../types/staff.types';
 
+// Has a field the BE can reject (Reason) — the component uses mutateAsync + try/catch +
+// handleErrorApi({ error, setFieldError }) so an EntityError maps to the right field.
 export function useEscalateTicket(ticketId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -11,6 +12,5 @@ export function useEscalateTicket(ticketId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: KEY.staffTickets });
     },
-    onError: (error) => handleErrorApi({ error }),
   });
 }

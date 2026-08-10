@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -45,7 +45,7 @@ import { useEscalateTicket } from '../../staff/hooks/useEscalateTicket';
 import { useHoldTicket } from '../../staff/hooks/useHoldTicket';
 import { useResolveTicket } from '../../staff/hooks/useResolveTicket';
 import { useResumeTicket } from '../../staff/hooks/useResumeTicket';
-import { useStaffAddComment } from '../../staff/hooks/useStaffAddComment';
+import { staffTicketService } from '../../staff/services/staffTicket.service';
 import { useStaffTicketDetail } from '../../staff/hooks/useStaffTicketDetail';
 import { useStaffTickets } from '../../staff/hooks/useStaffTickets';
 import { useStartTicket } from '../../staff/hooks/useStartTicket';
@@ -67,7 +67,8 @@ import { TicketStatusBadge } from '../../tickets/components/TicketStatusBadge';
 import { TypingIndicator } from '../../tickets/components/TypingIndicator';
 import { VoiceRecordingModal } from '../../tickets/components/VoiceRecordingModal';
 
-import { useAddComment } from '../../tickets/hooks/useAddComment';
+import { useChatSender } from '../../tickets/hooks/useChatSender';
+import { ticketService } from '../../tickets/services/ticket.service';
 import { useAddReaction, useRemoveReaction } from '../../tickets/hooks/useChatReactions';
 import { useDownloadChatAttachment } from '../../tickets/hooks/useDownloadChatAttachment';
 import { useRateTicket } from '../../tickets/hooks/useRateTicket';
@@ -177,8 +178,18 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
 
   // Chat hooks
   const targetId = activeTicketId ?? '';
-  const customerComment = useAddComment(targetId);
-  const operatorComment = useStaffAddComment(targetId);
+  // Outbox — enqueue() doesn't await the BE, the worker sends sequentially with backoff retry.
+  // `send` picks the right service per role (isOperator can change while the ticket stays the
+  // same, so it must be a dependency).
+  const send = useCallback(
+    (ticketId: string, payload: Parameters<typeof staffTicketService.addComment>[1]) =>
+      isOperator
+        ? staffTicketService.addComment(ticketId, payload)
+        : ticketService.addComment(ticketId, { ...payload, isInternal: false }),
+    [isOperator],
+  );
+  const { pending: pendingChats, enqueue: enqueueComment, retry: retryPendingComment, discard: discardPendingComment } =
+    useChatSender(targetId, send);
   const customerUpload = useUploadCommentAttachment();
   const updateChat = useUpdateTicketChat(targetId);
   const deleteChat = useDeleteTicketChat(targetId);
@@ -247,33 +258,22 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
     : unpinChat.isPending
       ? unpinChat.variables
       : null;
-  const sending = customerComment.isPending || operatorComment.isPending;
   const voiceLevel = voiceRecorder.waveform.reduce((sum, value) => sum + value, 0)
     / Math.max(1, voiceRecorder.waveform.length);
 
-  const handleSend = async () => {
+  const handleSend = () => {
     const body = commentText.trim();
-    if ((!body && attachments.length === 0) || sending) return;
-    try {
-      if (isOperator) {
-        await operatorComment.mutateAsync({
-          body,
-          isInternal: chatTab === 'internal',
-          attachments: attachments.length ? attachments : undefined,
-        });
-      } else {
-        await customerComment.mutateAsync({
-          body,
-          attachments: attachments.length ? attachments : undefined,
-        });
-      }
-      setCommentText('');
-      setAttachments([]);
-      setAiSuggestions([]);
-      if (!isConnected) void commentsQuery.refetch();
-    } catch {
-      Alert.alert('Error', 'Could not send the message. Please try again.');
-    }
+    if (!body && attachments.length === 0) return;
+    // Outbox — doesn't await the BE. The optimistic bubble shows right away; a failure (if
+    // any) shows on that same bubble via PendingBubble (retry/discard), not the composer.
+    void enqueueComment({
+      body,
+      isInternal: isOperator ? chatTab === 'internal' : false,
+      attachments: attachments.length ? attachments : undefined,
+    });
+    setCommentText('');
+    setAttachments([]);
+    setAiSuggestions([]);
   };
 
   const handleCustomerPickAttachment = async () => {
@@ -446,7 +446,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
   }
 
   // 2. ACTIVE TICKET VIEW (Chat & Details)
-  const customerSendDisabled = (!commentText.trim() && attachments.length === 0) || sending;
+  const customerSendDisabled = !commentText.trim() && attachments.length === 0;
   const operatorSendDisabled = customerSendDisabled || operatorUploading || voiceRecorder.isRecording;
 
   return (
@@ -544,6 +544,9 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
             activeTab={chatTab}
             onTabChange={setChatTab}
             ticketClosed={ticketClosed}
+            pendingMessages={pendingChats}
+            onRetryPending={retryPendingComment}
+            onDiscardPending={discardPendingComment}
             onEdit={(comment, body, editReason) =>
               updateChat.mutate({ chatId: comment.id, payload: { body, editReason } })
             }
@@ -659,11 +662,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                   onPress={handleSend}
                   disabled={operatorSendDisabled}
                 >
-                  {sending ? (
-                    <ActivityIndicator size="small" color="#FFF" />
-                  ) : (
-                    <Ionicons name="send" size={18} color="#FFF" />
-                  )}
+                  <Ionicons name="send" size={18} color="#FFF" />
                 </Pressable>
               </View>
             </View>
@@ -708,11 +707,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                 onPress={handleSend}
                 disabled={customerSendDisabled}
               >
-                {sending ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <Ionicons name="send" size={18} color="#FFF" />
-                )}
+                <Ionicons name="send" size={18} color="#FFF" />
               </Pressable>
             </View>
           )}
@@ -974,27 +969,30 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
         visible={showHold}
         isLoading={holdTicket.isPending}
         onClose={() => setShowHold(false)}
-        onSubmit={(reason: PauseReasonEnum, note?: string) =>
-          holdTicket.mutate({ reason, note }, { onSuccess: () => setShowHold(false) })
-        }
+        onSubmit={async (reason: PauseReasonEnum, note?: string) => {
+          await holdTicket.mutateAsync({ reason, note });
+          setShowHold(false);
+        }}
       />
 
       <ResolveModal
         visible={showResolve}
         isLoading={resolveTicket.isPending}
         onClose={() => setShowResolve(false)}
-        onSubmit={(summary: string) =>
-          resolveTicket.mutate({ resolutionSummary: summary }, { onSuccess: () => setShowResolve(false) })
-        }
+        onSubmit={async (summary: string) => {
+          await resolveTicket.mutateAsync({ resolutionSummary: summary });
+          setShowResolve(false);
+        }}
       />
 
       <EscalateModal
         visible={showEscalate}
         isLoading={escalateTicket.isPending}
         onClose={() => setShowEscalate(false)}
-        onSubmit={(reason: EscalationReasonEnum, note?: string) =>
-          escalateTicket.mutate({ reason, note }, { onSuccess: () => setShowEscalate(false) })
-        }
+        onSubmit={async (reason: EscalationReasonEnum, note?: string) => {
+          await escalateTicket.mutateAsync({ reason, note });
+          setShowEscalate(false);
+        }}
       />
 
       {showLogForm && (
@@ -1029,19 +1027,17 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                         }
                       : undefined
                   }
-                  onSubmit={(data: MaintenanceLogPayload) => {
+                  onSubmit={async (data: MaintenanceLogPayload) => {
                     if (editingLog) {
-                      updateLog.mutate(
-                        { logId: editingLog.id, data: data as UpdateMaintenanceLogPayload },
-                        {
-                          onSuccess: () => {
-                            setShowLogForm(false);
-                            setEditingLog(null);
-                          },
-                        },
-                      );
+                      await updateLog.mutateAsync({
+                        logId: editingLog.id,
+                        data: data as UpdateMaintenanceLogPayload,
+                      });
+                      setShowLogForm(false);
+                      setEditingLog(null);
                     } else {
-                      addLog.mutate(data, { onSuccess: () => setShowLogForm(false) });
+                      await addLog.mutateAsync(data);
+                      setShowLogForm(false);
                     }
                   }}
                 />

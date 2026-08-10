@@ -31,7 +31,8 @@ import { RateModal } from '@/src/features/tickets/components/RateModal';
 import { ReopenModal } from '@/src/features/tickets/components/ReopenModal';
 import { SlaCountdown } from '@/src/features/tickets/components/SlaCountdown';
 import { TicketStatusBadge } from '@/src/features/tickets/components/TicketStatusBadge';
-import { useAddComment } from '@/src/features/tickets/hooks/useAddComment';
+import { useChatSender } from '@/src/features/tickets/hooks/useChatSender';
+import { ticketService } from '@/src/features/tickets/services/ticket.service';
 import { useRateTicket } from '@/src/features/tickets/hooks/useRateTicket';
 import { useReopenTicket } from '@/src/features/tickets/hooks/useReopenTicket';
 import { useUploadCommentAttachment } from '@/src/features/tickets/hooks/useUploadCommentAttachment';
@@ -189,7 +190,11 @@ function TicketDetailScreenInner() {
   const accountId = useSessionStore((s) => s.user?.accountId);
 
   const { data: batteries = [] } = useMyBatteryAssets();
-  const { mutateAsync: addComment,      isPending: isCommenting  } = useAddComment(id ?? '');
+  // Outbox — enqueue() doesn't await the BE, the worker sends sequentially with backoff retry.
+  const { pending: pendingChats, enqueue: enqueueComment, retry: retryPendingComment, discard: discardPendingComment } =
+    useChatSender(id ?? '', (ticketId, payload) =>
+      ticketService.addComment(ticketId, { ...payload, isInternal: false }),
+    );
   const { mutateAsync: rateTicket,      isPending: isRating      } = useRateTicket(id ?? '');
   const { mutateAsync: reopenTicket,    isPending: isReopening   } = useReopenTicket(id ?? '');
   const { mutateAsync: uploadAttachment, isPending: isUploading  } = useUploadCommentAttachment();
@@ -217,7 +222,6 @@ function TicketDetailScreenInner() {
   const [commentText,     setCommentText]     = useState('');
   // Mention đã chọn trong tin đang soạn — BE nhận qua field `mentions`, KHÔNG parse '@' từ body.
   const [pickedMentions,  setPickedMentions]  = useState<ChatMentionInput[]>([]);
-  const [commentError,    setCommentError]    = useState('');
   const [attachments,     setAttachments]     = useState<AttachmentForm[]>([]);
   // Chọn nhiều tin để xoá (DELETE /chats/bulk) — chỉ tin của chính mình.
   const [selectMode,      setSelectMode]      = useState(false);
@@ -343,30 +347,25 @@ function TicketDetailScreenInner() {
     setAttachments((prev) => prev.filter((a) => a.fileId !== fileId));
   };
 
-  const handleSendComment = async () => {
-    setCommentError('');
+  const handleSendComment = () => {
     // Không báo lỗi "để trống" — nút gửi đã disable khi rỗng. Chỉ chặn gửi tin hoàn toàn trống.
     const trimmed = commentText.trim();
     if (!trimmed && attachments.length === 0) return;
-    try {
-      // Chỉ gửi mention còn hiện diện trong body (user có thể đã xoá tên đi).
-      const activeMentions = pickedMentions.filter((m) =>
-        trimmed.includes(`@${m.displayName.replace(/\s+/g, '_')}`),
-      );
-      await addComment({
-        body: trimmed,
-        mentions: activeMentions.length > 0 ? activeMentions : undefined,
-        attachments: attachments.length > 0 ? attachments : undefined,
-      });
-      setCommentText('');
-      setPickedMentions([]);
-      setAttachments([]);
-      // Realtime là nguồn chính: hub đẩy ChatAdded (BE gửi tới cả người gửi) → setQueryData prepend.
-      // Chỉ fallback refetch khi hub không kết nối (WS bị chặn / chưa connect).
-      if (!isConnected) commentsQuery.refetch();
-    } catch {
-      Alert.alert('Error', 'Failed to send comment. Please try again.');
-    }
+    // Chỉ gửi mention còn hiện diện trong body (user có thể đã xoá tên đi).
+    const activeMentions = pickedMentions.filter((m) =>
+      trimmed.includes(`@${m.displayName.replace(/\s+/g, '_')}`),
+    );
+    // Outbox — không await BE. Bubble optimistic hiện ngay; lỗi (nếu có) hiện trên chính
+    // bubble đó qua PendingBubble (retry/discard), không chặn composer.
+    void enqueueComment({
+      body: trimmed,
+      isInternal: false,
+      mentions: activeMentions.length > 0 ? activeMentions : undefined,
+      attachments: attachments.length > 0 ? attachments : undefined,
+    });
+    setCommentText('');
+    setPickedMentions([]);
+    setAttachments([]);
   };
 
   const handleMarkRead = (chatIds: string[]) => markChatsRead(chatIds);
@@ -676,6 +675,9 @@ function TicketDetailScreenInner() {
             onLoadMore={() => commentsQuery.fetchNextPage()}
             accentColor="#34C759"
             ticketClosed={isClosed}
+            pendingMessages={pendingChats}
+            onRetryPending={retryPendingComment}
+            onDiscardPending={discardPendingComment}
             onEdit={(comment, body, editReason) =>
               updateChat({ chatId: comment.id, payload: { body, editReason } })
             }
@@ -742,12 +744,6 @@ function TicketDetailScreenInner() {
             </View>
           )}
 
-          {!selectMode && commentError ? (
-            <View style={styles.composerError}>
-              <Text style={styles.fieldError}>{commentError}</Text>
-            </View>
-          ) : null}
-
           {!selectMode && (
             <>
           {/* Autocomplete Popup @Mention khi gõ @ */}
@@ -785,7 +781,7 @@ function TicketDetailScreenInner() {
             <TextInput
               style={styles.composerInput}
               value={commentText}
-              onChangeText={(t) => { setCommentText(t); setCommentError(''); notifyTyping(); }}
+              onChangeText={(t) => { setCommentText(t); notifyTyping(); }}
               placeholder="Type a message..."
               placeholderTextColor={Colors.textFaint}
               multiline
@@ -801,13 +797,11 @@ function TicketDetailScreenInner() {
                 : <Ionicons name="mic-outline" size={22} color={Colors.textMute} />}
             </Pressable>
             <Pressable
-              style={[styles.sendBtn, ((!commentText.trim() && attachments.length === 0) || isCommenting) && styles.btnDisabled]}
+              style={[styles.sendBtn, (!commentText.trim() && attachments.length === 0) && styles.btnDisabled]}
               onPress={handleSendComment}
-              disabled={(!commentText.trim() && attachments.length === 0) || isCommenting}
+              disabled={!commentText.trim() && attachments.length === 0}
             >
-              {isCommenting
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <Ionicons name="send" size={18} color="#fff" />}
+              <Ionicons name="send" size={18} color="#fff" />
             </Pressable>
           </View>
             </>

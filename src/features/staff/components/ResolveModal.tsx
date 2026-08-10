@@ -2,25 +2,35 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Colors } from '@/src/lib/theme';
 import { BottomSheet } from '@/src/shared/components/BottomSheet';
+import { handleErrorApi } from '@/src/lib/errors';
 
 interface Props {
   visible: boolean;
   isLoading: boolean;
   onClose: () => void;
-  onSubmit: (resolutionSummary: string) => void;
+  onSubmit: (resolutionSummary: string) => Promise<void>;
 }
 
 export function ResolveModal({ visible, isLoading, onClose, onSubmit }: Props) {
   const [summary, setSummary] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const trimmed = summary.trim();
     if (trimmed.length < 10) {
       setError('Resolution summary must be at least 10 characters');
       return;
     }
-    onSubmit(trimmed);
+    try {
+      await onSubmit(trimmed);
+    } catch (err) {
+      handleErrorApi({
+        error: err,
+        setFieldError: (field, message) => {
+          if (field === 'resolutionSummary') setError(message);
+        },
+      });
+    }
   };
 
   const handleClose = () => {

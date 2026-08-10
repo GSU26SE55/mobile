@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { staffTicketService } from '../services/staffTicket.service';
-import { handleErrorApi } from '@/src/lib/errors';
 import { UpdateMaintenanceLogPayload } from '../types/staff.types';
 
 interface UpdateLogParams {
@@ -10,6 +9,9 @@ interface UpdateLogParams {
 }
 
 // GH-44 #4 — PATCH partial update maintenance log (log owner only).
+// Has fields the BE can reject (Summary, DurationMinutes, StartedAt) — the component uses
+// mutateAsync + try/catch + handleErrorApi({ error, setFieldError }) so an EntityError maps
+// to the right field.
 export function useUpdateMaintenanceLog(ticketId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -19,6 +21,5 @@ export function useUpdateMaintenanceLog(ticketId: string) {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY.staffTickets.detail(ticketId) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEY.staffTickets.myLogs() });
     },
-    onError: (error) => handleErrorApi({ error }),
   });
 }

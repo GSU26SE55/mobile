@@ -53,7 +53,7 @@ export function ForgotPasswordStep3({ resetToken, expiresInSeconds, onExpired }:
     } catch (error) {
       if (error instanceof EntityError) {
         const errs: Record<string, string> = {};
-        error.payload.listErrors?.forEach(({ field, detail }) => {
+        error.errors.forEach(({ field, detail }) => {
           errs[field.charAt(0).toLowerCase() + field.slice(1)] = detail;
         });
         setFieldErrors(errs);

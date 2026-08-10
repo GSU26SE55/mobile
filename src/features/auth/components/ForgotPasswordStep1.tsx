@@ -30,7 +30,7 @@ export function ForgotPasswordStep1({ onSuccess }: Props) {
       onSuccess(result.data);
     } catch (error) {
       if (error instanceof EntityError) {
-        const emailMsg = error.payload.listErrors?.find(e => e.field.toLowerCase() === 'email')?.detail;
+        const emailMsg = error.errors.find(e => e.field.toLowerCase() === 'email')?.detail;
         if (emailMsg) setEmailError(emailMsg);
         else setGeneralError(error.message);
       } else if (error instanceof HttpError) {

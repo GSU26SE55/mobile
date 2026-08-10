@@ -47,7 +47,7 @@ export function ForgotPasswordStep2({ email, onSuccess }: Props) {
       onSuccess(data.resetToken, data.expiresInSeconds);
     } catch (error) {
       if (error instanceof EntityError) {
-        const otpMsg = error.payload.listErrors?.find(e => e.field.toLowerCase() === 'otp')?.detail;
+        const otpMsg = error.errors.find(e => e.field.toLowerCase() === 'otp')?.detail;
         if (otpMsg) setOtpError(otpMsg);
         else setGeneralError(error.message);
       } else if (error instanceof HttpError) {
