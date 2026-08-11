@@ -12,6 +12,7 @@ import { useAssetAlerts } from '@/src/features/batteries/hooks/useAssetAlerts';
 import { useCascadeRisk } from '@/src/features/batteries/hooks/useCascadeRisk';
 import { BatteryInfoCard } from '@/src/features/batteries/components/BatteryInfoCard';
 import { CascadeRiskBadge } from '@/src/features/batteries/components/CascadeRiskBadge';
+import { BmsSwitchCard } from '@/src/features/batteries/components/BmsSwitchCard';
 import { SensorChart } from '@/src/features/batteries/components/SensorChart';
 import { ChargeDischargeChart } from '@/src/features/batteries/components/ChargeDischargeChart';
 import { AssetAlertList } from '@/src/features/batteries/components/AssetAlertList';
@@ -53,6 +54,8 @@ function BatteryDetailScreenInner() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const assetId = id ?? '';
+  const scrollRef = React.useRef<ScrollView>(null);
+  const bmsControlsY = React.useRef(0);
 
   const { data: battery, isLoading, isError } = useBatteryAsset(assetId);
   const { data: realtime } = useBatteryAssetRealtime(assetId);
@@ -87,6 +90,12 @@ function BatteryDetailScreenInner() {
   const goCreateTicket = () =>
     router.push({ pathname: '/(customer)/tickets/create', params: { batteryId: battery.id } });
 
+  const openBmsControls = () =>
+    scrollRef.current?.scrollTo({
+      y: Math.max(0, bmsControlsY.current - 12),
+      animated: true,
+    });
+
   const soc = realtime?.socPercent ?? null;
 
   const statusPillLabel =
@@ -112,7 +121,11 @@ function BatteryDetailScreenInner() {
         <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Status pill, centered */}
         <View style={styles.statusPillWrap}>
           <View style={styles.statusPill}>
@@ -144,7 +157,12 @@ function BatteryDetailScreenInner() {
             </Pressable>
           </View>
 
-          <Pressable style={styles.powerBtnFloating} onPress={goCreateTicket}>
+          <Pressable
+            style={styles.powerBtnFloating}
+            onPress={openBmsControls}
+            accessibilityRole="button"
+            accessibilityLabel="Control BMS charge and discharge MOSFETs"
+          >
             <Ionicons name="flash" size={22} color={Solar.ink} />
           </Pressable>
         </View>
@@ -223,6 +241,13 @@ function BatteryDetailScreenInner() {
         </View>
 
         <CascadeRiskBadge data={cascade} />
+        <View
+          onLayout={(event) => {
+            bmsControlsY.current = event.nativeEvent.layout.y;
+          }}
+        >
+          <BmsSwitchCard assetId={assetId} cascade={cascade} />
+        </View>
 
         {battery.siteId ? (
           <Pressable

@@ -62,6 +62,7 @@ export const ENDPOINTS = {
     DETAIL:       (id: string) => `/api/battery-assets/${id}`,
     REALTIME:     (id: string) => `/api/battery-assets/${id}/realtime`,
     CASCADE_RISK: (id: string) => `/api/battery-assets/${id}/cascade-risk`, // GH-57 (Sprint 7 B4)
+    BMS_SWITCH:   (id: string) => `/api/battery-assets/${id}/bms-switch`,
   },
   SENSOR_READINGS: {
     LATEST:    (assetId: string) => `/api/sensor-readings/${assetId}/latest`,
