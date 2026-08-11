@@ -40,6 +40,7 @@ export const QUERY_KEY = {
     detail:      (id: string) => [...KEY.batteryAssets, 'detail', id] as const,
     realtime:    (id: string) => [...KEY.batteryAssets, 'realtime', id] as const,
     cascadeRisk: (id: string) => [...KEY.batteryAssets, 'cascade-risk', id] as const, // GH-57
+    bmsSwitch:   (id: string) => [...KEY.batteryAssets, 'bms-switch', id] as const,
   },
   sites: {
     me:        (params?: Record<string, unknown>) => [...KEY.sites, 'me', params] as const,
@@ -140,6 +141,10 @@ export const QUERY_KEY = {
   },
   iotDevices: {
     byCode:       (deviceCode: string) => [...KEY.iotDevices, 'by-code', deviceCode] as const, // GH-56
+    list:         (params: unknown) => [...KEY.iotDevices, 'list', params] as const,            // IOT3-57
+    detail:       (deviceId: string) => [...KEY.iotDevices, 'detail', deviceId] as const,       // IOT3-63
+    heartbeats:   (deviceId: string, params: unknown) =>
+      [...KEY.iotDevices, 'heartbeats', deviceId, params] as const,                              // IOT3-58
     calibrations: (deviceId: string, params?: Record<string, unknown>) =>
       [...KEY.iotDevices, 'calibrations', deviceId, params] as const,
   },

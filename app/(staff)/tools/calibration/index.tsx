@@ -19,6 +19,7 @@ import { useDeviceByCode } from '@/src/features/iot-devices/hooks/useDeviceByCod
 import { useCalibrations } from '@/src/features/iot-devices/hooks/useCalibrations';
 import { useDeleteCalibration } from '@/src/features/iot-devices/hooks/useDeleteCalibration';
 import { CalibrationCard } from '@/src/features/iot-devices/components/CalibrationCard';
+import { DeviceStatusCard } from '@/src/features/iot-devices/components/DeviceStatusCard';
 import { deviceCodeSchema } from '@/src/features/iot-devices/schemas/calibration.schema';
 import {
   CalibrationChannel,
@@ -138,6 +139,16 @@ export default function CalibrationScreen() {
               <Text style={styles.addBtnText}>Add</Text>
             </Pressable>
           </View>
+
+          {/*
+            IOT3-61 — thẻ trạng thái đầy đủ.
+
+            Dòng meta phía trên chỉ có tên + mã + trạng thái. Nhưng khi kỹ thuật viên đang đứng
+            trước tủ pin, câu hỏi thật là "vì sao thiết bị này không gửi số liệu?" — và câu trả
+            lời nằm ở thấy-lần-cuối, firmware, lệch đồng hồ. Cả ba API đã trả sẵn từ IoT-2 mà
+            chưa từng được hiện lên (IOT3-60).
+          */}
+          <DeviceStatusCard device={device.data} />
 
           {/* Filter */}
           <View style={styles.filterRow}>

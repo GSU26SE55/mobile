@@ -11,9 +11,13 @@ type ToolRow = {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   desc: string;
+  // ⚠️ Union này liệt kê TƯỜNG MINH từng route — thêm màn hình mới mà quên nới ở đây là
+  // TypeScript đỏ ngay, không phải lỗi lúc chạy. Cố ý giữ tường minh để không ai thêm một
+  // đường dẫn gõ sai chính tả rồi phát hiện lúc bấm vào.
   href:
     | '/(staff)/tools/battery-types'
     | '/(staff)/tools/calibration'
+    | '/(staff)/tools/devices'        // IOT3-64
     | '/(staff)/kb'
     | '/(staff)/blog';
 };
@@ -30,6 +34,12 @@ const ROWS: ToolRow[] = [
     title: 'Sensor Calibration',
     desc: 'Calibrate IoT device sensors in the field',
     href: '/(staff)/tools/calibration',
+  },
+  {
+    icon: 'hardware-chip-outline',
+    title: 'Thiết bị IoT',
+    desc: 'Trạng thái, firmware, heartbeat của gateway tại hiện trường',
+    href: '/(staff)/tools/devices',
   },
   {
     icon: 'book-outline',

@@ -12,6 +12,7 @@ import { useCascadeRisk } from '@/src/features/batteries/hooks/useCascadeRisk';
 import { BatteryInfoCard } from '@/src/features/batteries/components/BatteryInfoCard';
 import { BatteryRealtimeCard } from '@/src/features/batteries/components/BatteryRealtimeCard';
 import { CascadeRiskBadge } from '@/src/features/batteries/components/CascadeRiskBadge';
+import { BmsSwitchCard } from '@/src/features/batteries/components/BmsSwitchCard';
 import { SensorChart } from '@/src/features/batteries/components/SensorChart';
 import { ChargeDischargeChart } from '@/src/features/batteries/components/ChargeDischargeChart';
 import { AssetAlertList } from '@/src/features/batteries/components/AssetAlertList';
@@ -95,6 +96,7 @@ function StaffBatteryViewScreenInner() {
         {realtime ? <BatteryRealtimeCard data={realtime} /> : null}
 
         <CascadeRiskBadge data={cascade} />
+        <BmsSwitchCard assetId={assetId} cascade={cascade} />
 
         {battery.siteId ? (
           <Pressable
