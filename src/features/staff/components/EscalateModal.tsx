@@ -17,7 +17,7 @@ interface Props {
   visible: boolean;
   isLoading: boolean;
   onClose: () => void;
-  onSubmit: (reason: EscalationReasonEnum, note?: string) => Promise<void>;
+  onSubmit: (reason: EscalationReasonEnum, note: string) => Promise<void>;
 }
 
 export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) {
@@ -29,7 +29,7 @@ export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) 
     if (!selected) return;
     setReasonError('');
     try {
-      await onSubmit(selected, note.trim() || undefined);
+      await onSubmit(selected, note.trim());
     } catch (error) {
       handleErrorApi({
         error,
@@ -74,7 +74,7 @@ export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) 
           style={styles.noteInput}
           value={note}
           onChangeText={setNote}
-          placeholder="Additional note (optional)..."
+          placeholder="Required note..."
           placeholderTextColor={Colors.textFaint}
           multiline
           maxLength={500}
@@ -86,9 +86,9 @@ export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) 
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
           <Pressable
-            style={[styles.submitBtn, !selected && styles.btnDisabled]}
+            style={[styles.submitBtn, (!selected || !note.trim()) && styles.btnDisabled]}
             onPress={handleSubmit}
-            disabled={!selected || isLoading}
+            disabled={!selected || !note.trim() || isLoading}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" size="small" />

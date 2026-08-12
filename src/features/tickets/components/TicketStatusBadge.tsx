@@ -2,30 +2,25 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { BadgeColors } from '@/src/lib/theme';
 import { TicketStatusEnum } from '../types/ticket.types';
+import { TICKET_STATUS_LABELS, ticketStatusLabel } from '../utils/ticketLabels';
 
 // Human-readable ticket status labels.
 const STATUS_CONFIG: Record<TicketStatusEnum, { label: string; badge: keyof typeof BadgeColors }> = {
-  New:                    { label: 'New',                    badge: 'new' },
-  Open:                   { label: 'Awaiting triage',        badge: 'open' },
-  Assigned:               { label: 'Assigned',               badge: 'assigned' },
+  Open:                   { label: TICKET_STATUS_LABELS.Open, badge: 'open' },
+  Pending:                { label: TICKET_STATUS_LABELS.Pending, badge: 'waiting' },
   InProgress:             { label: 'In progress',            badge: 'progress' },
-  WaitingCustomer:        { label: 'Waiting for customer',   badge: 'waiting' },
-  WaitingParts:           { label: 'Waiting for parts',      badge: 'waiting' },
-  WaitingOnsiteSchedule:  { label: 'Waiting for appointment', badge: 'waiting' },
-  Resolved:               { label: 'Resolved',               badge: 'resolved' },
-  Escalated:              { label: 'Escalated',              badge: 'escalated' },
-  ClosedPendingRate:      { label: 'Awaiting rating',        badge: 'closed' },
+  Request:                { label: TICKET_STATUS_LABELS.Request, badge: 'escalated' },
+  ReAssign:               { label: TICKET_STATUS_LABELS.ReAssign, badge: 'escalated' },
+  Completed:              { label: TICKET_STATUS_LABELS.Completed, badge: 'resolved' },
   Closed:                 { label: 'Closed',                 badge: 'closed' },
   ClosedRejected:         { label: 'Rejected',               badge: 'crit' },
-  Incident:               { label: 'Incident',               badge: 'crit' },
 };
 
 /**
  * Status label for places that only need text (for example, ActivityTimeline).
  * Returns the original string when the backend sends an unknown value.
  */
-export const statusLabel = (status: string) =>
-  STATUS_CONFIG[status as TicketStatusEnum]?.label ?? status;
+export const statusLabel = ticketStatusLabel;
 
 interface Props {
   status: TicketStatusEnum;

@@ -23,17 +23,17 @@ export default function TicketListScreen() {
   const totalCount = allTickets.length;
 
   const openCount = allTickets.filter((t) =>
-    !['Resolved', 'Closed', 'ClosedPendingRate', 'ClosedRejected'].includes(t.status)
+    !['Closed', 'ClosedRejected'].includes(t.status)
   ).length;
 
   const closedCount = totalCount - openCount;
 
   const displayedTickets = allTickets.filter((t) => {
     if (filter === 'open') {
-      return !['Resolved', 'Closed', 'ClosedPendingRate', 'ClosedRejected'].includes(t.status);
+      return !['Closed', 'ClosedRejected'].includes(t.status);
     }
     if (filter === 'closed') {
-      return ['Resolved', 'Closed', 'ClosedPendingRate', 'ClosedRejected'].includes(t.status);
+      return ['Closed', 'ClosedRejected'].includes(t.status);
     }
     return true;
   });

@@ -113,7 +113,7 @@ export const ENDPOINTS = {
     CHATS:           (id: string) => `/api/tickets/${id}/chats`,   // GET list (?page&pageSize) + POST (BE migration 20260622)
     CHAT_DETAIL:     (tid: string, cid: string) => `/api/tickets/${tid}/chats/${cid}`, // PUT (edit) / DELETE
     // DELETE { chatIds } — max 50 per call, partial success. BE returns 400 when the ticket is
-    // Closed/ClosedPendingRate. Chats not owned by the author are HIDDEN INDIVIDUALLY (TicketChatHide)
+    // Closed tickets. Chats not owned by the author are HIDDEN INDIVIDUALLY (TicketChatHide)
     // rather than deleted, and do NOT appear in the response's `deleted`/`skipped`.
     CHAT_BULK_DELETE: (tid: string) => `/api/tickets/${tid}/chats/bulk`,
     CHAT_MARK_READ:  (tid: string) => `/api/tickets/${tid}/chats/mark-read`, // POST { chatIds }
@@ -158,7 +158,6 @@ export const ENDPOINTS = {
     MY_LIST:          '/api/staff/tickets/me',
     DASHBOARD_STATS:  '/api/staff/tickets/dashboard/stats', // GH-67 — KPI snapshot for the JWT's staff
 
-    START:            (id: string) => `/api/staff/tickets/${id}/start`,
     HOLD:             (id: string) => `/api/staff/tickets/${id}/hold`,
     RESUME:           (id: string) => `/api/staff/tickets/${id}/resume`,
     RESOLVE:          (id: string) => `/api/staff/tickets/${id}/resolve`,

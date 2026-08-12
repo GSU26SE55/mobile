@@ -6,16 +6,18 @@ import { TicketStatusEnum } from '@/src/features/tickets/types/ticket.types';
 
 interface Props {
   status: TicketStatusEnum;
-  onStart?: () => void;
   onHold?: () => void;
   onResume?: () => void;
   onResolve?: () => void;
   onEscalate?: () => void;
   isLoading?: boolean;
   canResolve?: boolean; // GH-47 — gate the Resolve button on ticket.resolve
+  canHold?: boolean;
+  canResume?: boolean;
+  canEscalate?: boolean;
 }
 
-export function TicketActionBar({ status, onStart, onHold, onResume, onResolve, onEscalate, isLoading, canResolve = true }: Props) {
+export function TicketActionBar({ status, onHold, onResume, onResolve, onEscalate, isLoading, canResolve = true, canHold = true, canResume = true, canEscalate = true }: Props) {
   if (isLoading) {
     return (
       <View style={[styles.bar, Shadow]}>
@@ -24,41 +26,30 @@ export function TicketActionBar({ status, onStart, onHold, onResume, onResolve, 
     );
   }
 
-  if (status === 'Assigned') {
-    return (
-      <View style={[styles.bar, Shadow]}>
-        <Pressable style={[styles.btnPrimary, ShadowPrimary, { flex: 1 }]} onPress={onStart}>
-          <Ionicons name="play" size={16} color={Colors.text} />
-          <Text style={styles.btnPrimaryText}>Start processing</Text>
-        </Pressable>
-      </View>
-    );
-  }
-
   if (status === 'InProgress') {
     return (
       <View style={[styles.bar, Shadow]}>
-        <Pressable style={styles.btnOutline} onPress={onHold}>
+        {canHold && <Pressable style={styles.btnOutline} onPress={onHold}>
           <Ionicons name="pause-outline" size={16} color={Colors.warning} />
           <Text style={[styles.btnOutlineText, { color: Colors.warning }]}>Hold</Text>
-        </Pressable>
+        </Pressable>}
         {canResolve && (
           // Green + white text: the "successfully completed" action, clearly distinct
           // from yellow (in progress) / orange (on hold) / red (escalate) beside it.
           <Pressable style={[styles.btnSuccess, { flex: 1 }]} onPress={onResolve}>
             <Ionicons name="checkmark-circle" size={16} color="#fff" />
-            <Text style={styles.btnSuccessText}>Resolve</Text>
+            <Text style={styles.btnSuccessText}>Complete</Text>
           </Pressable>
         )}
-        <Pressable style={styles.btnDanger} onPress={onEscalate}>
+        {canEscalate && <Pressable style={styles.btnDanger} onPress={onEscalate}>
           <Ionicons name="arrow-up-circle-outline" size={16} color={Colors.danger} />
           <Text style={[styles.btnOutlineText, { color: Colors.danger }]}>Escalate</Text>
-        </Pressable>
+        </Pressable>}
       </View>
     );
   }
 
-  if (['WaitingCustomer', 'WaitingParts', 'WaitingOnsiteSchedule'].includes(status)) {
+  if (status === 'Pending' && canResume) {
     return (
       <View style={[styles.bar, Shadow]}>
         <Pressable style={[styles.btnPrimary, ShadowPrimary, { flex: 1 }]} onPress={onResume}>

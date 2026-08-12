@@ -28,7 +28,6 @@ import { ResolveModal } from '@/src/features/staff/components/ResolveModal';
 import { EscalateModal } from '@/src/features/staff/components/EscalateModal';
 import { MaintenanceLogForm } from '@/src/features/staff/components/MaintenanceLogForm';
 import { useStaffTicketDetail } from '@/src/features/staff/hooks/useStaffTicketDetail';
-import { useStartTicket } from '@/src/features/staff/hooks/useStartTicket';
 import { useHoldTicket } from '@/src/features/staff/hooks/useHoldTicket';
 import { useResumeTicket } from '@/src/features/staff/hooks/useResumeTicket';
 import { useResolveTicket } from '@/src/features/staff/hooks/useResolveTicket';
@@ -63,7 +62,9 @@ import { ChatReadersSheet } from '@/src/features/tickets/components/ChatReadersS
 import { VoiceRecordingModal } from '@/src/features/tickets/components/VoiceRecordingModal';
 import { ProcessingDurationTimer } from '@/src/features/staff/components/ProcessingDurationTimer';
 import { MaintenanceLogPayload, UpdateMaintenanceLogPayload } from '@/src/features/staff/types/staff.types';
-import { EscalationReasonEnum, PauseReasonEnum, TicketStatusEnum, MaintenanceLogDTO } from '@/src/features/tickets/types/ticket.types';
+import { EscalationReasonEnum, PauseReasonEnum, MaintenanceLogDTO } from '@/src/features/tickets/types/ticket.types';
+import { canComplete, canEscalate, canHold, canResume, isTerminalTicket, shouldShowLiveSla } from '@/src/features/tickets/utils/ticketWorkflow';
+import { PendingContextCard } from '@/src/features/tickets/components/PendingContextCard';
 import type { ChatMentionInput } from '@/src/features/tickets/types/ticket.types';
 import { AttachmentPicker, UploadedAttachment } from '@/src/features/file-storage/components/AttachmentPicker';
 import { AttachmentPreviewStrip } from '@/src/features/file-storage/components/AttachmentPreviewStrip';
@@ -153,7 +154,6 @@ function StaffTicketDetailScreenInner() {
   const user = useSessionStore((s) => s.user);
   const canResolve = checkPermission(user, P.TICKET_RESOLVE); // GH-47
   const { data: ticket, isLoading, isError, refetch } = useStaffTicketDetail(ticketId);
-  const { mutate: startTicket, isPending: isStarting } = useStartTicket(ticketId);
   const { mutateAsync: holdTicket, isPending: isHolding } = useHoldTicket(ticketId);
   const { mutate: resumeTicket, isPending: isResuming } = useResumeTicket(ticketId);
   const { mutateAsync: resolveTicket, isPending: isResolving } = useResolveTicket(ticketId);
@@ -169,7 +169,7 @@ function StaffTicketDetailScreenInner() {
   // GH-44 — comments/activities via a dedicated GET + realtime (Staff can see internal comments too).
   const commentsQuery = useTicketChatsCursor(ticketId || undefined);
   const activitiesQuery = useTicketActivities(ticketId || undefined);
-  const { isConnected, typingUsers, notifyTyping } = useTicketCommentsRealtime(ticketId || undefined);
+  const { typingUsers, notifyTyping } = useTicketCommentsRealtime(ticketId || undefined);
   const { mutate: updateChat, isPending: editChatPending } = useUpdateTicketChat(ticketId);
   const { mutate: deleteChat, isPending: deleteChatPending } = useDeleteTicketChat(ticketId);
   const { mutate: markChatsRead } = useMarkTicketChatsRead(ticketId);
@@ -215,7 +215,7 @@ function StaffTicketDetailScreenInner() {
   }, [tab]);
 
   // GH-44: removed auto scrollToEnd — comments are now DESC (newest-first).
-  const isActioning = isStarting || isHolding || isResuming || isResolving || isEscalating;
+  const isActioning = isHolding || isResuming || isResolving || isEscalating;
 
   // Staff sees internal comments too — flatten pages (DESC newest-first), do NOT filter internal ones.
   // Dedup by id: offset-pagination + realtime prepend can return the same comment twice at a page boundary.
@@ -229,8 +229,18 @@ function StaffTicketDetailScreenInner() {
     });
   const activities = activitiesQuery.data ?? [];
   // Editing a log is only allowed when: user is the log owner + ticket isn't closed (BE also blocks these cases with 403).
-  const ticketClosed = ['Resolved', 'ClosedPendingRate', 'Closed', 'ClosedRejected'].includes(ticket?.status ?? '');
+  const ticketClosed = ticket ? isTerminalTicket(ticket.status) : false;
   const canEditLog = (log: MaintenanceLogDTO) => !ticketClosed && !!accountId && log.staffId === accountId;
+
+  // Only PrimaryHandler (current) and Manager can post on the public channel.
+  // Supporter and PreviousAssignee may only view public — composer is hidden on public tab for them.
+  // Manager is not in ticket.assignments, so check user.role directly.
+  const canPostPublic =
+    user?.role === 'MANAGER' ||
+    (!!accountId &&
+      (ticket?.assignments?.some(
+        (a) => a.staffId === accountId && a.role === 'PrimaryHandler'
+      ) ?? false));
 
   const handleSendComment = () => {
     const trimmed = commentText.trim();
@@ -291,19 +301,18 @@ function StaffTicketDetailScreenInner() {
     ]);
   };
 
-  const handleStart = () => { startTicket(undefined); };
   // mutateAsync (not mutate) — each modal's try/catch needs the rejection to map EntityError to the right field.
-  const handleHold = async (reason: PauseReasonEnum, note?: string) => {
-    await holdTicket({ reason, note });
+  const handleHold = async (reason: PauseReasonEnum, note: string, appointment: Date) => {
+    await holdTicket({ reason, note: note.trim(), rescheduledStartAt: appointment.toISOString() });
     setShowHold(false);
   };
-  const handleResume = () => { resumeTicket(undefined); };
+  const handleResume = () => { resumeTicket({ reason: 'Blocking condition cleared.' }); };
   const handleResolve = async (summary: string) => {
     await resolveTicket({ resolutionSummary: summary });
     setShowResolve(false);
   };
-  const handleEscalate = async (reason: EscalationReasonEnum, note?: string) => {
-    await escalateTicket({ reason, note });
+  const handleEscalate = async (reason: EscalationReasonEnum, note: string) => {
+    await escalateTicket({ reason, note: note.trim() });
     setShowEscalate(false);
   };
   const handleAddLog = async (log: MaintenanceLogPayload) => {
@@ -441,60 +450,60 @@ function StaffTicketDetailScreenInner() {
           {/* "Typing" indicator — right above the input, transparent background */}
           <TypingIndicator names={typingUsers.map((u) => u.displayName)} />
 
-          <View
-            style={[
-              styles.composer,
-              // The open keyboard already covers the home indicator area — adding insets.bottom
-              // here would just create extra whitespace between the input and the keyboard.
-              { paddingBottom: !keyboardVisible && insets.bottom > 0 ? insets.bottom + 8 : 12 }
-            ]}
-          >
-            <AttachmentPreviewStrip
-              items={commentAttachments}
-              imageHeaders={imageHeaders}
-              disabled={uploadingComment}
-              onRemove={(fileId) =>
-                setCommentAttachments((prev) => prev.filter((a) => a.fileId !== fileId))
-              }
-            />
-            <View style={styles.composerRow}>
-              <AttachmentPicker
-                compact
-                hideThumbnails
-                purpose={FilePurposeEnum.TicketAttachment}
-                value={commentAttachments}
-                onChange={setCommentAttachments}
-                onUploadingChange={setUploadingComment}
+          {/* Hide composer on public tab for Supporter / PreviousAssignee — view only on public */}
+          {(chatTab === 'internal' || canPostPublic) && (
+            <View
+              style={[
+                styles.composer,
+                { paddingBottom: !keyboardVisible && insets.bottom > 0 ? insets.bottom + 8 : 12 }
+              ]}
+            >
+              <AttachmentPreviewStrip
+                items={commentAttachments}
+                imageHeaders={imageHeaders}
+                disabled={uploadingComment}
+                onRemove={(fileId) =>
+                  setCommentAttachments((prev) => prev.filter((a) => a.fileId !== fileId))
+                }
               />
-              <TextInput
-                style={styles.composerInput}
-                placeholder={chatTab === 'internal' ? 'Internal note (not visible to customer)...' : 'Type a message...'}
-                placeholderTextColor={Colors.textFaint}
-                value={commentText}
-                onChangeText={(t) => { setCommentText(t); notifyTyping(); }}
-                multiline
-              />
-              <Pressable
-                style={styles.internalToggle}
-                onPress={handleStartRecording}
-                disabled={chatTab === 'internal' || uploadingComment || transcribing}
-              >
-                {transcribing ? (
-                  <ActivityIndicator size="small" color={Colors.textMute} />
-                ) : (
-                  <Ionicons name="mic-outline" size={17} color={chatTab === 'internal' ? Colors.textFaint : Colors.textMute} />
-                )}
-              </Pressable>
-              <Pressable
-                style={[styles.sendBtn, ((!commentText.trim() && commentAttachments.length === 0) || uploadingComment || voiceRecorder.isRecording) && styles.sendBtnDisabled]}
-                onPress={handleSendComment}
-                disabled={(!commentText.trim() && commentAttachments.length === 0) || uploadingComment || voiceRecorder.isRecording}
-              >
-                {/* Send button has a yellow background → white icon gets lost, use dark ink instead. */}
-                <Ionicons name="send" size={18} color={Colors.text} />
-              </Pressable>
+              <View style={styles.composerRow}>
+                <AttachmentPicker
+                  compact
+                  hideThumbnails
+                  purpose={FilePurposeEnum.TicketAttachment}
+                  value={commentAttachments}
+                  onChange={setCommentAttachments}
+                  onUploadingChange={setUploadingComment}
+                />
+                <TextInput
+                  style={styles.composerInput}
+                  placeholder={chatTab === 'internal' ? 'Internal note (not visible to customer)...' : 'Type a message...'}
+                  placeholderTextColor={Colors.textFaint}
+                  value={commentText}
+                  onChangeText={(t) => { setCommentText(t); notifyTyping(); }}
+                  multiline
+                />
+                <Pressable
+                  style={styles.internalToggle}
+                  onPress={handleStartRecording}
+                  disabled={chatTab === 'internal' || uploadingComment || transcribing}
+                >
+                  {transcribing ? (
+                    <ActivityIndicator size="small" color={Colors.textMute} />
+                  ) : (
+                    <Ionicons name="mic-outline" size={17} color={chatTab === 'internal' ? Colors.textFaint : Colors.textMute} />
+                  )}
+                </Pressable>
+                <Pressable
+                  style={[styles.sendBtn, ((!commentText.trim() && commentAttachments.length === 0) || uploadingComment || voiceRecorder.isRecording) && styles.sendBtnDisabled]}
+                  onPress={handleSendComment}
+                  disabled={(!commentText.trim() && commentAttachments.length === 0) || uploadingComment || voiceRecorder.isRecording}
+                >
+                  <Ionicons name="send" size={18} color={Colors.text} />
+                </Pressable>
+              </View>
             </View>
-          </View>
+          )}
         </View>
       ) : (
       <ScrollView
@@ -511,7 +520,7 @@ function StaffTicketDetailScreenInner() {
             </View>
             <Text style={styles.metaCategory}>{ticket.category}</Text>
           </View>
-          {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} />}
+          {ticket.slaTimer && shouldShowLiveSla(ticket.status, ticket.priority, ticket.slaTimer.status) && <SlaCountdown sla={ticket.slaTimer} />}
           <View style={styles.durationRow}>
             <Text style={styles.durationLabel}>Processing time</Text>
             <ProcessingDurationTimer activities={activities} status={ticket.status} />
@@ -565,17 +574,20 @@ function StaffTicketDetailScreenInner() {
         {/* Action Bar */}
         <TicketActionBar
           status={ticket.status}
-          onStart={handleStart}
           onHold={() => setShowHold(true)}
           onResume={handleResume}
           onResolve={() => setShowResolve(true)}
           onEscalate={() => setShowEscalate(true)}
           isLoading={isActioning}
-          canResolve={canResolve}
+          canResolve={canResolve && canComplete(ticket, accountId)}
+          canHold={canHold(ticket, accountId)}
+          canResume={canResume(ticket, accountId)}
+          canEscalate={canEscalate(ticket, accountId)}
         />
+        <PendingContextCard ticket={ticket} />
 
         {/* Maintenance log button */}
-        {(['InProgress', 'WaitingCustomer', 'WaitingParts', 'WaitingOnsiteSchedule'] as TicketStatusEnum[]).includes(ticket.status) && (
+        {ticket.status === 'InProgress' && !!accountId && isPrimaryHandler(ticket.assignments, accountId) && (
           <Pressable style={[styles.logButton, Shadow]} onPress={() => setShowLogForm(!showLogForm)}>
             <Text style={styles.logButtonText}>{showLogForm ? 'Hide log form' : 'Add maintenance log'}</Text>
           </Pressable>

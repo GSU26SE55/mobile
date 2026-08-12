@@ -10,6 +10,7 @@ export {
   ImpactScopeEnum,
   UrgencyLevelEnum,
   PauseReasonEnum,
+  PendingContextEnum,
   EscalationReasonEnum,
   SlaTimerStatusEnum,
   MaintenanceLogTypeEnum,
@@ -36,6 +37,8 @@ import type {
   ParticipantTypeEnum,
   TicketVerifyStatusEnum,
   TicketCloseReasonEnum,
+  PendingContextEnum,
+  PauseReasonEnum,
 } from '@/src/shared/enums/ticket.enum';
 
 // GH-83 — ticket chat's own enum (string-based, unlike the int enums above).
@@ -170,7 +173,7 @@ export interface TicketCommentDTO {
  * BE only returns `staffId` (UUID), NO name: Customers aren't allowed to read the
  * staff directory, so don't try to map it to a name in the customer app.
  */
-export type TicketAssignmentRole = 'PrimaryHandler' | 'Supporter';
+export type TicketAssignmentRole = 'PrimaryHandler' | 'Supporter' | 'PreviousPrimaryHandler';
 
 export interface TicketAssignmentDTO {
   staffId: string;
@@ -207,6 +210,11 @@ export interface TicketDTO {
   origin: TicketOriginEnum;
   reopenCount: number;
   isIncident: boolean;
+  scheduledStartAtUtc: string | null;
+  scheduleVersion: number;
+  pendingContext: PendingContextEnum | null;
+  pendingReason: PauseReasonEnum | null;
+  activeIncidentEpisodeId: string | null;
   /** Pre-computed by BE for the current user (TicketQueryHelper) — has unread chat on this ticket. */
   hasUnreadChat: boolean;
   createdAt: string;
@@ -276,9 +284,11 @@ export interface TicketDetailDTO extends TicketDTO {
 }
 
 export interface TicketActionDto {
-  id: string | null;
-  code: string | null;
+  id: string;
+  ticketId?: string;
+  code: string;
   status: TicketStatusEnum;
+  warnings?: string[];
 }
 
 export interface TicketActionResponse {
@@ -359,7 +369,7 @@ export interface RatePayload {
 }
 
 export interface ReopenPayload {
-  reopenReason?: string;
+  reopenReason: string;
 }
 
 export interface TicketListParams {

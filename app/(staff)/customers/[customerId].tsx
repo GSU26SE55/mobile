@@ -47,27 +47,22 @@ function timeAgo(iso: string): string {
 }
 
 const STATUS_LABEL: Partial<Record<TicketStatusEnum, string>> = {
-  New: 'New',
   Open: 'Open',
-  Assigned: 'Assigned',
+  Pending: 'Pending',
   InProgress: 'In progress',
-  WaitingCustomer: 'Waiting customer',
-  WaitingParts: 'Waiting parts',
-  WaitingOnsiteSchedule: 'Waiting schedule',
-  Resolved: 'Resolved',
-  Escalated: 'Escalated',
+  Request: 'Escalation requested',
+  ReAssign: 'Awaiting reassignment',
+  Completed: 'Awaiting review',
   Closed: 'Closed',
-  ClosedPendingRate: 'Pending rating',
   ClosedRejected: 'Rejected',
 };
 
 type BadgeKey = keyof typeof BadgeColors;
 
 const STATUS_BADGE: Partial<Record<TicketStatusEnum, BadgeKey>> = {
-  New: 'new', Open: 'open', Assigned: 'assigned', InProgress: 'progress',
-  WaitingCustomer: 'waiting', WaitingParts: 'waiting', WaitingOnsiteSchedule: 'waiting',
-  Resolved: 'resolved', Escalated: 'escalated',
-  Closed: 'closed', ClosedPendingRate: 'closed', ClosedRejected: 'escalated',
+  Open: 'open', Pending: 'waiting', InProgress: 'progress',
+  Request: 'escalated', ReAssign: 'escalated', Completed: 'resolved',
+  Closed: 'closed', ClosedRejected: 'escalated',
 };
 
 export default function CustomerTicketsScreen() {

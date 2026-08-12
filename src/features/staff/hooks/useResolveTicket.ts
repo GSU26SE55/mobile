@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { KEY } from '@/src/lib/queryKeys';
+import { invalidateTicketLifecycle } from '../../tickets/utils/invalidateTicketLifecycle';
 import { staffTicketService } from '../services/staffTicket.service';
 import { ResolvePayload } from '../types/staff.types';
 
@@ -10,7 +10,7 @@ export function useResolveTicket(ticketId: string) {
   return useMutation({
     mutationFn: (data: ResolvePayload) => staffTicketService.resolve(ticketId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: KEY.staffTickets });
+      invalidateTicketLifecycle(queryClient, ticketId);
     },
   });
 }

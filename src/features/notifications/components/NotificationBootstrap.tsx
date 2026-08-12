@@ -59,6 +59,8 @@ export function NotificationBootstrap() {
       if (!cameToForeground) return;
 
       queryClient.invalidateQueries({ queryKey: KEY.notifications });
+      queryClient.invalidateQueries({ queryKey: KEY.tickets });
+      queryClient.invalidateQueries({ queryKey: KEY.staffTickets });
       void syncMissedNotifications().catch(() => {});
     });
 

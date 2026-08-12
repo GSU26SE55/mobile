@@ -92,7 +92,7 @@ export default function ProfileScreen() {
 
   const tickets = ticketsData?.items ?? [];
   const openCount = tickets.filter((t) =>
-    ['New', 'Open', 'Assigned', 'InProgress', 'WaitingCustomer', 'WaitingParts', 'WaitingOnsiteSchedule'].includes(t.status)
+    ['Open', 'Pending', 'InProgress', 'Request', 'ReAssign', 'Completed'].includes(t.status)
   ).length;
   const unreadAlertsCount = alerts.filter((a) => a.status === AlertStatusEnum.Open).length;
 

@@ -35,11 +35,25 @@ export function useNotificationStream(enabled: boolean) {
       queryClient.invalidateQueries({ queryKey: KEY.notifications });
     };
 
-    connection.on('NotificationCreated', invalidateAll);
+    const invalidateAllLifecycle = () => {
+      queryClient.invalidateQueries({ queryKey: KEY.tickets });
+      queryClient.invalidateQueries({ queryKey: KEY.staffTickets });
+    };
+
+    const invalidateTicketLifecycle = (notification?: NotificationDTO) => {
+      if (notification?.entityType !== 'Ticket' || !notification.entityId || !/^[0-9a-f-]{36}$/i.test(notification.entityId)) return;
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY.tickets.detail(notification.entityId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY.staffTickets.detail(notification.entityId) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY.tickets.activities(notification.entityId) });
+      invalidateAllLifecycle();
+    };
+
+    connection.on('NotificationCreated', (notification?: NotificationDTO) => { invalidateAll(); invalidateTicketLifecycle(notification); });
     connection.on(
       'NotificationReceived',
       (notification: NotificationDTO & { isCritical?: boolean }) => {
         invalidateAll();
+        invalidateTicketLifecycle(notification);
         void presentSystemNotification(notification, notification.isCritical)
           .then(() => advanceLastSeen(notification.createdAt))
           .catch(() => {});
@@ -54,6 +68,7 @@ export function useNotificationStream(enabled: boolean) {
     connection.onreconnected(() => {
       setIsConnected(true);
       invalidateAll();
+      invalidateAllLifecycle();
       void syncMissedNotifications().catch(() => {});
     });
     connection.onclose(() => setIsConnected(false));
@@ -65,6 +80,7 @@ export function useNotificationStream(enabled: boolean) {
         if (cancelled) return;
         setIsConnected(true);
         invalidateAll();
+        invalidateAllLifecycle();
       })
       .catch(() => {
         // REST polling remains the fallback when WebSockets are unavailable.

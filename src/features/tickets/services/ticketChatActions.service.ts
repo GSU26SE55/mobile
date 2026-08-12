@@ -43,7 +43,7 @@ export const ticketChatActionsService = {
     ),
 
   // Delete multiple chats in 1 request (max 50). Partial success — see
-  // ChatBulkDeleteResultDTO. BE returns 400 if the ticket is Closed/ClosedPendingRate.
+  // ChatBulkDeleteResultDTO. BE returns 400 if the ticket is terminal.
   bulkRemove: (ticketId: string, payload: ChatBulkDeletePayload) =>
     axiosInstance.delete<CommonResponse<ChatBulkDeleteResultDTO>>(
       ENDPOINTS.TICKETS.CHAT_BULK_DELETE(ticketId),

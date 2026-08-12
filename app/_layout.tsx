@@ -2,11 +2,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/src/context/authContext';
 import { PermissionsSync } from '@/src/features/auth/components/PermissionsSync';
 import { NotificationBootstrap } from '@/src/features/notifications/components/NotificationBootstrap';
-import { NotificationsRealtimeSync } from '@/src/features/notifications/components/NotificationsRealtimeSync';
 import { configureGoogleSignin } from '@/src/config/googleAuth';
 
 // Import side-effect: TaskManager.defineTask MUST run at top-level, BEFORE the React tree builds.
@@ -57,7 +55,6 @@ export default function RootLayout() {
           <NotificationBootstrap />
           {/* Realtime feed + badge via /hubs/notifications — replaces 30s polling. Must be mounted
               exactly once here: each mount opens its own WebSocket. */}
-          <NotificationsRealtimeSync />
           <RootLayoutNav />
           <StatusBar style="dark" />
         </AuthProvider>
