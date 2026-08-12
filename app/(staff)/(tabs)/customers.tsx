@@ -46,8 +46,7 @@ function timeAgo(iso: string): string {
 }
 
 const OPEN_STATUSES = new Set<TicketStatusEnum>([
-  'New', 'Open', 'Assigned', 'InProgress',
-  'WaitingCustomer', 'WaitingParts', 'WaitingOnsiteSchedule', 'Escalated',
+  'Open', 'Pending', 'InProgress', 'Request', 'ReAssign', 'Completed',
 ]);
 
 interface CustomerGroup {

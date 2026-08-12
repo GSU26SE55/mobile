@@ -23,22 +23,18 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: 'resolved', label: 'Completed' },
 ];
 
-const ACTIVE_STATUSES: TicketStatusEnum[] = ['Assigned', 'InProgress'];
-const WAITING_STATUSES: TicketStatusEnum[] = ['WaitingCustomer', 'WaitingParts', 'WaitingOnsiteSchedule'];
-const RESOLVED_STATUSES: TicketStatusEnum[] = ['Resolved', 'Escalated'];
+const ACTIVE_STATUSES: TicketStatusEnum[] = ['InProgress'];
+const WAITING_STATUSES: TicketStatusEnum[] = ['Open', 'Pending', 'Request', 'ReAssign'];
+const RESOLVED_STATUSES: TicketStatusEnum[] = ['Completed', 'Closed', 'ClosedRejected'];
 
 // status → English label + badge (current palette) + % progress in the lifecycle + bar color.
 const STATUS_META: Record<string, { label: string; badge: keyof typeof BadgeColors; progress: number }> = {
-  New: { label: 'New', badge: 'new', progress: 10 },
-  Open: { label: 'Open', badge: 'open', progress: 15 },
-  Assigned: { label: 'Assigned', badge: 'assigned', progress: 30 },
+  Open: { label: 'Awaiting assignment', badge: 'open', progress: 10 },
+  Pending: { label: 'Pending', badge: 'waiting', progress: 30 },
   InProgress: { label: 'In progress', badge: 'progress', progress: 60 },
-  WaitingCustomer: { label: 'Waiting customer', badge: 'waiting', progress: 50 },
-  WaitingParts: { label: 'Waiting parts', badge: 'waiting', progress: 50 },
-  WaitingOnsiteSchedule: { label: 'Waiting schedule', badge: 'waiting', progress: 50 },
-  Resolved: { label: 'Resolved', badge: 'resolved', progress: 100 },
-  Escalated: { label: 'Escalated', badge: 'escalated', progress: 80 },
-  ClosedPendingRate: { label: 'Pending rating', badge: 'closed', progress: 100 },
+  Request: { label: 'Escalation requested', badge: 'escalated', progress: 60 },
+  ReAssign: { label: 'Awaiting reassignment', badge: 'escalated', progress: 60 },
+  Completed: { label: 'Awaiting review', badge: 'resolved', progress: 90 },
   Closed: { label: 'Closed', badge: 'closed', progress: 100 },
   ClosedRejected: { label: 'Rejected', badge: 'crit', progress: 100 },
   Incident: { label: 'Incident', badge: 'crit', progress: 40 },

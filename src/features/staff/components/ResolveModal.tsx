@@ -42,7 +42,7 @@ export function ResolveModal({ visible, isLoading, onClose, onSubmit }: Props) {
   return (
     <BottomSheet visible={visible} onClose={handleClose}>
       <View style={styles.body}>
-        <Text style={styles.title}>Resolve ticket</Text>
+        <Text style={styles.title}>Complete ticket</Text>
         <Text style={styles.desc}>Describe the resolution for the Manager to review.</Text>
 
         <View>
@@ -71,7 +71,7 @@ export function ResolveModal({ visible, isLoading, onClose, onSubmit }: Props) {
             {isLoading ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.submitText}>Resolve</Text>
+              <Text style={styles.submitText}>Complete</Text>
             )}
           </Pressable>
         </View>

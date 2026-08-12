@@ -5,6 +5,7 @@ import { BadgeColors, Colors, Shadow } from '@/src/lib/theme';
 import { TicketDTO } from '@/src/features/tickets/types/ticket.types';
 import { SlaCountdown } from '@/src/features/tickets/components/SlaCountdown';
 import { TicketStatusBadge } from '@/src/features/tickets/components/TicketStatusBadge';
+import { shouldShowLiveSla } from '@/src/features/tickets/utils/ticketWorkflow';
 
 const PRIORITY_BADGE: Record<string, keyof typeof BadgeColors> = {
   P1Critical: 'p1',
@@ -28,13 +29,12 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 
 const STATUS_HINT: Record<string, string> = {
-  Assigned: 'Tap to start processing',
+  Open: 'Awaiting assignment',
+  Pending: 'Scheduled or held',
   InProgress: 'In progress',
-  WaitingCustomer: 'Waiting for customer reply',
-  WaitingParts: 'Waiting for parts',
-  WaitingOnsiteSchedule: 'Waiting for on-site schedule',
-  Resolved: 'Resolved — pending review',
-  Escalated: 'Escalated',
+  Request: 'Escalation awaiting decision',
+  ReAssign: 'Awaiting reassignment',
+  Completed: 'Completed — pending review',
 };
 
 interface Props {
@@ -61,7 +61,7 @@ export function StaffTicketCard({ ticket, onPress }: Props) {
         </View>
         <TicketStatusBadge status={ticket.status} />
         <View style={{ flex: 1 }} />
-        {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} compact />}
+      {ticket.slaTimer && shouldShowLiveSla(ticket.status, ticket.priority, ticket.slaTimer.status) && <SlaCountdown sla={ticket.slaTimer} compact />}
       </View>
 
       <Text style={styles.title} numberOfLines={2}>{ticket.title}</Text>

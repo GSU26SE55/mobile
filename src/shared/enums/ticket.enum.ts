@@ -1,19 +1,13 @@
-// Matches BE TicketStatusEnum (13 values). Does NOT have 'Approved' — that's
-// ActivityActionEnum.Approved (the Manager approval action), not a ticket status.
+// GH-1176 canonical lifecycle. REST uses these exact case-sensitive names.
 export const TicketStatusEnum = {
-  New: 'New',
   Open: 'Open',
-  Assigned: 'Assigned',
+  Pending: 'Pending',
   InProgress: 'InProgress',
-  WaitingCustomer: 'WaitingCustomer',
-  WaitingParts: 'WaitingParts',
-  WaitingOnsiteSchedule: 'WaitingOnsiteSchedule',
-  Resolved: 'Resolved',
-  Escalated: 'Escalated',
-  ClosedPendingRate: 'ClosedPendingRate',
+  Request: 'Request',
+  ReAssign: 'ReAssign',
+  Completed: 'Completed',
   Closed: 'Closed',
   ClosedRejected: 'ClosedRejected',
-  Incident: 'Incident',
 } as const;
 export type TicketStatusEnum = (typeof TicketStatusEnum)[keyof typeof TicketStatusEnum];
 
@@ -21,6 +15,7 @@ export const TicketPriorityEnum = {
   P1Critical: 'P1Critical',
   P2High: 'P2High',
   P3Normal: 'P3Normal',
+  Urgent: 'Urgent',
 } as const;
 export type TicketPriorityEnum = (typeof TicketPriorityEnum)[keyof typeof TicketPriorityEnum];
 
@@ -59,11 +54,16 @@ export const UrgencyLevelEnum = {
 export type UrgencyLevelEnum = (typeof UrgencyLevelEnum)[keyof typeof UrgencyLevelEnum];
 
 export const PauseReasonEnum = {
-  WaitingCustomer: 'WaitingCustomer',
-  WaitingParts: 'WaitingParts',
-  WaitingOnsiteSchedule: 'WaitingOnsiteSchedule',
+  CustomerUnavailable: 'CustomerUnavailable',
+  WorkBlocked: 'WorkBlocked',
 } as const;
 export type PauseReasonEnum = (typeof PauseReasonEnum)[keyof typeof PauseReasonEnum];
+
+export const PendingContextEnum = {
+  Scheduled: 'Scheduled',
+  Held: 'Held',
+} as const;
+export type PendingContextEnum = (typeof PendingContextEnum)[keyof typeof PendingContextEnum];
 
 export const MaintenanceLogTypeEnum = {
   RemoteSupport: 'RemoteSupport',
@@ -87,6 +87,7 @@ export const SlaTimerStatusEnum = {
   Paused: 'Paused',
   Met: 'Met',
   Breached: 'Breached',
+  Stopped: 'Stopped',
 } as const;
 export type SlaTimerStatusEnum = (typeof SlaTimerStatusEnum)[keyof typeof SlaTimerStatusEnum];
 

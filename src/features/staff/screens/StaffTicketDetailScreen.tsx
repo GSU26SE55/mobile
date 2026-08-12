@@ -28,7 +28,6 @@ import { ResolveModal } from '@/src/features/staff/components/ResolveModal';
 import { EscalateModal } from '@/src/features/staff/components/EscalateModal';
 import { MaintenanceLogForm } from '@/src/features/staff/components/MaintenanceLogForm';
 import { useStaffTicketDetail } from '@/src/features/staff/hooks/useStaffTicketDetail';
-import { useStartTicket } from '@/src/features/staff/hooks/useStartTicket';
 import { useHoldTicket } from '@/src/features/staff/hooks/useHoldTicket';
 import { useResumeTicket } from '@/src/features/staff/hooks/useResumeTicket';
 import { useResolveTicket } from '@/src/features/staff/hooks/useResolveTicket';
@@ -63,7 +62,9 @@ import { ChatReadersSheet } from '@/src/features/tickets/components/ChatReadersS
 import { VoiceRecordingModal } from '@/src/features/tickets/components/VoiceRecordingModal';
 import { ProcessingDurationTimer } from '@/src/features/staff/components/ProcessingDurationTimer';
 import { MaintenanceLogPayload, UpdateMaintenanceLogPayload } from '@/src/features/staff/types/staff.types';
-import { EscalationReasonEnum, PauseReasonEnum, TicketStatusEnum, MaintenanceLogDTO } from '@/src/features/tickets/types/ticket.types';
+import { EscalationReasonEnum, PauseReasonEnum, MaintenanceLogDTO } from '@/src/features/tickets/types/ticket.types';
+import { canComplete, canEscalate, canHold, canResume, isTerminalTicket, shouldShowLiveSla } from '@/src/features/tickets/utils/ticketWorkflow';
+import { PendingContextCard } from '@/src/features/tickets/components/PendingContextCard';
 import type { ChatMentionInput } from '@/src/features/tickets/types/ticket.types';
 import { AttachmentPicker, UploadedAttachment } from '@/src/features/file-storage/components/AttachmentPicker';
 import { AttachmentPreviewStrip } from '@/src/features/file-storage/components/AttachmentPreviewStrip';
@@ -153,7 +154,6 @@ function StaffTicketDetailScreenInner() {
   const user = useSessionStore((s) => s.user);
   const canResolve = checkPermission(user, P.TICKET_RESOLVE); // GH-47
   const { data: ticket, isLoading, isError, refetch } = useStaffTicketDetail(ticketId);
-  const { mutate: startTicket, isPending: isStarting } = useStartTicket(ticketId);
   const { mutateAsync: holdTicket, isPending: isHolding } = useHoldTicket(ticketId);
   const { mutate: resumeTicket, isPending: isResuming } = useResumeTicket(ticketId);
   const { mutateAsync: resolveTicket, isPending: isResolving } = useResolveTicket(ticketId);
@@ -169,7 +169,7 @@ function StaffTicketDetailScreenInner() {
   // GH-44 — comments/activities via a dedicated GET + realtime (Staff can see internal comments too).
   const commentsQuery = useTicketChatsCursor(ticketId || undefined);
   const activitiesQuery = useTicketActivities(ticketId || undefined);
-  const { isConnected, typingUsers, notifyTyping } = useTicketCommentsRealtime(ticketId || undefined);
+  const { typingUsers, notifyTyping } = useTicketCommentsRealtime(ticketId || undefined);
   const { mutate: updateChat, isPending: editChatPending } = useUpdateTicketChat(ticketId);
   const { mutate: deleteChat, isPending: deleteChatPending } = useDeleteTicketChat(ticketId);
   const { mutate: markChatsRead } = useMarkTicketChatsRead(ticketId);
@@ -215,7 +215,7 @@ function StaffTicketDetailScreenInner() {
   }, [tab]);
 
   // GH-44: removed auto scrollToEnd — comments are now DESC (newest-first).
-  const isActioning = isStarting || isHolding || isResuming || isResolving || isEscalating;
+  const isActioning = isHolding || isResuming || isResolving || isEscalating;
 
   // Staff sees internal comments too — flatten pages (DESC newest-first), do NOT filter internal ones.
   // Dedup by id: offset-pagination + realtime prepend can return the same comment twice at a page boundary.
@@ -229,7 +229,7 @@ function StaffTicketDetailScreenInner() {
     });
   const activities = activitiesQuery.data ?? [];
   // Editing a log is only allowed when: user is the log owner + ticket isn't closed (BE also blocks these cases with 403).
-  const ticketClosed = ['Resolved', 'ClosedPendingRate', 'Closed', 'ClosedRejected'].includes(ticket?.status ?? '');
+  const ticketClosed = ticket ? isTerminalTicket(ticket.status) : false;
   const canEditLog = (log: MaintenanceLogDTO) => !ticketClosed && !!accountId && log.staffId === accountId;
 
   const handleSendComment = () => {
@@ -291,19 +291,18 @@ function StaffTicketDetailScreenInner() {
     ]);
   };
 
-  const handleStart = () => { startTicket(undefined); };
   // mutateAsync (not mutate) — each modal's try/catch needs the rejection to map EntityError to the right field.
-  const handleHold = async (reason: PauseReasonEnum, note?: string) => {
-    await holdTicket({ reason, note });
+  const handleHold = async (reason: PauseReasonEnum, note: string, appointment: Date) => {
+    await holdTicket({ reason, note: note.trim(), rescheduledStartAt: appointment.toISOString() });
     setShowHold(false);
   };
-  const handleResume = () => { resumeTicket(undefined); };
+  const handleResume = () => { resumeTicket({ reason: 'Blocking condition cleared.' }); };
   const handleResolve = async (summary: string) => {
     await resolveTicket({ resolutionSummary: summary });
     setShowResolve(false);
   };
-  const handleEscalate = async (reason: EscalationReasonEnum, note?: string) => {
-    await escalateTicket({ reason, note });
+  const handleEscalate = async (reason: EscalationReasonEnum, note: string) => {
+    await escalateTicket({ reason, note: note.trim() });
     setShowEscalate(false);
   };
   const handleAddLog = async (log: MaintenanceLogPayload) => {
@@ -511,7 +510,7 @@ function StaffTicketDetailScreenInner() {
             </View>
             <Text style={styles.metaCategory}>{ticket.category}</Text>
           </View>
-          {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} />}
+          {ticket.slaTimer && shouldShowLiveSla(ticket.status, ticket.priority, ticket.slaTimer.status) && <SlaCountdown sla={ticket.slaTimer} />}
           <View style={styles.durationRow}>
             <Text style={styles.durationLabel}>Processing time</Text>
             <ProcessingDurationTimer activities={activities} status={ticket.status} />
@@ -565,17 +564,20 @@ function StaffTicketDetailScreenInner() {
         {/* Action Bar */}
         <TicketActionBar
           status={ticket.status}
-          onStart={handleStart}
           onHold={() => setShowHold(true)}
           onResume={handleResume}
           onResolve={() => setShowResolve(true)}
           onEscalate={() => setShowEscalate(true)}
           isLoading={isActioning}
-          canResolve={canResolve}
+          canResolve={canResolve && canComplete(ticket, accountId)}
+          canHold={canHold(ticket, accountId)}
+          canResume={canResume(ticket, accountId)}
+          canEscalate={canEscalate(ticket, accountId)}
         />
+        <PendingContextCard ticket={ticket} />
 
         {/* Maintenance log button */}
-        {(['InProgress', 'WaitingCustomer', 'WaitingParts', 'WaitingOnsiteSchedule'] as TicketStatusEnum[]).includes(ticket.status) && (
+        {ticket.status === 'InProgress' && !!accountId && isPrimaryHandler(ticket.assignments, accountId) && (
           <Pressable style={[styles.logButton, Shadow]} onPress={() => setShowLogForm(!showLogForm)}>
             <Text style={styles.logButtonText}>{showLogForm ? 'Hide log form' : 'Add maintenance log'}</Text>
           </Pressable>

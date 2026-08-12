@@ -59,6 +59,8 @@ import { useAuthImageHeaders } from '@/src/features/file-storage/hooks/useAuthIm
 import { AuthImage } from '@/src/features/file-storage/components/AuthImage';
 import { AttachmentForm } from '@/src/features/tickets/schemas/comment.schema';
 import { RatePayload, ReopenPayload, TicketStatusEnum } from '@/src/features/tickets/types/ticket.types';
+import { canRateOrReopen, isTerminalTicket, shouldShowLiveSla } from '@/src/features/tickets/utils/ticketWorkflow';
+import { PendingContextCard } from '@/src/features/tickets/components/PendingContextCard';
 import type { ChatMentionInput } from '@/src/features/tickets/types/ticket.types';
 import { BadgeColors, Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
 import { useMyBatteryAssets } from '@/src/features/batteries/hooks/useMyBatteryAssets';
@@ -111,12 +113,10 @@ const STEP_CONFIGS = [
 
 function HorizontalStepper({ status }: { status: TicketStatusEnum }) {
   const getActiveStepIndex = (st: TicketStatusEnum) => {
-    if (['Closed', 'ClosedPendingRate', 'ClosedRejected', 'Incident'].includes(st)) return 5;
-    if (st === 'Resolved') return 4;
-    if (['InProgress', 'WaitingCustomer', 'WaitingParts', 'WaitingOnsiteSchedule'].includes(st)) return 3;
-    if (st === 'Assigned') return 2;
-    if (st === 'Escalated') return 3;
-    return 0; // New or Open
+    if (['Closed', 'ClosedRejected'].includes(st)) return 5;
+    if (st === 'Completed') return 4;
+    if (['InProgress', 'Pending', 'Request', 'ReAssign'].includes(st)) return 3;
+    return 0;
   };
 
   const activeIndex = getActiveStepIndex(status);
@@ -202,7 +202,7 @@ function TicketDetailScreenInner() {
   // GH-44 — comments qua GET phân trang (DESC newest-first) + activities standalone + realtime.
   const commentsQuery = useTicketChatsCursor(id);
   const activitiesQuery = useTicketActivities(id);
-  const { isConnected, typingUsers, notifyTyping } = useTicketCommentsRealtime(id);
+  const { typingUsers, notifyTyping } = useTicketCommentsRealtime(id);
   const { mutate: updateChat, isPending: editChatPending } = useUpdateTicketChat(id ?? '');
   const { mutate: deleteChat, isPending: deleteChatPending } = useDeleteTicketChat(id ?? '');
   const { mutateAsync: bulkDeleteChats, isPending: bulkDeletePending } =
@@ -259,10 +259,10 @@ function TicketDetailScreenInner() {
 
   if (!ticket) return null;
 
-  const canRate   = ticket.status === 'ClosedPendingRate';
-  const isResolved = ticket.status === 'Resolved';
-  const isClosed  = ['Closed', 'ClosedRejected'].includes(ticket.status);
-  const isWaiting = ticket.status === 'WaitingCustomer';
+  const canRate = canRateOrReopen(ticket);
+  const isResolved = ticket.status === 'Completed';
+  const isClosed = isTerminalTicket(ticket.status);
+  const isWaiting = ticket.status === 'Pending' && ticket.pendingContext === 'Held';
 
   // BE đã ẩn comment internal cho Customer; flatten các page (DESC newest-first).
   // Dedup theo id: offset-pagination + realtime prepend có thể trả trùng 1 comment ở ranh giới trang.
@@ -482,11 +482,12 @@ function TicketDetailScreenInner() {
             {/* Đã bỏ ngày tạo + danh mục. Đếm ngược SLA giữ lại, đặt cùng kiểu
                 với màn Staff: một dòng riêng dưới tiêu đề. */}
             <Text style={styles.title}>{ticket.title}</Text>
-            {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} />}
+          {ticket.slaTimer && shouldShowLiveSla(ticket.status, ticket.priority, ticket.slaTimer.status) && <SlaCountdown sla={ticket.slaTimer} />}
           </View>
 
           {/* Stepper progress */}
           <HorizontalStepper status={ticket.status} />
+          <PendingContextCard ticket={ticket} />
 
           {/* Waiting customer response banner */}
           {isWaiting && (
@@ -622,8 +623,8 @@ function TicketDetailScreenInner() {
             <View style={[styles.resolvedCard, Shadow]}>
               <Ionicons name="checkmark-circle" size={24} color="#2F7A2F" />
               <View style={{ flex: 1 }}>
-                <Text style={styles.resolvedTitle}>Ticket has been resolved</Text>
-                <Text style={styles.resolvedSub}>Please rate to close the ticket</Text>
+                <Text style={styles.resolvedTitle}>Work completed — awaiting Manager review</Text>
+                <Text style={styles.resolvedSub}>A Manager will review the completed work.</Text>
               </View>
             </View>
           )}
@@ -641,7 +642,7 @@ function TicketDetailScreenInner() {
             </View>
           )}
 
-          {isClosed && (
+          {isClosed && !canRate && (
             <View style={[styles.closedCard, Shadow]}>
               <Ionicons name="lock-closed-outline" size={18} color={Colors.textMute} />
               <Text style={styles.closedText}>Ticket has been closed completely</Text>

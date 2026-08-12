@@ -1,8 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
+import { useIsFocused } from '@react-navigation/native';
 import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { staffTicketService } from '../services/staffTicket.service';
+import { detailRefetchInterval } from '../../tickets/utils/ticketWorkflow';
 
 export function useStaffTicketDetail(id: string) {
+  const isFocused = useIsFocused();
   return useQuery({
     queryKey: QUERY_KEY.staffTickets.detail(id),
     queryFn: async () => {
@@ -10,5 +13,8 @@ export function useStaffTicketDetail(id: string) {
       return res.data.data;
     },
     enabled: !!id,
+    refetchInterval: query => isFocused ? detailRefetchInterval(query.state.data ?? undefined) : false,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 }

@@ -30,8 +30,11 @@ export interface StaffProfileDTO {
 
 export interface HoldPayload {
   reason: PauseReasonEnum;
-  note?: string;
+  note: string;
+  rescheduledStartAt: string;
 }
+
+export interface ResumePayload { reason: string; }
 
 export interface ResolvePayload {
   // BE required (TicketResolveCommand) — empty → 400.
@@ -40,7 +43,7 @@ export interface ResolvePayload {
 
 export interface EscalatePayload {
   reason: EscalationReasonEnum;
-  note?: string;
+  note: string;
 }
 
 export interface MaintenanceLogPayload {

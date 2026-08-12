@@ -5,30 +5,36 @@ import { Colors } from '@/src/lib/theme';
 import { BottomSheet } from '@/src/shared/components/BottomSheet';
 import { PauseReasonEnum } from '@/src/features/tickets/types/ticket.types';
 import { handleErrorApi } from '@/src/lib/errors';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { formatLocalSchedule } from '@/src/features/tickets/utils/scheduleTime';
 
 const HOLD_OPTIONS: { value: PauseReasonEnum; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { value: PauseReasonEnum.WaitingCustomer,       label: 'Waiting for customer reply', icon: 'person-outline' },
-  { value: PauseReasonEnum.WaitingParts,          label: 'Waiting for parts/equipment', icon: 'construct-outline' },
-  { value: PauseReasonEnum.WaitingOnsiteSchedule, label: 'Waiting for on-site schedule', icon: 'calendar-outline' },
+  { value: PauseReasonEnum.CustomerUnavailable, label: 'Customer unavailable', icon: 'person-outline' },
+  { value: PauseReasonEnum.WorkBlocked, label: 'Work blocked', icon: 'construct-outline' },
 ];
 
 interface Props {
   visible: boolean;
   isLoading: boolean;
   onClose: () => void;
-  onSubmit: (reason: PauseReasonEnum, note?: string) => Promise<void>;
+  onSubmit: (reason: PauseReasonEnum, note: string, appointment: Date) => Promise<void>;
 }
 
 export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
   const [selected, setSelected] = useState<PauseReasonEnum | null>(null);
   const [note, setNote] = useState('');
   const [reasonError, setReasonError] = useState('');
+  const [appointment, setAppointment] = useState(() => new Date(Date.now() + 60 * 60_000));
 
   const handleSubmit = async () => {
     if (!selected) return;
     setReasonError('');
     try {
-      await onSubmit(selected, note.trim() || undefined);
+      if (appointment.getTime() <= Date.now()) {
+        setReasonError('Appointment must be in the future');
+        return;
+      }
+      await onSubmit(selected, note.trim(), appointment);
     } catch (error) {
       handleErrorApi({
         error,
@@ -43,6 +49,7 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
     setSelected(null);
     setNote('');
     setReasonError('');
+    setAppointment(new Date(Date.now() + 60 * 60_000));
     onClose();
   };
 
@@ -74,11 +81,18 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
           style={styles.noteInput}
           value={note}
           onChangeText={setNote}
-          placeholder="Note (optional)..."
+          placeholder="Required note..."
           placeholderTextColor={Colors.textFaint}
           multiline
           textAlignVertical="top"
           maxLength={500}
+        />
+        <Text style={styles.desc}>New appointment: {formatLocalSchedule(appointment.toISOString())}</Text>
+        <DateTimePicker
+          value={appointment}
+          mode="datetime"
+          minimumDate={new Date(Date.now() + 60_000)}
+          onChange={(_, value) => value && setAppointment(value)}
         />
 
         <View style={styles.actions}>
@@ -86,9 +100,9 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
           <Pressable
-            style={[styles.submitBtn, !selected && styles.btnDisabled]}
+            style={[styles.submitBtn, (!selected || !note.trim()) && styles.btnDisabled]}
             onPress={handleSubmit}
-            disabled={!selected || isLoading}
+            disabled={!selected || !note.trim() || isLoading}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" size="small" />

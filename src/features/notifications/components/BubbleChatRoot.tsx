@@ -21,7 +21,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthProvider, useAuthContext } from '../../../context/authContext';
 import { P, checkPermission } from '../../../lib/authz';
-import { BadgeColors, Colors, Shadow } from '../../../lib/theme';
+import { Colors, Shadow } from '../../../lib/theme';
 import { useSessionStore } from '../../../stores/sessionStore';
 
 import {
@@ -48,7 +48,6 @@ import { useResumeTicket } from '../../staff/hooks/useResumeTicket';
 import { staffTicketService } from '../../staff/services/staffTicket.service';
 import { useStaffTicketDetail } from '../../staff/hooks/useStaffTicketDetail';
 import { useStaffTickets } from '../../staff/hooks/useStaffTickets';
-import { useStartTicket } from '../../staff/hooks/useStartTicket';
 import { useUpdateMaintenanceLog } from '../../staff/hooks/useUpdateMaintenanceLog';
 import type { MaintenanceLogPayload, UpdateMaintenanceLogPayload } from '../../staff/types/staff.types';
 
@@ -62,6 +61,7 @@ import { MentionSuggestionsPopup } from '../../tickets/components/MentionSuggest
 import { RateModal } from '../../tickets/components/RateModal';
 import { ReopenModal } from '../../tickets/components/ReopenModal';
 import { SlaCountdown } from '../../tickets/components/SlaCountdown';
+import { canComplete, canEscalate, canHold, canRateOrReopen, canResume, isPrimaryHandler, isTerminalTicket, shouldShowLiveSla } from '../../tickets/utils/ticketWorkflow';
 import { TicketCard } from '../../tickets/components/TicketCard';
 import { TicketStatusBadge } from '../../tickets/components/TicketStatusBadge';
 import { TypingIndicator } from '../../tickets/components/TypingIndicator';
@@ -174,7 +174,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
   const unreadCountQuery = useTicketUnreadCount(activeTicketId || undefined);
   const unreadCount = unreadCountQuery.data ?? 0;
 
-  const { isConnected, typingUsers, notifyTyping } = useTicketCommentsRealtime(activeTicketId || undefined);
+  const { typingUsers, notifyTyping } = useTicketCommentsRealtime(activeTicketId || undefined);
 
   // Chat hooks
   const targetId = activeTicketId ?? '';
@@ -204,7 +204,6 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
   const voiceRecorder = useVoiceRecorder();
 
   // Action hooks
-  const startTicket = useStartTicket(targetId);
   const holdTicket = useHoldTicket(targetId);
   const resumeTicket = useResumeTicket(targetId);
   const resolveTicket = useResolveTicket(targetId);
@@ -250,9 +249,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
   const internalCount = useMemo(() => comments.filter((c) => c.isInternal).length, [comments]);
 
   const ticketStatus = ticketDetail?.status;
-  const ticketClosed = isOperator
-    ? ['Resolved', 'ClosedPendingRate', 'Closed', 'ClosedRejected'].includes(ticketStatus ?? '')
-    : ['Closed', 'ClosedRejected'].includes(ticketStatus ?? '');
+  const ticketClosed = ticketStatus ? isTerminalTicket(ticketStatus) : false;
   const pinningId = pinChat.isPending
     ? pinChat.variables
     : unpinChat.isPending
@@ -771,7 +768,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                   <View style={[styles.detailCard, Shadow]}>
                     <View style={styles.cardHeader}>
                       <Text style={styles.cardCode}>{ticketDetail.code}</Text>
-                      {ticketDetail.slaTimer && <SlaCountdown sla={ticketDetail.slaTimer} />}
+              {ticketDetail.slaTimer && shouldShowLiveSla(ticketDetail.status, ticketDetail.priority, ticketDetail.slaTimer.status) && <SlaCountdown sla={ticketDetail.slaTimer} />}
                     </View>
                     <Text style={styles.cardTitle}>{ticketDetail.title}</Text>
 
@@ -832,30 +829,31 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                     <View style={{ marginTop: 8 }}>
                       <TicketActionBar
                         status={ticketDetail.status}
-                        onStart={() => startTicket.mutate(undefined)}
                         onHold={() => setShowHold(true)}
-                        onResume={() => resumeTicket.mutate(undefined)}
+                        onResume={() => resumeTicket.mutate({ reason: 'Blocking condition cleared.' })}
                         onResolve={() => setShowResolve(true)}
                         onEscalate={() => setShowEscalate(true)}
                         isLoading={
-                          startTicket.isPending ||
-                          holdTicket.isPending ||
+                      holdTicket.isPending ||
                           resumeTicket.isPending ||
                           resolveTicket.isPending ||
                           escalateTicket.isPending
                         }
-                        canResolve={checkPermission(user, P.TICKET_RESOLVE)}
+                        canResolve={checkPermission(user, P.TICKET_RESOLVE) && canComplete(ticketDetail, accountId)}
+                        canHold={canHold(ticketDetail, accountId)}
+                        canResume={canResume(ticketDetail, accountId)}
+                        canEscalate={canEscalate(ticketDetail, accountId)}
                       />
                     </View>
                   ) : (
                     <View style={styles.customerActionsRow}>
-                      {ticketDetail.status === 'Resolved' && (
+                  {ticketDetail.status === 'Closed' && canRateOrReopen(ticketDetail) && (
                         <Pressable style={styles.rateBtn} onPress={() => setShowRateModal(true)}>
                           <Ionicons name="star" size={16} color="#FFF" />
                           <Text style={styles.rateBtnText}>Rate Service</Text>
                         </Pressable>
                       )}
-                      {['Closed', 'ClosedRejected'].includes(ticketDetail.status) && (
+                      {canRateOrReopen(ticketDetail) && (
                         <Pressable style={styles.reopenBtn} onPress={() => setShowReopenModal(true)}>
                           <Ionicons name="refresh-circle" size={18} color={Colors.primary} />
                           <Text style={styles.reopenBtnText}>Request Reopen</Text>
@@ -883,10 +881,10 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
           {/* Sub-Tab 3: Maintenance Logs (Staff Only) */}
           {detailSubTab === 'logs' && isOperator && (
             <ScrollView contentContainerStyle={styles.detailsScroll}>
-              <Pressable style={styles.addLogBtn} onPress={() => setShowLogForm(true)}>
+              {ticketDetail?.status === 'InProgress' && isPrimaryHandler(ticketDetail, accountId) && <Pressable style={styles.addLogBtn} onPress={() => setShowLogForm(true)}>
                 <Ionicons name="add-circle" size={18} color="#FFF" />
                 <Text style={styles.addLogBtnText}>Add Maintenance Log</Text>
-              </Pressable>
+              </Pressable>}
 
               {ticketDetail?.maintenanceLogs && ticketDetail.maintenanceLogs.length > 0 ? (
                 ticketDetail.maintenanceLogs.map((log) => (
@@ -969,8 +967,8 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
         visible={showHold}
         isLoading={holdTicket.isPending}
         onClose={() => setShowHold(false)}
-        onSubmit={async (reason: PauseReasonEnum, note?: string) => {
-          await holdTicket.mutateAsync({ reason, note });
+        onSubmit={async (reason: PauseReasonEnum, note: string, appointment: Date) => {
+          await holdTicket.mutateAsync({ reason, note: note.trim(), rescheduledStartAt: appointment.toISOString() });
           setShowHold(false);
         }}
       />
@@ -989,8 +987,8 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
         visible={showEscalate}
         isLoading={escalateTicket.isPending}
         onClose={() => setShowEscalate(false)}
-        onSubmit={async (reason: EscalationReasonEnum, note?: string) => {
-          await escalateTicket.mutateAsync({ reason, note });
+        onSubmit={async (reason: EscalationReasonEnum, note: string) => {
+          await escalateTicket.mutateAsync({ reason, note: note.trim() });
           setShowEscalate(false);
         }}
       />

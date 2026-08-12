@@ -7,6 +7,7 @@ import { assignmentSummary } from '../utils/assignments';
 import { SlaCountdown } from './SlaCountdown';
 import { TicketStatusBadge } from './TicketStatusBadge';
 import { GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
+import { shouldShowLiveSla } from '../utils/ticketWorkflow';
 
 const PRIORITY_BADGE: Record<string, keyof typeof BadgeColors> = {
   P1Critical: 'p1',
@@ -76,7 +77,7 @@ export function TicketCard({ ticket, onPress }: Props) {
             <View style={{ flex: 1 }} />
 
             {/* SLA remaining */}
-            {ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} compact />}
+      {ticket.slaTimer && shouldShowLiveSla(ticket.status, ticket.priority, ticket.slaTimer.status) && <SlaCountdown sla={ticket.slaTimer} compact />}
           </View>
 
           {/* Title */}
