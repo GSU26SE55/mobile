@@ -232,6 +232,16 @@ function StaffTicketDetailScreenInner() {
   const ticketClosed = ticket ? isTerminalTicket(ticket.status) : false;
   const canEditLog = (log: MaintenanceLogDTO) => !ticketClosed && !!accountId && log.staffId === accountId;
 
+  // Only PrimaryHandler (current) and Manager can post on the public channel.
+  // Supporter and PreviousAssignee may only view public — composer is hidden on public tab for them.
+  // Manager is not in ticket.assignments, so check user.role directly.
+  const canPostPublic =
+    user?.role === 'MANAGER' ||
+    (!!accountId &&
+      (ticket?.assignments?.some(
+        (a) => a.staffId === accountId && a.role === 'PrimaryHandler'
+      ) ?? false));
+
   const handleSendComment = () => {
     const trimmed = commentText.trim();
     if (!trimmed && commentAttachments.length === 0) return;
@@ -440,60 +450,60 @@ function StaffTicketDetailScreenInner() {
           {/* "Typing" indicator — right above the input, transparent background */}
           <TypingIndicator names={typingUsers.map((u) => u.displayName)} />
 
-          <View
-            style={[
-              styles.composer,
-              // The open keyboard already covers the home indicator area — adding insets.bottom
-              // here would just create extra whitespace between the input and the keyboard.
-              { paddingBottom: !keyboardVisible && insets.bottom > 0 ? insets.bottom + 8 : 12 }
-            ]}
-          >
-            <AttachmentPreviewStrip
-              items={commentAttachments}
-              imageHeaders={imageHeaders}
-              disabled={uploadingComment}
-              onRemove={(fileId) =>
-                setCommentAttachments((prev) => prev.filter((a) => a.fileId !== fileId))
-              }
-            />
-            <View style={styles.composerRow}>
-              <AttachmentPicker
-                compact
-                hideThumbnails
-                purpose={FilePurposeEnum.TicketAttachment}
-                value={commentAttachments}
-                onChange={setCommentAttachments}
-                onUploadingChange={setUploadingComment}
+          {/* Hide composer on public tab for Supporter / PreviousAssignee — view only on public */}
+          {(chatTab === 'internal' || canPostPublic) && (
+            <View
+              style={[
+                styles.composer,
+                { paddingBottom: !keyboardVisible && insets.bottom > 0 ? insets.bottom + 8 : 12 }
+              ]}
+            >
+              <AttachmentPreviewStrip
+                items={commentAttachments}
+                imageHeaders={imageHeaders}
+                disabled={uploadingComment}
+                onRemove={(fileId) =>
+                  setCommentAttachments((prev) => prev.filter((a) => a.fileId !== fileId))
+                }
               />
-              <TextInput
-                style={styles.composerInput}
-                placeholder={chatTab === 'internal' ? 'Internal note (not visible to customer)...' : 'Type a message...'}
-                placeholderTextColor={Colors.textFaint}
-                value={commentText}
-                onChangeText={(t) => { setCommentText(t); notifyTyping(); }}
-                multiline
-              />
-              <Pressable
-                style={styles.internalToggle}
-                onPress={handleStartRecording}
-                disabled={chatTab === 'internal' || uploadingComment || transcribing}
-              >
-                {transcribing ? (
-                  <ActivityIndicator size="small" color={Colors.textMute} />
-                ) : (
-                  <Ionicons name="mic-outline" size={17} color={chatTab === 'internal' ? Colors.textFaint : Colors.textMute} />
-                )}
-              </Pressable>
-              <Pressable
-                style={[styles.sendBtn, ((!commentText.trim() && commentAttachments.length === 0) || uploadingComment || voiceRecorder.isRecording) && styles.sendBtnDisabled]}
-                onPress={handleSendComment}
-                disabled={(!commentText.trim() && commentAttachments.length === 0) || uploadingComment || voiceRecorder.isRecording}
-              >
-                {/* Send button has a yellow background → white icon gets lost, use dark ink instead. */}
-                <Ionicons name="send" size={18} color={Colors.text} />
-              </Pressable>
+              <View style={styles.composerRow}>
+                <AttachmentPicker
+                  compact
+                  hideThumbnails
+                  purpose={FilePurposeEnum.TicketAttachment}
+                  value={commentAttachments}
+                  onChange={setCommentAttachments}
+                  onUploadingChange={setUploadingComment}
+                />
+                <TextInput
+                  style={styles.composerInput}
+                  placeholder={chatTab === 'internal' ? 'Internal note (not visible to customer)...' : 'Type a message...'}
+                  placeholderTextColor={Colors.textFaint}
+                  value={commentText}
+                  onChangeText={(t) => { setCommentText(t); notifyTyping(); }}
+                  multiline
+                />
+                <Pressable
+                  style={styles.internalToggle}
+                  onPress={handleStartRecording}
+                  disabled={chatTab === 'internal' || uploadingComment || transcribing}
+                >
+                  {transcribing ? (
+                    <ActivityIndicator size="small" color={Colors.textMute} />
+                  ) : (
+                    <Ionicons name="mic-outline" size={17} color={chatTab === 'internal' ? Colors.textFaint : Colors.textMute} />
+                  )}
+                </Pressable>
+                <Pressable
+                  style={[styles.sendBtn, ((!commentText.trim() && commentAttachments.length === 0) || uploadingComment || voiceRecorder.isRecording) && styles.sendBtnDisabled]}
+                  onPress={handleSendComment}
+                  disabled={(!commentText.trim() && commentAttachments.length === 0) || uploadingComment || voiceRecorder.isRecording}
+                >
+                  <Ionicons name="send" size={18} color={Colors.text} />
+                </Pressable>
+              </View>
             </View>
-          </View>
+          )}
         </View>
       ) : (
       <ScrollView

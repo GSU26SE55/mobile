@@ -7,6 +7,8 @@ import { SlaCountdown } from '@/src/features/tickets/components/SlaCountdown';
 import { TicketStatusBadge } from '@/src/features/tickets/components/TicketStatusBadge';
 import { shouldShowLiveSla } from '@/src/features/tickets/utils/ticketWorkflow';
 
+import { useSessionStore } from '@/src/stores/sessionStore';
+
 const PRIORITY_BADGE: Record<string, keyof typeof BadgeColors> = {
   P1Critical: 'p1',
   P2High:     'p2',
@@ -37,12 +39,24 @@ const STATUS_HINT: Record<string, string> = {
   Completed: 'Completed — pending review',
 };
 
+const ROLE_BADGES: Record<string, { label: string; bg: string; text: string }> = {
+  PrimaryHandler:         { label: 'Primary',   bg: '#FFF8E1', text: '#B78103' },
+  Supporter:              { label: 'Supporter', bg: '#F3E5F5', text: '#7B1FA2' },
+  PreviousPrimaryHandler: { label: 'Previous',  bg: '#ECEFF1', text: '#607D8B' },
+};
+
 interface Props {
   ticket: TicketDTO;
   onPress: () => void;
 }
 
 export function StaffTicketCard({ ticket, onPress }: Props) {
+  const accountId = useSessionStore((s) => s.user?.accountId);
+  const myAssignment = accountId
+    ? ticket.assignments?.find((a) => a.staffId === accountId)
+    : null;
+  const roleBadge = myAssignment?.role ? ROLE_BADGES[myAssignment.role] : null;
+
   // priority can be null when the ticket hasn't been triaged yet — don't fall back to P3 by mistake.
   const pKey = ticket.priority ? (PRIORITY_BADGE[ticket.priority] ?? 'p3') : 'p3';
   const pColors = BadgeColors[pKey];
@@ -60,8 +74,15 @@ export function StaffTicketCard({ ticket, onPress }: Props) {
           <Text style={[styles.priorityText, { color: pColors.text }]}>{pLabel}</Text>
         </View>
         <TicketStatusBadge status={ticket.status} />
+        {roleBadge && (
+          <View style={[styles.roleBadge, { backgroundColor: roleBadge.bg }]}>
+            <Text style={[styles.roleText, { color: roleBadge.text }]}>{roleBadge.label}</Text>
+          </View>
+        )}
         <View style={{ flex: 1 }} />
-      {ticket.slaTimer && shouldShowLiveSla(ticket.status, ticket.priority, ticket.slaTimer.status) && <SlaCountdown sla={ticket.slaTimer} compact />}
+        {ticket.slaTimer && shouldShowLiveSla(ticket.status, ticket.priority, ticket.slaTimer.status) && (
+          <SlaCountdown sla={ticket.slaTimer} compact />
+        )}
       </View>
 
       <Text style={styles.title} numberOfLines={2}>{ticket.title}</Text>
@@ -119,6 +140,15 @@ const styles = StyleSheet.create({
   priorityText: {
     fontSize: 10,
     fontWeight: '700',
+  },
+  roleBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  roleText: {
+    fontSize: 10,
+    fontWeight: '800',
   },
   title: {
     fontSize: 14,

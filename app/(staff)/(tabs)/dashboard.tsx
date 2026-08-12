@@ -14,6 +14,8 @@ import { HomeHeader } from '@/src/shared/components/HomeHeader';
 import { StatTrio } from '@/src/shared/components/StatTrio';
 import { ProgressListItem } from '@/src/shared/components/ProgressListItem';
 
+import { useSessionStore } from '@/src/stores/sessionStore';
+
 type FilterTab = 'all' | 'active' | 'waiting' | 'resolved';
 
 const FILTER_TABS: { key: FilterTab; label: string }[] = [
@@ -49,9 +51,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   Other: 'Other',
 };
 
-// Today's progress ring color — echoes the mockup's orange tone but stays within the current palette.
 function progressColor(p: number): string {
-  // Decorative accent (progress, not a severity indicator): reasonable level → green.
   if (p >= 40) return Colors.primary;
   return Colors.danger;
 }
@@ -63,7 +63,6 @@ export default function StaffDashboardScreen() {
   const { data: stats } = useStaffDashboardStats();
   const { data: profile } = useStaffProfile();
   const { data: unreadCount = 0 } = useUnreadCount();
-  // Unread chats — distinct from unreadCount above (that one is notifications).
   const { data: chatUnread = 0 } = useChatUnreadCount();
 
   const allTickets = apiTickets?.items ?? [];
@@ -75,7 +74,6 @@ export default function StaffDashboardScreen() {
     return true;
   });
 
-  // Tab counts from stats.countByStatus (single source). Not loaded yet → null → hide the number on the tab.
   const cbs = stats?.countByStatus;
   const sumOf = (statuses: TicketStatusEnum[]) => statuses.reduce((s, k) => s + (cbs?.[k] ?? 0), 0);
   const counts: Record<FilterTab, number | null> = {
@@ -91,11 +89,29 @@ export default function StaffDashboardScreen() {
   const progressPct = total > 0 ? Math.round((resolvedCount / total) * 100) : 0;
 
   const firstName = profile?.fullName ? profile.fullName.split(' ').slice(-1)[0] : 'you';
+  const accountId = useSessionStore((s) => s.user?.accountId);
 
   const renderTicket = ({ item }: { item: TicketDTO }) => {
     const meta = STATUS_META[item.status] ?? { label: item.status, badge: 'new' as const, progress: 10 };
     const bc = BadgeColors[meta.badge];
     const category = CATEGORY_LABEL[item.category] ?? item.category;
+
+    const myAssignment = accountId
+      ? item.assignments?.find((a) => a.staffId === accountId)
+      : null;
+    const roleTag = myAssignment?.role === 'PrimaryHandler'
+      ? '[Primary]'
+      : myAssignment?.role === 'Supporter'
+      ? '[Supporter]'
+      : myAssignment?.role === 'PreviousPrimaryHandler'
+      ? '[Previous]'
+      : null;
+
+    const captionParts = [item.code];
+    if (roleTag) captionParts.push(roleTag);
+    captionParts.push(category);
+    if (item.hasUnreadChat) captionParts.push('💬 new message');
+
     return (
       <ProgressListItem
         title={item.title || item.code}
@@ -103,11 +119,7 @@ export default function StaffDashboardScreen() {
         badge={{ label: meta.label, bg: bc.bg, text: bc.text }}
         percent={meta.progress}
         barColor={bc.text}
-        caption={
-          item.hasUnreadChat
-            ? `${item.code} · ${category} · 💬 new message`
-            : `${item.code} · ${category}`
-        }
+        caption={captionParts.join(' · ')}
         onPress={() =>
           router.push({
             pathname: '/(staff)/tickets/[id]',
@@ -137,8 +149,6 @@ export default function StaffDashboardScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Work to handle</Text>
-          {/* Total unread chats across ALL tickets — different from the notification bell in the
-              header (useUnreadCount = notifications). Tapping opens the customer list directly. */}
           {chatUnread > 0 && (
             <Pressable
               style={styles.unreadPill}
@@ -153,8 +163,6 @@ export default function StaffDashboardScreen() {
           )}
         </View>
 
-        {/* Horizontal scroll instead of flex:1 even split — long labels ("In progress (3)") no longer
-            get squeezed against the right edge. Chips size to their content so adding a new filter doesn't break the layout. */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -223,8 +231,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 4,
   },
   unreadPillText: { color: '#FFF', fontSize: 11, fontWeight: '800' },
-  // Stretched to both edges to offset headerWrap's paddingHorizontal:20 — chips scroll the full
-  // screen width instead of being cut off at the edge; start/end padding is restored via contentContainerStyle.
   filterScroll: {
     marginHorizontal: -20,
   },

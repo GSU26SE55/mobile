@@ -22,7 +22,9 @@ export function canHold(ticket: TicketDTO, staffId?: string | null) {
 }
 
 export function canResume(ticket: TicketDTO, staffId?: string | null) {
-  return ticket.status === 'Pending' && ticket.pendingContext === 'Held' && isPrimaryHandler(ticket, staffId);
+  return ticket.status === 'Pending' &&
+    (ticket.pendingContext === 'Held' || ticket.pendingContext === 'Scheduled') &&
+    isPrimaryHandler(ticket, staffId);
 }
 
 export function canEscalate(ticket: TicketDTO, staffId?: string | null) {

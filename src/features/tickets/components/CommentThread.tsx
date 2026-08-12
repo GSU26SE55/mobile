@@ -430,7 +430,7 @@ export function CommentThread({
         <View style={styles.center}>
           <Ionicons name="chatbubbles-outline" size={36} color={Colors.textFaint} />
           <Text style={styles.emptyText}>
-            {showTabs ? (tab === 'public' ? 'No public comments yet.' : 'No internal comments yet.') : emptyText}
+            {showTabs ? (tab === 'public' ? 'No public messages yet.' : 'No internal messages yet.') : emptyText}
           </Text>
         </View>
       ) : (
