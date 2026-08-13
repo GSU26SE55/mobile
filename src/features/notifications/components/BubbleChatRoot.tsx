@@ -873,6 +873,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
             <ScrollView contentContainerStyle={styles.detailsScroll}>
               <ActivityTimeline
                 activities={activitiesQuery.data}
+                assignments={ticketDetail?.assignments}
                 isLoading={activitiesQuery.isLoading}
               />
             </ScrollView>

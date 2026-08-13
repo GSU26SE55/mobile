@@ -49,14 +49,14 @@ const ACTIVITY_META: Record<string, ActivityMeta> = {
   EscalationRequested:      { label: 'Escalation requested',        tone: 'p2',    icon: 'arrow-up-circle-outline' },
   Escalated:                { label: 'Escalated',                   tone: 'p2',    icon: 'arrow-up-circle-outline' },
   IncidentDeclared:         { label: 'Incident declared',           tone: 'p1',    icon: 'alert-circle-outline' },
-  Resolved:                 { label: 'Resolved',                    tone: 'ok',    icon: 'checkmark-circle-outline' },
+  Resolved:                 { label: 'Completed',                   tone: 'ok',    icon: 'checkmark-circle-outline' },
   Approved:                 { label: 'Approved',                    tone: 'ok',    icon: 'checkmark-done-circle-outline' },
   TriageApproved:           { label: 'Triage approved',             tone: 'ok',    icon: 'checkmark-done-circle-outline' },
   Rejected:                 { label: 'Rejected',                    tone: 'p1',    icon: 'close-circle-outline' },
   Rated:                    { label: 'Customer rated',              tone: 'info',  icon: 'star-outline' },
   Reopened:                 { label: 'Ticket reopened',             tone: 'p2',    icon: 'arrow-undo-outline' },
   AutoClosed:               { label: 'Automatically closed',       tone: 'muted', icon: 'lock-closed-outline' },
-  ResolvedByEscalatedStaff: { label: 'Resolved after escalation',   tone: 'ok',    icon: 'checkmark-circle-outline' },
+  ResolvedByEscalatedStaff: { label: 'Completed after escalation',   tone: 'ok',    icon: 'checkmark-circle-outline' },
   Closed:                   { label: 'Ticket closed',               tone: 'muted', icon: 'lock-closed-outline' },
 };
 
