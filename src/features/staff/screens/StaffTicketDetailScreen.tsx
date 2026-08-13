@@ -601,7 +601,7 @@ function StaffTicketDetailScreenInner() {
 
         {activeTab === 'activities' && (
           <View style={styles.tabContent}>
-            <ActivityTimeline activities={activities} />
+            <ActivityTimeline activities={activities} assignments={ticket?.assignments} />
           </View>
         )}
 

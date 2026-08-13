@@ -2,12 +2,13 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/src/lib/theme';
-import { TicketActivityDTO } from '../types/ticket.types';
+import { TicketActivityDTO, TicketAssignmentDTO } from '../types/ticket.types';
 import { getActivityMeta, activityToneStyle } from '../utils/activityMeta';
 import { statusLabel } from './TicketStatusBadge';
 
 interface Props {
   activities?: TicketActivityDTO[];
+  assignments?: TicketAssignmentDTO[] | null;
   isLoading?: boolean;
 }
 
@@ -19,7 +20,44 @@ function formatActivityTime(iso: string): string {
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-export function ActivityTimeline({ activities, isLoading }: Props) {
+const IS_GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function renderActivityValue(
+  item: TicketActivityDTO,
+  assignments?: TicketAssignmentDTO[] | null,
+): string | null {
+  if (!item.newValue) return null;
+  const val = item.newValue.trim();
+  if (!val) return null;
+
+  if (item.action === 'StatusChanged') {
+    if (val === 'Resolved' || val === 'Completed') {
+      return 'Completed';
+    }
+    const label = statusLabel(val);
+    return label === 'Resolved' ? 'Completed' : label;
+  }
+
+  // Handle staff assignment or any raw GUID value
+  if (item.action === 'StaffAssigned' || item.action === 'StaffReassigned' || IS_GUID.test(val)) {
+    if (IS_GUID.test(val)) {
+      const matched = assignments?.find((a) => a.staffId === val);
+      if (matched?.staffName) {
+        return matched.staffName;
+      }
+      // Hide raw GUID if staff name is unavailable
+      return null;
+    }
+  }
+
+  if (val === 'Resolved') {
+    return 'Completed';
+  }
+
+  return val;
+}
+
+export function ActivityTimeline({ activities, assignments, isLoading }: Props) {
   if (isLoading) {
     return (
       <View>
@@ -40,6 +78,13 @@ export function ActivityTimeline({ activities, isLoading }: Props) {
         const isLast = index === activities.length - 1;
         const meta = getActivityMeta(item.action);
         const style = activityToneStyle(meta.tone);
+        const displayValue = renderActivityValue(item, assignments);
+
+        // Sanitize actor display name if it happens to be a GUID
+        const actorName = item.actorDisplayName && !IS_GUID.test(item.actorDisplayName)
+          ? item.actorDisplayName
+          : null;
+
         return (
           <View key={item.id ?? `activity-${index}`} style={styles.item}>
             <View style={styles.dotCol}>
@@ -55,18 +100,13 @@ export function ActivityTimeline({ activities, isLoading }: Props) {
                 </Text>
                 <Text style={styles.time}>{formatActivityTime(item.createdAt)}</Text>
               </View>
-              {item.actorDisplayName && (
-                <Text style={styles.actor}>{item.actorDisplayName} · {item.actorRole}</Text>
-              )}
-              {/* Only show the NEW value. Previously also printed oldValue with a strikethrough
-                  ("Assigned InProgress") — cluttered without adding any information, since the
-                  old status is already shown in the activity line right above. */}
-              {!!item.newValue && (
-                <Text style={styles.value}>
-                  {/* newValue is status / priority / staff name depending on the action
-                      → only translate the label when it's definitely a status. */}
-                  {item.action === 'StatusChanged' ? statusLabel(item.newValue) : item.newValue}
+              {(actorName || item.actorRole) && (
+                <Text style={styles.actor}>
+                  {actorName ? `${actorName} · ${item.actorRole}` : item.actorRole}
                 </Text>
+              )}
+              {!!displayValue && (
+                <Text style={styles.value}>{displayValue}</Text>
               )}
               {item.reason && (
                 <Text style={styles.reason}>Reason: {item.reason}</Text>

@@ -107,7 +107,7 @@ const STEP_CONFIGS = [
   { key: 'accept', label: 'Accepted' },
   { key: 'assign', label: 'Assigned' },
   { key: 'progress', label: 'Processing' },
-  { key: 'resolve', label: 'Resolved' },
+  { key: 'resolve', label: 'Completed' },
   { key: 'close', label: 'Closed' },
 ];
 
@@ -653,7 +653,7 @@ function TicketDetailScreenInner() {
           {activities.length > 0 && (
             <View style={[styles.timelineCard, Shadow]}>
               <Text style={styles.sectionH}>Activity history</Text>
-              <ActivityTimeline activities={activities} />
+              <ActivityTimeline activities={activities} assignments={ticket.assignments} />
             </View>
           )}
         </ScrollView>
