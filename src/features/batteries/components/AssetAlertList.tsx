@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { formatDateTime } from '@/src/lib/date';
 import { Colors, Radius, Shadow, Solar } from '@/src/lib/theme';
 import { AlertDto } from '../types/alert.types';
 import {
@@ -40,17 +41,6 @@ export const ANOMALY_LABEL: Record<AnomalyTypeEnum, string> = {
   [AnomalyTypeEnum.SensorMismatch]: 'Sensor mismatch',
   [AnomalyTypeEnum.Undertemp]: 'Low temperature',
 };
-
-function shortTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleString('en-US', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 export function AssetAlertList({
   alerts,
@@ -131,7 +121,7 @@ export function AssetAlertList({
                   {ANOMALY_LABEL[alert.anomalyType] ?? 'Alert'}
                 </Text>
                 <Text style={styles.meta} numberOfLines={1}>
-                  {shortTime(alert.detectedAt)} · {STATUS_LABEL[alert.status] ?? ''}
+                  {formatDateTime(alert.detectedAt)} · {STATUS_LABEL[alert.status] ?? ''}
                 </Text>
               </View>
               <View style={[styles.sevPill, { backgroundColor: sev.bg }]}>

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useStaffTickets } from '@/src/features/staff/hooks/useStaffTickets';
 import { TicketDTO, TicketStatusEnum } from '@/src/features/tickets/types/ticket.types';
+import { formatDateShort } from '@/src/lib/date';
 import { Colors, Shadow, Solar } from '@/src/lib/theme';
 import { P } from '@/src/lib/authz';
 import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
@@ -42,7 +43,7 @@ function timeAgo(iso: string): string {
   if (ms < 60_000) return 'just now';
   if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m`;
   if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h`;
-  return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+  return formatDateShort(iso);
 }
 
 const OPEN_STATUSES = new Set<TicketStatusEnum>([

@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { formatDate } from '@/src/lib/date';
 import { Solar } from '@/src/lib/theme';
 import { BatteryAssetDto } from '../types/battery.types';
 import {
@@ -19,13 +20,6 @@ const WARRANTY_LABEL: Record<WarrantyStatusEnum, string> = {
   [WarrantyStatusEnum.Expired]: 'Warranty expired',
   [WarrantyStatusEnum.Void]: 'Void',
 };
-
-function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('en-US');
-}
 
 interface Props {
   battery: BatteryAssetDto;

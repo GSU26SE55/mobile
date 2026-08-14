@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
+import { formatDateShort, formatMonthShort } from '@/src/lib/date';
 import { Colors, Radius, Shadow } from '@/src/lib/theme';
 import { useAmbientTrend } from '../hooks/useAmbientTrend';
 import { AmbientGranularity, AmbientTrendPoint } from '../types/ambient.types';
@@ -21,10 +22,9 @@ const GRANULARITIES: { key: AmbientGranularity; label: string }[] = [
 const CHART_HEIGHT = 180;
 const MAX_X_LABELS = 5;
 
+// Nhãn trục X phải ngắn — dùng dạng rút gọn thay vì `formatDate` để chữ không tràn.
 function formatBucketLabel(iso: string, granularity: AmbientGranularity): string {
-  const d = new Date(iso);
-  if (granularity === 'month') return d.toLocaleDateString('vi-VN', { month: '2-digit', year: '2-digit' });
-  return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+  return granularity === 'month' ? formatMonthShort(iso) : formatDateShort(iso);
 }
 
 export function AmbientTrendChart({ siteId }: { siteId: string }) {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { formatDateTime } from '@/src/lib/date';
 import { Colors } from '@/src/lib/theme';
 import { TicketActivityDTO, TicketAssignmentDTO } from '../types/ticket.types';
 import { getActivityMeta, activityToneStyle } from '../utils/activityMeta';
@@ -10,14 +11,6 @@ interface Props {
   activities?: TicketActivityDTO[];
   assignments?: TicketAssignmentDTO[] | null;
   isLoading?: boolean;
-}
-
-// Format dd/MM/yyyy HH:mm — matches frontend (date-fns "dd/MM/yyyy HH:mm").
-// Written by hand to avoid adding the date-fns package to mobile.
-function formatActivityTime(iso: string): string {
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
 const IS_GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -98,7 +91,7 @@ export function ActivityTimeline({ activities, assignments, isLoading }: Props) 
                 <Text style={[styles.action, { color: style.dot }]} numberOfLines={1}>
                   {meta.label}
                 </Text>
-                <Text style={styles.time}>{formatActivityTime(item.createdAt)}</Text>
+                <Text style={styles.time}>{formatDateTime(item.createdAt)}</Text>
               </View>
               {(actorName || item.actorRole) && (
                 <Text style={styles.actor}>

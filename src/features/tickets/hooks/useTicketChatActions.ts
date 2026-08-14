@@ -60,6 +60,26 @@ export function useMarkTicketChatsRead(ticketId: string) {
       queryClient.invalidateQueries({
         queryKey: QUERY_KEY.tickets.chatUnreadCount(ticketId),
       });
+      // The chat list carries `isRead` per message and CommentThread draws the unread
+      // divider from it. Without invalidating, the cached list keeps every message at
+      // isRead=false, so re-entering the chat shows the divider again over messages that
+      // were already read.
+      //
+      // The delay is required, not cosmetic. A 200 here only means the read receipts were
+      // queued: TicketService writes them from ChatReadReceiptBulkWriter, which flushes on
+      // a 1s interval (FlushInterval in ChatReadReceiptBulkWriter.cs). Refetching straight
+      // away reads the database before that flush, gets isRead=false back, and marks the
+      // query fresh again — which is worse than not invalidating at all.
+      //
+      // If the backend ever writes read receipts synchronously, drop the timeout.
+      setTimeout(() => {
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEY.tickets.chats(ticketId),
+        });
+      }, 1_500);
+
+      // The divider currently on screen does not move when the refetch lands: it is pinned
+      // to a message id for the whole viewing session (see CommentThread).
     },
     onError: () => {},
   });

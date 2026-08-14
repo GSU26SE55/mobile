@@ -61,7 +61,7 @@ export default function TwoFAScreen() {
           ))}
         </View>
         <Pressable style={styles.enableBtn} onPress={() => setBackupCodes(null)}>
-          <Text style={styles.enableText}>I've saved it</Text>
+          <Text style={styles.enableText}>I&apos;ve saved it</Text>
         </Pressable>
       </ScrollView>
     );

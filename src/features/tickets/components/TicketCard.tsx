@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { formatDate } from '@/src/lib/date';
 import { BadgeColors, Solar } from '@/src/lib/theme';
 import { TicketDTO } from '../types/ticket.types';
 import { assignmentSummary } from '../utils/assignments';
@@ -88,7 +89,7 @@ export function TicketCard({ ticket, onPress }: Props) {
           {/* Footer Row */}
           <View style={styles.footer}>
             <Text style={styles.subtitle} numberOfLines={1}>
-              {CATEGORY_LABEL[ticket.category] ?? ticket.category} · {new Date(ticket.createdAt).toLocaleDateString('vi-VN')}
+              {CATEGORY_LABEL[ticket.category] ?? ticket.category} · {formatDate(ticket.createdAt)}
             </Text>
             <View style={styles.technicianWrap}>
               <Ionicons name="person-circle-outline" size={14} color={Solar.mute} />

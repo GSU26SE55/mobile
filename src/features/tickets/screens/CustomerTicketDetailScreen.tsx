@@ -62,6 +62,7 @@ import { RatePayload, ReopenPayload, TicketStatusEnum } from '@/src/features/tic
 import { canRateOrReopen, isTerminalTicket, shouldShowLiveSla } from '@/src/features/tickets/utils/ticketWorkflow';
 import { PendingContextCard } from '@/src/features/tickets/components/PendingContextCard';
 import type { ChatMentionInput } from '@/src/features/tickets/types/ticket.types';
+import { formatDateTime } from '@/src/lib/date';
 import { BadgeColors, Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
 import { useMyBatteryAssets } from '@/src/features/batteries/hooks/useMyBatteryAssets';
 import { BatteryAssetDto } from '@/src/features/batteries/types/battery.types';
@@ -74,19 +75,6 @@ const PRIORITY_MAP: Record<string, { label: string; badge: keyof typeof BadgeCol
   P2High:     { label: 'P2 High',     badge: 'p2' },
   P3Normal:   { label: 'P3 Standard', badge: 'p3' },
 };
-
-/**
- * `toLocaleString('vi-VN')` cho ra "13:31:16 13/7/2026" — giây là nhiễu và ngày
- * không pad 0 nên độ dài nhảy lung tung giữa các dòng. Cố định "HH:mm dd/MM/yyyy".
- */
-const fmtDateTime = (iso: string) =>
-  new Date(iso).toLocaleString('vi-VN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
 
 function PriorityBadge({ priority }: { priority: string | null }) {
   // priority null khi ticket chưa triage — hiển thị nhãn trung tính, không nhầm P3.
@@ -288,7 +276,7 @@ function TicketDetailScreenInner() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, // chỉ ảnh jpg/png
+      mediaTypes: ['images'], // chỉ ảnh jpg/png
       allowsMultipleSelection: false,
       quality: 0.8,
     });
@@ -428,12 +416,15 @@ function TicketDetailScreenInner() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior="padding"
-      enabled={Platform.OS === 'ios'}
+      // Android cũng phải bật. App chạy edge-to-edge (android.edgeToEdgeEnabled trong
+      // app.json), mà edge-to-edge thì hệ thống KHÔNG resize window theo bàn phím nữa dù
+      // windowSoftInputMode=adjustResize — tắt KAV ở Android là bàn phím che mất composer.
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       // View trải từ y=0 nên KAV không tự trừ được safe-area dưới: nó đẩy dư
       // đúng bằng chiều cao home indicator, tạo khoảng trắng giữa composer và
-      // bàn phím. Offset âm bù lại phần đó.
-      keyboardVerticalOffset={-insets.bottom}
+      // bàn phím. Offset âm bù lại phần đó. Android trả toạ độ bàn phím đã phủ cả
+      // navigation bar nên không cần bù.
+      keyboardVerticalOffset={Platform.OS === 'ios' ? -insets.bottom : 0}
     >
       {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
@@ -571,7 +562,7 @@ function TicketDetailScreenInner() {
                       <Text style={styles.assignValue}>
                         {assignActivity.actorDisplayName ?? assignActivity.actorRole}
                         <Text style={styles.assignTime}>
-                          {' · '}{fmtDateTime(assignActivity.createdAt)}
+                          {' · '}{formatDateTime(assignActivity.createdAt)}
                         </Text>
                       </Text>
                     </View>
@@ -591,7 +582,7 @@ function TicketDetailScreenInner() {
               {ticket.detectedAt ? (
                 <Text style={styles.detectedInfo}>
                   Detected at:{' '}
-                  {fmtDateTime(ticket.detectedAt)}
+                  {formatDateTime(ticket.detectedAt)}
                 </Text>
               ) : null}
 

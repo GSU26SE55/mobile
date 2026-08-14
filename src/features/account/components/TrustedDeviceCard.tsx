@@ -1,5 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { formatDate, formatDateTime } from '@/src/lib/date';
 import { Colors, Shadow } from '@/src/lib/theme';
 import { TrustedDeviceDto } from '../types/account.types';
 
@@ -10,11 +11,9 @@ interface Props {
 }
 
 export function TrustedDeviceCard({ device, onRevoke, isRevoking }: Props) {
-  const trustedAt = new Date(device.trustedAt).toLocaleDateString('vi-VN');
-  const expiresAt = new Date(device.expiresAt).toLocaleDateString('vi-VN');
-  const lastUsed = device.lastUsedAt
-    ? new Date(device.lastUsedAt).toLocaleString('vi-VN')
-    : 'Not used yet';
+  const trustedAt = formatDate(device.trustedAt);
+  const expiresAt = formatDate(device.expiresAt);
+  const lastUsed = device.lastUsedAt ? formatDateTime(device.lastUsedAt) : 'Not used yet';
 
   return (
     <View style={[styles.card, device.isCurrentDevice && styles.currentCard, Shadow]}>

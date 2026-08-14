@@ -1,14 +1,9 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { formatDate } from '@/src/lib/date';
 import { Colors, Radius, Shadow } from '@/src/lib/theme';
 import { IotDeviceCalibrationDto } from '../types/iot-device.types';
-
-function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
-}
 
 function isExpired(expiresAt: string | null): boolean {
   if (!expiresAt) return false;

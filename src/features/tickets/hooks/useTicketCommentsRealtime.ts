@@ -4,6 +4,7 @@ import * as signalR from '@microsoft/signalr';
 import { BASE_URL } from '@/src/lib/axios';
 import { getAccessToken } from '@/src/lib/secureStore';
 import { QUERY_KEY } from '@/src/lib/queryKeys';
+import { useSessionStore } from '@/src/stores/sessionStore';
 import { CursorPaginationResponse } from '@/src/types/api.types';
 import { TicketCommentDTO } from '../types/ticket.types';
 
@@ -81,6 +82,13 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
         QUERY_KEY.tickets.chats(ticketId),
         (data) => prependComment(data, dto),
       );
+      // BE broadcasts to the whole group, sender included, so a message the user just sent
+      // comes straight back here. Refetching the unread count for it makes the badge blink up
+      // and then drop again. Only the count for messages from OTHER people can have changed.
+      // Read the store imperatively: putting accountId in the effect deps would rebuild the
+      // SignalR connection whenever the session object changes identity.
+      const myAccountId = useSessionStore.getState().user?.accountId;
+      if (dto.authorUserId && dto.authorUserId === myAccountId) return;
       invalidateUnread();
     });
 

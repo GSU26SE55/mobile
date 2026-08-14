@@ -11,6 +11,7 @@ import {
   type GestureResponderEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { formatTime } from '@/src/lib/date';
 import { Colors, Shadow } from '@/src/lib/theme';
 import { BottomSheet } from '@/src/shared/components/BottomSheet';
 // Attachment images render via AuthImage (auto-attaches the auth header) instead of
@@ -439,10 +440,7 @@ export function ChatBubble({
   const canShowActions = canEdit || canDelete || canTranslate || canPin || canShowReaders || canDownload || canSelectMany;
   const displayBody = showingOriginal || !translation ? body : translation.text;
 
-  const time = new Date(comment.createdAt).toLocaleTimeString('vi-VN', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const time = formatTime(comment.createdAt);
 
   const showHeader = !isMe || comment.isInternal || !!comment.isPinned;
   const hasMedia = fileIds.length > 0;

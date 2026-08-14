@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { formatDateShort, formatTimeSeconds } from '@/src/lib/date';
 import { Colors } from '@/src/lib/theme';
 import { useReadingEvidence, toWarningRows } from '../hooks/useReadingEvidence';
 
@@ -12,15 +13,10 @@ const LOAD_MORE_STEP = 25;
 const num = (v: number | null | undefined, digits = 2) =>
   v !== null && v !== undefined ? v.toFixed(digits) : '—';
 
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    day: '2-digit',
-    month: '2-digit',
-  });
+// Giữ giây: các bản ghi cảm biến cách nhau vài giây, bỏ giây thì nhiều dòng trùng nhau.
+// Bỏ năm: bảng chỉ trải trong ±15 phút quanh thời điểm phát hiện nên năm là thừa.
+function formatEvidenceTime(iso: string): string {
+  return `${formatDateShort(iso)} ${formatTimeSeconds(iso)}`;
 }
 
 interface Props {
@@ -84,7 +80,7 @@ export function BatteryWarningEvidencePanel({ batteryAssetId, detectedAt }: Prop
 
             {visibleRows.map(({ reading: r, reasons }) => (
               <View key={r.time} style={styles.tr}>
-                <Text style={[styles.td, styles.colTime, styles.tdMuted]}>{formatTime(r.time)}</Text>
+                <Text style={[styles.td, styles.colTime, styles.tdMuted]}>{formatEvidenceTime(r.time)}</Text>
                 <Text style={[styles.td, styles.colNum]}>{num(r.voltage)}</Text>
                 <Text style={[styles.td, styles.colNum]}>{num(r.current)}</Text>
                 <Text style={[styles.td, styles.colNum, styles.tdHot]}>{num(r.temperature, 1)}</Text>

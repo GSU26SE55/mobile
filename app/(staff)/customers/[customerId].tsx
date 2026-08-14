@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStaffTickets } from '@/src/features/staff/hooks/useStaffTickets';
 import { useMyMentions } from '@/src/features/tickets/hooks/useChatInbox';
 import { TicketDTO, TicketStatusEnum } from '@/src/features/tickets/types/ticket.types';
+import { formatDateShort } from '@/src/lib/date';
 import { BadgeColors, Colors, Shadow } from '@/src/lib/theme';
 import { P } from '@/src/lib/authz';
 import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
@@ -43,7 +44,7 @@ function timeAgo(iso: string): string {
   if (ms < 60_000) return 'just now';
   if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
   if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
-  return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+  return formatDateShort(iso);
 }
 
 const STATUS_LABEL: Partial<Record<TicketStatusEnum, string>> = {

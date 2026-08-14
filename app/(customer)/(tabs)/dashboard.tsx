@@ -28,6 +28,7 @@ import { useAmbientLatest } from '@/src/features/ambient/hooks/useAmbientLatest'
 import { AlertStatusEnum } from '@/src/shared/enums/alert.enum';
 import { LiveReadingDto } from '@/src/features/batteries/types/live-reading.types';
 import { useSessionStore } from '@/src/stores/sessionStore';
+import { formatDate } from '@/src/lib/date';
 import { Colors, Solar } from '@/src/lib/theme';
 import { EnergyBackdrop, GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
 
@@ -195,7 +196,7 @@ export default function DashboardScreen() {
   }
 
   const countLabel = batteries.length > 0 ? String(batteries.length).padStart(2, '0') : '0';
-  const todayString = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const todayString = formatDate(new Date());
 
   return (
     <View style={styles.root}>

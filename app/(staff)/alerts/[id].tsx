@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { formatDateTime } from '@/src/lib/date';
 import { Colors, Shadow } from '@/src/lib/theme';
 import { handleErrorApi } from '@/src/lib/errors';
 import { useAlert } from '@/src/features/batteries/hooks/useAlert';
@@ -92,17 +93,17 @@ export default function StaffAlertDetailScreen() {
           <Divider />
           <Row label="Actual value" value={formatMeasure(alert.actualValue, alert.unit)} />
           <Divider />
-          <Row label="Detected at" value={new Date(alert.detectedAt).toLocaleString()} />
+          <Row label="Detected at" value={formatDateTime(alert.detectedAt)} />
           {alert.acknowledgedAt ? (
             <>
               <Divider />
-              <Row label="Acknowledged at" value={new Date(alert.acknowledgedAt).toLocaleString()} />
+              <Row label="Acknowledged at" value={formatDateTime(alert.acknowledgedAt)} />
             </>
           ) : null}
           {alert.resolvedAt ? (
             <>
               <Divider />
-              <Row label="Resolved at" value={new Date(alert.resolvedAt).toLocaleString()} />
+              <Row label="Resolved at" value={formatDateTime(alert.resolvedAt)} />
             </>
           ) : null}
         </View>

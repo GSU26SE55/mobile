@@ -17,6 +17,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useKeyboardVisible } from '@/src/hooks/useKeyboardVisible';
+import { formatDate, formatDateTime } from '@/src/lib/date';
 import { BadgeColors, Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
 import { ActivityTimeline } from '@/src/features/tickets/components/ActivityTimeline';
 import { TypingIndicator } from '@/src/features/tickets/components/TypingIndicator';
@@ -348,12 +349,16 @@ function StaffTicketDetailScreenInner() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior="padding"
-      enabled={Platform.OS === 'ios'}
+      // Android must be enabled too. The app runs edge-to-edge (android.edgeToEdgeEnabled in
+      // app.json), and under edge-to-edge the system no longer resizes the window for the
+      // keyboard even with windowSoftInputMode=adjustResize — with KAV off, the keyboard
+      // simply covers the composer.
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       // The view spans from y=0 so KAV can't auto-subtract the bottom safe area: it pushes
       // up by exactly the home indicator's height, creating a gap between the composer and
-      // the keyboard. A negative offset compensates for that.
-      keyboardVerticalOffset={-insets.bottom}
+      // the keyboard. A negative offset compensates for that. Android reports keyboard
+      // coordinates that already cover the navigation bar, so it needs no compensation.
+      keyboardVerticalOffset={Platform.OS === 'ios' ? -insets.bottom : 0}
     >
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
@@ -629,7 +634,7 @@ function StaffTicketDetailScreenInner() {
                       <AttachmentThumbnails fileIds={log.afterPhotosFileIds} size={64} />
                     </>
                   )}
-                  <Text style={styles.logTime}>{new Date(log.createdAt).toLocaleString('vi-VN')}</Text>
+                  <Text style={styles.logTime}>{formatDateTime(log.createdAt)}</Text>
                   {canEditLog(log) && (
                     <Pressable style={styles.logEditBtn} onPress={() => setEditingLog(log)}>
                       <Ionicons name="create-outline" size={14} color={Colors.primary} />
@@ -706,7 +711,7 @@ function StaffTicketDetailScreenInner() {
                   {ref.note ? (
                     <Text style={styles.kbRefNote}>{ref.note}</Text>
                   ) : null}
-                  <Text style={styles.kbRefTime}>{new Date(ref.createdAt).toLocaleDateString('vi-VN')}</Text>
+                  <Text style={styles.kbRefTime}>{formatDate(ref.createdAt)}</Text>
                 </Pressable>
               ))
             )}

@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { formatDateTime } from '@/src/lib/date';
 import { Colors, Shadow } from '@/src/lib/theme';
 import { useIncident } from '@/src/features/incidents/hooks/useIncident';
 import { IncidentStatusBadge } from '@/src/features/incidents/components/IncidentStatusBadge';
@@ -64,7 +65,7 @@ export default function CustomerIncidentDetailScreen() {
         </View>
 
         <View style={[styles.card, Shadow]}>
-          <Row label="Detected at" value={new Date(incident.detectedAt).toLocaleString()} />
+          <Row label="Detected at" value={formatDateTime(incident.detectedAt)} />
           {incident.reportedBy ? (
             <>
               <Divider />
@@ -74,13 +75,13 @@ export default function CustomerIncidentDetailScreen() {
           {incident.acknowledgedAt ? (
             <>
               <Divider />
-              <Row label="Acknowledged at" value={new Date(incident.acknowledgedAt).toLocaleString()} />
+              <Row label="Acknowledged at" value={formatDateTime(incident.acknowledgedAt)} />
             </>
           ) : null}
           {incident.resolvedAt ? (
             <>
               <Divider />
-              <Row label="Resolved at" value={new Date(incident.resolvedAt).toLocaleString()} />
+              <Row label="Resolved at" value={formatDateTime(incident.resolvedAt)} />
             </>
           ) : null}
           {incident.resolutionNote ? (

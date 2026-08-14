@@ -25,6 +25,7 @@ import type { UploadedTicketAttachment } from '../types/ticket.types';
 import { useUploadTicketAttachment } from '../hooks/useUploadTicketAttachment';
 import { useMyBatteryAssets } from '@/src/features/batteries/hooks/useMyBatteryAssets';
 import { BatteryAssetDto } from '@/src/features/batteries/types/battery.types';
+import { formatDateTime } from '@/src/lib/date';
 import { Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
 
 const TOTAL_STEPS = 4;
@@ -106,11 +107,6 @@ export function detectedLabelToIso(label: string): string {
   return custom ? custom.toISOString() : '';
 }
 
-// Date → "dd/MM/yyyy HH:mm" (khớp format parseDetectedInput dùng lại được).
-export function formatDetected(d: Date): string {
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
-}
 
 const CATEGORIES: { value: TicketCategoryEnum; label: string; sub: string; icon: keyof typeof Ionicons.glyphMap; iconColor: string; iconBg: string }[] = [
   {
@@ -118,6 +114,8 @@ const CATEGORIES: { value: TicketCategoryEnum; label: string; sub: string; icon:
     label: 'Charging issue',
     sub: 'Not charging or charging slowly',
     icon: 'flash-outline',
+    // Stays orange: these four icon colours tell the issue types apart. Recolouring this one to
+    // the app's yellow would make it a near-twin of "Power outage" (#E69A1A).
     iconColor: '#EF5128',
     iconBg: '#FFE5DA',
   },
@@ -226,7 +224,8 @@ export function CreateTicketStepper({
     final.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
     // Không cho vượt hiện tại (giờ có thể đẩy quá now dù ngày = hôm nay).
     const clamped = final.getTime() > Date.now() ? new Date() : final;
-    setDetectedLabel(formatDetected(clamped));
+    // formatDateTime cho ra đúng "dd/MM/yyyy HH:mm" mà parseDetectedInput đọc lại được.
+    setDetectedLabel(formatDateTime(clamped));
     setPickerStage('idle');
   };
 
@@ -261,7 +260,7 @@ export function CreateTicketStepper({
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         quality: 0.7,
       });
       if (!result.canceled && result.assets?.[0]?.uri) {
@@ -280,7 +279,7 @@ export function CreateTicketStepper({
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsMultipleSelection: true,
         quality: 0.7,
       });
@@ -536,12 +535,7 @@ export function CreateTicketStepper({
               );
             })()}
 
-            <View style={[styles.infoBanner, { marginBottom: 40 }]}>
-              <Ionicons name="information-circle-outline" size={16} color="#2A538A" style={{ marginRight: 8, marginTop: 1 }} />
-              <Text style={styles.infoBannerText}>
-                Include the <Text style={{ fontWeight: '700' }}>time of occurrence</Text>, symptoms, and attempted fixes.
-              </Text>
-            </View>
+            <View style={{ height: 40 }} />
           </ScrollView>
         );
 
@@ -630,6 +624,17 @@ export function CreateTicketStepper({
                 <Text style={styles.reviewRowLabel}>Attachments</Text>
                 <Text style={styles.reviewRowValue}>{attachedFiles.length} photos</Text>
               </View>
+              {/* Lưới xem lại — chỉ đọc, không có nút xoá vì Step 4 là bước xác nhận.
+                  Muốn sửa ảnh thì quay lại Step 3. */}
+              {attachedFiles.length > 0 && (
+                <View style={styles.imageGrid}>
+                  {attachedFiles.map((file) => (
+                    <View key={file.fileId} style={[styles.imageSlot, Shadow]}>
+                      <Image source={{ uri: file.uri }} style={styles.imageThumb} />
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
 
             <Text style={styles.descSectionTitle}>Description</Text>
@@ -697,7 +702,7 @@ export function CreateTicketStepper({
             disabled={isNextDisabled()}
           >
             <Text style={styles.continueBtnText}>Continue</Text>
-            <Ionicons name="arrow-forward" size={14} color="#fff" style={{ marginLeft: 6 }} />
+            <Ionicons name="arrow-forward" size={14} color={Colors.text} style={{ marginLeft: 6 }} />
           </Pressable>
         ) : (
           <Pressable
@@ -706,7 +711,7 @@ export function CreateTicketStepper({
             disabled={isLoading || isUploadingImage}
           >
             <Text style={styles.continueBtnText}>Submit ticket</Text>
-            <Ionicons name="paper-plane" size={14} color="#fff" style={{ marginLeft: 6 }} />
+            <Ionicons name="paper-plane" size={14} color={Colors.text} style={{ marginLeft: 6 }} />
           </Pressable>
         )}
       </View>
@@ -751,10 +756,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.06)',
     borderRadius: 1.5,
   },
-  progressBarSegmentActive: { backgroundColor: '#EF5128' },
+  progressBarSegmentActive: { backgroundColor: Colors.primaryDark },
   main: { flex: 1, paddingHorizontal: 20 },
   stepScroll: { flex: 1 },
-  stepNum: { fontSize: 11, fontWeight: '700', color: '#EF5128', letterSpacing: 1, marginBottom: 4 },
+  stepNum: { fontSize: 11, fontWeight: '700', color: Colors.primaryDark, letterSpacing: 1, marginBottom: 4 },
   stepTitle: { fontSize: 22, fontWeight: '800', color: Colors.text, letterSpacing: -0.5 },
   stepSub: { fontSize: 13, color: Colors.textMute, marginTop: 2, marginBottom: 20 },
 
@@ -764,7 +769,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF',
     borderRadius: 18, padding: 14, borderWidth: 1.5, borderColor: 'transparent',
   },
-  batteryCardSelected: { borderColor: '#EF5128' },
+  batteryCardSelected: { borderColor: Colors.primaryDark },
   batteryIconWrap: { width: 40, height: 40, borderRadius: 12, flexShrink: 0, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   batteryInfo: { flex: 1, marginRight: 8 },
   batteryName: { fontSize: 13, fontWeight: '700', color: Colors.text },
@@ -778,8 +783,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: Colors.border,
     alignItems: 'center', justifyContent: 'center',
   },
-  radioSelected: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#EF5128' },
-  radioChecked: { borderColor: '#EF5128', borderWidth: 2 },
+  radioSelected: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.primaryDark },
+  radioChecked: { borderColor: Colors.primaryDark, borderWidth: 2 },
 
   // Category
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
@@ -787,7 +792,7 @@ const styles = StyleSheet.create({
     width: '48%', backgroundColor: '#FFFFFF', borderRadius: 18,
     padding: 16, borderWidth: 1.5, borderColor: 'transparent', alignItems: 'flex-start',
   },
-  categoryCardSelected: { borderColor: '#EF5128' },
+  categoryCardSelected: { borderColor: Colors.primaryDark },
   categoryIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   categoryLabel: { fontSize: 14, fontWeight: '700', color: Colors.text, marginBottom: 4 },
   categorySub: { fontSize: 10, color: Colors.textMute, lineHeight: 14 },
@@ -845,11 +850,6 @@ const styles = StyleSheet.create({
   charCountRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, paddingHorizontal: 2 },
   minCharLabel: { fontSize: 11, color: Colors.textMute },
   countText: { fontSize: 11, color: Colors.textMute },
-  infoBanner: {
-    flexDirection: 'row', backgroundColor: '#EBF3FF', borderRadius: 14,
-    paddingHorizontal: 14, paddingVertical: 12, alignItems: 'flex-start',
-  },
-  infoBannerText: { flex: 1, fontSize: 11, color: '#2A538A', lineHeight: 16 },
 
   // Image grid (unlimited)
   imageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingBottom: 12 },
@@ -908,13 +908,14 @@ const styles = StyleSheet.create({
   backBtn: { paddingVertical: 13, paddingHorizontal: 20, justifyContent: 'center' },
   backBtnText: { fontSize: 14, color: Colors.text, fontWeight: '600' },
   continueBtn: {
-    flex: 1, flexDirection: 'row', backgroundColor: '#EF5128',
+    flex: 1, flexDirection: 'row', backgroundColor: Colors.primary,
     borderRadius: 14, paddingVertical: 13, alignItems: 'center', justifyContent: 'center', minWidth: 120,
   },
   submitBtn: {
-    flex: 1, flexDirection: 'row', backgroundColor: '#EF5128',
+    flex: 1, flexDirection: 'row', backgroundColor: Colors.primary,
     borderRadius: 14, paddingVertical: 13, alignItems: 'center', justifyContent: 'center',
   },
   continueBtnDisabled: { backgroundColor: Colors.border, opacity: 0.65 },
-  continueBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  // Dark ink on the yellow button: white on #FFD500 is well below a readable contrast ratio.
+  continueBtnText: { color: Colors.text, fontSize: 14, fontWeight: '700' },
 });
