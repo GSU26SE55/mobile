@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Pressable, Text, View } from 'react-native';
 import { CartesianChart, AreaRange, Line } from 'victory-native';
+import { formatDateShort, formatTime } from '@/src/lib/date';
 import { Colors, Radius, Shadow } from '@/src/lib/theme';
 import { useSensorReadingAggregate } from '../hooks/useSensorReadingAggregate';
 import { useBatteryStats } from '../hooks/useBatteryStats';
@@ -35,10 +36,9 @@ function formatAmp(v?: number | null): string {
   return v == null ? '—' : `${v.toFixed(2)} A`;
 }
 
+// Nhãn trục X phải ngắn — dùng dạng rút gọn thay vì `formatDateTime` để chữ không tràn.
 function formatBucketLabel(iso: string, range: RangeKey): string {
-  const d = new Date(iso);
-  if (range === '24h') return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  return d.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit' });
+  return range === '24h' ? formatTime(iso) : formatDateShort(iso);
 }
 
 export function ChargeDischargeChart({ assetId }: { assetId: string }) {

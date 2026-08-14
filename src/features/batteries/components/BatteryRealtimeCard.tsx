@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { formatDateTime } from '@/src/lib/date';
 import { Colors, Radius, Shadow } from '@/src/lib/theme';
 import { RingStat } from '@/src/shared/components/StatTrio';
 import { BatteryAssetRealtimeDto } from '../types/battery.types';
@@ -30,9 +31,7 @@ function fmt(v: number | null, unit: string, digits = 1): string {
 }
 
 export function BatteryRealtimeCard({ data }: { data: BatteryAssetRealtimeDto }) {
-  const updatedAt = data.time
-    ? new Date(data.time).toLocaleString('en-US')
-    : 'No data yet';
+  const updatedAt = data.time ? formatDateTime(data.time) : 'No data yet';
   const charging =
     data.chargingState != null ? CHARGING_META[data.chargingState] : undefined;
 

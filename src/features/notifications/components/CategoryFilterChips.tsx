@@ -58,27 +58,39 @@ export function CategoryFilterChips({ value, onChange, counts, total }: Props) {
 const styles = StyleSheet.create({
   // No negative marginHorizontal here — the component sits inside the parent screen's padded area;
   // left/right padding comes from `row` so chips scroll edge-to-edge while still having breathing room at both ends.
-  scroll: { flexGrow: 0 },
+  // flexShrink: 0 is what keeps the chips whole. ScrollView ships with a base style of
+  // flexGrow: 1 / flexShrink: 1, so overriding only flexGrow still leaves this row shrinkable —
+  // and once the list below it has rows to render, this row is the one that gives up space and
+  // gets its chips clipped. It looked fine on an empty category only because nothing competed.
+  //
+  // The bottom gap sits here rather than in `row`: a horizontal ScrollView sizes itself from its
+  // content and ignores the content container's vertical padding.
+  scroll: { flexGrow: 0, flexShrink: 0, marginBottom: 12 },
   row: {
     flexDirection: 'row',
     gap: 8,
     paddingHorizontal: 20,
-    paddingBottom: 12,
+    // Vertical breathing room so the chip's border and shadow are not cut by the scroll bounds.
+    paddingVertical: 2,
   },
   chip: {
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.card,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
+    borderColor: Colors.border,
   },
+  // Soft yellow fill with a deep-yellow label instead of a saturated #FFD500 pill: the selected
+  // chip still reads as selected, but stops being the loudest thing on the screen.
   chipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryLight,
+    borderColor: Colors.primaryDark,
   },
   // An empty category is still tappable (a later page might have items) — just dimmed, not disabled.
-  chipEmpty: { opacity: 0.45 },
-  text: { fontSize: 12, fontWeight: '600', color: Colors.textMute },
-  textActive: { color: '#FFFFFF', fontWeight: '800' },
+  // 0.45 pushed the 12px muted label under a readable contrast ratio on cream.
+  chipEmpty: { opacity: 0.6 },
+  text: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: Colors.textMute },
+  // White on #FFD500 fails contrast badly; the deep yellow reads cleanly on the soft fill.
+  textActive: { color: Colors.primaryDark, fontWeight: '800' },
 });

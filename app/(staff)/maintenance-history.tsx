@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { formatDateTime } from '@/src/lib/date';
 import { Colors, Shadow } from '@/src/lib/theme';
 import { useMyMaintenanceLogs } from '@/src/features/staff/hooks/useMyMaintenanceLogs';
 import { BackButton } from '@/src/shared/components/ScreenHeader';
@@ -64,7 +65,7 @@ export default function MaintenanceHistoryScreen() {
                     <Text style={styles.logMeta}>Duration: {log.durationMinutes} min</Text>
                   )}
                   <Text style={styles.logTime}>
-                    {new Date(log.createdAt).toLocaleString('vi-VN')}
+                    {formatDateTime(log.createdAt)}
                   </Text>
                 </View>
               ))}

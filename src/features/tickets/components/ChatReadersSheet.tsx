@@ -1,6 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { formatDateTime } from '@/src/lib/date';
 import { Colors } from '@/src/lib/theme';
 import { BottomSheet } from '@/src/shared/components/BottomSheet';
 import { useChatReaders } from '../hooks/useChatReaders';
@@ -45,11 +46,7 @@ export function ChatReadersSheet({ ticketId, chatId, onClose }: Props) {
                 <Text style={styles.name} numberOfLines={1}>{r.displayName}</Text>
                 <Text style={styles.role}>{ROLE_LABEL[r.role] ?? r.role}</Text>
               </View>
-              <Text style={styles.time}>
-                {new Date(r.readAt).toLocaleString('vi-VN', {
-                  day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-                })}
-              </Text>
+              <Text style={styles.time}>{formatDateTime(r.readAt)}</Text>
             </View>
           ))
         )}

@@ -127,7 +127,7 @@ export function NotificationList() {
             disabled={markAllRead.isPending}
             style={styles.markAllBtn}
           >
-            <Ionicons name="checkmark-done-outline" size={15} color={Colors.primary} />
+            <Ionicons name="checkmark-done-outline" size={15} color={Colors.primaryDark} />
             <Text style={styles.markAllText}>Mark all as read</Text>
           </Pressable>
         </View>
@@ -187,7 +187,8 @@ const styles = StyleSheet.create({
   },
   unreadText: { fontSize: 13, color: Colors.textMute, fontWeight: '600' },
   markAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  markAllText: { fontSize: 13, color: Colors.primary, fontWeight: '700' },
+  // primaryDark, not primary: #FFD500 text on the cream background is barely legible.
+  markAllText: { fontSize: 13, color: Colors.primaryDark, fontWeight: '700' },
   list: { paddingHorizontal: 20, paddingBottom: 100 },
   footer: { paddingVertical: 16 },
   empty: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 8 },

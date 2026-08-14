@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
+import { formatDateShort, formatTime } from '@/src/lib/date';
 import { Colors, Radius, Shadow, Solar } from '@/src/lib/theme';
 import { useSensorReadingAggregate } from '../hooks/useSensorReadingAggregate';
 import { SensorReadingAggregateDto, SensorReadingInterval } from '../types/sensor-reading.types';
@@ -27,11 +28,11 @@ const RANGE_KEYS = Object.keys(RANGES) as RangeKey[];
 const CHART_HEIGHT = 180;
 const MAX_X_LABELS = 5;
 
+// Nhãn trục X phải ngắn — dùng dạng rút gọn thay vì `formatDateTime` để chữ không tràn.
 function formatBucketLabel(iso: string, range: RangeKey): string {
-  const d = new Date(iso);
-  if (range === '1h') return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  if (range === '30d') return d.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit' });
-  return d.toLocaleString('en-US', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  if (range === '1h') return formatTime(iso);
+  if (range === '30d') return formatDateShort(iso);
+  return `${formatDateShort(iso)} ${formatTime(iso)}`;
 }
 
 export function SensorChart({ assetId }: { assetId: string }) {

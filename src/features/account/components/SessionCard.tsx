@@ -1,5 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { formatDateTime } from '@/src/lib/date';
 import { Colors, Shadow } from '@/src/lib/theme';
 import { SessionDto } from '../types/account.types';
 
@@ -10,7 +11,7 @@ interface Props {
 }
 
 export function SessionCard({ session, onRevoke, isRevoking }: Props) {
-  const issuedAt = new Date(session.issuedAt).toLocaleString('vi-VN');
+  const issuedAt = formatDateTime(session.issuedAt);
   const device = session.userAgent
     ? session.userAgent.slice(0, 50) + (session.userAgent.length > 50 ? '...' : '')
     : 'Unknown device';

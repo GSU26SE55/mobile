@@ -1,5 +1,6 @@
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { formatDateShort } from '@/src/lib/date';
 import { Colors } from '@/src/lib/theme';
 import { TicketCommentDTO } from '../types/ticket.types';
 
@@ -52,7 +53,7 @@ export function ChatInboxList({
             </Text>
           </View>
           <Text style={styles.time}>
-            {new Date(item.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+            {formatDateShort(item.createdAt)}
           </Text>
         </Pressable>
       )}

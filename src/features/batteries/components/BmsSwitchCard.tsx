@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { formatDateTime } from '@/src/lib/date';
 import { Colors, Radius, Shadow } from '@/src/lib/theme';
 import { HttpError } from '@/src/lib/errors';
 import type { CascadeRiskDto } from '../types/cascade.types';
@@ -44,7 +45,7 @@ function formatUpdatedAt(value: string | null | undefined): string {
   if (!value) return 'No verified state';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'No verified state';
-  return `Updated ${date.toLocaleString('en-US')}`;
+  return `Updated ${formatDateTime(date)}`;
 }
 
 function commandFailureMessage(status: number): string {

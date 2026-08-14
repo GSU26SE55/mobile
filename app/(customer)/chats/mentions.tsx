@@ -1,5 +1,6 @@
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { formatDateTime } from '@/src/lib/date';
 import { Colors } from '@/src/lib/theme';
 import { useMyMentions } from '@/src/features/tickets/hooks/useChatInbox';
 
@@ -34,11 +35,7 @@ export default function MentionsScreen() {
             <Text style={styles.name} numberOfLines={1}>
               {item.mentionedDisplayName ?? 'You were mentioned'}
             </Text>
-            <Text style={styles.time}>
-              {new Date(item.createdAt).toLocaleString('vi-VN', {
-                day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-              })}
-            </Text>
+            <Text style={styles.time}>{formatDateTime(item.createdAt)}</Text>
           </View>
         </Pressable>
       )}

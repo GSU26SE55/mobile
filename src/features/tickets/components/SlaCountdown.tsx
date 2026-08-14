@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { formatDateTime } from '@/src/lib/date';
 import { Colors } from '@/src/lib/theme';
 import { SlaTimerDTO } from '../types/ticket.types';
 
@@ -19,16 +20,6 @@ function formatRemaining(ms: number): string {
   if (h > 0) return `${h}h ${m}m`;
   if (m > 0) return `${m}m ${s}s`;
   return `${s}s`;
-}
-
-function formatDeadline(dueAt: string): string {
-  const d = new Date(dueAt);
-  return d.toLocaleString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 export function SlaCountdown({ sla, compact = false }: Props) {
@@ -133,7 +124,7 @@ export function SlaCountdown({ sla, compact = false }: Props) {
             <View style={[styles.fill, { width: `${percent}%`, backgroundColor: color }]} />
           </View>
           <View style={styles.footRow}>
-            <Text style={styles.footText}>Due {formatDeadline(sla.dueAt)}</Text>
+            <Text style={styles.footText}>Due {formatDateTime(sla.dueAt)}</Text>
             <Text style={[styles.footPercent, { color }]}>{Math.round(percent)}%</Text>
           </View>
         </>

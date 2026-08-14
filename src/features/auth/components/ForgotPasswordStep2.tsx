@@ -122,7 +122,7 @@ export function ForgotPasswordStep2({ email, onSuccess }: Props) {
           </Text>
         ) : (
           <Text style={styles.resendText}>
-            Didn't receive the OTP? <Text style={styles.resendLink}>Resend code</Text>
+            Didn&apos;t receive the OTP? <Text style={styles.resendLink}>Resend code</Text>
           </Text>
         )}
       </Pressable>

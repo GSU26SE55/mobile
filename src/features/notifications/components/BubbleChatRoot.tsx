@@ -21,6 +21,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthProvider, useAuthContext } from '../../../context/authContext';
 import { P, checkPermission } from '../../../lib/authz';
+import { formatDate } from '../../../lib/date';
 import { Colors, Shadow } from '../../../lib/theme';
 import { useSessionStore } from '../../../stores/sessionStore';
 
@@ -280,7 +281,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsMultipleSelection: false,
       quality: 0.8,
     });
@@ -449,11 +450,16 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      // Android needs an explicit behavior too. The app runs edge-to-edge
+      // (android.edgeToEdgeEnabled in app.json), and under edge-to-edge the system no longer
+      // resizes the window for the keyboard even with windowSoftInputMode=adjustResize — so
+      // leaving this undefined means the keyboard simply covers the composer.
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       // The view spans from y=0 so KAV can't subtract the bottom safe area on its own: it adds
       // extra padding equal to the home indicator height, leaving a gap between the composer and
-      // the keyboard. This negative offset compensates for that.
-      keyboardVerticalOffset={-insets.bottom}
+      // the keyboard. This negative offset compensates for that. Android reports keyboard
+      // coordinates that already cover the navigation bar, so it needs no compensation.
+      keyboardVerticalOffset={Platform.OS === 'ios' ? -insets.bottom : 0}
     >
       {/* Top Messenger Single-Row Compact Header Bar */}
       <View style={[styles.headerCompact, { paddingTop: Math.max(insets.top, 8) }]}>
@@ -794,7 +800,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                       <View style={styles.metaItem}>
                         <Text style={styles.metaLabel}>Created</Text>
                         <Text style={styles.metaVal}>
-                          {new Date(ticketDetail.createdAt).toLocaleDateString('vi-VN')}
+                          {formatDate(ticketDetail.createdAt)}
                         </Text>
                       </View>
                     </View>
@@ -893,7 +899,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                     <View style={styles.cardHeader}>
                       <Text style={styles.logTitle}>{log.summary || 'Maintenance Log'}</Text>
                       <Text style={styles.logTime}>
-                        {new Date(log.createdAt).toLocaleDateString('vi-VN')}
+                        {formatDate(log.createdAt)}
                       </Text>
                     </View>
                     {log.actionsTaken ? (

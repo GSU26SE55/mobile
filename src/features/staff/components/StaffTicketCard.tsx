@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { formatDate } from '@/src/lib/date';
 import { BadgeColors, Colors, Shadow } from '@/src/lib/theme';
 import { TicketDTO } from '@/src/features/tickets/types/ticket.types';
 import { SlaCountdown } from '@/src/features/tickets/components/SlaCountdown';
@@ -96,7 +97,7 @@ export function StaffTicketCard({ ticket, onPress }: Props) {
 
       <View style={styles.footer}>
         <Text style={styles.subtitle} numberOfLines={1}>
-          {CATEGORY_LABEL[ticket.category] ?? ticket.category} · {new Date(ticket.createdAt).toLocaleDateString('vi-VN')}
+          {CATEGORY_LABEL[ticket.category] ?? ticket.category} · {formatDate(ticket.createdAt)}
         </Text>
       </View>
     </Pressable>

@@ -1,5 +1,6 @@
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import { formatDateTime } from '@/src/lib/date';
 import { Colors } from '@/src/lib/theme';
 import { ScreenHeader } from '@/src/shared/components/ScreenHeader';
 import { useMyMentions } from '@/src/features/tickets/hooks/useChatInbox';
@@ -37,11 +38,7 @@ export default function StaffMentionsScreen() {
                   {/* Text label alongside the yellow dot — a color-only dot wouldn't convey the meaning. */}
                   {item.isInternal && <Text style={styles.internalTag}>Internal</Text>}
                 </View>
-                <Text style={styles.time}>
-                  {new Date(item.createdAt).toLocaleString('vi-VN', {
-                    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-                  })}
-                </Text>
+                <Text style={styles.time}>{formatDateTime(item.createdAt)}</Text>
               </View>
             </Pressable>
           )}

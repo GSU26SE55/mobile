@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocusedSafe } from '@/src/hooks/useIsFocusedSafe';
 import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { staffTicketService } from '../services/staffTicket.service';
 import { StaffTicketListParams } from '../types/staff.types';
 
 export function useStaffTickets(params?: StaffTicketListParams, options?: { enabled?: boolean }) {
-  const isFocused = useIsFocused();
+  const isFocused = useIsFocusedSafe();
   return useQuery({
     queryKey: QUERY_KEY.staffTickets.list(params as Record<string, unknown>),
     queryFn: async () => {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { formatDateTime } from '@/src/lib/date';
 import { Colors, Radius, Shadow } from '@/src/lib/theme';
 import { AmbientReadingDto } from '../types/ambient.types';
 
@@ -24,7 +25,7 @@ export function AmbientTile({ data }: { data: AmbientReadingDto | null | undefin
     <View style={[styles.card, Shadow]}>
       <View style={styles.header}>
         <Text style={styles.title}>Environment</Text>
-        <Text style={styles.updatedAt}>{new Date(data.time).toLocaleString()}</Text>
+        <Text style={styles.updatedAt}>{formatDateTime(data.time)}</Text>
       </View>
       <View style={styles.grid}>
         <Metric icon="thermometer-outline" label="Temperature" value={fmt(data.ambientTemperature, ' °C')} />

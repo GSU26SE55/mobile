@@ -22,8 +22,8 @@ export function PermissionGuard({ permission, children }: Props) {
     return (
       <View style={styles.container}>
         <Ionicons name="lock-closed-outline" size={44} color={Colors.textFaint} />
-        <Text style={styles.title}>You don't have access</Text>
-        <Text style={styles.subtitle}>This content requires a permission that hasn't been granted to your account.</Text>
+        <Text style={styles.title}>You don&apos;t have access</Text>
+        <Text style={styles.subtitle}>This content requires a permission that hasn&apos;t been granted to your account.</Text>
         <Pressable style={[styles.btn, ShadowPrimary]} onPress={() => router.back()}>
           <Text style={styles.btnText}>Go back</Text>
         </Pressable>
