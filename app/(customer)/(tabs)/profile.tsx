@@ -234,9 +234,12 @@ export default function ProfileScreen() {
           />
           <View style={styles.separator} />
           <LinkRow
-            icon="warning-outline"
+            icon="options-outline"
             label="Advanced settings"
-            onPress={() => router.push('/(customer)/settings/danger-zone')}
+            // Opens the settings hub, which lists every sub-screen (chat inbox, email,
+            // phone, trusted devices, notifications, danger zone). Linking straight to
+            // danger-zone left the rest of the hub unreachable.
+            onPress={() => router.push('/(customer)/settings')}
           />
         </GlassSurface>
 

@@ -4,8 +4,6 @@ import { useState, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useReactivateRequest } from '@/src/features/auth/hooks/useReactivateRequest';
 import { useReactivateVerify } from '@/src/features/auth/hooks/useReactivateVerify';
@@ -87,7 +86,9 @@ export default function ReactivateScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    // keyboard-controller's KAV — RN's was disabled on Android (behavior undefined), so the
+    // keyboard covered the form there.
+    <KeyboardAvoidingView style={styles.flex} behavior="padding">
       {/* Back button */}
       <Pressable
         onPress={handleBack}

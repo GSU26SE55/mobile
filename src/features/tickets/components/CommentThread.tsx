@@ -53,15 +53,20 @@ function findOldestUnreadIndex(ascComments: TicketCommentDTO[]): number {
 /**
  * `anchorId` — id of the oldest unread message pinned for this viewing session (see CommentThread).
  * null ⇒ don't draw the marker.
+ * `unreadCount` — number of unread messages captured at the same time as the anchor. Counting
+ * by the marker's POSITION (ascComments.length - oldestUnread) would include every message that
+ * arrives afterwards — even the ones the current user sends themselves — so the badge kept
+ * counting up while the sender was looking at their own messages.
  */
-function buildThreadItems(ascComments: TicketCommentDTO[], anchorId: string | null): ThreadItem[] {
+function buildThreadItems(
+  ascComments: TicketCommentDTO[],
+  anchorId: string | null,
+  unreadCount: number,
+): ThreadItem[] {
   const items: ThreadItem[] = [];
   let lastDay: string | null = null;
 
   const oldestUnread = anchorId ? ascComments.findIndex((c) => c.id === anchorId) : -1;
-  // Count by marker position, do NOT filter by isRead — after mark-read, isRead has already
-  // become true for everything, so filtering again would yield 0 and the label loses its count.
-  const unreadCount = oldestUnread < 0 ? 0 : ascComments.length - oldestUnread;
 
   ascComments.forEach((c, i) => {
     const day = dayKey(c.createdAt);
@@ -268,10 +273,12 @@ export function CommentThread({
   // of the oldest unread message is pinned on the FIRST render with data and kept until the
   // tab changes / the screen is left.
   const anchorIdRef = useRef<string | null>(null);
+  const anchorCountRef = useRef(0);
   const anchorResolvedRef = useRef(false);
 
   useEffect(() => {
     anchorIdRef.current = null;
+    anchorCountRef.current = 0;
     anchorResolvedRef.current = false;
   }, [tab]);
 
@@ -286,11 +293,14 @@ export function CommentThread({
       if (hasReadInfo) {
         const idx = findOldestUnreadIndex(ascComments);
         anchorIdRef.current = idx >= 0 ? ascComments[idx].id : null;
+        // Pinned at the same time as the anchor so later messages (including the user's own)
+        // don't inflate the count — see buildThreadItems.
+        anchorCountRef.current = ascComments.filter((c) => c.isRead === false).length;
         anchorResolvedRef.current = true;
       }
     }
 
-    const base = buildThreadItems(ascComments, anchorIdRef.current);
+    const base = buildThreadItems(ascComments, anchorIdRef.current, anchorCountRef.current);
     // Pending (outbox) messages render after the real ones — newest-last, matching Web's
     // PendingBubble placement at the end of the thread.
     const pending: ThreadItem[] = pendingForTab.map((m) => ({

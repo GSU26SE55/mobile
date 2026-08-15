@@ -69,7 +69,7 @@ export default function DeviceScanScreen() {
 
     const code = extractDeviceCode(data);
     if (!code) {
-      setError('Mã QR này không phải nhãn thiết bị. Hãy quét đúng tem dán trên thân máy.');
+      setError('This QR code is not a device label. Scan the sticker on the unit itself.');
       return;
     }
 
@@ -86,7 +86,7 @@ export default function DeviceScanScreen() {
       handled.current = false;
       setBusy(false);
       setError(
-        `Không tìm thấy thiết bị "${code}". Kiểm tra lại nhãn, hoặc thiết bị chưa được tạo trên hệ thống.`,
+        `Device "${code}" was not found. Check the label, or the device may not be registered yet.`,
       );
     }
   };
@@ -104,7 +104,7 @@ export default function DeviceScanScreen() {
       <View style={styles.root}>
         <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
           <BackButton />
-          <Text style={styles.topTitle}>Quét nhãn thiết bị</Text>
+          <Text style={styles.topTitle}>Scan device label</Text>
           <View style={styles.headerSpacer} />
         </View>
         <View style={styles.centered}>
@@ -113,7 +113,7 @@ export default function DeviceScanScreen() {
             Cần quyền dùng camera để quét mã QR trên nhãn thiết bị.
           </Text>
           <Pressable style={styles.primaryBtn} onPress={requestPermission}>
-            <Text style={styles.primaryBtnText}>Cho phép</Text>
+            <Text style={styles.primaryBtnText}>Allow</Text>
           </Pressable>
           {!permission.canAskAgain && (
             // Bị từ chối vĩnh viễn thì nút trên không làm gì cả — phải nói ra, không thì người
@@ -140,13 +140,13 @@ export default function DeviceScanScreen() {
 
       <View style={[styles.overlayTop, { paddingTop: insets.top + 8 }]}>
         <BackButton />
-        <Text style={styles.overlayTitle}>Quét nhãn thiết bị</Text>
+        <Text style={styles.overlayTitle}>Scan device label</Text>
         <View style={styles.headerSpacer} />
       </View>
 
       <View style={styles.frameWrap} pointerEvents="none">
         <View style={styles.frame} />
-        <Text style={styles.frameHint}>Đưa mã QR trên nhãn vào khung</Text>
+        <Text style={styles.frameHint}>Line the QR code up inside the frame</Text>
       </View>
 
       {(busy || error) && (
@@ -154,13 +154,13 @@ export default function DeviceScanScreen() {
           {busy ? (
             <View style={styles.busyRow}>
               <ActivityIndicator color={Colors.primaryDark} />
-              <Text style={styles.busyText}>Đang tra cứu thiết bị…</Text>
+              <Text style={styles.busyText}>Looking up the device…</Text>
             </View>
           ) : (
             <>
               <Text style={styles.errorText}>{error}</Text>
               <Pressable style={styles.primaryBtn} onPress={() => setError(null)}>
-                <Text style={styles.primaryBtnText}>Quét lại</Text>
+                <Text style={styles.primaryBtnText}>Scan again</Text>
               </Pressable>
             </>
           )}

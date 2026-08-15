@@ -79,7 +79,7 @@ export default function DeviceDetailScreen() {
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <BackButton />
         <Text style={styles.topTitle} numberOfLines={1}>
-          {device?.deviceCode ?? 'Chi tiết thiết bị'}
+          {device?.deviceCode ?? 'Device detail'}
         </Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -108,15 +108,15 @@ export default function DeviceDetailScreen() {
               </View>
             )}
 
-            <Text style={styles.sectionTitle}>Lịch sử heartbeat</Text>
+            <Text style={styles.sectionTitle}>Heartbeat history</Text>
             {heartbeats.isLoading && (
               <ActivityIndicator style={styles.loader} color={Colors.primaryDark} />
             )}
             {heartbeats.isError && (
               <View style={styles.notice}>
-                <Text style={styles.noticeText}>Không tải được lịch sử heartbeat.</Text>
+                <Text style={styles.noticeText}>Could not load the heartbeat history.</Text>
                 <Pressable style={styles.retryBtn} onPress={() => heartbeats.refetch()}>
-                  <Text style={styles.retryText}>Thử lại</Text>
+                  <Text style={styles.retryText}>Retry</Text>
                 </Pressable>
               </View>
             )}

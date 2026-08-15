@@ -30,7 +30,7 @@ import {
  */
 
 const STATUS_FILTERS: { value: IotDeviceStatusEnum | undefined; label: string }[] = [
-  { value: undefined, label: 'Tất cả' },
+  { value: undefined, label: 'All' },
   { value: IotDeviceStatusEnum.Active, label: IOT_DEVICE_STATUS_LABEL[IotDeviceStatusEnum.Active] },
   { value: IotDeviceStatusEnum.Offline, label: IOT_DEVICE_STATUS_LABEL[IotDeviceStatusEnum.Offline] },
   { value: IotDeviceStatusEnum.Pending, label: IOT_DEVICE_STATUS_LABEL[IotDeviceStatusEnum.Pending] },
@@ -62,7 +62,7 @@ export default function DevicesListScreen() {
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <BackButton />
-        <Text style={styles.topTitle}>Thiết bị IoT</Text>
+        <Text style={styles.topTitle}>IoT Devices</Text>
         {/* IOT3-65 — quét nhãn nhanh hơn hẳn gõ tay `GW-ESP32-001` khi đang đứng trước tủ pin. */}
         <Pressable
           hitSlop={10}
@@ -79,7 +79,7 @@ export default function DevicesListScreen() {
           style={styles.searchInput}
           value={keywordInput}
           onChangeText={setKeywordInput}
-          placeholder="Tìm theo mã hoặc tên thiết bị"
+          placeholder="Search by device code or name"
           placeholderTextColor={Colors.textFaint}
           autoCapitalize="characters"
           autoCorrect={false}
@@ -111,9 +111,9 @@ export default function DevicesListScreen() {
       ) : query.isError ? (
         <View style={styles.empty}>
           <Ionicons name="cloud-offline-outline" size={40} color={Colors.textFaint} />
-          <Text style={styles.emptyText}>Không tải được danh sách thiết bị.</Text>
+          <Text style={styles.emptyText}>Could not load the device list.</Text>
           <Pressable style={styles.retryBtn} onPress={() => query.refetch()}>
-            <Text style={styles.retryText}>Thử lại</Text>
+            <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
       ) : (
@@ -132,7 +132,7 @@ export default function DevicesListScreen() {
             <View style={styles.empty}>
               <Ionicons name="hardware-chip-outline" size={40} color={Colors.textFaint} />
               <Text style={styles.emptyText}>
-                {keyword || status ? 'Không có thiết bị nào khớp bộ lọc.' : 'Chưa có thiết bị nào.'}
+                {keyword || status ? 'No device matches the filter.' : 'No devices yet.'}
               </Text>
             </View>
           }

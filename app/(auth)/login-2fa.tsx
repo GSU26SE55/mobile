@@ -3,8 +3,6 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getToken } from '@/src/lib/secureStore';
 import { useSend2faSms } from '@/src/features/auth/hooks/useSend2faSms';
@@ -108,7 +107,9 @@ export default function Login2faScreen() {
   const isOtpMode = mode === 'totp' || mode === 'sms';
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    // keyboard-controller's KAV — RN's was disabled on Android (behavior undefined), so the
+    // keyboard covered the OTP field / submit button there.
+    <KeyboardAvoidingView style={styles.flex} behavior="padding">
       {/* Back button to go back to Login */}
       <Pressable onPress={() => router.replace('/(auth)/login')} style={[styles.backBtn, { top: insets.top + 16 }]}>
         <Ionicons name="chevron-back" size={20} color="#1A1A1C" />

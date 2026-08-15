@@ -6,9 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -18,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardAvoidingView, KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthProvider, useAuthContext } from '../../../context/authContext';
 import { P, checkPermission } from '../../../lib/authz';
@@ -450,16 +449,12 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      // Android needs an explicit behavior too. The app runs edge-to-edge
-      // (android.edgeToEdgeEnabled in app.json), and under edge-to-edge the system no longer
-      // resizes the window for the keyboard even with windowSoftInputMode=adjustResize — so
-      // leaving this undefined means the keyboard simply covers the composer.
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      // The view spans from y=0 so KAV can't subtract the bottom safe area on its own: it adds
-      // extra padding equal to the home indicator height, leaving a gap between the composer and
-      // the keyboard. This negative offset compensates for that. Android reports keyboard
-      // coordinates that already cover the navigation bar, so it needs no compensation.
-      keyboardVerticalOffset={Platform.OS === 'ios' ? -insets.bottom : 0}
+      // KeyboardAvoidingView from react-native-keyboard-controller, NOT RN's built-in one.
+      // The app runs edge-to-edge (android.edgeToEdgeEnabled), so Android doesn't resize the
+      // window for the keyboard; RN's version has to guess the offset → the composer jumps
+      // up/down out of sync. This one reads the keyboard's real height and animation
+      // progress, so one behavior works on both platforms with no manual offset.
+      behavior="padding"
     >
       {/* Top Messenger Single-Row Compact Header Bar */}
       <View style={[styles.headerCompact, { paddingTop: Math.max(insets.top, 8) }]}>
@@ -757,7 +752,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                 onPress={() => setDetailSubTab('kb')}
               >
                 <Text style={[styles.subTabLabel, detailSubTab === 'kb' && styles.subTabLabelActive]}>
-                  KB Articles
+                  Guide
                 </Text>
               </Pressable>
             )}
@@ -918,7 +913,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
             <ScrollView contentContainerStyle={styles.detailsScroll}>
               <Pressable style={styles.addLogBtn} onPress={() => setShowKbPicker(true)}>
                 <Ionicons name="book" size={18} color="#FFF" />
-                <Text style={styles.addLogBtnText}>Add KB Reference</Text>
+                <Text style={styles.addLogBtnText}>Add guide reference</Text>
               </Pressable>
 
               {kbRefsQuery.data && kbRefsQuery.data.length > 0 ? (
@@ -934,7 +929,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                   </View>
                 ))
               ) : (
-                <Text style={[styles.emptyText, { marginTop: 20 }]}>No referenced KB articles yet.</Text>
+                <Text style={[styles.emptyText, { marginTop: 20 }]}>No referenced guide articles yet.</Text>
               )}
             </ScrollView>
           )}
@@ -1084,11 +1079,16 @@ export default function BubbleChatRoot(props: BubbleLaunchProps) {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <BubbleChat {...props} />
-          </AuthProvider>
-        </QueryClientProvider>
+        {/* Its own KeyboardProvider: the bubble is a SEPARATE React root (own
+            GestureHandlerRootView/SafeAreaProvider), so it does not inherit the one in
+            app/_layout.tsx. Without it the KeyboardAvoidingView below has no keyboard data. */}
+        <KeyboardProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <BubbleChat {...props} />
+            </AuthProvider>
+          </QueryClientProvider>
+        </KeyboardProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

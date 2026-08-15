@@ -37,13 +37,13 @@ const ROWS: ToolRow[] = [
   },
   {
     icon: 'hardware-chip-outline',
-    title: 'Thiết bị IoT',
-    desc: 'Trạng thái, firmware, heartbeat của gateway tại hiện trường',
+    title: 'IoT Devices',
+    desc: 'Status, firmware and heartbeat of gateways in the field',
     href: '/(staff)/tools/devices',
   },
   {
     icon: 'book-outline',
-    title: 'KB Articles',
+    title: 'Guide',
     desc: 'Troubleshooting guides, reference while working on tickets',
     href: '/(staff)/kb',
   },

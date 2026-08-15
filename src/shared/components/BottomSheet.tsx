@@ -1,13 +1,12 @@
 import React from 'react';
 import {
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
+import { KeyboardAvoidingView, KeyboardProvider } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Shadow } from '@/src/lib/theme';
 
@@ -29,29 +28,34 @@ export function BottomSheet({ visible, onClose, children, scroll = true }: Props
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        // Sheet is pinned to the bottom of the screen: KAV spans from y=0, so it doesn't
-        // subtract the bottom safe-area, pushing up by exactly the home indicator height.
-        // The negative offset compensates for that.
-        keyboardVerticalOffset={-insets.bottom}
-      >
-        <Pressable style={styles.backdrop} onPress={onClose} />
-        <View style={[styles.sheet, Shadow, { paddingBottom: insets.bottom + 20 }]}>
-          <View style={styles.handle} />
-          {scroll ? (
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              {children}
-            </ScrollView>
-          ) : (
-            children
-          )}
-        </View>
-      </KeyboardAvoidingView>
+      {/* A Modal renders into its own window on Android, outside the app's React root, so it
+          does NOT inherit the KeyboardProvider from app/_layout.tsx — it needs its own or the
+          KeyboardAvoidingView below gets no keyboard data. */}
+      <KeyboardProvider>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          // From react-native-keyboard-controller. RN's version was disabled on Android
+          // (behavior undefined) so the keyboard covered the submit button, and it needed a
+          // manual negative offset on iOS. This one tracks the keyboard's real height and
+          // subtracts the safe area itself.
+          behavior="padding"
+        >
+          <Pressable style={styles.backdrop} onPress={onClose} />
+          <View style={[styles.sheet, Shadow, { paddingBottom: insets.bottom + 20 }]}>
+            <View style={styles.handle} />
+            {scroll ? (
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {children}
+              </ScrollView>
+            ) : (
+              children
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </KeyboardProvider>
     </Modal>
   );
 }
