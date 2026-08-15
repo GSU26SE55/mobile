@@ -4,9 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,9 +12,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useKeyboardVisible } from '@/src/hooks/useKeyboardVisible';
 import { Ionicons } from '@expo/vector-icons';
 import { HttpError } from '@/src/lib/errors';
 import { P } from '@/src/lib/authz';
@@ -171,7 +169,6 @@ export function CustomerTicketDetailScreen() {
 
 function TicketDetailScreenInner() {
   const insets = useSafeAreaInsets();
-  const keyboardVisible = useKeyboardVisible();
   const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const { data: ticket, isLoading, isError, refetch } = useTicketDetail(id ?? '');
   const imageHeaders = useAuthImageHeaders();
@@ -416,15 +413,12 @@ function TicketDetailScreenInner() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      // Android cũng phải bật. App chạy edge-to-edge (android.edgeToEdgeEnabled trong
-      // app.json), mà edge-to-edge thì hệ thống KHÔNG resize window theo bàn phím nữa dù
-      // windowSoftInputMode=adjustResize — tắt KAV ở Android là bàn phím che mất composer.
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      // View trải từ y=0 nên KAV không tự trừ được safe-area dưới: nó đẩy dư
-      // đúng bằng chiều cao home indicator, tạo khoảng trắng giữa composer và
-      // bàn phím. Offset âm bù lại phần đó. Android trả toạ độ bàn phím đã phủ cả
-      // navigation bar nên không cần bù.
-      keyboardVerticalOffset={Platform.OS === 'ios' ? -insets.bottom : 0}
+      // KeyboardAvoidingView của react-native-keyboard-controller, KHÔNG phải bản của RN.
+      // App chạy edge-to-edge (android.edgeToEdgeEnabled) nên Android không resize window
+      // theo bàn phím; bản RN phải tự đoán offset → composer nhảy lên/xuống lệch nhịp.
+      // Bản này đọc chiều cao + tiến trình animation thật của bàn phím nên chạy đúng ở cả
+      // 2 nền tảng với cùng một behavior, không cần Platform.select hay offset bù tay.
+      behavior="padding"
     >
       {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
@@ -447,7 +441,7 @@ function TicketDetailScreenInner() {
           style={[styles.tab, activeTab === 'chat' && styles.tabActive]}
           onPress={() => setActiveTab('chat')}
         >
-          <Text style={[styles.tabText, activeTab === 'chat' && styles.tabTextActive]}>Discussion</Text>
+          <Text style={[styles.tabText, activeTab === 'chat' && styles.tabTextActive]}>Chat</Text>
           {/* Số CHƯA ĐỌC, không phải tổng số tin. Ẩn khi đang mở chính tab này:
               tin mới về qua SignalR làm badge nháy lên trước khi thread kịp
               mark-read, mà user thì đang đọc ngay tin đó. */}
@@ -760,9 +754,12 @@ function TicketDetailScreenInner() {
           <View
             style={[
               styles.composer,
-              // Bàn phím mở đã che vùng home indicator — cộng thêm insets.bottom
-              // lúc này chỉ tạo khoảng trắng thừa giữa ô nhập và bàn phím.
-              { paddingBottom: !keyboardVisible && insets.bottom > 0 ? insets.bottom + 8 : 12 }
+              // Padding tĩnh. Trước đây nó đổi theo keyboardVisible, mà hook đó nghe
+              // keyboardDidShow/Hide (Android) — chạy SAU khi bàn phím animate xong, tạo
+              // nhịp thứ 2 lệch pha với KAV → ô nhập lên rồi tụt xuống. KAV của
+              // keyboard-controller đã trừ safe-area đúng lúc bàn phím mở nên chỉ cần giữ
+              // padding cố định cho vùng home indicator.
+              { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 12 }
             ]}
           >
             <Pressable style={styles.composerIcon} onPress={handlePickAttachment} disabled={isUploading}>

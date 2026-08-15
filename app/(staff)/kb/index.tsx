@@ -65,7 +65,7 @@ function StaffKbListScreenInner() {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <BackButton />
-        <Text style={styles.headerTitle}>KB Articles</Text>
+        <Text style={styles.headerTitle}>Guide</Text>
         <View style={styles.headerSpacer} />
       </View>
 

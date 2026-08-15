@@ -45,7 +45,7 @@ export function KbReferencePicker({ visible, ticketId, onClose }: Props) {
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
           <View style={styles.handle} />
-          <Text style={styles.title}>Assign KB article</Text>
+          <Text style={styles.title}>Assign guide article</Text>
 
           {/* Select reference type */}
           <Text style={styles.label}>Reference type</Text>

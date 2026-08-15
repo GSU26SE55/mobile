@@ -32,18 +32,18 @@ function statusTone(status: IotDeviceStatusEnum): { bg: string; fg: string } {
 }
 
 /**
- * "3 phút trước" dễ đọc hơn hẳn một mốc ISO khi đang đứng trước tủ pin.
+ * "3m ago" reads faster than an ISO timestamp when standing in front of the cabinet.
  */
 export function formatRelative(iso: string | null | undefined): string {
-  if (!iso) return 'chưa từng';
+  if (!iso) return 'never';
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return '—';
   const diffSec = Math.round((Date.now() - t) / 1000);
   if (diffSec < 0) return 'vừa xong';        // đồng hồ máy lệch — đừng hiện "-5 phút trước"
-  if (diffSec < 60) return `${diffSec} giây trước`;
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)} phút trước`;
-  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)} giờ trước`;
-  return `${Math.floor(diffSec / 86400)} ngày trước`;
+  if (diffSec < 60) return `${diffSec}s ago`;
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+  return `${Math.floor(diffSec / 86400)}d ago`;
 }
 
 /**
@@ -102,35 +102,35 @@ export function DeviceStatusCard({ device }: { device: IotDeviceDto }) {
         </View>
         <View style={[styles.badge, { backgroundColor: tone.bg }]}>
           <Text style={[styles.badgeText, { color: tone.fg }]}>
-            {IOT_DEVICE_STATUS_LABEL[device.status] ?? 'Không rõ'}
+            {IOT_DEVICE_STATUS_LABEL[device.status] ?? 'Unknown'}
           </Text>
         </View>
       </View>
 
-      <Row icon="time-outline" label="Thấy lần cuối" value={formatRelative(device.lastSeenAt)} />
+      <Row icon="time-outline" label="Last seen" value={formatRelative(device.lastSeenAt)} />
       <Row
         icon="hardware-chip-outline"
         label="Firmware"
         value={
           otaPending
-            ? `${device.currentFirmwareVersion ?? '—'} → ${device.targetFirmwareVersion} (chờ OTA)`
+            ? `${device.currentFirmwareVersion ?? '—'} → ${device.targetFirmwareVersion} (OTA pending)`
             : (device.currentFirmwareVersion ?? '—')
         }
         danger={otaPending}
       />
       <Row
         icon="stopwatch-outline"
-        label="Lệch đồng hồ"
+        label="Clock skew"
         value={skew.text}
         danger={skew.danger}
       />
       <Row
         icon="pulse-outline"
-        label="Nhịp heartbeat"
+        label="Heartbeat interval"
         value={`${device.heartbeatIntervalSeconds}s`}
       />
       {!!device.siteName && (
-        <Row icon="business-outline" label="Địa điểm" value={device.siteName} />
+        <Row icon="business-outline" label="Location" value={device.siteName} />
       )}
       {!!device.apiKeyLastFour && (
         <Row icon="key-outline" label="API key" value={`••••${device.apiKeyLastFour}`} />

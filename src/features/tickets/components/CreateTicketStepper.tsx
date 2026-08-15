@@ -9,11 +9,10 @@ import {
   Image,
   ActivityIndicator,
   ActionSheetIOS,
-  Alert,
   Platform,
-  Keyboard,
-  KeyboardAvoidingView,
+  Alert,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker, {
@@ -181,18 +180,6 @@ export function CreateTicketStepper({
   onCancel,
 }: Props) {
   const insets = useSafeAreaInsets();
-
-  const [keyboardVisible, setKeyboardVisible] = React.useState(false);
-  React.useEffect(() => {
-    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const showSub = Keyboard.addListener(showEvt, () => setKeyboardVisible(true));
-    const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardVisible(false));
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
 
   const { data: batteries = [] } = useMyBatteryAssets();
   const selectedBatteries = batteries.filter((b: BatteryAssetDto) =>
@@ -663,12 +650,11 @@ export function CreateTicketStepper({
   return (
     <KeyboardAvoidingView
       style={styles.root}
+      // KeyboardAvoidingView của react-native-keyboard-controller. Trước đây chỗ này tắt hẳn
+      // ở Android (enabled=ios) nên bàn phím che mất footer, và phải bù offset âm bằng tay.
+      // Bản này đọc chiều cao bàn phím thật + trừ safe-area đúng nên bật chung cho cả 2 nền
+      // tảng, không cần enabled/keyboardVerticalOffset.
       behavior="padding"
-      enabled={Platform.OS === 'ios'}
-      // Root trải từ y=0 nên KAV không tự trừ được safe-area dưới: nó đẩy dư
-      // đúng bằng chiều cao home indicator, tạo khoảng trắng giữa footer và
-      // bàn phím. Offset âm bù lại phần đó (giống CustomerTicketDetailScreen).
-      keyboardVerticalOffset={-insets.bottom}
     >
       {renderHeader()}
       {renderProgress()}
@@ -680,9 +666,10 @@ export function CreateTicketStepper({
       <View
         style={[
           styles.footer,
-          // Bàn phím mở đã che vùng home indicator — cộng thêm insets.bottom
-          // lúc này chỉ tạo khoảng trắng thừa giữa nút và bàn phím.
-          { paddingBottom: !keyboardVisible && insets.bottom > 0 ? insets.bottom + 8 : 12 },
+          // Padding tĩnh — xem CustomerTicketDetailScreen: padding đổi theo keyboardDidShow
+          // chạy lệch nhịp với KAV làm footer nhảy 2 lần. KAV của keyboard-controller đã
+          // trừ safe-area đúng lúc bàn phím mở.
+          { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 12 },
         ]}
       >
         {step > 1 ? (

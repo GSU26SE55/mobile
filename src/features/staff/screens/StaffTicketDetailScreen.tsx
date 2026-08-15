@@ -3,9 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,10 +11,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useKeyboardVisible } from '@/src/hooks/useKeyboardVisible';
 import { formatDate, formatDateTime } from '@/src/lib/date';
 import { BadgeColors, Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
 import { ActivityTimeline } from '@/src/features/tickets/components/ActivityTimeline';
@@ -87,7 +85,7 @@ const TABS: { key: TabKey; label: string; icon: keyof typeof Ionicons.glyphMap }
   { key: 'comments',   label: 'Chat',      icon: 'chatbubbles-outline' },
   { key: 'activities', label: 'Details',   icon: 'time-outline' },
   { key: 'logs',       label: 'Logs',      icon: 'document-text-outline' },
-  { key: 'kb',         label: 'KB Articles', icon: 'book-outline' },
+  { key: 'kb',         label: 'Guide',       icon: 'book-outline' },
 ];
 
 const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
@@ -147,7 +145,6 @@ export function StaffTicketDetailScreen() {
 
 function StaffTicketDetailScreenInner() {
   const insets = useSafeAreaInsets();
-  const keyboardVisible = useKeyboardVisible();
   const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const ticketId = id ?? '';
   const accountId = useSessionStore((s) => s.user?.accountId);
@@ -296,7 +293,7 @@ function StaffTicketDetailScreenInner() {
 
   // GH-44 #6 — remove KB reference (with confirmation).
   const handleRemoveRef = (referenceId: string) => {
-    Alert.alert('Remove KB article', 'Remove this article reference from the ticket?', [
+    Alert.alert('Remove guide article', 'Remove this article reference from the ticket?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: () => removeKbRef(referenceId) },
     ]);
@@ -349,16 +346,12 @@ function StaffTicketDetailScreenInner() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      // Android must be enabled too. The app runs edge-to-edge (android.edgeToEdgeEnabled in
-      // app.json), and under edge-to-edge the system no longer resizes the window for the
-      // keyboard even with windowSoftInputMode=adjustResize — with KAV off, the keyboard
-      // simply covers the composer.
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      // The view spans from y=0 so KAV can't auto-subtract the bottom safe area: it pushes
-      // up by exactly the home indicator's height, creating a gap between the composer and
-      // the keyboard. A negative offset compensates for that. Android reports keyboard
-      // coordinates that already cover the navigation bar, so it needs no compensation.
-      keyboardVerticalOffset={Platform.OS === 'ios' ? -insets.bottom : 0}
+      // KeyboardAvoidingView from react-native-keyboard-controller, NOT RN's built-in one.
+      // The app runs edge-to-edge (android.edgeToEdgeEnabled), so Android doesn't resize the
+      // window for the keyboard; RN's version has to guess the offset → the composer jumps
+      // up/down out of sync. This one reads the keyboard's real height and animation
+      // progress, so one behavior works on both platforms with no manual offset.
+      behavior="padding"
     >
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
@@ -460,7 +453,12 @@ function StaffTicketDetailScreenInner() {
             <View
               style={[
                 styles.composer,
-                { paddingBottom: !keyboardVisible && insets.bottom > 0 ? insets.bottom + 8 : 12 }
+                // Static padding. It used to toggle on keyboardVisible, but that hook listens
+                // to keyboardDidShow/Hide (Android) — it fires AFTER the keyboard finishes
+                // animating, adding a second beat out of sync with KAV → the input rises then
+                // drops. keyboard-controller's KAV already subtracts the safe area while the
+                // keyboard is open, so a fixed home-indicator padding is all that's needed.
+                { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 12 }
               ]}
             >
               <AttachmentPreviewStrip
@@ -652,7 +650,7 @@ function StaffTicketDetailScreenInner() {
             {/* AI đề xuất tài liệu — đặt TRƯỚC danh sách đã gán vì đây là thứ dẫn tới
                 hành động, còn danh sách dưới là kết quả đã chốt.
                 `enabled` gắn với tab: chỉ gọi AI khi người dùng thật sự mở tab này.
-                Chỉ đọc + điều hướng; việc gắn tài liệu vẫn qua nút "Gán bài viết KB"
+                Chỉ đọc + điều hướng; việc gắn tài liệu vẫn qua nút gán bài viết Guide
                 bên dưới, đúng phân quyền PrimaryHandler của BE. */}
             <KbSuggestionPanel
               ticketId={ticketId}
@@ -669,7 +667,7 @@ function StaffTicketDetailScreenInner() {
             {/* Gán bài KB — chỉ Staff được phân công + ticket chưa đóng (BE chặn 403 nếu vi phạm) */}
             {!ticketClosed && !!accountId && isPrimaryHandler(ticket.assignments, accountId) && (
               <Pressable style={styles.kbAssignBtn} onPress={() => setShowKbPicker(true)}>
-                <Text style={styles.kbAssignText}>Assign KB article</Text>
+                <Text style={styles.kbAssignText}>Assign guide article</Text>
               </Pressable>
             )}
 
@@ -677,7 +675,7 @@ function StaffTicketDetailScreenInner() {
             {kbRefsLoading ? (
               <ActivityIndicator color={Colors.primary} style={{ marginTop: 24 }} />
             ) : !kbRefs || kbRefs.length === 0 ? (
-              <Text style={styles.emptyTab}>No KB articles assigned yet</Text>
+              <Text style={styles.emptyTab}>No guide articles assigned yet</Text>
             ) : (
               kbRefs.map((ref) => (
                 <Pressable

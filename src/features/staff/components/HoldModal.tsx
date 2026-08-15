@@ -5,7 +5,9 @@ import { Colors } from '@/src/lib/theme';
 import { BottomSheet } from '@/src/shared/components/BottomSheet';
 import { PauseReasonEnum } from '@/src/features/tickets/types/ticket.types';
 import { handleErrorApi } from '@/src/lib/errors';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, {
+  type DateTimePickerEvent,
+} from '@react-native-community/datetimepicker';
 import { formatLocalSchedule } from '@/src/features/tickets/utils/scheduleTime';
 
 const HOLD_OPTIONS: { value: PauseReasonEnum; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -25,6 +27,28 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
   const [note, setNote] = useState('');
   const [reasonError, setReasonError] = useState('');
   const [appointment, setAppointment] = useState(() => new Date(Date.now() + 60 * 60_000));
+  // Chọn ngày rồi tới giờ. Trên Android picker là native dialog — render vô điều kiện thì khi
+  // sheet đóng lúc dialog còn mở, thư viện gọi dismiss() trên mode đã unmount và crash.
+  const [pickerStage, setPickerStage] = useState<'idle' | 'date' | 'time'>('idle');
+
+  const onAppointmentChange = (event: DateTimePickerEvent, selected?: Date) => {
+    if (event.type === 'dismissed' || !selected) {
+      setPickerStage('idle');
+      return;
+    }
+    if (pickerStage === 'date') {
+      const next = new Date(selected);
+      next.setHours(appointment.getHours(), appointment.getMinutes(), 0, 0);
+      setAppointment(next);
+      setPickerStage('time');
+      return;
+    }
+    // pickerStage === 'time'
+    const next = new Date(appointment);
+    next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+    setAppointment(next);
+    setPickerStage('idle');
+  };
 
   const handleSubmit = async () => {
     if (!selected) return;
@@ -46,6 +70,7 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
   };
 
   const handleClose = () => {
+    setPickerStage('idle');
     setSelected(null);
     setNote('');
     setReasonError('');
@@ -87,13 +112,21 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
           textAlignVertical="top"
           maxLength={500}
         />
-        <Text style={styles.desc}>New appointment: {formatLocalSchedule(appointment.toISOString())}</Text>
-        <DateTimePicker
-          value={appointment}
-          mode="datetime"
-          minimumDate={new Date(Date.now() + 60_000)}
-          onChange={(_, value) => value && setAppointment(value)}
-        />
+        <Pressable style={styles.dateBtn} onPress={() => setPickerStage('date')}>
+          <Ionicons name="calendar-outline" size={18} color={Colors.textMute} />
+          <Text style={styles.dateText}>
+            New appointment: {formatLocalSchedule(appointment.toISOString())}
+          </Text>
+        </Pressable>
+        {pickerStage !== 'idle' && (
+          <DateTimePicker
+            value={appointment}
+            mode={pickerStage}
+            is24Hour
+            minimumDate={pickerStage === 'date' ? new Date(Date.now() + 60_000) : undefined}
+            onChange={onAppointmentChange}
+          />
+        )}
 
         <View style={styles.actions}>
           <Pressable style={styles.cancelBtn} onPress={handleClose}>
@@ -144,6 +177,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.text,
     minHeight: 64,
+  },
+  dateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.card2,
+  },
+  dateText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.textMute,
+    fontWeight: '500',
   },
   option: {
     flexDirection: 'row',

@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import {
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Radius } from '@/src/lib/theme';
@@ -109,7 +108,9 @@ export default function CreateCalibrationScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      // keyboard-controller's KAV — RN's was disabled on Android (behavior undefined), so the
+      // keyboard covered the form fields there.
+      behavior="padding"
     >
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <BackButton />
