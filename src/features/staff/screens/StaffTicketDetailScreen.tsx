@@ -545,6 +545,9 @@ function StaffTicketDetailScreenInner() {
             <BatteryWarningEvidencePanel
               batteryAssetId={ticket.batteryAssetId}
               detectedAt={ticket.detectedAt}
+              // Người khai báo nhớ "khoảng 3 giờ", không phải 15:04:32 — cửa sổ giây chỉ
+              // đúng cho mốc do bộ quét đóng dấu.
+              isManualReport={ticket.origin !== 'AutoFromAlert'}
             />
           </View>
         )}
