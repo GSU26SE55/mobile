@@ -40,6 +40,7 @@ export const ANOMALY_LABEL: Record<AnomalyTypeEnum, string> = {
   [AnomalyTypeEnum.EnvironmentalIncident]: 'Environmental incident',
   [AnomalyTypeEnum.SensorMismatch]: 'Sensor mismatch',
   [AnomalyTypeEnum.Undertemp]: 'Low temperature',
+  [AnomalyTypeEnum.IotDataIntegrityViolation]: 'IoT data integrity violation',
 };
 
 export function AssetAlertList({
