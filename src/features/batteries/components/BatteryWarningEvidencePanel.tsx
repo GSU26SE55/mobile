@@ -4,6 +4,8 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { formatDateShort, formatTimeSeconds } from '@/src/lib/date';
 import { Colors } from '@/src/lib/theme';
 import { useReadingEvidence, toWarningRows } from '../hooks/useReadingEvidence';
+import { useThresholdByType } from '@/src/features/battery-types/hooks/useThresholdByType';
+import { useBatteryAsset } from '../hooks/useBatteryAsset';
 
 /** Number of rows shown by default before tapping "Load more". */
 const PREVIEW_ROWS = 10;
@@ -21,23 +23,38 @@ function formatEvidenceTime(iso: string): string {
 
 interface Props {
   batteryAssetId?: string | null;
-  /** Incident detection timestamp — anchor for fetching the evidence log (±15'). */
+  /** Incident detection timestamp — anchor for fetching the evidence log (±15s). */
   detectedAt?: string | null;
+  /**
+   * Battery type of the asset — needed to read the SAME thresholds the backend enforced.
+   * Optional: when the caller doesn't have it (the ticket DTO carries no battery type),
+   * the panel resolves it from the asset itself rather than forcing every screen to fetch.
+   */
+  batteryTypeId?: string | null;
 }
 
 /**
- * Alert evidence — shows ONLY readings that breached thresholds around the incident
- * detection time (DetectedAt ±15'), NOT a real-time log. Lets Staff/Manager verify
- * whether a ticket is genuine. Mobile counterpart of the web `BatteryWarningEvidencePanel`
- * — keeps the same columns and thresholds so both platforms don't show two different
- * sets of numbers for the same ticket.
+ * Alert evidence — shows ONLY readings that breached this battery type's configured
+ * thresholds around the incident detection time, NOT a real-time log. Lets Staff/Manager
+ * verify whether a ticket is genuine. Mobile counterpart of the web
+ * `BatteryWarningEvidencePanel` — keeps the same window and threshold source so both
+ * platforms don't show two different sets of numbers for the same ticket.
  *
  * Horizontally scrolling table: 6 numeric columns don't fit a phone's width; forcing
  * them to fit would squeeze the text unreadable.
  */
-export function BatteryWarningEvidencePanel({ batteryAssetId, detectedAt }: Props) {
+export function BatteryWarningEvidencePanel({
+  batteryAssetId,
+  detectedAt,
+  batteryTypeId,
+}: Props) {
   const { data, isLoading } = useReadingEvidence(batteryAssetId, detectedAt);
-  const warnings = toWarningRows(data?.items ?? []);
+  // Only fetch the asset when the caller couldn't supply the type — the query is disabled
+  // by an empty id, so screens that already pass `batteryTypeId` cost one request, not two.
+  const { data: asset } = useBatteryAsset(batteryTypeId ? '' : (batteryAssetId ?? ''));
+  const typeId = batteryTypeId ?? asset?.batteryTypeId ?? '';
+  const { data: threshold, isLoading: isThresholdLoading } = useThresholdByType(typeId);
+  const warnings = toWarningRows(data?.items ?? [], threshold);
 
   // A ±15' window at 5s frequency yields a few hundred rows — rendering all of them
   // would swallow the entire screen and push everything else down. Default 10 rows,
@@ -59,10 +76,25 @@ export function BatteryWarningEvidencePanel({ batteryAssetId, detectedAt }: Prop
         )}
       </View>
 
-      {isLoading ? (
+      {threshold && (
+        // Name the limits on screen: without them a row of numbers is not evidence of
+        // anything — the reader cannot tell which value was out of bounds, or by how much.
+        <Text style={styles.thresholdNote}>
+          {threshold.batteryTypeName} · {threshold.temperatureMin}…{threshold.temperatureMax}°C ·
+          SOC {threshold.socWarningThreshold}%
+        </Text>
+      )}
+
+      {isLoading || isThresholdLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={Colors.primary} />
         </View>
+      ) : !threshold ? (
+        // No config for this battery type → the backend has no limits to enforce either.
+        // Say so plainly instead of rendering rows judged against thresholds we invented.
+        <Text style={styles.empty}>
+          This battery type has no threshold config — no basis to flag readings.
+        </Text>
       ) : warnings.length === 0 ? (
         <Text style={styles.empty}>No abnormal readings around the detection time.</Text>
       ) : (
@@ -78,8 +110,14 @@ export function BatteryWarningEvidencePanel({ batteryAssetId, detectedAt }: Prop
               <Text style={[styles.th, styles.colWarn]}>Alert</Text>
             </View>
 
-            {visibleRows.map(({ reading: r, reasons }) => (
-              <View key={r.time} style={styles.tr}>
+            {visibleRows.map(({ reading: r, reasons }) => {
+              // The reading stamped at DetectedAt is the one that tipped the counter and
+              // caused the alert. Marking it separates cause from surrounding context.
+              const isTrigger =
+                !!detectedAt &&
+                new Date(r.time).getTime() === new Date(detectedAt).getTime();
+              return (
+              <View key={r.time} style={[styles.tr, isTrigger && styles.trTrigger]}>
                 <Text style={[styles.td, styles.colTime, styles.tdMuted]}>{formatEvidenceTime(r.time)}</Text>
                 <Text style={[styles.td, styles.colNum]}>{num(r.voltage)}</Text>
                 <Text style={[styles.td, styles.colNum]}>{num(r.current)}</Text>
@@ -93,7 +131,8 @@ export function BatteryWarningEvidencePanel({ batteryAssetId, detectedAt }: Prop
                   ))}
                 </View>
               </View>
-            ))}
+              );
+            })}
           </View>
         </ScrollView>
 
@@ -171,8 +210,15 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.warningLight,
   },
+  trTrigger: { backgroundColor: Colors.warningLight },
   td: { fontSize: 12, color: Colors.text, fontVariant: ['tabular-nums'] },
   tdMuted: { color: Colors.textMute },
+  thresholdNote: {
+    fontSize: 11,
+    color: Colors.textMute,
+    paddingHorizontal: 2,
+    paddingBottom: 6,
+  },
   tdHot: { color: Colors.warningDark, fontWeight: '700' },
 
   colTime: { width: 116, paddingHorizontal: 8 },

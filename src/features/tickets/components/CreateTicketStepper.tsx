@@ -134,6 +134,28 @@ const CATEGORIES: { value: TicketCategoryEnum; label: string; sub: string; icon:
     iconColor: '#E69A1A',
     iconBg: '#FFF3E3',
   },
+  // `Performance` và `Repair` từng bị bỏ khỏi danh sách này, và cái giá không nằm ở chỗ thiếu
+  // lựa chọn. Ticket máy sinh gán đủ 6 category (SohDegradation/RapidDischarge → Performance,
+  // EnvironmentalIncident → Repair), còn người dùng chỉ chọn được 4 nên mọi ca đó dồn vào
+  // "Other". Bộ dò trùng so ticket theo category ⇒ Customer báo pin chai ("Other") không bao
+  // giờ khớp với ticket máy đã mở cho cùng sự cố ("Performance"): hai ticket song song cho một
+  // sự cố, không ai biết chúng trùng. Danh sách này phải phủ ĐỦ `TicketCategoryEnum`.
+  {
+    value: 'Performance',
+    label: 'Degraded performance',
+    sub: 'Battery drains fast or holds less charge',
+    icon: 'trending-down-outline',
+    iconColor: '#7C5CC4',
+    iconBg: '#F0EBFF',
+  },
+  {
+    value: 'Repair',
+    label: 'Repair request',
+    sub: 'Physical damage or on-site repair needed',
+    icon: 'construct-outline',
+    iconColor: '#2F855A',
+    iconBg: '#E4F5EB',
+  },
   {
     value: 'Other',
     label: 'Other',
