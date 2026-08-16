@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { formatDateShort, formatTimeSeconds } from '@/src/lib/date';
 import { Colors } from '@/src/lib/theme';
-import { useReadingEvidence, toWarningRows } from '../hooks/useReadingEvidence';
+import { useReadingEvidence, toWarningRows, countBreaches } from '../hooks/useReadingEvidence';
 import { useThresholdByType } from '@/src/features/battery-types/hooks/useThresholdByType';
 import { useBatteryAsset } from '../hooks/useBatteryAsset';
 
@@ -31,6 +31,8 @@ interface Props {
    * the panel resolves it from the asset itself rather than forcing every screen to fetch.
    */
   batteryTypeId?: string | null;
+  /** True khi mốc `detectedAt` do NGƯỜI nhập (không phải bộ quét) — nới rộng cửa sổ tìm log. */
+  isManualReport?: boolean;
 }
 
 /**
@@ -47,14 +49,18 @@ export function BatteryWarningEvidencePanel({
   batteryAssetId,
   detectedAt,
   batteryTypeId,
+  isManualReport = false,
 }: Props) {
-  const { data, isLoading } = useReadingEvidence(batteryAssetId, detectedAt);
+  const { data, isLoading } = useReadingEvidence(batteryAssetId, detectedAt, isManualReport);
   // Only fetch the asset when the caller couldn't supply the type — the query is disabled
   // by an empty id, so screens that already pass `batteryTypeId` cost one request, not two.
   const { data: asset } = useBatteryAsset(batteryTypeId ? '' : (batteryAssetId ?? ''));
   const typeId = batteryTypeId ?? asset?.batteryTypeId ?? '';
   const { data: threshold, isLoading: isThresholdLoading } = useThresholdByType(typeId);
   const warnings = toWarningRows(data?.items ?? [], threshold);
+  // Chỉ dòng thật sự vượt ngưỡng mới là "bằng chứng"; phần còn lại là bối cảnh xung quanh,
+  // vẫn phải hiện để người đọc thấy pin lúc đó ra sao.
+  const breachCount = countBreaches(warnings);
 
   // A ±15' window at 5s frequency yields a few hundred rows — rendering all of them
   // would swallow the entire screen and push everything else down. Default 10 rows,
@@ -71,8 +77,8 @@ export function BatteryWarningEvidencePanel({
       <View style={styles.headRow}>
         <Ionicons name="shield-checkmark" size={15} color={Colors.warningDark} />
         <Text style={styles.headText}>ALERT EVIDENCE (AT DETECTION)</Text>
-        {warnings.length > 0 && (
-          <Text style={styles.headCount}>{warnings.length}</Text>
+        {breachCount > 0 && (
+          <Text style={styles.headCount}>{breachCount}</Text>
         )}
       </View>
 
@@ -96,9 +102,17 @@ export function BatteryWarningEvidencePanel({
           This battery type has no threshold config — no basis to flag readings.
         </Text>
       ) : warnings.length === 0 ? (
-        <Text style={styles.empty}>No abnormal readings around the detection time.</Text>
+        <Text style={styles.empty}>No sensor readings around the detection time.</Text>
       ) : (
         <>
+        {breachCount === 0 && (
+          // Có số đo nhưng không dòng nào vượt ngưỡng. Nói thẳng ra thay vì để bảng tự nói —
+          // đây chính là căn cứ để bác một ticket khai khống.
+          <Text style={styles.contextNote}>
+            No reading breached the configured limits — the rows below are the sensor context
+            around the reported time.
+          </Text>
+        )}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.table}>
             <View style={styles.theadRow}>
@@ -116,12 +130,27 @@ export function BatteryWarningEvidencePanel({
               const isTrigger =
                 !!detectedAt &&
                 new Date(r.time).getTime() === new Date(detectedAt).getTime();
+              const hasBreach = reasons.length > 0;
+              const tempBreach = reasons.some(
+                (x) => x.startsWith('Overheat') || x.startsWith('Low temp'),
+              );
               return (
-              <View key={r.time} style={[styles.tr, isTrigger && styles.trTrigger]}>
+              <View
+                key={r.time}
+                style={[
+                  styles.tr,
+                  // Chỉ tô nền dòng có vi phạm. Tô vàng cả bảng thì màu mất hết ý nghĩa và
+                  // người đọc không phân biệt được dòng nào mới là bất thường.
+                  hasBreach && styles.trBreach,
+                  isTrigger && styles.trTrigger,
+                ]}
+              >
                 <Text style={[styles.td, styles.colTime, styles.tdMuted]}>{formatEvidenceTime(r.time)}</Text>
                 <Text style={[styles.td, styles.colNum]}>{num(r.voltage)}</Text>
                 <Text style={[styles.td, styles.colNum]}>{num(r.current)}</Text>
-                <Text style={[styles.td, styles.colNum, styles.tdHot]}>{num(r.temperature, 1)}</Text>
+                <Text style={[styles.td, styles.colNum, tempBreach && styles.tdHot]}>
+                  {num(r.temperature, 1)}
+                </Text>
                 <Text style={[styles.td, styles.colNum]}>{num(r.socPercent, 1)}</Text>
                 <View style={[styles.colWarn, styles.warnCell]}>
                   {reasons.map((reason) => (
@@ -210,7 +239,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.warningLight,
   },
+  trBreach: { backgroundColor: Colors.warningLight + '55' },
   trTrigger: { backgroundColor: Colors.warningLight },
+  contextNote: { fontSize: 11, color: Colors.textMute, paddingHorizontal: 2, paddingBottom: 6 },
   td: { fontSize: 12, color: Colors.text, fontVariant: ['tabular-nums'] },
   tdMuted: { color: Colors.textMute },
   thresholdNote: {

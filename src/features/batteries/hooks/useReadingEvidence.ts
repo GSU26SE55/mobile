@@ -7,7 +7,12 @@ import type { SensorReadingDto } from '../types/sensor-reading.types';
 // pass, and the readings that triggered it land within seconds of DetectedAt. A ±15' window
 // swept in readings from *other* cases run minutes earlier on the same battery — an Undertemp
 // ticket ended up displaying the 72°C row belonging to an Overheat ticket.
-const EVIDENCE_WINDOW_SECONDS = 15;
+const AUTO_WINDOW_MS = 15 * 1_000; // ±15s — mốc do máy đóng dấu, khớp mili-giây
+// ±2' cho mốc người nhập. Con số này KHÔNG tự do chọn — phải khớp
+// `BatteryInternalService.SnapshotWindow`, cửa sổ backend dùng dựng snapshot cho AI verify
+// chấm điểm. Lệch nhau thì người đọc thấy verdict "khớp sensor" tính từ những số đo mà bảng
+// ngay bên dưới không hề hiển thị, và không có cách nào đối chiếu.
+const MANUAL_WINDOW_MS = 2 * 60 * 1_000;
 
 /**
  * Sensor log around the incident detection time (DetectedAt ± 15s) — used as EVIDENCE for
@@ -21,14 +26,16 @@ const EVIDENCE_WINDOW_SECONDS = 15;
 export function useReadingEvidence(
   assetId: string | null | undefined,
   detectedAt: string | null | undefined,
+  isManualReport = false,
 ) {
+  const windowMs = isManualReport ? MANUAL_WINDOW_MS : AUTO_WINDOW_MS;
   // Both sides of DetectedAt: the run that triggered the alert sends several readings in a
   // burst, so the breach that tipped the counter can sit slightly before or after the stamp.
   const from = detectedAt
-    ? new Date(new Date(detectedAt).getTime() - EVIDENCE_WINDOW_SECONDS * 1_000).toISOString()
+    ? new Date(new Date(detectedAt).getTime() - windowMs).toISOString()
     : undefined;
   const to = detectedAt
-    ? new Date(new Date(detectedAt).getTime() + EVIDENCE_WINDOW_SECONDS * 1_000).toISOString()
+    ? new Date(new Date(detectedAt).getTime() + windowMs).toISOString()
     : undefined;
 
   return useQuery({
@@ -109,7 +116,16 @@ export function toWarningRows(
         `Discharge current ${Math.abs(r.current).toFixed(0)}A > ${thresholds.currentMaxDischarge.toFixed(0)}A`,
       );
 
-    if (reasons.length > 0) rows.push({ reading: r, reasons });
+    // Giữ CẢ dòng không vi phạm. Trước đây lọc bỏ chúng, nên một ticket có đầy đủ số đo
+    // nhưng đều trong ngưỡng lại hiện bảng trống — người đọc hiểu thành "không có dữ liệu"
+    // và mất luôn căn cứ để bác một ticket khai khống. Số đo bình thường quanh thời điểm
+    // khai báo CŨNG là bằng chứng, chỉ là bằng chứng theo chiều ngược lại.
+    rows.push({ reading: r, reasons });
   }
   return rows;
+}
+
+/** Số dòng thực sự vượt ngưỡng — dùng cho badge đếm và câu tóm tắt phía trên bảng. */
+export function countBreaches(rows: ReadingWarning[]): number {
+  return rows.filter((r) => r.reasons.length > 0).length;
 }
