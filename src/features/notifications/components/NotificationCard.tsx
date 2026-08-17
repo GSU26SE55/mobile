@@ -43,6 +43,13 @@ const ICON_MAP: Partial<Record<NotificationTypeEnum, IconSpec>> = {
   [NotificationTypeEnum.BatteryAnomalyWarning]:          { name: 'battery-half-outline',       color: Colors.warning },
   [NotificationTypeEnum.BatteryAnomalyInfo]:             { name: 'battery-full-outline',       color: Colors.info },
   [NotificationTypeEnum.TicketMerged]:                   { name: 'git-merge-outline',          color: Colors.info },
+  // 35–39 — shipped on the BE but missing from the client enum until now, so they all fell
+  // through to FALLBACK_ICON regardless of what they meant.
+  [NotificationTypeEnum.SlaAutoResumed]:                 { name: 'play-circle-outline',        color: Colors.stProgress },
+  [NotificationTypeEnum.IotDeviceRecovered]:             { name: 'wifi-outline',               color: Colors.success },
+  [NotificationTypeEnum.IotDeviceAutoDecommissioned]:    { name: 'close-circle-outline',       color: Colors.danger },
+  [NotificationTypeEnum.TicketWorkStarted]:              { name: 'construct-outline',          color: Colors.stProgress },
+  [NotificationTypeEnum.TicketScheduleChanged]:          { name: 'calendar-outline',           color: Colors.warning },
   [NotificationTypeEnum.System]:                        { name: 'information-circle-outline', color: Colors.info },
 };
 

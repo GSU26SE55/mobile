@@ -14,6 +14,10 @@ const CRITICAL_TYPES = new Set<NotificationTypeEnum>([
   NotificationTypeEnum.BatteryAlertEscalationPending,
   NotificationTypeEnum.AlertTicketSagaFailed,
   NotificationTypeEnum.SlaBreached,
+  // A device disabled for sending invalid readings takes every battery behind it out of
+  // monitoring — the alarm nobody is watching. Belongs with the other safety alerts, not
+  // in the default channel where it can wait behind chat messages.
+  NotificationTypeEnum.IotDeviceAutoDecommissioned,
 ]);
 
 const CHAT_TYPES = new Set<NotificationTypeEnum>([

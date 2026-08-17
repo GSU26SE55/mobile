@@ -38,6 +38,13 @@ export const NotificationTypeEnum = {
   BatteryAnomalyInfo: 33,
   // GH-83 — BE changed 27 → 34 because 27 already belongs to ChatEscalatedToAdmin. Do NOT reuse 27.
   TicketMerged: 34,
+  // 35–39 shipped on the BE with active templates but were missing here, so these arrived
+  // without a type the app recognised — no label, and no chance of routing a tap.
+  SlaAutoResumed: 35,
+  IotDeviceRecovered: 36,
+  IotDeviceAutoDecommissioned: 37,
+  TicketWorkStarted: 38,
+  TicketScheduleChanged: 39,
   System: 99,
 } as const;
 export type NotificationTypeEnum = (typeof NotificationTypeEnum)[keyof typeof NotificationTypeEnum];
