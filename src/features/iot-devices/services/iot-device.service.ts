@@ -3,6 +3,8 @@ import { ENDPOINTS } from '@/src/lib/endpoints';
 import { CommonResponse, PaginationResponse } from '@/src/types/api.types';
 import {
   IotDeviceDto,
+  IotDeviceDetailDto,
+  IotDeviceCreatedDto,
   IotDeviceCalibrationDto,
   CreateCalibrationPayload,
   CalibrationListParams,
@@ -48,5 +50,23 @@ export const iotDeviceService = {
   deleteCalibration: (deviceId: string, calibrationId: string) =>
     axiosInstance.delete<CommonResponse<object>>(
       ENDPOINTS.IOT_DEVICES.CALIBRATION_ITEM(deviceId, calibrationId),
+    ),
+
+  // Admin route opened to Staff — full apiKey/QR/MQTT, re-readable any time ("View details").
+  getById: (deviceId: string) =>
+    axiosInstance.get<CommonResponse<IotDeviceDetailDto>>(
+      ENDPOINTS.IOT_DEVICES.ADMIN_DETAIL(deviceId),
+    ),
+
+  rotateKey: (deviceId: string) =>
+    axiosInstance.post<CommonResponse<IotDeviceCreatedDto>>(
+      ENDPOINTS.IOT_DEVICES.ROTATE_KEY(deviceId),
+    ),
+
+  // Only the MQTT username/password change — apiKey stays the same, so the device self-heals
+  // via /provision, no site visit needed. See web's IOT3-76 note for the full explanation.
+  rotateMqtt: (deviceId: string) =>
+    axiosInstance.post<CommonResponse<IotDeviceCreatedDto>>(
+      ENDPOINTS.IOT_DEVICES.ROTATE_MQTT(deviceId),
     ),
 };

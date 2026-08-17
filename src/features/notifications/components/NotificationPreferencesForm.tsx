@@ -58,7 +58,8 @@ export function NotificationPreferencesForm() {
   const [quietEnabled, setQuietEnabled] = useState(false);
   const [quietStart, setQuietStart] = useState('22:00');
   const [quietEnd, setQuietEnd] = useState('07:00');
-  const [timeZone, setTimeZone] = useState('Asia/Ho_Chi_Minh');
+  // Fixed for this deployment — no VN-only user needs to change it, so no UI is exposed.
+  const timeZone = 'Asia/Ho_Chi_Minh';
   // GH-83 — 3 chat options (#570). Previously mobile didn't declare these, so every Save had BE overwrite them with defaults.
   const [notifyOnChat, setNotifyOnChat] = useState(true);
   const [notifyOnMention, setNotifyOnMention] = useState(true);
@@ -80,7 +81,6 @@ export function NotificationPreferencesForm() {
     setQuietEnabled(hasQuiet);
     if (d.quietHoursStart) setQuietStart(d.quietHoursStart);
     if (d.quietHoursEnd) setQuietEnd(d.quietHoursEnd);
-    setTimeZone(d.timeZone);
     setNotifyOnChat(d.notifyOnChat);
     setNotifyOnMention(d.notifyOnMention);
     setNotifyOnReaction(d.notifyOnReaction);
@@ -232,22 +232,6 @@ export function NotificationPreferencesForm() {
               ) : null}
             </View>
           </View>
-        ) : null}
-      </View>
-
-      <View style={[styles.card, Shadow]}>
-        <Text style={CommonStyles.inputLabel}>Time Zone</Text>
-        <TextInput
-          style={[CommonStyles.input, !!fieldErrors.timeZone && CommonStyles.inputError]}
-          value={timeZone}
-          onChangeText={setTimeZone}
-          placeholder="Asia/Ho_Chi_Minh"
-          placeholderTextColor={Colors.placeholder}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        {fieldErrors.timeZone ? (
-          <Text style={CommonStyles.errorText}>{fieldErrors.timeZone}</Text>
         ) : null}
       </View>
 

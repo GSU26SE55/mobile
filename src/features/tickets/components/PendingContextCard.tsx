@@ -10,7 +10,10 @@ export function PendingContextCard({ ticket }: { ticket: Pick<TicketDTO, 'status
   return <View style={styles.card} accessibilityLabel="Pending ticket details">
     <Text style={styles.title}>{ticket.pendingContext ? PENDING_CONTEXT_LABELS[ticket.pendingContext] : 'Pending update'}</Text>
     {ticket.pendingReason ? <Text style={styles.text}>Reason: {PAUSE_REASON_LABELS[ticket.pendingReason]}</Text> : null}
-    <Text style={styles.text}>{formatLocalSchedule(ticket.scheduledStartAtUtc)}</Text>
+    <Text style={styles.text}>
+      {ticket.pendingContext === 'Held' ? 'Rescheduled to: ' : ''}
+      {formatLocalSchedule(ticket.scheduledStartAtUtc)}
+    </Text>
   </View>;
 }
 

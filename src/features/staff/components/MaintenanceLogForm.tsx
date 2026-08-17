@@ -21,18 +21,23 @@ interface Props {
   // GH-44 — reused for editing a log (PATCH): prefill text fields. Photos are not prefilled (PATCH partial — leaving blank keeps them unchanged).
   initialValues?: Pick<
     MaintenanceLogPayload,
-    'summary' | 'actionsTaken' | 'partsUsed' | 'durationMinutes' | 'logType'
+    'summary' | 'diagnosisDetails' | 'actionsTaken' | 'resolutionNote' | 'partsUsed' | 'durationMinutes' | 'logType'
   >;
   title?: string;
   submitLabel?: string;
+  // Complete flow: force LogType=Completion and hide the picker — the log's type doesn't
+  // depend on what Staff chooses, it's determined by the action that created it.
+  fixedLogType?: MaintenanceLogTypeEnum;
 }
 
-export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, submitLabel }: Props) {
+export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, submitLabel, fixedLogType }: Props) {
   const [logType, setLogType] = useState<MaintenanceLogTypeEnum>(
-    initialValues?.logType ?? MaintenanceLogTypeEnum.OnSite,
+    fixedLogType ?? initialValues?.logType ?? MaintenanceLogTypeEnum.OnSite,
   );
   const [description, setDescription] = useState(initialValues?.summary ?? '');
+  const [diagnosisDetails, setDiagnosisDetails] = useState(initialValues?.diagnosisDetails ?? '');
   const [actionTaken, setActionTaken] = useState(initialValues?.actionsTaken ?? '');
+  const [resolutionNote, setResolutionNote] = useState(initialValues?.resolutionNote ?? '');
   const [partsUsed, setPartsUsed] = useState(initialValues?.partsUsed ?? '');
   const [duration, setDuration] = useState(
     initialValues?.durationMinutes != null ? String(initialValues.durationMinutes) : '',
@@ -43,34 +48,29 @@ export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, 
   const [uploadingAfter, setUploadingAfter] = useState(false);
   const uploading = uploadingBefore || uploadingAfter;
   const [error, setError] = useState('');
-  const [durationError, setDurationError] = useState('');
 
   const handleSubmit = async () => {
     const trimmed = description.trim();
-    if (trimmed.length < 5) {
-      setError('Description must be at least 5 characters');
+    if (!trimmed) {
+      setError('Work summary is required');
       return;
     }
 
-    // startedAt is derived backward from duration → leaving it blank would produce a 0-minute log, skewing SLA reports.
-    const durationMinutes = parseInt(duration, 10);
-    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
-      setDurationError('Enter a number of minutes > 0');
-      return;
-    }
-
-    // BE requires StartedAt. This form records work that has ALREADY been completed → completedAt = now.
+    // BE requires StartedAt (TicketService.MaintenanceLogAddCommand.ValidateAsync) — the form has
+    // no dedicated input for it, so stamp "now" at submit time, matching web's approach.
     const completedAt = new Date();
-    const startedAt = new Date(completedAt.getTime() - durationMinutes * 60_000);
+    const durationMinutes = duration.trim() ? parseInt(duration, 10) : undefined;
 
     try {
       await onSubmit({
         summary: trimmed,
         logType,
+        diagnosisDetails: diagnosisDetails.trim() || undefined,
         actionsTaken: actionTaken.trim() || undefined,
+        resolutionNote: resolutionNote.trim() || undefined,
         partsUsed: partsUsed.trim() || undefined,
         durationMinutes,
-        startedAt: startedAt.toISOString(),
+        startedAt: completedAt.toISOString(),
         completedAt: completedAt.toISOString(),
         beforePhotos: beforePhotos.length > 0 ? beforePhotos : undefined,
         afterPhotos: afterPhotos.length > 0 ? afterPhotos : undefined,
@@ -80,49 +80,50 @@ export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, 
         error: err,
         setFieldError: (field, message) => {
           if (field === 'summary') setError(message);
-          // startedAt has no dedicated input — surface it next to duration, which drives it.
-          else if (field === 'durationMinutes' || field === 'startedAt') setDurationError(message);
         },
       });
       return;
     }
-    setLogType(MaintenanceLogTypeEnum.OnSite);
+    setLogType(fixedLogType ?? MaintenanceLogTypeEnum.OnSite);
     setDescription('');
+    setDiagnosisDetails('');
     setActionTaken('');
+    setResolutionNote('');
     setPartsUsed('');
     setDuration('');
     setBeforePhotos([]);
     setAfterPhotos([]);
     setError('');
-    setDurationError('');
   };
 
   return (
     <View style={[styles.container, Shadow]}>
       <Text style={styles.title}>{title ?? 'Log maintenance entry'}</Text>
 
-      <View style={styles.field}>
-        <Text style={styles.label}>Work type *</Text>
-        <View style={styles.chipRow}>
-          {LOG_TYPE_OPTIONS.map((opt) => {
-            const selected = logType === opt.value;
-            return (
-              <Pressable
-                key={opt.value}
-                style={[styles.chip, selected && styles.chipSelected]}
-                onPress={() => setLogType(opt.value)}
-              >
-                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                  {opt.label}
-                </Text>
-              </Pressable>
-            );
-          })}
+      {!fixedLogType && (
+        <View style={styles.field}>
+          <Text style={styles.label}>Work type *</Text>
+          <View style={styles.chipRow}>
+            {LOG_TYPE_OPTIONS.map((opt) => {
+              const selected = logType === opt.value;
+              return (
+                <Pressable
+                  key={opt.value}
+                  style={[styles.chip, selected && styles.chipSelected]}
+                  onPress={() => setLogType(opt.value)}
+                >
+                  <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
-      </View>
+      )}
 
       <View style={styles.field}>
-        <Text style={styles.label}>Work description *</Text>
+        <Text style={styles.label}>Work summary *</Text>
         <TextInput
           style={[styles.input, styles.inputLarge, error ? styles.inputError : null]}
           value={description}
@@ -137,12 +138,36 @@ export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, 
       </View>
 
       <View style={styles.field}>
+        <Text style={styles.label}>Diagnosis details</Text>
+        <TextInput
+          style={styles.input}
+          value={diagnosisDetails}
+          onChangeText={setDiagnosisDetails}
+          placeholder="Diagnosis results..."
+          placeholderTextColor={Colors.textFaint}
+          maxLength={500}
+        />
+      </View>
+
+      <View style={styles.field}>
         <Text style={styles.label}>Actions taken</Text>
         <TextInput
           style={styles.input}
           value={actionTaken}
           onChangeText={setActionTaken}
           placeholder="e.g. Replaced inverter module, cleaned connections..."
+          placeholderTextColor={Colors.textFaint}
+          maxLength={500}
+        />
+      </View>
+
+      <View style={styles.field}>
+        <Text style={styles.label}>Resolution note</Text>
+        <TextInput
+          style={styles.input}
+          value={resolutionNote}
+          onChangeText={setResolutionNote}
+          placeholder="Outcome after handling..."
           placeholderTextColor={Colors.textFaint}
           maxLength={500}
         />
@@ -161,17 +186,16 @@ export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, 
           />
         </View>
         <View style={[styles.field, { width: 110 }]}>
-          <Text style={styles.label}>Duration (min) *</Text>
+          <Text style={styles.label}>Duration (min)</Text>
           <TextInput
-            style={[styles.input, durationError ? styles.inputError : null]}
+            style={styles.input}
             value={duration}
-            onChangeText={(t) => { setDuration(t); setDurationError(''); }}
+            onChangeText={setDuration}
             placeholder="30"
             placeholderTextColor={Colors.textFaint}
             keyboardType="numeric"
             maxLength={4}
           />
-          {durationError ? <Text style={styles.errorText}>{durationError}</Text> : null}
         </View>
       </View>
 

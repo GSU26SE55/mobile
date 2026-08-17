@@ -218,7 +218,7 @@ export default function DashboardScreen() {
 
           <Pressable
             style={({ pressed }) => [styles.notificationButton, pressed && styles.pressed]}
-            onPress={() => router.push('/(customer)/(tabs)/alerts')}
+            onPress={() => router.push('/(customer)/settings/notification-list')}
             hitSlop={10}
           >
             <Ionicons name="notifications-outline" size={20} color={Solar.ink} />

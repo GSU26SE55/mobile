@@ -8,7 +8,6 @@ import { useStaffTickets } from '@/src/features/staff/hooks/useStaffTickets';
 import { useStaffDashboardStats } from '@/src/features/staff/hooks/useStaffDashboardStats';
 import { useStaffProfile } from '@/src/features/staff/hooks/useStaffProfile';
 import { useUnreadCount } from '@/src/features/notifications/hooks/useNotifications';
-import { useChatUnreadCount } from '@/src/features/tickets/hooks/useChatInbox';
 import { TicketStatusEnum, TicketDTO } from '@/src/features/tickets/types/ticket.types';
 import { HomeHeader } from '@/src/shared/components/HomeHeader';
 import { StatTrio } from '@/src/shared/components/StatTrio';
@@ -29,17 +28,17 @@ const ACTIVE_STATUSES: TicketStatusEnum[] = ['InProgress'];
 const WAITING_STATUSES: TicketStatusEnum[] = ['Open', 'Pending', 'Request', 'ReAssign'];
 const RESOLVED_STATUSES: TicketStatusEnum[] = ['Completed', 'Closed', 'ClosedRejected'];
 
-// status → English label + badge (current palette) + % progress in the lifecycle + bar color.
-const STATUS_META: Record<string, { label: string; badge: keyof typeof BadgeColors; progress: number }> = {
-  Open: { label: 'Awaiting assignment', badge: 'open', progress: 10 },
-  Pending: { label: 'Pending', badge: 'waiting', progress: 30 },
-  InProgress: { label: 'In progress', badge: 'progress', progress: 60 },
-  Request: { label: 'Escalation requested', badge: 'escalated', progress: 60 },
-  ReAssign: { label: 'Awaiting reassignment', badge: 'escalated', progress: 60 },
-  Completed: { label: 'Awaiting review', badge: 'resolved', progress: 90 },
-  Closed: { label: 'Closed', badge: 'closed', progress: 100 },
-  ClosedRejected: { label: 'Rejected', badge: 'crit', progress: 100 },
-  Incident: { label: 'Incident', badge: 'crit', progress: 40 },
+// status → English label + badge (current palette).
+const STATUS_META: Record<string, { label: string; badge: keyof typeof BadgeColors }> = {
+  Open: { label: 'Awaiting assignment', badge: 'open' },
+  Pending: { label: 'Pending', badge: 'waiting' },
+  InProgress: { label: 'In progress', badge: 'progress' },
+  Request: { label: 'Escalation requested', badge: 'escalated' },
+  ReAssign: { label: 'Awaiting reassignment', badge: 'escalated' },
+  Completed: { label: 'Awaiting review', badge: 'resolved' },
+  Closed: { label: 'Closed', badge: 'closed' },
+  ClosedRejected: { label: 'Rejected', badge: 'crit' },
+  Incident: { label: 'Incident', badge: 'crit' },
 };
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -63,7 +62,6 @@ export default function StaffDashboardScreen() {
   const { data: stats } = useStaffDashboardStats();
   const { data: profile } = useStaffProfile();
   const { data: unreadCount = 0 } = useUnreadCount();
-  const { data: chatUnread = 0 } = useChatUnreadCount();
 
   const allTickets = apiTickets?.items ?? [];
 
@@ -92,7 +90,7 @@ export default function StaffDashboardScreen() {
   const accountId = useSessionStore((s) => s.user?.accountId);
 
   const renderTicket = ({ item }: { item: TicketDTO }) => {
-    const meta = STATUS_META[item.status] ?? { label: item.status, badge: 'new' as const, progress: 10 };
+    const meta = STATUS_META[item.status] ?? { label: item.status, badge: 'new' as const };
     const bc = BadgeColors[meta.badge];
     const category = CATEGORY_LABEL[item.category] ?? item.category;
 
@@ -115,10 +113,7 @@ export default function StaffDashboardScreen() {
     return (
       <ProgressListItem
         title={item.title || item.code}
-        dotColor={bc.text}
         badge={{ label: meta.label, bg: bc.bg, text: bc.text }}
-        percent={meta.progress}
-        barColor={bc.text}
         caption={captionParts.join(' · ')}
         onPress={() =>
           router.push({
@@ -149,18 +144,6 @@ export default function StaffDashboardScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Work to handle</Text>
-          {chatUnread > 0 && (
-            <Pressable
-              style={styles.unreadPill}
-              onPress={() => router.navigate('/(staff)/(tabs)/customers' as any)}
-              accessibilityLabel={`${chatUnread} unread messages`}
-            >
-              <Ionicons name="chatbubble-ellipses" size={13} color="#FFF" />
-              <Text style={styles.unreadPillText}>
-                {chatUnread > 99 ? '99+' : chatUnread} unread
-              </Text>
-            </Pressable>
-          )}
         </View>
 
         <ScrollView
@@ -225,12 +208,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   sectionHeader: { marginBottom: 14, flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionTitle: { fontSize: 18, fontWeight: '900', color: Solar.ink, letterSpacing: -0.4 },
-  unreadPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#FF3B30', borderRadius: 12,
-    paddingHorizontal: 10, paddingVertical: 4,
-  },
-  unreadPillText: { color: '#FFF', fontSize: 11, fontWeight: '800' },
   filterScroll: {
     marginHorizontal: -20,
   },

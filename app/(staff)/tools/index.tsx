@@ -29,12 +29,13 @@ const ROWS: ToolRow[] = [
     desc: 'Look up specs for battery models',
     href: '/(staff)/tools/battery-types',
   },
-  {
-    icon: 'options-outline',
-    title: 'Sensor Calibration',
-    desc: 'Calibrate IoT device sensors in the field',
-    href: '/(staff)/tools/calibration',
-  },
+  // Ẩn tạm Sensor Calibration khỏi Technical Tools — không xoá, chờ yêu cầu bật lại.
+  // {
+  //   icon: 'options-outline',
+  //   title: 'Sensor Calibration',
+  //   desc: 'Calibrate IoT device sensors in the field',
+  //   href: '/(staff)/tools/calibration',
+  // },
   {
     icon: 'hardware-chip-outline',
     title: 'IoT Devices',

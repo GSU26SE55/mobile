@@ -8,17 +8,17 @@ interface Props {
   visible: boolean;
   isLoading: boolean;
   onClose: () => void;
-  onSubmit: (resolutionSummary: string) => Promise<void>;
+  onSubmit: (reason: string) => Promise<void>;
 }
 
-export function ResolveModal({ visible, isLoading, onClose, onSubmit }: Props) {
-  const [summary, setSummary] = useState('');
+export function ResumeModal({ visible, isLoading, onClose, onSubmit }: Props) {
+  const [reason, setReason] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = async () => {
-    const trimmed = summary.trim();
+    const trimmed = reason.trim();
     if (!trimmed) {
-      setError('This field is required');
+      setError('An early-resume reason is required');
       return;
     }
     try {
@@ -27,14 +27,14 @@ export function ResolveModal({ visible, isLoading, onClose, onSubmit }: Props) {
       handleErrorApi({
         error: err,
         setFieldError: (field, message) => {
-          if (field === 'resolutionSummary') setError(message);
+          if (field === 'reason') setError(message);
         },
       });
     }
   };
 
   const handleClose = () => {
-    setSummary('');
+    setReason('');
     setError('');
     onClose();
   };
@@ -42,18 +42,18 @@ export function ResolveModal({ visible, isLoading, onClose, onSubmit }: Props) {
   return (
     <BottomSheet visible={visible} onClose={handleClose}>
       <View style={styles.body}>
-        <Text style={styles.title}>Complete ticket</Text>
-        <Text style={styles.desc}>Describe the resolution for the Manager to review.</Text>
+        <Text style={styles.title}>Resume ticket</Text>
+        <Text style={styles.desc}>Explain why you&apos;re resuming before the scheduled time.</Text>
 
         <View>
           <TextInput
             style={[styles.input, error ? styles.inputError : null]}
-            value={summary}
-            onChangeText={(t) => { setSummary(t); setError(''); }}
-            placeholder="Describe the work performed and the outcome..."
+            value={reason}
+            onChangeText={(t) => { setReason(t); setError(''); }}
+            placeholder="Reason for resuming early..."
             placeholderTextColor={Colors.textFaint}
             multiline
-            maxLength={2000}
+            maxLength={500}
             textAlignVertical="top"
           />
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -64,14 +64,14 @@ export function ResolveModal({ visible, isLoading, onClose, onSubmit }: Props) {
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
           <Pressable
-            style={[styles.submitBtn, isLoading && styles.btnDisabled]}
+            style={[styles.submitBtn, (!reason.trim() || isLoading) && styles.btnDisabled]}
             onPress={handleSubmit}
-            disabled={isLoading}
+            disabled={!reason.trim() || isLoading}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.submitText}>Complete</Text>
+              <Text style={styles.submitText}>Resume</Text>
             )}
           </Pressable>
         </View>
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     padding: 14,
     fontSize: 14,
     color: Colors.text,
-    minHeight: 120,
+    minHeight: 100,
     borderWidth: 1,
     borderColor: 'transparent',
   },

@@ -31,7 +31,6 @@ export function TicketStatusBadge({ status }: Props) {
   const colors = BadgeColors[config.badge];
   return (
     <View style={[styles.badge, { backgroundColor: colors.bg }]}>
-      <View style={[styles.dot, { backgroundColor: colors.text }]} />
       <Text style={[styles.label, { color: colors.text }]}>{config.label}</Text>
     </View>
   );
@@ -46,11 +45,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 999,
     alignSelf: 'flex-start',
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
   },
   label: {
     fontSize: 11,

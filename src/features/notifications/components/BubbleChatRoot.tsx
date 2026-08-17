@@ -61,7 +61,7 @@ import { MentionSuggestionsPopup } from '../../tickets/components/MentionSuggest
 import { RateModal } from '../../tickets/components/RateModal';
 import { ReopenModal } from '../../tickets/components/ReopenModal';
 import { SlaCountdown } from '../../tickets/components/SlaCountdown';
-import { canComplete, canEscalate, canHold, canRateOrReopen, canResume, isPrimaryHandler, isTerminalTicket, shouldShowLiveSla } from '../../tickets/utils/ticketWorkflow';
+import { canComplete, canEscalate, canHold, canRateOrReopen, canResume, isPrimaryHandler, isTicketChatLocked, shouldShowLiveSla } from '../../tickets/utils/ticketWorkflow';
 import { TicketCard } from '../../tickets/components/TicketCard';
 import { TicketStatusBadge } from '../../tickets/components/TicketStatusBadge';
 import { TypingIndicator } from '../../tickets/components/TypingIndicator';
@@ -89,7 +89,6 @@ import { useTicketChatsCursor } from '../../tickets/hooks/useTicketChatsCursor';
 import { useTicketCommentsRealtime } from '../../tickets/hooks/useTicketCommentsRealtime';
 import { useTicketDetail } from '../../tickets/hooks/useTicketDetail';
 import { useTickets } from '../../tickets/hooks/useTickets';
-import { useTicketUnreadCount } from '../../tickets/hooks/useTicketUnreadCount';
 import { useUploadCommentAttachment } from '../../tickets/hooks/useUploadCommentAttachment';
 import { useVoiceRecorder } from '../../tickets/hooks/useVoiceRecorder';
 
@@ -171,8 +170,6 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
 
   const commentsQuery = useTicketChatsCursor(activeTicketId || undefined);
   const activitiesQuery = useTicketActivities(activeTicketId || undefined);
-  const unreadCountQuery = useTicketUnreadCount(activeTicketId || undefined);
-  const unreadCount = unreadCountQuery.data ?? 0;
 
   const { typingUsers, notifyTyping } = useTicketCommentsRealtime(activeTicketId || undefined);
 
@@ -249,7 +246,8 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
   const internalCount = useMemo(() => comments.filter((c) => c.isInternal).length, [comments]);
 
   const ticketStatus = ticketDetail?.status;
-  const ticketClosed = ticketStatus ? isTerminalTicket(ticketStatus) : false;
+  // Chat khoá khi ticket đã xong việc: Completed/Closed/ClosedRejected. Khớp với web.
+  const chatLocked = ticketStatus ? isTicketChatLocked(ticketStatus) : false;
   const pinningId = pinChat.isPending
     ? pinChat.variables
     : unpinChat.isPending
@@ -519,9 +517,6 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
             size={22}
             color={Colors.primary}
           />
-          {unreadCount > 0 && viewMode !== 'chat' && (
-            <View style={styles.tinyBadgeDot} />
-          )}
         </Pressable>
       </View>
 
@@ -541,7 +536,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
             showTabs={false}
             activeTab={chatTab}
             onTabChange={setChatTab}
-            ticketClosed={ticketClosed}
+            ticketClosed={chatLocked}
             pendingMessages={pendingChats}
             onRetryPending={retryPendingComment}
             onDiscardPending={discardPendingComment}
@@ -592,22 +587,34 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
           {isOperator && (
             <ChatAiToolbar
               ticketId={activeTicketId}
-              disabled={ticketClosed}
+              disabled={chatLocked}
               onSuggestions={setAiSuggestions}
             />
           )}
 
-          <MentionSuggestionsPopup
-            text={commentText}
-            ticketId={activeTicketId}
-            onSelectMention={(tag) =>
-              setCommentText((text) => text.replace(/@([a-zA-Z0-9_.-]*)$/, `${tag} `))
-            }
-          />
-          <TypingIndicator names={typingUsers.map((tUser) => tUser.displayName)} />
+          {!chatLocked && (
+            <MentionSuggestionsPopup
+              text={commentText}
+              ticketId={activeTicketId}
+              onSelectMention={(tag) =>
+                setCommentText((text) => text.replace(/@([a-zA-Z0-9_.-]*)$/, `${tag} `))
+              }
+            />
+          )}
+          {!chatLocked && <TypingIndicator names={typingUsers.map((tUser) => tUser.displayName)} />}
+
+          {/* Ticket đã xong → thay khu soạn tin bằng dòng read-only. */}
+          {chatLocked && (
+            <View style={styles.chatLockedBar}>
+              <Ionicons name="lock-closed-outline" size={15} color={Colors.textMute} />
+              <Text style={styles.chatLockedText}>
+                Ticket has been closed — chat is read-only
+              </Text>
+            </View>
+          )}
 
           {/* Composer */}
-          {isOperator ? (
+          {chatLocked ? null : isOperator ? (
             <View style={styles.operatorComposer}>
               <AttachmentPreviewStrip
                 items={attachments}
@@ -1198,15 +1205,6 @@ const styles = StyleSheet.create({
     padding: 4,
     borderRadius: 8,
   },
-  tinyBadgeDot: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.danger,
-  },
 
   // Inline Switch inside top header bar
   headerTabSwitchInline: {
@@ -1417,6 +1415,19 @@ const styles = StyleSheet.create({
   },
 
   // Composer styles
+  chatLockedBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    backgroundColor: Colors.card2,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.08)',
+  },
+  chatLockedText: { fontSize: 12.5, fontWeight: '600', color: Colors.textMute },
+
   composer: {
     flexDirection: 'row',
     alignItems: 'center',

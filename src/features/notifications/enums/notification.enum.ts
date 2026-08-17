@@ -83,3 +83,11 @@ export const NotificationChannelEnum = {
   InApp: 4,
 } as const;
 export type NotificationChannelEnum = (typeof NotificationChannelEnum)[keyof typeof NotificationChannelEnum];
+
+// Platform của device token (push notification) — khớp BE DevicePlatformEnum.
+export const DevicePlatformEnum = {
+  Ios: 1,
+  Android: 2,
+  Web: 3,
+} as const;
+export type DevicePlatformEnum = (typeof DevicePlatformEnum)[keyof typeof DevicePlatformEnum];

@@ -6,6 +6,7 @@ import { saveTokens, clearTokens, clearToken } from '@/src/lib/secureStore';
 import { decodeToken, redirectByRole } from '@/src/types/session.types';
 import { useSessionStore } from '@/src/stores/sessionStore';
 import { Verify2faLoginPayload, CHALLENGE_TOKEN_KEY } from '../types/auth.types';
+import { syncDeviceTokenOnLogin } from '@/src/features/notifications/services/device-token.service';
 
 // GH-295: step 2 of 2FA login — verify TOTP/backup code → issue token (same as login Case A)
 export function useVerify2faLogin() {
@@ -37,6 +38,9 @@ export function useVerify2faLogin() {
 
       setSession(user);
       router.replace(dest as never);
+
+      // Đăng ký push token (best-effort, không chặn luồng login).
+      void syncDeviceTokenOnLogin();
     },
   });
 }

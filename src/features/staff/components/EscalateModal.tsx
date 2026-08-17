@@ -6,10 +6,12 @@ import { BottomSheet } from '@/src/shared/components/BottomSheet';
 import { EscalationReasonEnum } from '@/src/features/tickets/types/ticket.types';
 import { handleErrorApi } from '@/src/lib/errors';
 
+// PartsRequired is left out of the picker — the system has no warehouse/parts inventory
+// flow, so selecting it wouldn't lead to any further action. Matches web's EscalateRequestDialog.
 const ESCALATION_OPTIONS: { value: EscalationReasonEnum; label: string }[] = [
-  { value: 'SkillGap',          label: 'Beyond handling capability' },
-  { value: 'PartsRequired',     label: 'Requires special equipment/parts' },
+  { value: 'SkillGap',          label: 'Exceeds technical capability' },
   { value: 'SafetyConcern',     label: 'Safety concern' },
+  { value: 'SlaBreach',         label: 'SLA breached' },
   { value: 'CustomerComplaint', label: 'Customer complaint' },
 ];
 
@@ -74,7 +76,7 @@ export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) 
           style={styles.noteInput}
           value={note}
           onChangeText={setNote}
-          placeholder="Required note..."
+          placeholder="Note (optional)..."
           placeholderTextColor={Colors.textFaint}
           multiline
           maxLength={500}
@@ -86,9 +88,9 @@ export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) 
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
           <Pressable
-            style={[styles.submitBtn, (!selected || !note.trim()) && styles.btnDisabled]}
+            style={[styles.submitBtn, !selected && styles.btnDisabled]}
             onPress={handleSubmit}
-            disabled={!selected || !note.trim() || isLoading}
+            disabled={!selected || isLoading}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" size="small" />

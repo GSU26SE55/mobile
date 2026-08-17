@@ -45,6 +45,34 @@ export interface IotDeviceDto {
 }
 
 /**
+ * Trả bởi `GET /api/admin/iot-devices/{id}` (opened to Staff) — có full plaintext apiKey +
+ * QR + MQTT, xem lại được nhiều lần. `apiKey`/`mqttPassword` = null cho thiết bị tạo TRƯỚC
+ * khi hệ thống lưu plaintext — dùng rotate-key/rotate-mqtt để sinh giá trị mới.
+ */
+export interface IotDeviceDetailDto extends IotDeviceDto {
+  apiKey: string | null;
+  provisioningQrCode: string | null;
+  mqttUsername: string | null;
+  mqttPassword: string | null;
+  mqttBrokerHost: string | null;
+  mqttBrokerPort: number | null;
+  mqttUseTls: boolean | null;
+  mqttTopicPrefix: string | null;
+}
+
+/** Trả bởi `POST .../rotate-key` và `POST .../rotate-mqtt` — luôn có rawApiKey/QR. */
+export interface IotDeviceCreatedDto extends IotDeviceDto {
+  rawApiKey: string;
+  provisioningQrCode: string;
+  mqttUsername: string | null;
+  mqttPassword: string | null;
+  mqttBrokerHost: string | null;
+  mqttBrokerPort: number | null;
+  mqttUseTls: boolean | null;
+  mqttTopicPrefix: string | null;
+}
+
+/**
  * IOT3-58 — một mẫu heartbeat. Nguồn: `GET /api/iot-devices/{id}/heartbeats`.
  */
 export interface IotDeviceHeartbeatDto {

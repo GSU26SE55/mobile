@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
   //
   // The bottom gap sits here rather than in `row`: a horizontal ScrollView sizes itself from its
   // content and ignores the content container's vertical padding.
-  scroll: { flexGrow: 0, flexShrink: 0, marginBottom: 12 },
+  scroll: { flexGrow: 0, flexShrink: 0, marginTop: 4, marginBottom: 12 },
   row: {
     flexDirection: 'row',
     gap: 8,

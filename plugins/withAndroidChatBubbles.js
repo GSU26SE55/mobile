@@ -2,13 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const {
   withAndroidManifest,
-  withAppBuildGradle,
   withDangerousMod,
   withMainApplication,
 } = require('expo/config-plugins');
 
 const OLD_BUBBLE_MESSAGING_SERVICE = '.notifications.ChatBubbleMessagingService';
-const OLD_EXPO_MESSAGING_SERVICE = 'expo.modules.notifications.service.ExpoFirebaseMessagingService';
 const BUBBLE_ACTIVITY = '.notifications.ChatBubbleActivity';
 
 function withBubbleManifest(config) {
@@ -16,14 +14,10 @@ function withBubbleManifest(config) {
     const application = mod.modResults.manifest.application?.[0];
     if (!application) return mod;
 
+    // Only strip our own obsolete bubble service — expo-notifications manages
+    // its own Firebase messaging service/meta-data, do not touch those.
     application.service = (application.service ?? []).filter(
-      (service) =>
-        service.$?.['android:name'] !== OLD_BUBBLE_MESSAGING_SERVICE &&
-        service.$?.['android:name'] !== OLD_EXPO_MESSAGING_SERVICE,
-    );
-    application['meta-data'] = (application['meta-data'] ?? []).filter(
-      (entry) =>
-        !entry.$?.['android:name']?.startsWith('com.google.firebase.messaging.default_notification_'),
+      (service) => service.$?.['android:name'] !== OLD_BUBBLE_MESSAGING_SERVICE,
     );
 
     application.activity = application.activity ?? [];
@@ -50,16 +44,6 @@ function withBubbleManifest(config) {
       application.activity.push({ $: bubbleActivityAttributes });
     }
 
-    return mod;
-  });
-}
-
-function withoutOldFirebaseDependency(config) {
-  return withAppBuildGradle(config, (mod) => {
-    mod.modResults.contents = mod.modResults.contents.replace(
-      /^\s*implementation\("com\.google\.firebase:firebase-messaging:[^\n]+\)\s*$/gm,
-      '',
-    );
     return mod;
   });
 }
@@ -131,7 +115,5 @@ function withBubblePackage(config) {
 }
 
 module.exports = function withAndroidChatBubbles(config) {
-  return withBubblePackage(
-    withBubbleSources(withoutOldFirebaseDependency(withBubbleManifest(config))),
-  );
+  return withBubblePackage(withBubbleSources(withBubbleManifest(config)));
 };
