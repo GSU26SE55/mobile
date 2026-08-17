@@ -13,6 +13,17 @@ export function isTerminalTicket(status: TicketStatusEnum) {
   return CLOSED_TICKET_STATUSES.includes(status);
 }
 
+// Chat bị khoá khi ticket đã hoàn thành: thread vẫn đọc được nhưng không gửi tin mới,
+// không sửa/xoá tin cũ. Rộng hơn CLOSED_TICKET_STATUSES vì có thêm Completed — ticket đó
+// vẫn ACTIVE (chờ Manager duyệt) nhưng phần trao đổi đã chốt. Khớp với web
+// (shared/utils/ticket.utils.ts → isTicketChatLocked).
+export const CHAT_LOCKED_TICKET_STATUSES: readonly TicketStatusEnum[] =
+  ['Completed', ...CLOSED_TICKET_STATUSES];
+
+export function isTicketChatLocked(status: TicketStatusEnum) {
+  return CHAT_LOCKED_TICKET_STATUSES.includes(status);
+}
+
 export function isPrimaryHandler(ticket: Pick<TicketDTO, 'assignments'>, staffId?: string | null) {
   return !!staffId && ticket.assignments.some(a => a.staffId === staffId && a.role === 'PrimaryHandler');
 }

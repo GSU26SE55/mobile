@@ -62,7 +62,7 @@ import { VoiceRecordingModal } from '@/src/features/tickets/components/VoiceReco
 import { ProcessingDurationTimer } from '@/src/features/staff/components/ProcessingDurationTimer';
 import { MaintenanceLogPayload, UpdateMaintenanceLogPayload } from '@/src/features/staff/types/staff.types';
 import { EscalationReasonEnum, PauseReasonEnum, MaintenanceLogDTO } from '@/src/features/tickets/types/ticket.types';
-import { canComplete, canEscalate, canHold, canResume, isTerminalTicket, shouldShowLiveSla } from '@/src/features/tickets/utils/ticketWorkflow';
+import { canComplete, canEscalate, canHold, canResume, isTerminalTicket, isTicketChatLocked, shouldShowLiveSla } from '@/src/features/tickets/utils/ticketWorkflow';
 import { PendingContextCard } from '@/src/features/tickets/components/PendingContextCard';
 import type { ChatMentionInput } from '@/src/features/tickets/types/ticket.types';
 import { AttachmentPicker, UploadedAttachment } from '@/src/features/file-storage/components/AttachmentPicker';
@@ -228,6 +228,9 @@ function StaffTicketDetailScreenInner() {
   const activities = activitiesQuery.data ?? [];
   // Editing a log is only allowed when: user is the log owner + ticket isn't closed (BE also blocks these cases with 403).
   const ticketClosed = ticket ? isTerminalTicket(ticket.status) : false;
+  // Chat khoá khi ticket đã xong việc — rộng hơn ticketClosed vì tính cả Completed (ticket
+  // vẫn ACTIVE chờ Manager duyệt, nhưng phần trao đổi đã chốt). Khớp với web.
+  const chatLocked = ticket ? isTicketChatLocked(ticket.status) : false;
   const canEditLog = (log: MaintenanceLogDTO) => !ticketClosed && !!accountId && log.staffId === accountId;
 
   // Only PrimaryHandler (current) and Manager can post on the public channel.
@@ -384,7 +387,7 @@ function StaffTicketDetailScreenInner() {
             showTabs
             activeTab={chatTab}
             onTabChange={setChatTab}
-            ticketClosed={ticketClosed}
+            ticketClosed={chatLocked}
             pendingMessages={pendingChats}
             onRetryPending={retryPendingComment}
             onDiscardPending={discardPendingComment}
@@ -426,31 +429,43 @@ function StaffTicketDetailScreenInner() {
           {/* GH-67 — thanh AI/Export (Staff). Disable khi ticket đã đóng. */}
           <ChatAiToolbar
             ticketId={ticketId}
-            disabled={ticketClosed}
+            disabled={chatLocked}
             onSuggestions={setAiSuggestions}
           />
 
           {/* Autocomplete Popup @Mention when typing @ */}
-          <MentionSuggestionsPopup
-            text={commentText}
-            ticketId={ticketId}
-            isInternal={chatTab === 'internal'}
-            onSelectMention={(target) => {
-              const newText = commentText.replace(/@([a-zA-Z0-9_.-]*)$/, `${target.tag} `);
-              setCommentText(newText);
-              setPickedMentions((prev) =>
-                prev.some((m) => m.userId === target.id)
-                  ? prev
-                  : [...prev, { userId: target.id, displayName: target.displayName }],
-              );
-            }}
-          />
+          {!chatLocked && (
+            <MentionSuggestionsPopup
+              text={commentText}
+              ticketId={ticketId}
+              isInternal={chatTab === 'internal'}
+              onSelectMention={(target) => {
+                const newText = commentText.replace(/@([a-zA-Z0-9_.-]*)$/, `${target.tag} `);
+                setCommentText(newText);
+                setPickedMentions((prev) =>
+                  prev.some((m) => m.userId === target.id)
+                    ? prev
+                    : [...prev, { userId: target.id, displayName: target.displayName }],
+                );
+              }}
+            />
+          )}
 
           {/* "Typing" indicator — right above the input, transparent background */}
           <TypingIndicator names={typingUsers.map((u) => u.displayName)} />
 
+          {/* Ticket đã xong → thay khu soạn tin bằng dòng read-only. */}
+          {chatLocked && (
+            <View style={[styles.chatLockedBar, { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 12 }]}>
+              <Ionicons name="lock-closed-outline" size={15} color={Colors.textMute} />
+              <Text style={styles.chatLockedText}>
+                Ticket has been closed — chat is read-only
+              </Text>
+            </View>
+          )}
+
           {/* Hide composer on public tab for Supporter / PreviousAssignee — view only on public */}
-          {(chatTab === 'internal' || canPostPublic) && (
+          {!chatLocked && (chatTab === 'internal' || canPostPublic) && (
             <View
               style={[
                 styles.composer,
@@ -905,6 +920,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 5, maxWidth: 200,
   },
   attachmentName: { flex: 1, fontSize: 12, color: Colors.text, fontWeight: '500' },
+  chatLockedBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingHorizontal: 12, paddingTop: 14,
+    backgroundColor: Colors.card2,
+    borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.08)',
+  },
+  chatLockedText: { fontSize: 12.5, fontWeight: '600', color: Colors.textMute },
+
   composer: {
     gap: 6,
     paddingHorizontal: 12, paddingTop: 8,

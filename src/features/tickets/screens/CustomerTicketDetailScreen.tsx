@@ -57,7 +57,7 @@ import { useAuthImageHeaders } from '@/src/features/file-storage/hooks/useAuthIm
 import { AuthImage } from '@/src/features/file-storage/components/AuthImage';
 import { AttachmentForm } from '@/src/features/tickets/schemas/comment.schema';
 import { RatePayload, ReopenPayload, TicketStatusEnum } from '@/src/features/tickets/types/ticket.types';
-import { canRateOrReopen, isTerminalTicket, shouldShowLiveSla } from '@/src/features/tickets/utils/ticketWorkflow';
+import { canRateOrReopen, isTerminalTicket, isTicketChatLocked, shouldShowLiveSla } from '@/src/features/tickets/utils/ticketWorkflow';
 import { PendingContextCard } from '@/src/features/tickets/components/PendingContextCard';
 import type { ChatMentionInput } from '@/src/features/tickets/types/ticket.types';
 import { formatDateTime } from '@/src/lib/date';
@@ -248,6 +248,10 @@ function TicketDetailScreenInner() {
   const canRate = canRateOrReopen(ticket);
   const isResolved = ticket.status === 'Completed';
   const isClosed = isTerminalTicket(ticket.status);
+  // Chat khoá khi ticket đã xong việc — rộng hơn isClosed vì tính cả Completed, vốn nằm
+  // trong ACTIVE_TICKET_STATUSES (ticket vẫn "sống" chờ Manager duyệt, nhưng phần trao đổi
+  // thì đã chốt). Khớp với web: Completed/Closed/ClosedRejected đều read-only.
+  const chatLocked = isTicketChatLocked(ticket.status);
   const isWaiting = ticket.status === 'Pending' && ticket.pendingContext === 'Held';
 
   // BE đã ẩn comment internal cho Customer; flatten các page (DESC newest-first).
@@ -672,7 +676,7 @@ function TicketDetailScreenInner() {
             isFetchingNextPage={commentsQuery.isFetchingNextPage}
             onLoadMore={() => commentsQuery.fetchNextPage()}
             accentColor="#34C759"
-            ticketClosed={isClosed}
+            ticketClosed={chatLocked}
             pendingMessages={pendingChats}
             onRetryPending={retryPendingComment}
             onDiscardPending={discardPendingComment}
@@ -727,8 +731,18 @@ function TicketDetailScreenInner() {
             />
           )}
 
+          {/* Ticket đã xong → thay toàn bộ khu soạn tin bằng dòng thông báo read-only. */}
+          {chatLocked && !selectMode && (
+            <View style={[styles.chatLockedBar, { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 12 }]}>
+              <Ionicons name="lock-closed-outline" size={15} color={Colors.textMute} />
+              <Text style={styles.chatLockedText}>
+                Ticket has been closed — chat is read-only
+              </Text>
+            </View>
+          )}
+
           {/* Attachment chips */}
-          {!selectMode && attachments.length > 0 && (
+          {!chatLocked && !selectMode && attachments.length > 0 && (
             <View style={styles.attachmentList}>
               {attachments.map((a) => (
                 <View key={a.fileId} style={styles.attachmentChip}>
@@ -742,7 +756,7 @@ function TicketDetailScreenInner() {
             </View>
           )}
 
-          {!selectMode && (
+          {!chatLocked && !selectMode && (
             <>
           {/* Autocomplete Popup @Mention khi gõ @ */}
           <MentionSuggestionsPopup
@@ -1108,6 +1122,14 @@ const styles = StyleSheet.create({
   closedText:     { fontSize: 13, fontWeight: '700', color: Colors.textMute },
 
   timelineCard:   { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, gap: 12, borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)' },
+
+  chatLockedBar:  {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingHorizontal: 14, paddingTop: 14,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,0.08)',
+    backgroundColor: Colors.card2,
+  },
+  chatLockedText: { fontSize: 12.5, fontWeight: '600', color: Colors.textMute },
 
   composer:       {
     flexDirection: 'row', alignItems: 'center', gap: 8,
