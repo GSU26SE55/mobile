@@ -31,8 +31,6 @@ interface Props {
    * the panel resolves it from the asset itself rather than forcing every screen to fetch.
    */
   batteryTypeId?: string | null;
-  /** True khi mốc `detectedAt` do NGƯỜI nhập (không phải bộ quét) — nới rộng cửa sổ tìm log. */
-  isManualReport?: boolean;
 }
 
 /**
@@ -49,9 +47,8 @@ export function BatteryWarningEvidencePanel({
   batteryAssetId,
   detectedAt,
   batteryTypeId,
-  isManualReport = false,
 }: Props) {
-  const { data, isLoading } = useReadingEvidence(batteryAssetId, detectedAt, isManualReport);
+  const { data, isLoading } = useReadingEvidence(batteryAssetId, detectedAt);
   // Only fetch the asset when the caller couldn't supply the type — the query is disabled
   // by an empty id, so screens that already pass `batteryTypeId` cost one request, not two.
   const { data: asset } = useBatteryAsset(batteryTypeId ? '' : (batteryAssetId ?? ''));
