@@ -4,6 +4,7 @@ import { saveTokens, clearTokens, setToken } from '@/src/lib/secureStore';
 import { decodeToken, redirectByRole } from '@/src/types/session.types';
 import { useSessionStore } from '@/src/stores/sessionStore';
 import { LoginResultData, CHALLENGE_TOKEN_KEY } from '../types/auth.types';
+import { syncDeviceTokenOnLogin } from '@/src/features/notifications/services/device-token.service';
 
 /**
  * Handles a successful login result — SHARED by useLogin (email/password) and
@@ -41,4 +42,7 @@ export async function handleLoginSuccess(data: LoginResultData): Promise<void> {
 
   setSession(user);
   router.replace(dest as never);
+
+  // Đăng ký push token (best-effort, không chặn luồng login).
+  void syncDeviceTokenOnLogin();
 }

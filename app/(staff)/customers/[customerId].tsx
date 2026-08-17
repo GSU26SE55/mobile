@@ -52,14 +52,6 @@ function displayName(name: string | null | undefined, id: string): string {
   return 'Customer ' + (id.split('-')[0] ?? id.substring(0, 8)).toUpperCase();
 }
 
-function timeAgo(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime();
-  if (ms < 60_000) return 'just now';
-  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
-  if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
-  return formatDateShort(iso);
-}
-
 const STATUS_LABEL: Partial<Record<TicketStatusEnum, string>> = {
   Open: 'Open',
   Pending: 'Pending',
@@ -194,7 +186,6 @@ function CustomerTicketsScreenInner() {
 function TicketRow({ ticket, isMentioned }: { ticket: TicketDTO; isMentioned: boolean }) {
   const badgeKey = STATUS_BADGE[ticket.status] ?? 'new';
   const badgeStyle = BadgeColors[badgeKey];
-  const time = timeAgo(ticket.updatedAt ?? ticket.createdAt);
   const unread = !!ticket.hasUnreadChat;
 
   return (
@@ -253,8 +244,6 @@ function TicketRow({ ticket, isMentioned }: { ticket: TicketDTO; isMentioned: bo
       </Text>
 
       <View style={styles.cardBot}>
-        <Ionicons name="chatbubble-ellipses-outline" size={13} color={Colors.textFaint} />
-        <Text style={styles.timeText}>{time}</Text>
         <View style={{ flex: 1 }} />
         <Text style={styles.goText}>{unread ? 'Read new message' : 'View chat'}</Text>
         <Ionicons name="chevron-forward" size={14} color={Colors.primary} />

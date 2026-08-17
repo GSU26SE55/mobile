@@ -23,7 +23,7 @@ import { SlaCountdown } from '@/src/features/tickets/components/SlaCountdown';
 import { TicketStatusBadge } from '@/src/features/tickets/components/TicketStatusBadge';
 import { TicketActionBar } from '@/src/features/staff/components/TicketActionBar';
 import { HoldModal } from '@/src/features/staff/components/HoldModal';
-import { ResolveModal } from '@/src/features/staff/components/ResolveModal';
+import { ResumeModal } from '@/src/features/staff/components/ResumeModal';
 import { EscalateModal } from '@/src/features/staff/components/EscalateModal';
 import { MaintenanceLogForm } from '@/src/features/staff/components/MaintenanceLogForm';
 import { useStaffTicketDetail } from '@/src/features/staff/hooks/useStaffTicketDetail';
@@ -61,7 +61,7 @@ import { ChatReadersSheet } from '@/src/features/tickets/components/ChatReadersS
 import { VoiceRecordingModal } from '@/src/features/tickets/components/VoiceRecordingModal';
 import { ProcessingDurationTimer } from '@/src/features/staff/components/ProcessingDurationTimer';
 import { MaintenanceLogPayload, UpdateMaintenanceLogPayload } from '@/src/features/staff/types/staff.types';
-import { EscalationReasonEnum, PauseReasonEnum, MaintenanceLogDTO } from '@/src/features/tickets/types/ticket.types';
+import { EscalationReasonEnum, PauseReasonEnum, MaintenanceLogDTO, MaintenanceLogTypeEnum } from '@/src/features/tickets/types/ticket.types';
 import { canComplete, canEscalate, canHold, canResume, isTerminalTicket, isTicketChatLocked, shouldShowLiveSla } from '@/src/features/tickets/utils/ticketWorkflow';
 import { PendingContextCard } from '@/src/features/tickets/components/PendingContextCard';
 import type { ChatMentionInput } from '@/src/features/tickets/types/ticket.types';
@@ -145,7 +145,7 @@ export function StaffTicketDetailScreen() {
 
 function StaffTicketDetailScreenInner() {
   const insets = useSafeAreaInsets();
-  const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
+  const { id, tab, jumpToUnread } = useLocalSearchParams<{ id: string; tab?: string; jumpToUnread?: string }>();
   const ticketId = id ?? '';
   const accountId = useSessionStore((s) => s.user?.accountId);
   const imageHeaders = useAuthImageHeaders();
@@ -153,7 +153,7 @@ function StaffTicketDetailScreenInner() {
   const canResolve = checkPermission(user, P.TICKET_RESOLVE); // GH-47
   const { data: ticket, isLoading, isError, refetch } = useStaffTicketDetail(ticketId);
   const { mutateAsync: holdTicket, isPending: isHolding } = useHoldTicket(ticketId);
-  const { mutate: resumeTicket, isPending: isResuming } = useResumeTicket(ticketId);
+  const { mutateAsync: resumeTicket, isPending: isResuming } = useResumeTicket(ticketId);
   const { mutateAsync: resolveTicket, isPending: isResolving } = useResolveTicket(ticketId);
   const { mutateAsync: escalateTicket, isPending: isEscalating } = useEscalateTicket(ticketId);
   // Outbox — enqueue() doesn't await the BE, the worker sends sequentially with backoff retry.
@@ -166,7 +166,7 @@ function StaffTicketDetailScreenInner() {
 
   // GH-44 — comments/activities via a dedicated GET + realtime (Staff can see internal comments too).
   const commentsQuery = useTicketChatsCursor(ticketId || undefined);
-  const activitiesQuery = useTicketActivities(ticketId || undefined);
+  const activitiesQuery = useTicketActivities(ticketId || undefined, ticket?.status);
   const { typingUsers, notifyTyping } = useTicketCommentsRealtime(ticketId || undefined);
   const { mutate: updateChat, isPending: editChatPending } = useUpdateTicketChat(ticketId);
   const { mutate: deleteChat, isPending: deleteChatPending } = useDeleteTicketChat(ticketId);
@@ -186,7 +186,7 @@ function StaffTicketDetailScreenInner() {
   const voiceLevel =
     voiceRecorder.waveform.reduce((sum, v) => sum + v, 0) / voiceRecorder.waveform.length;
 
-  const [activeTab, setActiveTab] = useState<TabKey>('comments');
+  const [activeTab, setActiveTab] = useState<TabKey>('activities');
   const [chatTab, setChatTab] = useState<ChatTab>('public');
   const [commentText, setCommentText] = useState('');
   // Mentions picked in the message being composed — BE receives them via the `mentions` field, does NOT parse '@' from the body.
@@ -200,17 +200,21 @@ function StaffTicketDetailScreenInner() {
   const [commentAttachments, setCommentAttachments] = useState<UploadedAttachment[]>([]);
   const [uploadingComment, setUploadingComment] = useState(false);
   const [showHold, setShowHold] = useState(false);
-  const [showResolve, setShowResolve] = useState(false);
+  const [showResume, setShowResume] = useState(false);
   const [showEscalate, setShowEscalate] = useState(false);
   const [showLogForm, setShowLogForm] = useState(false);
+  // Complete ticket requires a maintenance log first — this form is reused for that flow
+  // (see handleCompleteLog below); the standalone "Add maintenance log" button never sets this.
+  const [showCompleteLogForm, setShowCompleteLogForm] = useState(false);
   const [editingLog, setEditingLog] = useState<MaintenanceLogDTO | null>(null);
   const [showKbPicker, setShowKbPicker] = useState(false);
 
   // Deep-link from push notification: ?tab=chat opens the chat tab. On the staff side that
   // tab is named 'comments' (TabKey), so we map it here instead of using the param value directly.
+  // jumpToUnread: opened from a ticket card with an unread message — also lands on Chat.
   useEffect(() => {
-    if (tab === 'chat') setActiveTab('comments');
-  }, [tab]);
+    if (tab === 'chat' || jumpToUnread === '1') setActiveTab('comments');
+  }, [tab, jumpToUnread]);
 
   // GH-44: removed auto scrollToEnd — comments are now DESC (newest-first).
   const isActioning = isHolding || isResuming || isResolving || isEscalating;
@@ -232,6 +236,11 @@ function StaffTicketDetailScreenInner() {
   // vẫn ACTIVE chờ Manager duyệt, nhưng phần trao đổi đã chốt). Khớp với web.
   const chatLocked = ticket ? isTicketChatLocked(ticket.status) : false;
   const canEditLog = (log: MaintenanceLogDTO) => !ticketClosed && !!accountId && log.staffId === accountId;
+
+  // Composer chỉ hiện khi InProgress/Pending — khớp web (staff TicketDetailPage.tsx
+  // canComment = isInProgress || isPending). Ở các status khác (Open, Request, ReAssign,
+  // Completed) composer vắng mặt hoàn toàn, không kèm thông báo — không phải "đã khoá".
+  const canComment = ticket?.status === 'InProgress' || ticket?.status === 'Pending';
 
   // Only PrimaryHandler (current) and Manager can post on the public channel.
   // Supporter and PreviousAssignee may only view public — composer is hidden on public tab for them.
@@ -308,10 +317,9 @@ function StaffTicketDetailScreenInner() {
     await holdTicket({ reason, note: note.trim(), rescheduledStartAt: appointment.toISOString() });
     setShowHold(false);
   };
-  const handleResume = () => { resumeTicket({ reason: 'Blocking condition cleared.' }); };
-  const handleResolve = async (summary: string) => {
-    await resolveTicket({ resolutionSummary: summary });
-    setShowResolve(false);
+  const handleResume = async (reason: string) => {
+    await resumeTicket({ reason });
+    setShowResume(false);
   };
   const handleEscalate = async (reason: EscalationReasonEnum, note: string) => {
     await escalateTicket({ reason, note: note.trim() });
@@ -320,6 +328,13 @@ function StaffTicketDetailScreenInner() {
   const handleAddLog = async (log: MaintenanceLogPayload) => {
     await addLog(log);
     setShowLogForm(false);
+  };
+  // Complete requires a maintenance log first: save the log, then use its own summary as
+  // the ticket's resolutionSummary — no separate "describe the resolution" step.
+  const handleCompleteLog = async (log: MaintenanceLogPayload) => {
+    await addLog(log);
+    await resolveTicket({ resolutionSummary: log.summary });
+    setShowCompleteLogForm(false);
   };
 
   if (isLoading) {
@@ -464,8 +479,9 @@ function StaffTicketDetailScreenInner() {
             </View>
           )}
 
-          {/* Hide composer on public tab for Supporter / PreviousAssignee — view only on public */}
-          {!chatLocked && (chatTab === 'internal' || canPostPublic) && (
+          {/* Hide composer on public tab for Supporter / PreviousAssignee — view only on public.
+              canComment gates on ticket status (InProgress/Pending) — matches web. */}
+          {!chatLocked && canComment && (chatTab === 'internal' || canPostPublic) && (
             <View
               style={[
                 styles.composer,
@@ -496,7 +512,7 @@ function StaffTicketDetailScreenInner() {
                 />
                 <TextInput
                   style={styles.composerInput}
-                  placeholder={chatTab === 'internal' ? 'Internal note (not visible to customer)...' : 'Type a message...'}
+                  placeholder="Type a message..."
                   placeholderTextColor={Colors.textFaint}
                   value={commentText}
                   onChangeText={(t) => { setCommentText(t); notifyTyping(); }}
@@ -525,103 +541,107 @@ function StaffTicketDetailScreenInner() {
           )}
         </View>
       ) : (
+      <>
+      <View style={styles.chatTabRowWrap}>
+        <TabsRow activeTab={activeTab} onChange={setActiveTab} unreadCount={unreadCount} />
+      </View>
       <ScrollView
         style={styles.scrollBody}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Title + Priority + SLA */}
-        <View style={[styles.card, Shadow]}>
-          <Text style={styles.ticketTitle}>{ticket.title}</Text>
-          <View style={styles.metaRow}>
-            <View style={[styles.priorityBadge, { backgroundColor: pColor.bg }]}>
-              <Text style={[styles.priorityText, { color: pColor.text }]}>{ticket.priority ? (PRIORITY_LABELS[ticket.priority] ?? ticket.priority) : 'Untriaged'}</Text>
-            </View>
-            <Text style={styles.metaCategory}>{ticket.category}</Text>
-          </View>
-          {ticket.slaTimer && shouldShowLiveSla(ticket.status, ticket.priority, ticket.slaTimer.status) && <SlaCountdown sla={ticket.slaTimer} />}
-          <View style={styles.durationRow}>
-            <Text style={styles.durationLabel}>Processing time</Text>
-            <ProcessingDurationTimer activities={activities} status={ticket.status} />
-          </View>
-        </View>
-
-        {/* Description */}
-        {ticket.description && (
-          <View style={[styles.card, Shadow]}>
-            <Text style={styles.sectionLabel}>Description</Text>
-            <Text style={styles.descText}>{ticket.description}</Text>
-          </View>
-        )}
-
-        {/* Warning evidence — sensor logs exceeding threshold around the time the issue was detected.
-            Auto-hides when the ticket has no batteryAssetId or detectedAt. */}
-        {ticket.batteryAssetId && ticket.detectedAt && (
-          <View style={[styles.card, Shadow]}>
-            <BatteryWarningEvidencePanel
-              batteryAssetId={ticket.batteryAssetId}
-              detectedAt={ticket.detectedAt}
-            />
-          </View>
-        )}
-
-        {/* Photos the customer attached when creating the ticket */}
-        {(ticket.attachmentFileIds?.length ?? 0) > 0 && (
-          <View style={[styles.card, Shadow]}>
-            <Text style={styles.sectionLabel}>Attachments</Text>
-            <AttachmentThumbnails fileIds={ticket.attachmentFileIds} size={72} onPressImage={setViewingImage} />
-          </View>
-        )}
-
-        {/* Battery view entry point */}
-        {ticket.batteryAssetId && (
-          <Pressable
-            style={[styles.logButton, Shadow]}
-            onPress={() =>
-              router.push({
-                pathname: '/(staff)/batteries/[id]',
-                params: { id: ticket.batteryAssetId as string },
-              })
-            }
-          >
-            <Ionicons name="battery-charging-outline" size={18} color={Colors.primary} />
-            <Text style={styles.logButtonText}>View battery info</Text>
-            <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
-          </Pressable>
-        )}
-
-        {/* Action Bar */}
-        <TicketActionBar
-          status={ticket.status}
-          onHold={() => setShowHold(true)}
-          onResume={handleResume}
-          onResolve={() => setShowResolve(true)}
-          onEscalate={() => setShowEscalate(true)}
-          isLoading={isActioning}
-          canResolve={canResolve && canComplete(ticket, accountId)}
-          canHold={canHold(ticket, accountId)}
-          canResume={canResume(ticket, accountId)}
-          canEscalate={canEscalate(ticket, accountId)}
-        />
-        <PendingContextCard ticket={ticket} />
-
-        {/* Maintenance log button */}
-        {ticket.status === 'InProgress' && !!accountId && isPrimaryHandler(ticket.assignments, accountId) && (
-          <Pressable style={[styles.logButton, Shadow]} onPress={() => setShowLogForm(!showLogForm)}>
-            <Text style={styles.logButtonText}>{showLogForm ? 'Hide log form' : 'Add maintenance log'}</Text>
-          </Pressable>
-        )}
-
-        {showLogForm && (
-          <MaintenanceLogForm onSubmit={handleAddLog} isLoading={isAddingLog} />
-        )}
-
-        <TabsRow activeTab={activeTab} onChange={setActiveTab} unreadCount={unreadCount} />
-
         {activeTab === 'activities' && (
-          <View style={styles.tabContent}>
-            <ActivityTimeline activities={activities} assignments={ticket?.assignments} />
-          </View>
+          <>
+            {/* Title + Priority + SLA */}
+            <View style={[styles.card, Shadow]}>
+              <Text style={styles.ticketTitle}>{ticket.title}</Text>
+              <View style={styles.metaRow}>
+                <View style={[styles.priorityBadge, { backgroundColor: pColor.bg }]}>
+                  <Text style={[styles.priorityText, { color: pColor.text }]}>{ticket.priority ? (PRIORITY_LABELS[ticket.priority] ?? ticket.priority) : 'Untriaged'}</Text>
+                </View>
+                <Text style={styles.metaCategory}>{ticket.category}</Text>
+              </View>
+              {ticket.slaTimer && shouldShowLiveSla(ticket.status, ticket.priority, ticket.slaTimer.status) && <SlaCountdown sla={ticket.slaTimer} />}
+              <View style={styles.durationRow}>
+                <Text style={styles.durationLabel}>Processing time</Text>
+                <ProcessingDurationTimer activities={activities} status={ticket.status} />
+              </View>
+            </View>
+
+            {/* Description */}
+            {ticket.description && (
+              <View style={[styles.card, Shadow]}>
+                <Text style={styles.sectionLabel}>Description</Text>
+                <Text style={styles.descText}>{ticket.description}</Text>
+              </View>
+            )}
+
+            {/* Warning evidence — sensor logs exceeding threshold around the time the issue was detected.
+                Auto-hides when the ticket has no batteryAssetId or detectedAt. */}
+            {ticket.batteryAssetId && ticket.detectedAt && (
+              <View style={[styles.card, Shadow]}>
+                <BatteryWarningEvidencePanel
+                  batteryAssetId={ticket.batteryAssetId}
+                  detectedAt={ticket.detectedAt}
+                />
+              </View>
+            )}
+
+            {/* Photos the customer attached when creating the ticket */}
+            {(ticket.attachmentFileIds?.length ?? 0) > 0 && (
+              <View style={[styles.card, Shadow]}>
+                <Text style={styles.sectionLabel}>Attachments</Text>
+                <AttachmentThumbnails fileIds={ticket.attachmentFileIds} size={72} onPressImage={setViewingImage} />
+              </View>
+            )}
+
+            {/* Battery view entry point */}
+            {ticket.batteryAssetId && (
+              <Pressable
+                style={[styles.logButton, Shadow]}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(staff)/batteries/[id]',
+                    params: { id: ticket.batteryAssetId as string },
+                  })
+                }
+              >
+                <Ionicons name="battery-charging-outline" size={18} color={Colors.primary} />
+                <Text style={styles.logButtonText}>View battery info</Text>
+                <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
+              </Pressable>
+            )}
+
+            {/* Action Bar */}
+            <TicketActionBar
+              status={ticket.status}
+              onHold={() => setShowHold(true)}
+              onResume={() => setShowResume(true)}
+              onResolve={() => setShowCompleteLogForm(true)}
+              onEscalate={() => setShowEscalate(true)}
+              isLoading={isActioning}
+              canResolve={canResolve && canComplete(ticket, accountId)}
+              canHold={canHold(ticket, accountId)}
+              canResume={canResume(ticket, accountId)}
+              canEscalate={canEscalate(ticket, accountId)}
+            />
+            <PendingContextCard ticket={ticket} />
+
+            {/* Maintenance log button */}
+            {ticket.status === 'InProgress' && !!accountId && isPrimaryHandler(ticket.assignments, accountId) && (
+              <Pressable style={[styles.logButton, Shadow]} onPress={() => setShowLogForm(!showLogForm)}>
+                <Text style={styles.logButtonText}>{showLogForm ? 'Hide log form' : 'Add maintenance log'}</Text>
+              </Pressable>
+            )}
+
+            {showLogForm && (
+              <MaintenanceLogForm onSubmit={handleAddLog} isLoading={isAddingLog} />
+            )}
+
+            <View style={styles.tabContent}>
+              <ActivityTimeline activities={activities} assignments={ticket?.assignments} />
+            </View>
+          </>
         )}
 
         {activeTab === 'logs' && (
@@ -734,6 +754,7 @@ function StaffTicketDetailScreenInner() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+      </>
       )}
 
       {/* Modals */}
@@ -746,8 +767,26 @@ function StaffTicketDetailScreenInner() {
         onCancel={voiceRecorder.cancel}
       />
       <HoldModal visible={showHold} onClose={() => setShowHold(false)} onSubmit={handleHold} isLoading={isHolding} />
-      <ResolveModal visible={showResolve} onClose={() => setShowResolve(false)} onSubmit={handleResolve} isLoading={isResolving} />
+      <ResumeModal visible={showResume} onClose={() => setShowResume(false)} onSubmit={handleResume} isLoading={isResuming} />
       <EscalateModal visible={showEscalate} onClose={() => setShowEscalate(false)} onSubmit={handleEscalate} isLoading={isEscalating} />
+
+      {/* Complete requires a maintenance log first — this form's summary becomes the ticket's resolutionSummary. */}
+      <Modal visible={showCompleteLogForm} transparent animationType="slide" onRequestClose={() => setShowCompleteLogForm(false)}>
+        <View style={styles.editOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowCompleteLogForm(false)} />
+          <View style={[styles.editSheet, { paddingBottom: insets.bottom + 16 }]}>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <MaintenanceLogForm
+                isLoading={isAddingLog || isResolving}
+                onSubmit={handleCompleteLog}
+                title="Complete ticket"
+                submitLabel="Save log & complete"
+                fixedLogType={MaintenanceLogTypeEnum.Completion}
+              />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* GH-44 #4 — sửa maintenance log (PATCH) */}
       <Modal visible={editingLog !== null} transparent animationType="slide" onRequestClose={() => setEditingLog(null)}>
@@ -762,7 +801,10 @@ function StaffTicketDetailScreenInner() {
                   initialValues={{
                     summary: editingLog.summary ?? '',
                     logType: editingLog.logType,
+                    diagnosisDetails: editingLog.diagnosisDetails ?? undefined,
                     actionsTaken: editingLog.actionsTaken ?? undefined,
+                    resolutionNote: editingLog.resolutionNote ?? undefined,
+                    partsUsed: undefined,
                     durationMinutes: editingLog.durationMinutes || undefined,
                   }}
                   title="Edit Maintenance Log"
@@ -823,7 +865,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingBottom: 12,
     backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  backBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: Colors.card2, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { width: 36, height: 36, backgroundColor: Colors.card2, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerCode: { fontSize: 16, fontWeight: '800', color: Colors.text },
   unreadSlot: { width: 36, alignItems: 'flex-end', justifyContent: 'center' },

@@ -1,5 +1,5 @@
-import React from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,10 +8,23 @@ import { BackButton } from '@/src/shared/components/ScreenHeader';
 import { useIotDevices } from '@/src/features/iot-devices/hooks/useIotDevices';
 import { useDeviceHeartbeats } from '@/src/features/iot-devices/hooks/useDeviceHeartbeats';
 import {
+  useIotDeviceDetail,
+  useRotateIotDeviceKey,
+  useRotateIotDeviceMqtt,
+} from '@/src/features/iot-devices/hooks/useIotDeviceMutations';
+import DeviceKeyRevealModal, {
+  fromCreatedDto,
+  fromDetailDto,
+  type DeviceSecrets,
+} from '@/src/features/iot-devices/components/DeviceKeyRevealModal';
+import {
   DeviceStatusCard,
   formatRelative,
 } from '@/src/features/iot-devices/components/DeviceStatusCard';
-import { IotDeviceHeartbeatDto } from '@/src/features/iot-devices/types/iot-device.types';
+import {
+  IotDeviceHeartbeatDto,
+  IotDeviceStatusEnum,
+} from '@/src/features/iot-devices/types/iot-device.types';
 
 /**
  * IOT3-63 — chi tiết thiết bị + lịch sử heartbeat.
@@ -65,11 +78,60 @@ export default function DeviceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const deviceId = typeof id === 'string' ? id : '';
 
-  // Chưa có endpoint chi tiết dành cho Staff (`GET /{id}` là đường admin, trả cả apiKey), nên lấy
-  // thiết bị ra từ cùng danh sách mà màn hình trước đã nạp — TanStack Query trả ngay từ cache,
-  // không thêm request nào. Mở thẳng bằng đường dẫn sâu thì mới thực sự gọi mạng.
+  // Header/stat card still reads from the same list the previous screen already loaded —
+  // TanStack Query returns it straight from cache, no extra request.
   const list = useIotDevices({ pageSize: 50, sortBy: 'lastSeenAt', sortDir: 'desc' });
   const device = list.data?.items.find((d) => d.id === deviceId);
+
+  // Detail-only call for the quick actions below: `GET /api/admin/iot-devices/{id}` was opened
+  // to Staff so "View details" can show the re-readable apiKey/QR/MQTT, same as the web app.
+  const { data: detail } = useIotDeviceDetail(deviceId);
+  const { mutate: rotateKey, isPending: rotatingKey } = useRotateIotDeviceKey(deviceId);
+  const { mutate: rotateMqtt, isPending: rotatingMqtt } = useRotateIotDeviceMqtt(deviceId);
+  const [revealed, setRevealed] = useState<DeviceSecrets | null>(null);
+  const isDecommissioned = device?.status === IotDeviceStatusEnum.Decommissioned;
+
+  const confirmRotateMqtt = () => {
+    Alert.alert(
+      'Rotate MQTT key?',
+      'Changes only the MQTT username/password. The API key STAYS THE SAME, so the device calls /provision itself to fetch the new password — NO site visit needed. While it waits, the device temporarily loses MQTT but keeps sending data over HTTPS.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Rotate MQTT key',
+          onPress: () =>
+            rotateMqtt(undefined, {
+              onSuccess: (res) => {
+                if (res.data) setRevealed(fromCreatedDto(res.data));
+              },
+              onError: () =>
+                Alert.alert('Error', 'Could not rotate the MQTT key. Please try again.'),
+            }),
+        },
+      ],
+    );
+  };
+
+  const confirmRotateKey = () => {
+    Alert.alert(
+      'Rotate API key?',
+      'Changes BOTH the API key AND the MQTT key. The device loses both channels and CANNOT recover on its own — someone must go on site with a cable and flash the new API key. Use this only when the API key is suspected leaked; to change just the MQTT key use Rotate MQTT key.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Rotate',
+          style: 'destructive',
+          onPress: () =>
+            rotateKey(undefined, {
+              onSuccess: (res) => {
+                if (res.data) setRevealed(fromCreatedDto(res.data));
+              },
+              onError: () => Alert.alert('Error', 'Could not rotate the API key. Please try again.'),
+            }),
+        },
+      ],
+    );
+  };
 
   const heartbeats = useDeviceHeartbeats(deviceId, { limit: 50 });
   const items = heartbeats.data?.items ?? [];
@@ -98,7 +160,40 @@ export default function DeviceDetailScreen() {
             {list.isLoading ? (
               <ActivityIndicator style={styles.loader} color={Colors.primaryDark} />
             ) : device ? (
-              <DeviceStatusCard device={device} />
+              <>
+                <DeviceStatusCard device={device} />
+                <View style={styles.actionsRow}>
+                  <Pressable
+                    style={styles.actionBtn}
+                    disabled={!detail}
+                    onPress={() => detail && setRevealed(fromDetailDto(detail))}
+                  >
+                    <Text style={styles.actionBtnText}>View details</Text>
+                  </Pressable>
+                  {!isDecommissioned && (
+                    <Pressable
+                      style={styles.actionBtn}
+                      disabled={rotatingMqtt}
+                      onPress={confirmRotateMqtt}
+                    >
+                      <Text style={styles.actionBtnText}>
+                        {rotatingMqtt ? 'Rotating…' : 'Rotate MQTT key'}
+                      </Text>
+                    </Pressable>
+                  )}
+                  {!isDecommissioned && (
+                    <Pressable
+                      style={styles.actionBtn}
+                      disabled={rotatingKey}
+                      onPress={confirmRotateKey}
+                    >
+                      <Text style={styles.actionBtnText}>
+                        {rotatingKey ? 'Rotating…' : 'Rotate key'}
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
+              </>
             ) : (
               <View style={styles.notice}>
                 <Text style={styles.noticeText}>
@@ -144,6 +239,12 @@ export default function DeviceDetailScreen() {
           ) : null
         }
       />
+
+      <DeviceKeyRevealModal
+        visible={!!revealed}
+        device={revealed}
+        onClose={() => setRevealed(null)}
+      />
     </View>
   );
 }
@@ -161,6 +262,16 @@ const styles = StyleSheet.create({
   topTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: Colors.text },
   list: { padding: 16 },
   loader: { marginVertical: 20 },
+  actionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10, marginBottom: 4 },
+  actionBtn: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: Colors.card,
+  },
+  actionBtnText: { fontSize: 12, fontWeight: '700', color: Colors.text },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: Colors.text, marginTop: 6, marginBottom: 8 },
   hbRow: {
     backgroundColor: Colors.card,

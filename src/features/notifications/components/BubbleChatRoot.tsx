@@ -89,7 +89,6 @@ import { useTicketChatsCursor } from '../../tickets/hooks/useTicketChatsCursor';
 import { useTicketCommentsRealtime } from '../../tickets/hooks/useTicketCommentsRealtime';
 import { useTicketDetail } from '../../tickets/hooks/useTicketDetail';
 import { useTickets } from '../../tickets/hooks/useTickets';
-import { useTicketUnreadCount } from '../../tickets/hooks/useTicketUnreadCount';
 import { useUploadCommentAttachment } from '../../tickets/hooks/useUploadCommentAttachment';
 import { useVoiceRecorder } from '../../tickets/hooks/useVoiceRecorder';
 
@@ -171,8 +170,6 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
 
   const commentsQuery = useTicketChatsCursor(activeTicketId || undefined);
   const activitiesQuery = useTicketActivities(activeTicketId || undefined);
-  const unreadCountQuery = useTicketUnreadCount(activeTicketId || undefined);
-  const unreadCount = unreadCountQuery.data ?? 0;
 
   const { typingUsers, notifyTyping } = useTicketCommentsRealtime(activeTicketId || undefined);
 
@@ -520,9 +517,6 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
             size={22}
             color={Colors.primary}
           />
-          {unreadCount > 0 && viewMode !== 'chat' && (
-            <View style={styles.tinyBadgeDot} />
-          )}
         </Pressable>
       </View>
 
@@ -1210,15 +1204,6 @@ const styles = StyleSheet.create({
   infoToggleBtn: {
     padding: 4,
     borderRadius: 8,
-  },
-  tinyBadgeDot: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.danger,
   },
 
   // Inline Switch inside top header bar

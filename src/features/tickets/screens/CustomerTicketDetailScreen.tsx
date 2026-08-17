@@ -187,7 +187,7 @@ function TicketDetailScreenInner() {
 
   // GH-44 — comments qua GET phân trang (DESC newest-first) + activities standalone + realtime.
   const commentsQuery = useTicketChatsCursor(id);
-  const activitiesQuery = useTicketActivities(id);
+  const activitiesQuery = useTicketActivities(id, ticket?.status);
   const { typingUsers, notifyTyping } = useTicketCommentsRealtime(id);
   const { mutate: updateChat, isPending: editChatPending } = useUpdateTicketChat(id ?? '');
   const { mutate: deleteChat, isPending: deleteChatPending } = useDeleteTicketChat(id ?? '');

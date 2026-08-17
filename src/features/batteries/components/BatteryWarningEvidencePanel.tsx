@@ -79,15 +79,6 @@ export function BatteryWarningEvidencePanel({
         )}
       </View>
 
-      {threshold && (
-        // Name the limits on screen: without them a row of numbers is not evidence of
-        // anything — the reader cannot tell which value was out of bounds, or by how much.
-        <Text style={styles.thresholdNote}>
-          {threshold.batteryTypeName} · {threshold.temperatureMin}…{threshold.temperatureMax}°C ·
-          SOC {threshold.socWarningThreshold}%
-        </Text>
-      )}
-
       {isLoading || isThresholdLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={Colors.primary} />
@@ -241,12 +232,6 @@ const styles = StyleSheet.create({
   contextNote: { fontSize: 11, color: Colors.textMute, paddingHorizontal: 2, paddingBottom: 6 },
   td: { fontSize: 12, color: Colors.text, fontVariant: ['tabular-nums'] },
   tdMuted: { color: Colors.textMute },
-  thresholdNote: {
-    fontSize: 11,
-    color: Colors.textMute,
-    paddingHorizontal: 2,
-    paddingBottom: 6,
-  },
   tdHot: { color: Colors.warningDark, fontWeight: '700' },
 
   colTime: { width: 116, paddingHorizontal: 8 },

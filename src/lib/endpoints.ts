@@ -160,7 +160,7 @@ export const ENDPOINTS = {
 
     HOLD:             (id: string) => `/api/staff/tickets/${id}/hold`,
     RESUME:           (id: string) => `/api/staff/tickets/${id}/resume`,
-    RESOLVE:          (id: string) => `/api/staff/tickets/${id}/resolve`,
+    RESOLVE:          (id: string) => `/api/staff/tickets/${id}/complete`,
     ESCALATE_REQUEST: (id: string) => `/api/staff/tickets/${id}/escalate-request`,
     MAINTENANCE_LOG:  (id: string) => `/api/tickets/${id}/maintenance-logs`,
     MY_MAINTENANCE_LOGS: '/api/staff/tickets/maintenance-logs/me', // GH-44 #3
@@ -175,6 +175,9 @@ export const ENDPOINTS = {
     MARK_OPENED: (id: string) => `/api/notifications/${id}/opened`,
     MARK_ALL_READ: '/api/notifications/read-all', // POST — empty body
     UNREAD_COUNT: '/api/notifications/unread-count', // GET — badge
+  },
+  DEVICE_TOKENS: {
+    BASE: '/api/device-tokens',
   },
   NOTIFICATION_PREFERENCES: {
     BASE: '/api/notification-preferences',
@@ -218,5 +221,9 @@ export const ENDPOINTS = {
     LIST:             '/api/iot-devices',
     // IOT3-58 — lịch sử heartbeat, phân trang theo CON TRỎ (không offset)
     HEARTBEATS:       (deviceId: string) => `/api/iot-devices/${deviceId}/heartbeats`,
+    // Admin route, opened to Staff — trả full apiKey/QR/MQTT (xem lại được nhiều lần).
+    ADMIN_DETAIL:     (deviceId: string) => `/api/admin/iot-devices/${deviceId}`,
+    ROTATE_KEY:       (deviceId: string) => `/api/admin/iot-devices/${deviceId}/rotate-key`,
+    ROTATE_MQTT:      (deviceId: string) => `/api/admin/iot-devices/${deviceId}/rotate-mqtt`,
   },
 } as const;

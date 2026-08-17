@@ -34,7 +34,7 @@ export function canHold(ticket: TicketDTO, staffId?: string | null) {
 
 export function canResume(ticket: TicketDTO, staffId?: string | null) {
   return ticket.status === 'Pending' &&
-    (ticket.pendingContext === 'Held' || ticket.pendingContext === 'Scheduled') &&
+    ticket.pendingContext === 'Held' &&
     isPrimaryHandler(ticket, staffId);
 }
 
@@ -59,6 +59,8 @@ export function canRateOrReopen(ticket: TicketDetailDTO, now = Date.now()) {
 export function detailRefetchInterval(ticket?: TicketDTO): number | false {
   if (!ticket) return false;
   if (ticket.status === 'InProgress') return 15_000;
+  // Awaiting assignment — Manager can triage priority/assign staff any moment.
+  if (ticket.status === 'Open') return 15_000;
   if (ticket.status === 'Pending') {
     if (ticket.pendingContext === 'Scheduled' && ticket.scheduledStartAtUtc) {
       const distance = Math.abs(new Date(ticket.scheduledStartAtUtc).getTime() - Date.now());
@@ -66,6 +68,9 @@ export function detailRefetchInterval(ticket?: TicketDTO): number | false {
     }
     return 30_000;
   }
+  // Escalated/reassignment pending — Manager can act (reassign, priority change) any moment;
+  // poll faster than the generic external-waiting statuses below.
+  if (ticket.status === 'ReAssign') return 15_000;
   if (EXTERNAL_WAITING_STATUSES.includes(ticket.status)) {
     const changedAt = new Date(ticket.updatedAt ?? ticket.createdAt).getTime();
     return Date.now() - changedAt <= 10 * 60_000 ? 30_000 : 60_000;
