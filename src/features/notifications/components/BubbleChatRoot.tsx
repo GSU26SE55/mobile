@@ -551,7 +551,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
             onDelete={(comment, reason) => deleteChat.mutate({ chatId: comment.id, reason })}
             editPending={updateChat.isPending}
             deletePending={deleteChat.isPending}
-            onMarkRead={(ids) => markChatsRead.mutate(ids)}
+            onMarkRead={(chatIds, onFailed) => markChatsRead.mutate({ chatIds, onFailed })}
             onTranslate={async (comment, targetLanguage) => {
               const response = await translateChat.mutateAsync({ chatId: comment.id, targetLanguage });
               return response.data.data ?? undefined;

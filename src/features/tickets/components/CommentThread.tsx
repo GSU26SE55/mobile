@@ -17,6 +17,7 @@ type ThreadItem =
   | { kind: 'comment'; key: string; comment: TicketCommentDTO }
   | { kind: 'date'; key: string; label: string }
   | { kind: 'unread'; key: string; count: number }
+  | { kind: 'newAfter'; key: string }
   | { kind: 'pending'; key: string; message: OutboxMessage };
 
 function startOfDay(d: Date) {
@@ -62,11 +63,16 @@ function buildThreadItems(
   ascComments: TicketCommentDTO[],
   anchorId: string | null,
   unreadCount: number,
+  newAfterId: string | null,
 ): ThreadItem[] {
   const items: ThreadItem[] = [];
   let lastDay: string | null = null;
 
   const oldestUnread = anchorId ? ascComments.findIndex((c) => c.id === anchorId) : -1;
+  // First message that landed AFTER the chat was opened. Kept separate from the unread
+  // anchor: without it, a message arriving mid-conversation is indistinguishable from a
+  // backlog message the user has not read yet, since both sit below the same red line.
+  const firstNew = newAfterId ? ascComments.findIndex((c) => c.id === newAfterId) : -1;
 
   ascComments.forEach((c, i) => {
     const day = dayKey(c.createdAt);
@@ -79,6 +85,12 @@ function buildThreadItems(
     // everything BELOW the line is unread, matching the Slack/Messenger standard.
     if (i === oldestUnread) {
       items.push({ kind: 'unread', key: 'unread-divider', count: unreadCount });
+    }
+
+    // Skipped when it would land in the same slot as the unread line — two rules stacked on
+    // top of each other read as noise, and "unread" is the more important of the two.
+    if (i === firstNew && i !== oldestUnread) {
+      items.push({ kind: 'newAfter', key: 'new-divider' });
     }
 
     items.push({ kind: 'comment', key: c.id ?? `comment-${i}`, comment: c });
@@ -120,8 +132,12 @@ interface CommentThreadProps {
   selectedIds?: Set<string>;
   onToggleSelect?: (comment: TicketCommentDTO) => void;
   onRequestSelectMode?: (comment: TicketCommentDTO) => void;
-  /** Housekeeping — marks the currently displayed chats as read (no unread badge to wire up) */
-  onMarkRead?: (chatIds: string[]) => void;
+  /**
+   * Housekeeping — marks the currently displayed chats as read. `onFailed` is invoked only if
+   * the request fails; the thread uses it to put those ids back in line, so a dropped receipt
+   * gets retried on the next render instead of being written off for the session.
+   */
+  onMarkRead?: (chatIds: string[], onFailed: () => void) => void;
   /** Every role can translate (BE doesn't restrict this) — passing this prop shows the translate menu */
   onTranslate?: (
     comment: TicketCommentDTO,
@@ -276,10 +292,17 @@ export function CommentThread({
   const anchorCountRef = useRef(0);
   const anchorResolvedRef = useRef(false);
 
+  // Ids present when the chat was opened. Anything outside this set arrived while the user
+  // was watching, which is what separates "new" from "unread backlog".
+  const [seenOnOpen, setSeenOnOpen] = useState<ReadonlySet<string> | null>(null);
+  const [newAfterId, setNewAfterId] = useState<string | null>(null);
+
   useEffect(() => {
     anchorIdRef.current = null;
     anchorCountRef.current = 0;
     anchorResolvedRef.current = false;
+    setSeenOnOpen(null);
+    setNewAfterId(null);
   }, [tab]);
 
   const items = useMemo(() => {
@@ -300,7 +323,12 @@ export function CommentThread({
       }
     }
 
-    const base = buildThreadItems(ascComments, anchorIdRef.current, anchorCountRef.current);
+    const base = buildThreadItems(
+      ascComments,
+      anchorIdRef.current,
+      anchorCountRef.current,
+      newAfterId,
+    );
     // Pending (outbox) messages render after the real ones — newest-last, matching Web's
     // PendingBubble placement at the end of the thread.
     const pending: ThreadItem[] = pendingForTab.map((m) => ({
@@ -309,7 +337,39 @@ export function CommentThread({
       message: m,
     }));
     return [...base, ...pending];
-  }, [visible, pendingForTab]);
+  }, [visible, pendingForTab, newAfterId]);
+
+  // Pins the "New messages" line at the first message from someone else that arrives after
+  // the chat was opened. Own messages are excluded — the user knows they just sent those, and
+  // marking them would push the line down on every send. Once pinned it stays put, so the
+  // line does not creep downward as the conversation continues; it clears when the user
+  // reaches the bottom (see onScroll) or leaves the tab.
+  useEffect(() => {
+    if (visible.length === 0) return;
+
+    if (seenOnOpen === null) {
+      // Everything on screen when the tab opens counts as already seen, so only what arrives
+      // from here on can be "new".
+      setSeenOnOpen(new Set(visible.map((c) => c.id)));
+      return;
+    }
+    if (newAfterId) return;
+
+    // visible is DESC (newest first) → the LAST match is the oldest unseen message, which is
+    // where the line belongs. Membership is only ever read here, never mutated mid-scan: an
+    // own message arriving first must not mark later ones as seen, or the line would never
+    // appear for the message that follows it.
+    let firstFromOthers: string | null = null;
+    for (let i = visible.length - 1; i >= 0; i--) {
+      const c = visible[i];
+      if (seenOnOpen.has(c.id)) continue;
+      if (c.authorUserId && c.authorUserId !== currentUserId) {
+        firstFromOthers = c.id;
+        break;
+      }
+    }
+    if (firstFromOthers) setNewAfterId(firstFromOthers);
+  }, [visible, newAfterId, currentUserId, seenOnOpen]);
 
   // Always scroll to the newest message (the bottom). Non-inverted list + ASC data ⇒ bottom
   // = newest message. onContentSizeChange fires on mount, on data load, on new messages, and
@@ -354,14 +414,28 @@ export function CommentThread({
   }, [aiSuggestions.length]);
 
   // Housekeeping — marks currently displayed comments in the active tab as read, once per id.
+  //
+  // Only messages from OTHER people. A message the user sent themself is never unread, so
+  // sending it here just burns a slot in the BE read-receipt queue (bounded, and a full queue
+  // drops receipts silently) and inflates the count it is meant to clear. Messages BE already
+  // reports as read are skipped for the same reason.
   const markedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!onMarkRead) return;
-    const unmarked = visible.map((c) => c.id).filter((id) => !markedRef.current.has(id));
+    const unmarked = visible
+      .filter((c) => c.isRead !== true && !!c.authorUserId && c.authorUserId !== currentUserId)
+      .map((c) => c.id)
+      .filter((id) => !markedRef.current.has(id));
     if (unmarked.length === 0) return;
+    // Marked BEFORE the call so a re-render mid-flight doesn't fire the same ids again —
+    // callers pass a fresh inline `onMarkRead` every render, so this effect re-runs often
+    // and the ref is the only thing keeping it from looping.
     unmarked.forEach((id) => markedRef.current.add(id));
-    onMarkRead(unmarked);
-  }, [visible, onMarkRead]);
+    // Released again if the request fails, so the ids go back in the queue for the next
+    // render instead of being written off for the session. BE answers 503 when its
+    // read-receipt queue is full — exactly the case worth retrying.
+    onMarkRead(unmarked, () => unmarked.forEach((id) => markedRef.current.delete(id)));
+  }, [visible, onMarkRead, currentUserId]);
 
   // "now" updated periodically — avoids calling Date.now() directly on every render when computing the edit window.
   const [now, setNow] = useState(() => Date.now());
@@ -451,6 +525,20 @@ export function CommentThread({
           data={items}
           keyExtractor={(item) => item.key}
           onContentSizeChange={() => scrollToBottom(false)}
+          // Reaching the bottom means the new messages have been seen, so the "New messages"
+          // line has done its job and is cleared. The unread line above is NOT touched — it
+          // stays pinned for the session so the user keeps their place in the backlog.
+          onScroll={({ nativeEvent: e }) => {
+            if (!newAfterId) return;
+            const atBottom =
+              e.layoutMeasurement.height + e.contentOffset.y >= e.contentSize.height - 24;
+            if (!atBottom) return;
+            // Those ids move into seenOnOpen as the line clears, so the same messages can't
+            // immediately re-pin it on the next render.
+            setSeenOnOpen(new Set(visible.map((c) => c.id)));
+            setNewAfterId(null);
+          }}
+          scrollEventThrottle={16}
           keyboardDismissMode="on-drag"
           // No getItemLayout (bubbles have varying heights) so scrollToIndex can drift when
           // the target item hasn't rendered yet — scroll approximately then retry the exact index.
@@ -488,6 +576,15 @@ export function CommentThread({
                     </Text>
                   </View>
                   <View style={styles.unreadLine} />
+                </View>
+              );
+            }
+            if (item.kind === 'newAfter') {
+              return (
+                <View style={styles.newRow}>
+                  <View style={styles.newLine} />
+                  <Text style={styles.newLabel}>New messages</Text>
+                  <View style={styles.newLine} />
                 </View>
               );
             }
@@ -695,6 +792,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9, paddingVertical: 3,
   },
   unreadLabel: { fontSize: 11, fontWeight: '800', color: '#FFF' },
+
+  // "New messages" marker — deliberately quieter than the red unread line above: a plain
+  // tinted rule, no pill, no icon. It says "the conversation moved on while you were here",
+  // not "you have a backlog to clear", and the two must not compete for attention.
+  newRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 4 },
+  newLine:  { flex: 1, height: 1, backgroundColor: Colors.primary, opacity: 0.35 },
+  newLabel: { fontSize: 10, fontWeight: '700', color: Colors.primary, opacity: 0.9 },
 
   tabBar: {
     flexDirection: 'row', gap: 6,

@@ -19,10 +19,15 @@ export function countSupporters(
 
 /**
  * Display name for an assignment. The backend includes `staffName` from the synced
- * StaffAccount, so no `/api/staff` call is required. Fall back to the staff ID.
+ * StaffAccount, so no `/api/staff` call is required.
+ *
+ * When the name is missing — StaffAccount sync has not caught up — this returns a placeholder
+ * rather than the staff GUID. The GUID used to leak into the customer-facing "Technicians"
+ * card, where it identifies nobody and reads like a defect. ActivityTimeline already takes
+ * this stance (it hides values that look like a GUID); this keeps the two consistent.
  */
 export function assignmentDisplayName(a: TicketAssignmentDTO): string {
-  return a.staffName?.trim() || a.staffId;
+  return a.staffName?.trim() || 'Updating…';
 }
 
 /** Primary handler name; null when unassigned. */

@@ -3,16 +3,23 @@ import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { sensorReadingService } from '../services/sensor-reading.service';
 import type { SensorReadingDto } from '../types/sensor-reading.types';
 
-// Evidence window around DetectedAt. Deliberately narrow: an auto ticket comes from ONE scan
-// pass, and the readings that triggered it land within seconds of DetectedAt. A ±15' window
-// swept in readings from *other* cases run minutes earlier on the same battery — an Undertemp
-// ticket ended up displaying the 72°C row belonging to an Overheat ticket.
-const AUTO_WINDOW_MS = 15 * 1_000; // ±15s — mốc do máy đóng dấu, khớp mili-giây
-// ±2' cho mốc người nhập. Con số này KHÔNG tự do chọn — phải khớp
+// Cửa sổ lấy log quanh `detectedAt`. ±2 phút, và con số này KHÔNG tự do chọn — phải khớp
 // `BatteryInternalService.SnapshotWindow`, cửa sổ backend dùng dựng snapshot cho AI verify
 // chấm điểm. Lệch nhau thì người đọc thấy verdict "khớp sensor" tính từ những số đo mà bảng
-// ngay bên dưới không hề hiển thị, và không có cách nào đối chiếu.
-const MANUAL_WINDOW_MS = 2 * 60 * 1_000;
+// ngay bên dưới không hề hiển thị.
+//
+// Cùng một bề rộng cho cả hai loại ticket, vì hai lý do khác nhau:
+//   · `AutoFromAlert` — bộ quét đóng dấu đúng `Time` của số đo, nên chính dòng vi phạm nằm
+//     giữa cửa sổ. Vài phút xung quanh mới là thứ khiến nó đọc được như một DIỄN BIẾN: warm-up
+//     của simulator dắt pin đi lên dần (31→50→61→67→72°C), và cửa sổ ±15s cắt sạch phần đó,
+//     chỉ còn một dòng số tròn trịa trông như bịa.
+//   · `ManualByCustomer` / `CreatedByStaff` — người khai báo nhớ "khoảng 3 giờ", không phải
+//     15:04:32.
+//
+// Cái giá phải trả, nói thẳng: hai case chạy trên cùng viên pin cách nhau dưới 2 phút sẽ lẫn
+// log của nhau. Demo chạy từng case một, và mỗi dòng đều ghi rõ ngưỡng bị vượt nên dòng lạ
+// nhìn ra ngay — nên đánh đổi nghiêng về phía kể được câu chuyện thay vì giấu nó đi.
+const EVIDENCE_WINDOW_MS = 2 * 60 * 1_000;
 
 /**
  * Sensor log around the incident detection time (DetectedAt ± 15s) — used as EVIDENCE for
@@ -26,16 +33,14 @@ const MANUAL_WINDOW_MS = 2 * 60 * 1_000;
 export function useReadingEvidence(
   assetId: string | null | undefined,
   detectedAt: string | null | undefined,
-  isManualReport = false,
 ) {
-  const windowMs = isManualReport ? MANUAL_WINDOW_MS : AUTO_WINDOW_MS;
   // Both sides of DetectedAt: the run that triggered the alert sends several readings in a
   // burst, so the breach that tipped the counter can sit slightly before or after the stamp.
   const from = detectedAt
-    ? new Date(new Date(detectedAt).getTime() - windowMs).toISOString()
+    ? new Date(new Date(detectedAt).getTime() - EVIDENCE_WINDOW_MS).toISOString()
     : undefined;
   const to = detectedAt
-    ? new Date(new Date(detectedAt).getTime() + windowMs).toISOString()
+    ? new Date(new Date(detectedAt).getTime() + EVIDENCE_WINDOW_MS).toISOString()
     : undefined;
 
   return useQuery({

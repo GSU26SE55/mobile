@@ -30,11 +30,30 @@ function avatarColor(id: string): string {
   return PALETTE[h % PALETTE.length];
 }
 
-function avatarInitials(id: string): string {
-  return id.replace(/-/g, '').substring(0, 2).toUpperCase();
+/**
+ * Name and initials come from the ticket's `customerName`; the id is only a last resort.
+ *
+ * These used to be built from the GUID alone, so every row read "Customer 3F2B1A9C" with two
+ * hex characters for an avatar — wrong on every render, not just an edge case. `customerName`
+ * was already on TicketDTO and sitting right there in `lastTicket`.
+ *
+ * The id fallback still exists because `customerName` is nullable while the staff read model
+ * catches up, and a customer with tickets must stay reachable in this list either way.
+ */
+function avatarInitials(name: string | null | undefined, id: string): string {
+  const trimmed = name?.trim();
+  if (!trimmed) return id.replace(/-/g, '').substring(0, 2).toUpperCase();
+
+  // Two initials from the first and last word: "Nguyen Van An" → "NA".
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  const first = words[0]?.[0] ?? '';
+  const last = words.length > 1 ? (words[words.length - 1]?.[0] ?? '') : '';
+  return (first + last).toUpperCase();
 }
 
-function displayName(id: string): string {
+function displayName(name: string | null | undefined, id: string): string {
+  const trimmed = name?.trim();
+  if (trimmed) return trimmed;
   return 'Customer ' + (id.split('-')[0] ?? id.substring(0, 8)).toUpperCase();
 }
 
@@ -160,7 +179,9 @@ function CustomerRow({ group, unread }: { group: CustomerGroup; unread: number }
       }
     >
       <View style={[styles.avatar, { backgroundColor: color }]}>
-        <Text style={styles.avatarText}>{avatarInitials(group.customerId)}</Text>
+        <Text style={styles.avatarText}>
+          {avatarInitials(group.lastTicket.customerName, group.customerId)}
+        </Text>
         {/* Red badge = number of UNREAD MESSAGES (already includes messages that @mention me).
             Different from the yellow pill below — that one is the count of open tickets. */}
         {unread > 0 && (
@@ -173,7 +194,7 @@ function CustomerRow({ group, unread }: { group: CustomerGroup; unread: number }
       <View style={styles.info}>
         <View style={styles.infoTop}>
           <Text style={styles.name} numberOfLines={1}>
-            {displayName(group.customerId)}
+            {displayName(group.lastTicket.customerName, group.customerId)}
           </Text>
           <Text style={styles.time}>{time}</Text>
         </View>

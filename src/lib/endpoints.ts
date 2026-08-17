@@ -176,9 +176,6 @@ export const ENDPOINTS = {
     MARK_ALL_READ: '/api/notifications/read-all', // POST — empty body
     UNREAD_COUNT: '/api/notifications/unread-count', // GET — badge
   },
-  DEVICE_TOKENS: {
-    BASE: '/api/device-tokens',
-  },
   NOTIFICATION_PREFERENCES: {
     BASE: '/api/notification-preferences',
     // GH-83 — Sprint 6.3 NOTI3-04. MATRIX: GET (group × channel matrix) + PUT (patch a single row).

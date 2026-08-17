@@ -53,7 +53,9 @@ export function CalibrationCard({
       <Text style={styles.line}>Expires: {formatDate(item.expiresAt)}</Text>
       {item.batteryAssetId ? (
         <Text style={styles.line} numberOfLines={1}>
-          Battery: {item.batteryAssetId}
+          {/* Falls back to the id when the asset row is gone — the calibration record still
+              has to be readable. */}
+          Battery: {item.batterySerialNumber ?? item.batteryAssetId}
         </Text>
       ) : (
         <Text style={styles.line}>Scope: device-level</Text>

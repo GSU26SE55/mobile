@@ -55,9 +55,12 @@ export default function RootLayout() {
           <AuthProvider>
             <PermissionsSync />
             {/* Permissions + Android channel, SignalR realtime, background sync, badge.
-                Notifications arrive via SignalR and are shown via local notification — does NOT use
-                Expo remote push, so no device token is registered with the BE (see
-                device-token.service.ts). GH-83's PushResponseHandler was removed accordingly. */}
+                Notifications arrive via SignalR and are shown via local notification — this app does
+                NOT use Expo remote push, so it never registers a device token with the BE. The
+                client half of that (device-token service/types, DevicePlatformEnum, the
+                DEVICE_TOKENS endpoint) is deleted, not merely unused — re-adding it is a decision,
+                not a fix. GH-83's PushResponseHandler was removed for the same reason.
+                Backend `/api/device-tokens` stays: the web app still uses it. */}
             <NotificationBootstrap />
             {/* Realtime feed + badge via /hubs/notifications — replaces 30s polling. Must be mounted
                 exactly once here: each mount opens its own WebSocket. */}
