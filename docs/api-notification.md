@@ -807,6 +807,26 @@ kênh push**, thứ mà chỉ `Read` không nói được.
 
 Base route: `/api/device-tokens`
 
+> ## ⚠️ App Mobile này KHÔNG gọi nhóm endpoint dưới đây — có chủ đích.
+>
+> Thông báo tới máy qua **SignalR** (`/hubs/notifications`) rồi được dựng bằng **local notification**
+> của native module, chứ không đi qua Expo remote push. Vì vậy Mobile **không đăng ký device token**,
+> và phần client tương ứng (`device-token.service.ts`, `device-token.types.ts`,
+> `DevicePlatformEnum`, `ENDPOINTS.DEVICE_TOKENS`) **đã bị xoá khỏi repo** — không phải quên làm.
+>
+> Lịch sử: `d3b8bd0` (GH-36) từng làm đủ Expo push; `272e642` đổi sang SignalR + native local
+> notification và cắt hết caller nhưng bỏ sót file service, để nó nằm chết một thời gian.
+>
+> **Khoảng hở của hướng này:** app bị kill hoàn toàn thì SignalR đứt. Bù bằng `backgroundSync.ts`
+> (`expo-background-task`, ~15 phút/lần) đọc lại các bản ghi Push đã `Sent` rồi dựng notification
+> tại chỗ. Độ trễ tối đa ~15 phút, và Android có thể giãn thêm khi máy ở Doze.
+>
+> **Nối lại Expo push là một quyết định, không phải sửa lỗi** — cần EAS project + credential
+> FCM/APNs, nối lại vòng đời token (login/logout/xoay token/đa thiết bị), dựng lại tap routing, và
+> đổi `PushTransportEnum` sang `Both`. Đừng làm chỉ vì thấy tài liệu này mô tả endpoint.
+>
+> Phần mô tả bên dưới giữ nguyên cho **Web app** (vẫn dùng thật) và cho trường hợp sau này quay lại.
+
 Quản lý push token thiết bị (Expo) cho Mobile/Web. **Mọi endpoint đều `[Authorize]`** — `UserId` luôn
 lấy từ JWT claim, user chỉ thao tác trên token của chính mình (không nhận `userId` từ body).
 

@@ -76,10 +76,3 @@ export const NotificationChannelEnum = {
   InApp: 4,
 } as const;
 export type NotificationChannelEnum = (typeof NotificationChannelEnum)[keyof typeof NotificationChannelEnum];
-
-export const DevicePlatformEnum = {
-  Ios: 1,
-  Android: 2,
-  Web: 3,
-} as const;
-export type DevicePlatformEnum = (typeof DevicePlatformEnum)[keyof typeof DevicePlatformEnum];

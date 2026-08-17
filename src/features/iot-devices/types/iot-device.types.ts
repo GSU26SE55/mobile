@@ -95,7 +95,10 @@ export interface IotDeviceCalibrationDto {
   id: string;
   iotDeviceId: string;
   channel: string; // voltage/current/temperature/soc
-  batteryAssetId: string | null; // null = device-level
+  batteryAssetId: string | null;
+  // Human-readable serial for `batteryAssetId`. Null for device-level calibrations (no battery
+  // attached) or when the asset row is gone — show the id in that case, never a blank line.
+  batterySerialNumber: string | null; // null = device-level
   scale: number;
   offset: number;
   unit: string; // V/A/°C/%

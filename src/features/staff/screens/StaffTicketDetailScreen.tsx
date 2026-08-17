@@ -261,7 +261,8 @@ function StaffTicketDetailScreenInner() {
     setAiSuggestions([]);
   };
 
-  const handleMarkRead = (chatIds: string[]) => markChatsRead(chatIds);
+  const handleMarkRead = (chatIds: string[], onFailed: () => void) =>
+    markChatsRead({ chatIds, onFailed });
   const handleTranslate = async (comment: { id: string }, targetLanguage: string) => {
     const res = await translateChat({ chatId: comment.id, targetLanguage });
     return res.data.data ?? undefined;

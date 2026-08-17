@@ -54,25 +54,27 @@ export function useBulkDeleteTicketChats(ticketId: string) {
 export function useMarkTicketChatsRead(ticketId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (chatIds: string[]) =>
-      ticketChatActionsService.markRead(ticketId, { chatIds }),
+    mutationFn: (vars: { chatIds: string[]; onFailed?: () => void }) =>
+      ticketChatActionsService.markRead(ticketId, { chatIds: vars.chatIds }),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: QUERY_KEY.tickets.chatUnreadCount(ticketId),
-      });
-      // The chat list carries `isRead` per message and CommentThread draws the unread
-      // divider from it. Without invalidating, the cached list keeps every message at
-      // isRead=false, so re-entering the chat shows the divider again over messages that
-      // were already read.
+      // Both keys are refetched on the SAME delay, and the delay is required, not cosmetic.
+      // A 200 here only means the read receipts were queued: TicketService writes them from
+      // ChatReadReceiptBulkWriter, which flushes on a 1s interval (FlushInterval in
+      // ChatReadReceiptBulkWriter.cs). Refetching straight away reads the database before
+      // that flush and gets back the pre-mark state — an unread count that has not dropped
+      // and isRead=false on every message — then marks those queries fresh, which is worse
+      // than not invalidating at all. The unread badge used to be invalidated immediately
+      // here, which is exactly why it appeared to climb as the user chatted.
       //
-      // The delay is required, not cosmetic. A 200 here only means the read receipts were
-      // queued: TicketService writes them from ChatReadReceiptBulkWriter, which flushes on
-      // a 1s interval (FlushInterval in ChatReadReceiptBulkWriter.cs). Refetching straight
-      // away reads the database before that flush, gets isRead=false back, and marks the
-      // query fresh again — which is worse than not invalidating at all.
+      // The chat list matters too: it carries `isRead` per message and CommentThread draws
+      // the unread divider from it, so a stale list re-shows the divider over messages that
+      // were already read.
       //
       // If the backend ever writes read receipts synchronously, drop the timeout.
       setTimeout(() => {
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEY.tickets.chatUnreadCount(ticketId),
+        });
         queryClient.invalidateQueries({
           queryKey: QUERY_KEY.tickets.chats(ticketId),
         });
@@ -81,7 +83,10 @@ export function useMarkTicketChatsRead(ticketId: string) {
       // The divider currently on screen does not move when the refetch lands: it is pinned
       // to a message id for the whole viewing session (see CommentThread).
     },
-    onError: () => {},
+    // Silent on failure — this is background housekeeping the user never asked for, so no
+    // Alert. onFailed hands the ids back to CommentThread so the next render retries them;
+    // BE answers 503 when its read-receipt queue is full, exactly the case worth retrying.
+    onError: (_error, vars) => vars.onFailed?.(),
   });
 }
 

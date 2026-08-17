@@ -17,6 +17,12 @@ export interface EnvironmentalIncidentDto {
   incidentType: EnvironmentalIncidentTypeEnum;
   status: EnvironmentalIncidentStatusEnum;
   severity: AlertSeverityEnum;
+  /**
+   * Raw sensor reading from the firmware — e.g. `"MQ-2 raw=3100 > thr=2000 (GPIO1)"`.
+   * The site-level equivalent of a battery ticket's reading table: the measurement that proves
+   * the incident. Free-form, so render verbatim as a fallback and only parse opportunistically.
+   */
+  notes?: string | null;
   reportedBy: string | null;
   detectedAt: string; // UTC
   acknowledgedAt: string | null;

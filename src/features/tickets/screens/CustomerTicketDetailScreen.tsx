@@ -67,6 +67,7 @@ import { BatteryAssetDto } from '@/src/features/batteries/types/battery.types';
 import { useSessionStore } from '@/src/stores/sessionStore';
 import { getPrimaryHandlerName, getSupporterNames } from '@/src/features/tickets/utils/assignments';
 import { BackButton } from '@/src/shared/components/ScreenHeader';
+import EnvironmentalIncidentCard from '@/src/features/tickets/components/EnvironmentalIncidentCard';
 
 const PRIORITY_MAP: Record<string, { label: string; badge: keyof typeof BadgeColors }> = {
   P1Critical: { label: 'P1 Critical', badge: 'p1' },
@@ -353,7 +354,8 @@ function TicketDetailScreenInner() {
     setAttachments([]);
   };
 
-  const handleMarkRead = (chatIds: string[]) => markChatsRead(chatIds);
+  const handleMarkRead = (chatIds: string[], onFailed: () => void) =>
+    markChatsRead({ chatIds, onFailed });
   const handleTranslate = async (comment: { id: string }, targetLanguage: string) => {
     const res = await translateChat({ chatId: comment.id, targetLanguage });
     return res.data.data ?? undefined;
@@ -482,7 +484,16 @@ function TicketDetailScreenInner() {
             </View>
           )}
 
-          {/* Battery / Device Link card */}
+          {/* Site-level ticket → incident card instead of the battery card. Checked first because
+              "no battery" is the correct shape here, not missing data, and the battery card says
+              the opposite ("No device linked"). */}
+          {ticket.environmentalIncidentId ? (
+            <EnvironmentalIncidentCard
+              incidentId={ticket.environmentalIncidentId}
+              description={ticket.description}
+            />
+          ) : (
+          /* Battery / Device Link card */
           <Pressable style={[styles.batteryLinkCard, Shadow]} onPress={handleNavigateToBattery}>
             <View style={[styles.batteryIconBg, { backgroundColor: '#E8F8EE' }]}>
               <Ionicons name="battery-charging" size={18} color="#34C759" />
@@ -507,6 +518,7 @@ function TicketDetailScreenInner() {
             </View>
             <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
           </Pressable>
+          )}
 
           {/* Assignment info row */}
           {(() => {

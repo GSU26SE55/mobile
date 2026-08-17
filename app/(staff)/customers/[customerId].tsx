@@ -31,11 +31,24 @@ function avatarColor(id: string): string {
   return PALETTE[h % PALETTE.length];
 }
 
-function avatarInitials(id: string): string {
-  return id.replace(/-/g, '').substring(0, 2).toUpperCase();
+/**
+ * Name and initials come from the ticket's `customerName`; the id is only a last resort.
+ * Same reasoning as the customers list — this header used to read "Customer 3F2B1A9C" for
+ * every customer. Kept as a local copy to match the list screen it was copied from.
+ */
+function avatarInitials(name: string | null | undefined, id: string): string {
+  const trimmed = name?.trim();
+  if (!trimmed) return id.replace(/-/g, '').substring(0, 2).toUpperCase();
+
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  const first = words[0]?.[0] ?? '';
+  const last = words.length > 1 ? (words[words.length - 1]?.[0] ?? '') : '';
+  return (first + last).toUpperCase();
 }
 
-function displayName(id: string): string {
+function displayName(name: string | null | undefined, id: string): string {
+  const trimmed = name?.trim();
+  if (trimmed) return trimmed;
   return 'Customer ' + (id.split('-')[0] ?? id.substring(0, 8)).toUpperCase();
 }
 
@@ -106,6 +119,14 @@ function CustomerTicketsScreenInner() {
 
   const unreadTotal = useMemo(() => tickets.filter((t) => t.hasUnreadChat).length, [tickets]);
 
+  // Every ticket here belongs to this one customer, so any of them carries the name. Scan for
+  // the first non-empty one rather than trusting tickets[0]: `customerName` is nullable while
+  // the staff read model catches up, and one stale row must not blank out the header.
+  const customerName = useMemo(
+    () => tickets.find((t) => t.customerName?.trim())?.customerName ?? null,
+    [tickets],
+  );
+
   const color = avatarColor(customerId ?? '');
 
   return (
@@ -114,10 +135,14 @@ function CustomerTicketsScreenInner() {
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
         <BackButton />
         <View style={[styles.hAvatar, { backgroundColor: color }]}>
-          <Text style={styles.hAvatarText}>{avatarInitials(customerId ?? '')}</Text>
+          <Text style={styles.hAvatarText}>
+            {avatarInitials(customerName, customerId ?? '')}
+          </Text>
         </View>
         <View style={styles.hInfo}>
-          <Text style={styles.hName}>{displayName(customerId ?? '')}</Text>
+          <Text style={styles.hName}>
+            {displayName(customerName, customerId ?? '')}
+          </Text>
           <Text style={styles.hSub}>
             {isLoading ? '…' : `${tickets.length} ticket`}
           </Text>

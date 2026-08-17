@@ -210,6 +210,16 @@ export interface TicketDTO {
   origin: TicketOriginEnum;
   reopenCount: number;
   isIncident: boolean;
+  /**
+   * Environmental incident (smoke, gas leak, flooding) this ticket was auto-created from.
+   * Null on every other ticket.
+   *
+   * Its presence is what marks a ticket as *site-level*: the fault is in the cabinet, not in one
+   * battery, so `batteryAssetId` is empty by design. Without it the UI cannot tell "no battery
+   * attached" apart from "battery still loading", and shows a battery card reading
+   * "No device linked" — which looks like broken data instead of a field that does not apply.
+   */
+  environmentalIncidentId?: string | null;
   scheduledStartAtUtc: string | null;
   scheduleVersion: number;
   pendingContext: PendingContextEnum | null;
