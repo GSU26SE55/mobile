@@ -86,40 +86,11 @@ export default function StaffProfileScreen() {
         <Text style={styles.name}>{profile.fullName}</Text>
         <Text style={styles.code}>{profile.employeeCode}</Text>
         <View style={[styles.tierBadge, profile.isAvailable ? styles.tierAvailable : styles.tierUnavailable]}>
-          <View style={[styles.availDot, { backgroundColor: profile.isAvailable ? Colors.success : Colors.textFaint }]} />
           <Text style={styles.tierText}>
             {profile.skillTier ? `${TIER_LABEL[profile.skillTier]} · ` : ''}
             {profile.isAvailable ? 'Available' : 'Busy'}
           </Text>
         </View>
-      </View>
-
-      {/* In progress / Available slots only shown when BE provides a real currentTicketCount (avoid showing a fake 0). */}
-      <View style={[styles.statsCard, Shadow]}>
-        {profile.currentTicketCount != null && (
-          <>
-            <View style={styles.statItem}>
-              <Text style={styles.statNum}>{profile.currentTicketCount}</Text>
-              <Text style={styles.statLabel}>In progress</Text>
-            </View>
-            <View style={styles.statDivider} />
-          </>
-        )}
-        <View style={styles.statItem}>
-          <Text style={styles.statNum}>{profile.maxConcurrentTickets}</Text>
-          <Text style={styles.statLabel}>Max</Text>
-        </View>
-        {profile.currentTicketCount != null && (
-          <>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={[styles.statNum, { color: Colors.primary }]}>
-                {profile.maxConcurrentTickets - profile.currentTicketCount}
-              </Text>
-              <Text style={styles.statLabel}>Available</Text>
-            </View>
-          </>
-        )}
       </View>
 
       <View style={[styles.infoCard, Shadow]}>
@@ -207,18 +178,7 @@ const styles = StyleSheet.create({
   },
   tierAvailable: { backgroundColor: Colors.successLight },
   tierUnavailable: { backgroundColor: Solar.yellowSoft },
-  availDot: { width: 7, height: 7, borderRadius: 4 },
   tierText: { fontSize: 12, fontWeight: '700', color: Solar.ink },
-
-  statsCard: {
-    backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18,
-    flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1, borderColor: 'rgba(235,230,215,0.7)',
-  },
-  statItem: { flex: 1, alignItems: 'center', gap: 2 },
-  statNum: { fontSize: 22, fontWeight: '900', color: Solar.ink },
-  statLabel: { fontSize: 11, fontWeight: '600', color: Solar.mute },
-  statDivider: { width: 1, height: 30, backgroundColor: 'rgba(235,230,215,0.7)' },
 
   infoCard: {
     backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, gap: 16,

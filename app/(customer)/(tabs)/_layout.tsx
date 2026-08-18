@@ -1,10 +1,8 @@
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useChatUnreadCount } from '@/src/features/tickets/hooks/useChatInbox';
-import { Colors } from '@/src/lib/theme';
 
 const ACCENT = '#FFD500';
 const INK = '#1C1C1E';
@@ -22,8 +20,6 @@ const tabMeta: Record<string, {
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 8);
-  // Customer chat với Staff nằm trong tab Tickets, nên badge chưa đọc gắn vào tab đó.
-  const { data: unreadChats = 0 } = useChatUnreadCount();
 
   return (
     <View style={[styles.tabBar, { paddingBottom: bottomInset, height: 60 + bottomInset }]}>
@@ -56,11 +52,6 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                 size={26}
                 color={focused ? INK : MUTED}
               />
-              {route.name === 'tickets' && unreadChats > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{unreadChats > 99 ? '99+' : unreadChats}</Text>
-                </View>
-              )}
             </View>
           </Pressable>
         );
@@ -118,18 +109,4 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
   },
   pressed: { opacity: 0.75, transform: [{ scale: 0.96 }] },
-  // Cùng kiểu badge với chuông thông báo ở HomeHeader để 2 chỗ đọc như một hệ thống.
-  badge: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    minWidth: 15,
-    height: 15,
-    paddingHorizontal: 3,
-    borderRadius: 7.5,
-    backgroundColor: Colors.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: { color: '#FFFFFF', fontSize: 8, fontWeight: '800', lineHeight: 11 },
 });

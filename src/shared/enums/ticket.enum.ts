@@ -70,6 +70,8 @@ export const MaintenanceLogTypeEnum = {
   OnSite: 'OnSite',
   PartReplacement: 'PartReplacement',
   Inspection: 'Inspection',
+  // Log auto-created when Staff completes a ticket — distinct from logs written mid-work.
+  Completion: 'Completion',
 } as const;
 export type MaintenanceLogTypeEnum = (typeof MaintenanceLogTypeEnum)[keyof typeof MaintenanceLogTypeEnum];
 

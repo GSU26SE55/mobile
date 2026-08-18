@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Colors } from '@/src/lib/theme';
 import { BottomSheet } from '@/src/shared/components/BottomSheet';
 import { PauseReasonEnum } from '@/src/features/tickets/types/ticket.types';
@@ -30,17 +30,34 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
   // Chọn ngày rồi tới giờ. Trên Android picker là native dialog — render vô điều kiện thì khi
   // sheet đóng lúc dialog còn mở, thư viện gọi dismiss() trên mode đã unmount và crash.
   const [pickerStage, setPickerStage] = useState<'idle' | 'date' | 'time'>('idle');
+  // iOS renders the picker inline (spinner) with no confirm event of its own — onChange fires
+  // continuously while scrolling, not once when "done". Buffer the value here and only commit
+  // it (advance stage / close) when the user taps Done, so a mid-scroll value never sticks.
+  const [pendingValue, setPendingValue] = useState<Date | null>(null);
 
   const onAppointmentChange = (event: DateTimePickerEvent, selected?: Date) => {
-    if (event.type === 'dismissed' || !selected) {
+    if (event.type === 'dismissed') {
       setPickerStage('idle');
+      setPendingValue(null);
       return;
     }
+    if (!selected) return;
+    if (Platform.OS === 'ios') {
+      // Buffer only — committed by the Done button below.
+      setPendingValue(selected);
+      return;
+    }
+    // Android native dialog: onChange fires once with the confirmed value.
+    commitAppointmentStage(selected);
+  };
+
+  const commitAppointmentStage = (selected: Date) => {
     if (pickerStage === 'date') {
       const next = new Date(selected);
       next.setHours(appointment.getHours(), appointment.getMinutes(), 0, 0);
       setAppointment(next);
       setPickerStage('time');
+      setPendingValue(null);
       return;
     }
     // pickerStage === 'time'
@@ -48,6 +65,11 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
     next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
     setAppointment(next);
     setPickerStage('idle');
+    setPendingValue(null);
+  };
+
+  const handlePickerDone = () => {
+    commitAppointmentStage(pendingValue ?? appointment);
   };
 
   const handleSubmit = async () => {
@@ -71,6 +93,7 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
 
   const handleClose = () => {
     setPickerStage('idle');
+    setPendingValue(null);
     setSelected(null);
     setNote('');
     setReasonError('');
@@ -118,7 +141,7 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
             New appointment: {formatLocalSchedule(appointment.toISOString())}
           </Text>
         </Pressable>
-        {pickerStage !== 'idle' && (
+        {pickerStage !== 'idle' && Platform.OS === 'android' && (
           <DateTimePicker
             value={appointment}
             mode={pickerStage}
@@ -126,6 +149,33 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
             minimumDate={pickerStage === 'date' ? new Date(Date.now() + 60_000) : undefined}
             onChange={onAppointmentChange}
           />
+        )}
+        {pickerStage !== 'idle' && Platform.OS === 'ios' && (
+          <Modal transparent animationType="fade" onRequestClose={handleClose}>
+            <View style={styles.pickerOverlay}>
+              <View style={styles.pickerSheet}>
+                <View style={styles.pickerHeader}>
+                  <Pressable onPress={() => { setPickerStage('idle'); setPendingValue(null); }}>
+                    <Text style={styles.pickerCancel}>Cancel</Text>
+                  </Pressable>
+                  <Pressable onPress={handlePickerDone}>
+                    <Text style={styles.pickerDone}>Done</Text>
+                  </Pressable>
+                </View>
+                <DateTimePicker
+                  // Uncontrolled while open: re-passing `value` on every onChange (spinner mode)
+                  // snaps the wheel back to that value mid-scroll, making it look "stuck". Only
+                  // read the buffered pendingValue back in when Done/Cancel commits the stage.
+                  value={appointment}
+                  mode={pickerStage}
+                  is24Hour
+                  display="spinner"
+                  minimumDate={pickerStage === 'date' ? new Date(Date.now() + 60_000) : undefined}
+                  onChange={onAppointmentChange}
+                />
+              </View>
+            </View>
+          </Modal>
         )}
 
         <View style={styles.actions}>
@@ -150,6 +200,36 @@ export function HoldModal({ visible, isLoading, onClose, onSubmit }: Props) {
 }
 
 const styles = StyleSheet.create({
+  pickerOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  pickerSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: 20,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.08)',
+  },
+  pickerCancel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.textMute,
+  },
+  pickerDone: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
   body: { gap: 16 },
   title: {
     fontSize: 18,

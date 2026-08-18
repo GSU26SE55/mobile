@@ -11,6 +11,7 @@ import {
   ActionSheetIOS,
   Platform,
   Alert,
+  Modal,
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
@@ -213,18 +214,19 @@ export function CreateTicketStepper({
   // Date/time picker cho "Phát hiện lúc nào" — chọn ngày rồi giờ, lưu về format cũ.
   const [pickerStage, setPickerStage] = React.useState<'idle' | 'date' | 'time'>('idle');
   const [pendingDate, setPendingDate] = React.useState<Date | null>(null);
+  // iOS renders the picker inline (spinner) with no confirm event of its own — onChange fires
+  // continuously while scrolling, not once when "done". Buffer the value here and only commit
+  // it (advance stage / close) when the user taps Done, so a mid-scroll value never sticks.
+  const [pendingPickerValue, setPendingPickerValue] = React.useState<Date | null>(null);
 
-  const onDetectedChange = (event: DateTimePickerEvent, selected?: Date) => {
-    if (event.type === 'dismissed' || !selected) {
-      setPickerStage('idle');
-      return;
-    }
+  const commitDetectedStage = (selected: Date) => {
     if (pickerStage === 'date') {
       const base = pendingDate ?? new Date();
       const next = new Date(selected);
       next.setHours(base.getHours(), base.getMinutes(), 0, 0);
       setPendingDate(next);
       setPickerStage('time');
+      setPendingPickerValue(null);
       return;
     }
     // pickerStage === 'time'
@@ -236,6 +238,25 @@ export function CreateTicketStepper({
     // formatDateTime cho ra đúng "dd/MM/yyyy HH:mm" mà parseDetectedInput đọc lại được.
     setDetectedLabel(formatDateTime(clamped));
     setPickerStage('idle');
+    setPendingPickerValue(null);
+  };
+
+  const onDetectedChange = (event: DateTimePickerEvent, selected?: Date) => {
+    if (event.type === 'dismissed') {
+      setPickerStage('idle');
+      setPendingPickerValue(null);
+      return;
+    }
+    if (!selected) return;
+    if (Platform.OS === 'ios') {
+      setPendingPickerValue(selected);
+      return;
+    }
+    commitDetectedStage(selected);
+  };
+
+  const handleDetectedPickerDone = () => {
+    commitDetectedStage(pendingPickerValue ?? pendingDate ?? new Date());
   };
 
   const uploadPickedAssets = async (assets: ImagePicker.ImagePickerAsset[]) => {
@@ -326,7 +347,7 @@ export function CreateTicketStepper({
 
   // Header
   const renderHeader = () => (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: insets.top > 0 ? insets.top - 45 : 0 }]}>
       <Pressable
         onPress={() => {
           if (step > 1) setStep((s) => s - 1);
@@ -531,7 +552,7 @@ export function CreateTicketStepper({
                       </Pressable>
                     )}
                   </View>
-                  {pickerStage !== 'idle' && (
+                  {pickerStage !== 'idle' && Platform.OS === 'android' && (
                     <DateTimePicker
                       value={pendingDate ?? new Date()}
                       mode={pickerStage}
@@ -539,6 +560,33 @@ export function CreateTicketStepper({
                       maximumDate={new Date()}
                       onChange={onDetectedChange}
                     />
+                  )}
+                  {pickerStage !== 'idle' && Platform.OS === 'ios' && (
+                    <Modal transparent animationType="fade" onRequestClose={() => setPickerStage('idle')}>
+                      <View style={styles.pickerOverlay}>
+                        <View style={styles.pickerSheet}>
+                          <View style={styles.pickerHeader}>
+                            <Pressable onPress={() => { setPickerStage('idle'); setPendingPickerValue(null); }}>
+                              <Text style={styles.pickerCancel}>Cancel</Text>
+                            </Pressable>
+                            <Pressable onPress={handleDetectedPickerDone}>
+                              <Text style={styles.pickerDone}>Done</Text>
+                            </Pressable>
+                          </View>
+                          <DateTimePicker
+                            // Uncontrolled while open: re-passing `value` on every onChange
+                            // (spinner mode) snaps the wheel back mid-scroll, making it look
+                            // "stuck". Only read pendingPickerValue back in on Done commit.
+                            value={pendingDate ?? new Date()}
+                            mode={pickerStage}
+                            is24Hour
+                            display="spinner"
+                            maximumDate={new Date()}
+                            onChange={onDetectedChange}
+                          />
+                        </View>
+                      </View>
+                    </Modal>
                   )}
                 </>
               );
@@ -729,6 +777,36 @@ export function CreateTicketStepper({
 }
 
 const styles = StyleSheet.create({
+  pickerOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  pickerSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: 20,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.08)',
+  },
+  pickerCancel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.textMute,
+  },
+  pickerDone: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
   root: { flex: 1, backgroundColor: Colors.bg },
   header: {
     flexDirection: 'row',

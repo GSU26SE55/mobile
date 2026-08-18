@@ -1,9 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { invalidateTicketLifecycle } from '../../tickets/utils/invalidateTicketLifecycle';
 import { staffTicketService } from '../services/staffTicket.service';
-import { handleErrorApi } from '@/src/lib/errors';
 import { ResumePayload } from '../types/staff.types';
 
+// Has a field the BE can reject (Reason) — the component uses mutateAsync + try/catch +
+// handleErrorApi({ error, setFieldError }) so an EntityError maps to the right field.
 export function useResumeTicket(ticketId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -11,6 +12,5 @@ export function useResumeTicket(ticketId: string) {
     onSuccess: () => {
       invalidateTicketLifecycle(queryClient, ticketId);
     },
-    onError: (error) => handleErrorApi({ error }),
   });
 }

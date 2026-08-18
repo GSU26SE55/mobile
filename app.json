@@ -62,12 +62,20 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-background-task",
+      "expo-notifications",
       "./plugins/withAndroidChatBubbles",
       "./plugins/withWindowsCmakeVersion"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ef390898-c9fd-4d10-ab00-ac13cbb9fb8c"
+      }
+    },
+    "owner": "shu1237"
   }
 }
