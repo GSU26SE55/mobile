@@ -139,6 +139,7 @@ export const ActivityActionEnum = {
   ResolvedByEscalatedStaff: 'ResolvedByEscalatedStaff',
   TriageApproved: 'TriageApproved',
   Closed: 'Closed',
+  PeriodicMaintenanceScheduleChanged: 'PeriodicMaintenanceScheduleChanged',
 } as const;
 export type ActivityActionEnum = (typeof ActivityActionEnum)[keyof typeof ActivityActionEnum];
 

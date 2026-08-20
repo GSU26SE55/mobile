@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate } from '@/src/lib/date';
 import { Colors } from '@/src/lib/theme';
@@ -385,8 +385,13 @@ export function CommentThread({
   // onContentSizeChange fire (new message, image finished loading…) would yank the user back
   // up to the old marker.
   const jumpedToUnreadRef = useRef(false);
+  const isInitialMountRef = useRef(true);
+  const prevLatestItemKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
     jumpedToUnreadRef.current = false;
+    isInitialMountRef.current = true;
+    prevLatestItemKeyRef.current = null;
   }, [tab]);
 
   const scrollToBottom = (animated: boolean) => {
@@ -403,6 +408,45 @@ export function CommentThread({
 
     listRef.current?.scrollToEnd({ animated });
   };
+
+  const handleInitialScroll = () => {
+    if (isFetchingNextPage) return;
+    if (isInitialMountRef.current && items.length > 0) {
+      scrollToBottom(false);
+      isInitialMountRef.current = false;
+    }
+  };
+
+  // Smooth auto-scroll down when a new message or pending message is added.
+  const latestItemKey = items.length > 0 ? items[items.length - 1].key : null;
+  useEffect(() => {
+    if (!latestItemKey) return;
+    if (prevLatestItemKeyRef.current === null) {
+      prevLatestItemKeyRef.current = latestItemKey;
+      return;
+    }
+    if (prevLatestItemKeyRef.current !== latestItemKey) {
+      prevLatestItemKeyRef.current = latestItemKey;
+      const frame = requestAnimationFrame(() => {
+        listRef.current?.scrollToEnd({ animated: true });
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [latestItemKey]);
+
+  // Auto-scroll to keep the latest message visible when keyboard opens.
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      listRef.current?.scrollToEnd({ animated: true });
+    });
+    const willShowSub = Keyboard.addListener('keyboardWillShow', () => {
+      listRef.current?.scrollToEnd({ animated: true });
+    });
+    return () => {
+      showSub.remove();
+      willShowSub.remove();
+    };
+  }, []);
 
   // AI suggestion generation done (bubble appears at the end of the chat) → scroll down so
   // the user sees it right away. Ensures this happens even if onContentSizeChange doesn't fire in time.
@@ -524,10 +568,11 @@ export function CommentThread({
           style={styles.list}
           data={items}
           keyExtractor={(item) => item.key}
-          onContentSizeChange={() => scrollToBottom(false)}
-          // Reaching the bottom means the new messages have been seen, so the "New messages"
-          // line has done its job and is cleared. The unread line above is NOT touched — it
-          // stays pinned for the session so the user keeps their place in the backlog.
+          onContentSizeChange={handleInitialScroll}
+          onLayout={handleInitialScroll}
+          removeClippedSubviews={false}
+          windowSize={11}
+          keyboardDismissMode="on-drag"
           onScroll={({ nativeEvent: e }) => {
             if (!newAfterId) return;
             const atBottom =
@@ -539,7 +584,6 @@ export function CommentThread({
             setNewAfterId(null);
           }}
           scrollEventThrottle={16}
-          keyboardDismissMode="on-drag"
           // No getItemLayout (bubbles have varying heights) so scrollToIndex can drift when
           // the target item hasn't rendered yet — scroll approximately then retry the exact index.
           onScrollToIndexFailed={(info) => {

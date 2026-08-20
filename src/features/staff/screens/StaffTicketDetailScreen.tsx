@@ -11,7 +11,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -145,6 +146,25 @@ export function StaffTicketDetailScreen() {
 
 function StaffTicketDetailScreenInner() {
   const insets = useSafeAreaInsets();
+  const { height: keyboardHeightSV, progress: keyboardProgressSV } = useReanimatedKeyboardAnimation();
+
+  const chatContainerAnimatedStyle = useAnimatedStyle(() => ({
+    paddingBottom: Math.abs(keyboardHeightSV.value),
+  }));
+
+  const composerAnimatedStyle = useAnimatedStyle(() => {
+    const closedPadding = insets.bottom > 0 ? insets.bottom + 4 : 8;
+    const openPadding = 8;
+    const currentPadding = interpolate(
+      keyboardProgressSV.value,
+      [0, 1],
+      [closedPadding, openPadding],
+    );
+    return {
+      paddingBottom: currentPadding,
+    };
+  });
+
   const { id, tab, jumpToUnread } = useLocalSearchParams<{ id: string; tab?: string; jumpToUnread?: string }>();
   const ticketId = id ?? '';
   const accountId = useSessionStore((s) => s.user?.accountId);
@@ -363,15 +383,7 @@ function StaffTicketDetailScreenInner() {
   const pColor = ticket.priority ? (PRIORITY_COLORS[ticket.priority] ?? PRIORITY_COLORS.P3Normal) : PRIORITY_COLORS.P3Normal;
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      // KeyboardAvoidingView from react-native-keyboard-controller, NOT RN's built-in one.
-      // The app runs edge-to-edge (android.edgeToEdgeEnabled), so Android doesn't resize the
-      // window for the keyboard; RN's version has to guess the offset → the composer jumps
-      // up/down out of sync. This one reads the keyboard's real height and animation
-      // progress, so one behavior works on both platforms with no manual offset.
-      behavior="padding"
-    >
+    <View style={styles.root}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
         <BackButton />
@@ -385,7 +397,7 @@ function StaffTicketDetailScreenInner() {
       </View>
 
       {activeTab === 'comments' ? (
-        <View style={styles.chatScreen}>
+        <Animated.View style={[styles.chatScreen, chatContainerAnimatedStyle]}>
           <View style={styles.chatTabRowWrap}>
             <TabsRow activeTab={activeTab} onChange={setActiveTab} unreadCount={unreadCount} />
           </View>
@@ -482,15 +494,10 @@ function StaffTicketDetailScreenInner() {
           {/* Hide composer on public tab for Supporter / PreviousAssignee — view only on public.
               canComment gates on ticket status (InProgress/Pending) — matches web. */}
           {!chatLocked && canComment && (chatTab === 'internal' || canPostPublic) && (
-            <View
+            <Animated.View
               style={[
                 styles.composer,
-                // Static padding. It used to toggle on keyboardVisible, but that hook listens
-                // to keyboardDidShow/Hide (Android) — it fires AFTER the keyboard finishes
-                // animating, adding a second beat out of sync with KAV → the input rises then
-                // drops. keyboard-controller's KAV already subtracts the safe area while the
-                // keyboard is open, so a fixed home-indicator padding is all that's needed.
-                { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 12 }
+                composerAnimatedStyle,
               ]}
             >
               <AttachmentPreviewStrip
@@ -537,9 +544,9 @@ function StaffTicketDetailScreenInner() {
                   <Ionicons name="send" size={18} color={Colors.text} />
                 </Pressable>
               </View>
-            </View>
+            </Animated.View>
           )}
-        </View>
+        </Animated.View>
       ) : (
       <>
       <View style={styles.chatTabRowWrap}>
@@ -848,7 +855,7 @@ function StaffTicketDetailScreenInner() {
           </View>
         </Modal>
       )}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
