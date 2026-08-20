@@ -58,6 +58,11 @@ const ACTIVITY_META: Record<string, ActivityMeta> = {
   AutoClosed:               { label: 'Automatically closed',       tone: 'muted', icon: 'lock-closed-outline' },
   ResolvedByEscalatedStaff: { label: 'Completed after escalation',   tone: 'ok',    icon: 'checkmark-circle-outline' },
   Closed:                   { label: 'Ticket closed',               tone: 'muted', icon: 'lock-closed-outline' },
+  PeriodicMaintenanceScheduleChanged: {
+    label: 'Maintenance schedule changed',
+    tone: 'info',
+    icon: 'calendar-outline',
+  },
 };
 
 const FALLBACK: ActivityMeta = { label: 'Activity', tone: 'muted', icon: 'ellipse-outline' };

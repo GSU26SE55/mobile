@@ -137,6 +137,8 @@ export const ENDPOINTS = {
     ACTIVITIES:      (id: string) => `/api/tickets/${id}/activities`, // GH-44 — timeline
     REOPEN:          (id: string) => `/api/customer/tickets/${id}/reopen`,
     RATE:            (id: string) => `/api/customer/tickets/${id}/rate`,
+    PERIODIC_MAINTENANCE_SCHEDULE: (id: string) =>
+      `/api/customer/tickets/${id}/periodic-maintenance/schedule`,
   },
   // GH-68 — cross-ticket chat (any role)
   CHATS: {

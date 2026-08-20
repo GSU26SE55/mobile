@@ -45,6 +45,8 @@ export const NotificationTypeEnum = {
   IotDeviceAutoDecommissioned: 37,
   TicketWorkStarted: 38,
   TicketScheduleChanged: 39,
+  PeriodicMaintenanceReminder: 40,
+  PeriodicMaintenanceScheduleChanged: 41,
   System: 99,
 } as const;
 export type NotificationTypeEnum = (typeof NotificationTypeEnum)[keyof typeof NotificationTypeEnum];

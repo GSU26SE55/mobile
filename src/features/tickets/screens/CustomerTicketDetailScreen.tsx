@@ -12,7 +12,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -170,6 +171,25 @@ export function CustomerTicketDetailScreen() {
 
 function TicketDetailScreenInner() {
   const insets = useSafeAreaInsets();
+  const { height: keyboardHeightSV, progress: keyboardProgressSV } = useReanimatedKeyboardAnimation();
+
+  const chatContainerAnimatedStyle = useAnimatedStyle(() => ({
+    paddingBottom: Math.abs(keyboardHeightSV.value),
+  }));
+
+  const composerAnimatedStyle = useAnimatedStyle(() => {
+    const closedPadding = insets.bottom > 0 ? insets.bottom + 4 : 10;
+    const openPadding = 10;
+    const currentPadding = interpolate(
+      keyboardProgressSV.value,
+      [0, 1],
+      [closedPadding, openPadding],
+    );
+    return {
+      paddingBottom: currentPadding,
+    };
+  });
+
   const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const { data: ticket, isLoading, isError, refetch } = useTicketDetail(id ?? '');
   const imageHeaders = useAuthImageHeaders();
@@ -417,15 +437,7 @@ function TicketDetailScreenInner() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      // KeyboardAvoidingView của react-native-keyboard-controller, KHÔNG phải bản của RN.
-      // App chạy edge-to-edge (android.edgeToEdgeEnabled) nên Android không resize window
-      // theo bàn phím; bản RN phải tự đoán offset → composer nhảy lên/xuống lệch nhịp.
-      // Bản này đọc chiều cao + tiến trình animation thật của bàn phím nên chạy đúng ở cả
-      // 2 nền tảng với cùng một behavior, không cần Platform.select hay offset bù tay.
-      behavior="padding"
-    >
+    <View style={styles.root}>
       {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <BackButton />
@@ -662,7 +674,7 @@ function TicketDetailScreenInner() {
 
       {/* Chat tab — messenger style, FlatList inverted: mới nhất neo xuống đáy */}
       {activeTab === 'chat' && (
-        <View style={styles.chatContainer}>
+        <Animated.View style={[styles.chatContainer, chatContainerAnimatedStyle]}>
           {selectMode && (
             <ChatSelectionHeader count={selectedChatIds.size} onCancel={exitSelectMode} />
           )}
@@ -777,15 +789,10 @@ function TicketDetailScreenInner() {
           <TypingIndicator names={typingUsers.map((u) => u.displayName)} />
 
           {/* Composer bar */}
-          <View
+          <Animated.View
             style={[
               styles.composer,
-              // Padding tĩnh. Trước đây nó đổi theo keyboardVisible, mà hook đó nghe
-              // keyboardDidShow/Hide (Android) — chạy SAU khi bàn phím animate xong, tạo
-              // nhịp thứ 2 lệch pha với KAV → ô nhập lên rồi tụt xuống. KAV của
-              // keyboard-controller đã trừ safe-area đúng lúc bàn phím mở nên chỉ cần giữ
-              // padding cố định cho vùng home indicator.
-              { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 12 }
+              composerAnimatedStyle,
             ]}
           >
             <Pressable style={styles.composerIcon} onPress={handlePickAttachment} disabled={isUploading}>
@@ -818,10 +825,10 @@ function TicketDetailScreenInner() {
             >
               <Ionicons name="send" size={18} color="#fff" />
             </Pressable>
-          </View>
+          </Animated.View>
             </>
           )}
-        </View>
+        </Animated.View>
       )}
 
       <VoiceRecordingModal
@@ -858,7 +865,7 @@ function TicketDetailScreenInner() {
           </View>
         </Modal>
       )}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

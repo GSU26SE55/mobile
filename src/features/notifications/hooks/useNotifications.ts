@@ -69,6 +69,10 @@ export function useMarkNotificationRead() {
   return useMutation({
     mutationFn: (id: string) => notificationService.markRead(id),
     onSuccess: () => {
+      queryClient.setQueryData<number>(
+        QUERY_KEY.notifications.unreadCount(),
+        (old = 0) => Math.max(0, old - 1),
+      );
       queryClient.invalidateQueries({ queryKey: KEY.notifications });
     },
     onError: (error) => handleErrorApi({ error }),
@@ -86,6 +90,10 @@ export function useMarkNotificationOpened() {
   return useMutation({
     mutationFn: (id: string) => notificationService.markOpened(id),
     onSuccess: () => {
+      queryClient.setQueryData<number>(
+        QUERY_KEY.notifications.unreadCount(),
+        (old = 0) => Math.max(0, old - 1),
+      );
       queryClient.invalidateQueries({ queryKey: KEY.notifications });
     },
     onError: () => {
@@ -99,6 +107,7 @@ export function useMarkAllRead() {
   return useMutation({
     mutationFn: () => notificationService.markAllRead(),
     onSuccess: () => {
+      queryClient.setQueryData(QUERY_KEY.notifications.unreadCount(), 0);
       queryClient.invalidateQueries({ queryKey: KEY.notifications });
     },
     onError: (error) => handleErrorApi({ error }),
