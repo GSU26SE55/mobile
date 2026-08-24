@@ -222,6 +222,16 @@ export interface TicketDTO {
   environmentalIncidentId?: string | null;
   scheduledStartAtUtc: string | null;
   scheduleVersion: number;
+  /** Source ticket of a generated six-month maintenance cycle; null on ordinary tickets. */
+  periodicMaintenanceSourceTicketId: string | null;
+  /** Planned maintenance due instant supplied by TicketService (UTC ISO timestamp). */
+  periodicMaintenanceDueAtUtc: string | null;
+  /** Last instant at which the owning Customer may select a visit schedule. */
+  periodicMaintenanceScheduleDeadlineAtUtc: string | null;
+  /** Server-computed discriminator; avoids inferring periodic tickets from title/origin. */
+  isPeriodicMaintenance: boolean;
+  /** Server-computed overdue state at response time. */
+  isPeriodicMaintenanceOverdue: boolean;
   pendingContext: PendingContextEnum | null;
   pendingReason: PauseReasonEnum | null;
   activeIncidentEpisodeId: string | null;
@@ -380,6 +390,11 @@ export interface RatePayload {
 
 export interface ReopenPayload {
   reopenReason: string;
+}
+
+export interface SchedulePeriodicMaintenancePayload {
+  /** Offset-aware ISO timestamp. Date#toISOString produces the accepted UTC `Z` form. */
+  scheduledStartAt: string;
 }
 
 export interface TicketListParams {

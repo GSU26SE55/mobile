@@ -20,12 +20,11 @@ import { useScrollToTop } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { useProfile } from '@/src/features/profile/hooks/useProfile';
 import { useMyBatteryAssets } from '@/src/features/batteries/hooks/useMyBatteryAssets';
-import { useMyAlerts } from '@/src/features/batteries/hooks/useMyAlerts';
+import { useUnreadCount } from '@/src/features/notifications/hooks/useNotifications';
 import { useBatteryFleetStream } from '@/src/features/batteries/hooks/useBatteryFleetStream';
 import { buildFleetScope } from '@/src/features/batteries/utils/buildFleetScope';
 import { useMySites } from '@/src/features/sites/hooks/useMySites';
 import { useAmbientLatest } from '@/src/features/ambient/hooks/useAmbientLatest';
-import { AlertStatusEnum } from '@/src/shared/enums/alert.enum';
 import { LiveReadingDto } from '@/src/features/batteries/types/live-reading.types';
 import { useSessionStore } from '@/src/stores/sessionStore';
 import { formatDate } from '@/src/lib/date';
@@ -105,7 +104,7 @@ export default function DashboardScreen() {
   useScrollToTop(scrollRef);
   const { isLoading: profileLoading } = useProfile();
   const { data: batteries = [], isLoading: batteriesLoading } = useMyBatteryAssets();
-  const { data: alerts = [] } = useMyAlerts();
+  const { data: unreadCount = 0 } = useUnreadCount();
   const { data: sites = [] } = useMySites();
   const [waveWidth, setWaveWidth] = useState(0);
   const [activeTab, setActiveTab] = useState<'volt' | 'curr' | 'temp'>('volt');
@@ -119,8 +118,6 @@ export default function DashboardScreen() {
     [user],
   );
   const { liveByAsset } = useBatteryFleetStream(fleetScope);
-
-  const openAlertsCount = alerts.filter((alert) => alert.status === AlertStatusEnum.Open).length;
   const liveReadings = batteries
     .map((battery) => liveByAsset.get(battery.id))
     .filter((reading): reading is LiveReadingDto => !!reading);
@@ -222,10 +219,10 @@ export default function DashboardScreen() {
             hitSlop={10}
           >
             <Ionicons name="notifications-outline" size={20} color={Solar.ink} />
-            {openAlertsCount > 0 ? (
+            {unreadCount > 0 ? (
               <View style={styles.notificationBadge}>
                 <Text style={styles.notificationCount}>
-                  {openAlertsCount > 9 ? '9+' : openAlertsCount}
+                  {unreadCount > 99 ? '99+' : unreadCount}
                 </Text>
               </View>
             ) : null}

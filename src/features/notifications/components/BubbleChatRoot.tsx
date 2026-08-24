@@ -16,7 +16,8 @@ import {
   View,
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { KeyboardAvoidingView, KeyboardProvider } from 'react-native-keyboard-controller';
+import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
+import { KeyboardProvider, useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthProvider, useAuthContext } from '../../../context/authContext';
 import { P, checkPermission } from '../../../lib/authz';
@@ -133,6 +134,25 @@ const PRIORITY_LABEL: Record<string, string> = {
 
 function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLaunchProps) {
   const insets = useSafeAreaInsets();
+  const { height: keyboardHeightSV, progress: keyboardProgressSV } = useReanimatedKeyboardAnimation();
+
+  const chatContainerAnimatedStyle = useAnimatedStyle(() => ({
+    paddingBottom: Math.abs(keyboardHeightSV.value),
+  }));
+
+  const composerAnimatedStyle = useAnimatedStyle(() => {
+    const closedPadding = insets.bottom > 0 ? insets.bottom + 4 : 10;
+    const openPadding = 10;
+    const currentPadding = interpolate(
+      keyboardProgressSV.value,
+      [0, 1],
+      [closedPadding, openPadding],
+    );
+    return {
+      paddingBottom: currentPadding,
+    };
+  });
+
   const { isHydrating } = useAuthContext();
   const user = useSessionStore((state) => state.user);
   const accountId = user?.accountId;
@@ -445,15 +465,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
   const operatorSendDisabled = customerSendDisabled || operatorUploading || voiceRecorder.isRecording;
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      // KeyboardAvoidingView from react-native-keyboard-controller, NOT RN's built-in one.
-      // The app runs edge-to-edge (android.edgeToEdgeEnabled), so Android doesn't resize the
-      // window for the keyboard; RN's version has to guess the offset → the composer jumps
-      // up/down out of sync. This one reads the keyboard's real height and animation
-      // progress, so one behavior works on both platforms with no manual offset.
-      behavior="padding"
-    >
+    <View style={styles.root}>
       {/* Top Messenger Single-Row Compact Header Bar */}
       <View style={[styles.headerCompact, { paddingTop: Math.max(insets.top, 8) }]}>
         {/* Back Arrow -> Goes back to Ticket List */}
@@ -522,7 +534,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
 
       {/* CHAT MODE (Full height clean chat thread) */}
       {viewMode === 'chat' && (
-        <View style={{ flex: 1 }}>
+        <Animated.View style={[{ flex: 1 }, chatContainerAnimatedStyle]}>
           <CommentThread
             comments={comments}
             currentUserId={accountId}
@@ -615,7 +627,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
 
           {/* Composer */}
           {chatLocked ? null : isOperator ? (
-            <View style={styles.operatorComposer}>
+            <Animated.View style={[styles.operatorComposer, composerAnimatedStyle]}>
               <AttachmentPreviewStrip
                 items={attachments}
                 imageHeaders={imageHeaders}
@@ -670,9 +682,9 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                   <Ionicons name="send" size={18} color="#FFF" />
                 </Pressable>
               </View>
-            </View>
+            </Animated.View>
           ) : (
-            <View style={styles.composer}>
+            <Animated.View style={[styles.composer, composerAnimatedStyle]}>
               <Pressable
                 style={styles.composerIcon}
                 onPress={handleCustomerPickAttachment}
@@ -714,9 +726,9 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
               >
                 <Ionicons name="send" size={18} color="#FFF" />
               </Pressable>
-            </View>
+            </Animated.View>
           )}
-        </View>
+        </Animated.View>
       )}
 
       {/* DETAILS MODE (Contains complete Ticket Information, Timeline, Logs, KB articles) */}
@@ -1078,7 +1090,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
           reopenTicket.mutate(data, { onSuccess: () => setShowReopenModal(false) })
         }
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -1089,7 +1101,7 @@ export default function BubbleChatRoot(props: BubbleLaunchProps) {
         {/* Its own KeyboardProvider: the bubble is a SEPARATE React root (own
             GestureHandlerRootView/SafeAreaProvider), so it does not inherit the one in
             app/_layout.tsx. Without it the KeyboardAvoidingView below has no keyboard data. */}
-        <KeyboardProvider>
+        <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
           <QueryClientProvider client={queryClient}>
             <AuthProvider>
               <BubbleChat {...props} />

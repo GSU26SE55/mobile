@@ -50,6 +50,8 @@ const ICON_MAP: Partial<Record<NotificationTypeEnum, IconSpec>> = {
   [NotificationTypeEnum.IotDeviceAutoDecommissioned]:    { name: 'close-circle-outline',       color: Colors.danger },
   [NotificationTypeEnum.TicketWorkStarted]:              { name: 'construct-outline',          color: Colors.stProgress },
   [NotificationTypeEnum.TicketScheduleChanged]:          { name: 'calendar-outline',           color: Colors.warning },
+  [NotificationTypeEnum.PeriodicMaintenanceReminder]:    { name: 'calendar-number-outline',    color: Colors.warning },
+  [NotificationTypeEnum.PeriodicMaintenanceScheduleChanged]: { name: 'calendar-outline',       color: Colors.success },
   [NotificationTypeEnum.System]:                        { name: 'information-circle-outline', color: Colors.info },
 };
 

@@ -184,13 +184,8 @@ function BatteryDetailScreenInner() {
                   </Text>
                   <Text style={styles.valUnit}>%</Text>
                 </View>
-                <Text style={styles.perfCaption}>Battery health (SOH)</Text>
+                <Text style={styles.perfCaption}>Max capacity</Text>
               </View>
-            </View>
-            <View style={styles.perfPill}>
-              <Text style={styles.perfPillText}>
-                {cycleCount != null ? `${cycleCount} cycles` : '— cycles'}
-              </Text>
             </View>
           </View>
 
@@ -232,10 +227,10 @@ function BatteryDetailScreenInner() {
             warm={true}
           />
           <MetricCard
-            label="SOH"
-            valNumber={soh != null ? String(Math.round(soh)) : '—'}
-            valUnit="%"
-            caption="Cell health"
+            label="Cycles"
+            valNumber={cycleCount != null ? String(cycleCount) : '—'}
+            valUnit=""
+            caption="Charge cycles"
             warm={true}
           />
         </View>
