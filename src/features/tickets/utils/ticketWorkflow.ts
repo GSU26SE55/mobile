@@ -1,4 +1,5 @@
-import type { TicketDetailDTO, TicketDTO, TicketPriorityEnum, TicketStatusEnum } from '../types/ticket.types';
+import { ActivityActionEnum } from '../types/ticket.types';
+import type { TicketActivityDTO, TicketDetailDTO, TicketDTO, TicketPriorityEnum, TicketStatusEnum } from '../types/ticket.types';
 
 export const ACTIVE_TICKET_STATUSES: readonly TicketStatusEnum[] =
   ['Open', 'Pending', 'InProgress', 'Request', 'ReAssign', 'Completed'];
@@ -22,6 +23,24 @@ export const CHAT_LOCKED_TICKET_STATUSES: readonly TicketStatusEnum[] =
 
 export function isTicketChatLocked(status: TicketStatusEnum) {
   return CHAT_LOCKED_TICKET_STATUSES.includes(status);
+}
+
+/**
+ * Mốc bắt đầu lượt xử lý HIỆN TẠI — lần chuyển sang InProgress gần nhất, nên nó
+ * reset sau mỗi Hold → Resume ("ticket này đang xử lý bao lâu rồi", không phải tổng
+ * cộng dồn). Suy từ activity log đã fetch sẵn, không tốn thêm API.
+ *
+ * Dùng chung bởi đồng hồ Processing time trên màn chi tiết và ô Duration của log
+ * bảo trì — hai con số đó buộc phải khớp nhau vì cùng một mốc.
+ */
+export function inProgressStartedAt(activities: TicketActivityDTO[]): string | null {
+  const entries = activities.filter(
+    a => a.action === ActivityActionEnum.StatusChanged && a.newValue === 'InProgress',
+  );
+  if (entries.length === 0) return null;
+  return entries.reduce((latest, a) =>
+    new Date(a.createdAt) > new Date(latest.createdAt) ? a : latest,
+  ).createdAt;
 }
 
 export function isPrimaryHandler(ticket: Pick<TicketDTO, 'assignments'>, staffId?: string | null) {

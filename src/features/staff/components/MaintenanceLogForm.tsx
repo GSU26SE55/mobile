@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Colors, Shadow } from '@/src/lib/theme';
 import { AttachmentPicker, UploadedAttachment } from '@/src/features/file-storage/components/AttachmentPicker';
 import { FilePurposeEnum } from '@/src/features/file-storage/enums/file-storage.enum';
 import { MaintenanceLogTypeEnum } from '@/src/shared/enums/ticket.enum';
 import { handleErrorApi } from '@/src/lib/errors';
+import type { TicketActivityDTO } from '@/src/features/tickets/types/ticket.types';
+import { inProgressStartedAt } from '@/src/features/tickets/utils/ticketWorkflow';
+import { formatElapsed } from './ProcessingDurationTimer';
 import type { MaintenanceLogPayload } from '../types/staff.types';
 
 // BE distinguishes 4 types for compliance reporting — don't hardcode one value for every log.
@@ -28,9 +31,23 @@ interface Props {
   // Complete flow: force LogType=Completion and hide the picker — the log's type doesn't
   // depend on what Staff chooses, it's determined by the action that created it.
   fixedLogType?: MaintenanceLogTypeEnum;
+  /**
+   * Activity log của ticket — dùng để lấy mốc InProgress gần nhất, cùng nguồn với
+   * đồng hồ "Processing time" trên màn chi tiết. Có nó thì Duration tự tính, không có
+   * thì rơi về ô nhập tay.
+   */
+  activities?: TicketActivityDTO[];
 }
 
-export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, submitLabel, fixedLogType }: Props) {
+export function MaintenanceLogForm({
+  isLoading,
+  onSubmit,
+  initialValues,
+  title,
+  submitLabel,
+  fixedLogType,
+  activities,
+}: Props) {
   const [logType, setLogType] = useState<MaintenanceLogTypeEnum>(
     fixedLogType ?? initialValues?.logType ?? MaintenanceLogTypeEnum.OnSite,
   );
@@ -39,6 +56,11 @@ export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, 
   const [actionTaken, setActionTaken] = useState(initialValues?.actionsTaken ?? '');
   const [resolutionNote, setResolutionNote] = useState(initialValues?.resolutionNote ?? '');
   const [partsUsed, setPartsUsed] = useState(initialValues?.partsUsed ?? '');
+  const startedAt = useMemo(() => inProgressStartedAt(activities ?? []), [activities]);
+  // Sửa log cũ thì giữ nguyên số đã lưu — nếu auto-tính lại, mở log ra sửa lỗi chính tả
+  // sẽ âm thầm ghi đè thời lượng thành "tính từ lần Resume gần nhất".
+  const isEditing = initialValues?.durationMinutes != null;
+  const autoDuration = !isEditing && !!startedAt;
   const [duration, setDuration] = useState(
     initialValues?.durationMinutes != null ? String(initialValues.durationMinutes) : '',
   );
@@ -49,6 +71,16 @@ export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, 
   const uploading = uploadingBefore || uploadingAfter;
   const [error, setError] = useState('');
 
+  // Đồng hồ chỉ chạy khi đang ở chế độ auto — form sửa log cũ không cần tick.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!autoDuration) return;
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [autoDuration]);
+
+  const elapsedMs = startedAt ? Math.max(0, nowMs - new Date(startedAt).getTime()) : 0;
+
   const handleSubmit = async () => {
     const trimmed = description.trim();
     if (!trimmed) {
@@ -56,10 +88,17 @@ export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, 
       return;
     }
 
-    // BE requires StartedAt (TicketService.MaintenanceLogAddCommand.ValidateAsync) — the form has
-    // no dedicated input for it, so stamp "now" at submit time, matching web's approach.
     const completedAt = new Date();
-    const durationMinutes = duration.trim() ? parseInt(duration, 10) : undefined;
+    // Chốt số phút NGAY LÚC SUBMIT chứ không lấy state đang tick — form có thể mở treo
+    // vài phút trước khi bấm lưu, và đó cũng là thời gian làm việc thật.
+    const autoMinutes = startedAt
+      ? Math.max(0, Math.round((completedAt.getTime() - new Date(startedAt).getTime()) / 60_000))
+      : undefined;
+    const durationMinutes = autoDuration
+      ? autoMinutes
+      : duration.trim()
+        ? parseInt(duration, 10)
+        : undefined;
 
     try {
       await onSubmit({
@@ -70,7 +109,10 @@ export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, 
         resolutionNote: resolutionNote.trim() || undefined,
         partsUsed: partsUsed.trim() || undefined,
         durationMinutes,
-        startedAt: completedAt.toISOString(),
+        // Mốc InProgress thật khi có. Không có (ticket chưa từng vào InProgress) thì
+        // đóng dấu now — BE bắt buộc StartedAt, và bịa một khoảng thời gian giả còn
+        // tệ hơn là ghi nhận khoảng rỗng.
+        startedAt: startedAt ?? completedAt.toISOString(),
         completedAt: completedAt.toISOString(),
         beforePhotos: beforePhotos.length > 0 ? beforePhotos : undefined,
         afterPhotos: afterPhotos.length > 0 ? afterPhotos : undefined,
@@ -186,16 +228,24 @@ export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, 
           />
         </View>
         <View style={[styles.field, { width: 110 }]}>
-          <Text style={styles.label}>Duration (min)</Text>
-          <TextInput
-            style={styles.input}
-            value={duration}
-            onChangeText={setDuration}
-            placeholder="30"
-            placeholderTextColor={Colors.textFaint}
-            keyboardType="numeric"
-            maxLength={4}
-          />
+          <Text style={styles.label}>Duration</Text>
+          {autoDuration ? (
+            // Chạy theo đúng mốc của đồng hồ "Processing time" trên màn chi tiết, chốt
+            // lại thành số phút lúc bấm lưu — staff không phải nhớ rồi gõ tay.
+            <View style={styles.durationAuto}>
+              <Text style={styles.durationValue}>{formatElapsed(elapsedMs)}</Text>
+            </View>
+          ) : (
+            <TextInput
+              style={styles.input}
+              value={duration}
+              onChangeText={setDuration}
+              placeholder="30"
+              placeholderTextColor={Colors.textFaint}
+              keyboardType="numeric"
+              maxLength={4}
+            />
+          )}
         </View>
       </View>
 
@@ -266,6 +316,22 @@ const styles = StyleSheet.create({
   },
   inputLarge: {
     minHeight: 80,
+  },
+  // Cùng khuôn với `input` để hàng Parts used / Duration không lệch nhau.
+  durationAuto: {
+    backgroundColor: Colors.card2,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    alignItems: 'center',
+  },
+  durationValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.text,
+    fontVariant: ['tabular-nums'],
   },
   chipRow: {
     flexDirection: 'row',

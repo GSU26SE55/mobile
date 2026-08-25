@@ -642,7 +642,7 @@ function StaffTicketDetailScreenInner() {
             )}
 
             {showLogForm && (
-              <MaintenanceLogForm onSubmit={handleAddLog} isLoading={isAddingLog} />
+              <MaintenanceLogForm onSubmit={handleAddLog} isLoading={isAddingLog} activities={activities} />
             )}
 
             <View style={styles.tabContent}>
@@ -789,6 +789,7 @@ function StaffTicketDetailScreenInner() {
                 title="Complete ticket"
                 submitLabel="Save log & complete"
                 fixedLogType={MaintenanceLogTypeEnum.Completion}
+                activities={activities}
               />
             </ScrollView>
           </View>

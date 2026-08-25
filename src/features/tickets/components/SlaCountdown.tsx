@@ -11,12 +11,18 @@ interface Props {
   compact?: boolean;
 }
 
-/** Đếm lùi dạng `3h 59m` / `12m 30s` — dưới 1 giờ thì hiện giây để thấy nó đang chạy. */
+/**
+ * Đếm lùi dạng `13d 23h` / `3h 59m` / `12m 30s` — càng gần hết hạn càng mịn.
+ * Tách ngày ra vì SLA dài ngày dồn hết vào giờ thì đọc ra `335h 57m`, không ai
+ * quy ra được là gần hai tuần. Dưới 1 giờ hiện giây để thấy nó đang chạy.
+ */
 function formatRemaining(ms: number): string {
   if (ms <= 0) return 'Overdue';
+  const d = Math.floor(ms / 86_400_000);
   const h = Math.floor(ms / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
   const s = Math.floor((ms % 60_000) / 1000);
+  if (d > 0) return `${d}d ${h % 24}h`;
   if (h > 0) return `${h}h ${m}m`;
   if (m > 0) return `${m}m ${s}s`;
   return `${s}s`;

@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Text } from 'react-native';
 import { Colors } from '@/src/lib/theme';
-import { ActivityActionEnum, TicketActivityDTO, TicketStatusEnum } from '@/src/features/tickets/types/ticket.types';
+import { TicketActivityDTO, TicketStatusEnum } from '@/src/features/tickets/types/ticket.types';
+import { inProgressStartedAt } from '@/src/features/tickets/utils/ticketWorkflow';
 
 interface Props {
   activities: TicketActivityDTO[];
   status: TicketStatusEnum;
 }
 
-function formatElapsed(ms: number): string {
+/** `HH:MM:SS`, bỏ giờ khi dưới 1 tiếng. Dùng chung với ô Duration của MaintenanceLogForm. */
+export function formatElapsed(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
@@ -24,15 +26,7 @@ function formatElapsed(ms: number): string {
  * fetched for the History tab — no extra API call.
  */
 export function ProcessingDurationTimer({ activities, status }: Props) {
-  const startedAt = useMemo(() => {
-    const entries = activities.filter(
-      (a) => a.action === ActivityActionEnum.StatusChanged && a.newValue === TicketStatusEnum.InProgress,
-    );
-    if (entries.length === 0) return null;
-    return entries.reduce((latest, a) =>
-      new Date(a.createdAt) > new Date(latest.createdAt) ? a : latest,
-    ).createdAt;
-  }, [activities]);
+  const startedAt = useMemo(() => inProgressStartedAt(activities), [activities]);
 
   const [elapsedMs, setElapsedMs] = useState(() =>
     startedAt ? Date.now() - new Date(startedAt).getTime() : 0,

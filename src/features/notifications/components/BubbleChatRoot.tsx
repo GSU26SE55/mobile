@@ -1035,6 +1035,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
               <ScrollView keyboardShouldPersistTaps="handled">
                 <MaintenanceLogForm
                   isLoading={addLog.isPending || updateLog.isPending}
+                  activities={activitiesQuery.data}
                   initialValues={
                     editingLog
                       ? {
