@@ -6,6 +6,7 @@ import {
   CommentListParams,
   CreateTicketPayload,
   RatePayload,
+  SchedulePeriodicMaintenancePayload,
   ReopenPayload,
   TicketActionResponse,
   TicketActivityDTO,
@@ -45,6 +46,10 @@ export const ticketService = {
 
   rate: (id: string, data: RatePayload) =>
     axiosInstance.post<TicketActionResponse>(TICKETS.RATE(id), data),
+
+  schedulePeriodicMaintenance: (id: string, data: SchedulePeriodicMaintenancePayload) =>
+    axiosInstance.post<TicketActionResponse>(
+      TICKETS.PERIODIC_MAINTENANCE_SCHEDULE(id), data),
 
 
   getParticipants: (ticketId: string) =>
