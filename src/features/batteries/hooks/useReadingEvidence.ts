@@ -19,7 +19,7 @@ import type { SensorReadingDto } from '../types/sensor-reading.types';
 // Cái giá phải trả, nói thẳng: hai case chạy trên cùng viên pin cách nhau dưới 2 phút sẽ lẫn
 // log của nhau. Demo chạy từng case một, và mỗi dòng đều ghi rõ ngưỡng bị vượt nên dòng lạ
 // nhìn ra ngay — nên đánh đổi nghiêng về phía kể được câu chuyện thay vì giấu nó đi.
-const EVIDENCE_WINDOW_MS = 2 * 60 * 1_000;
+export const EVIDENCE_WINDOW_MS = 2 * 60 * 1_000;
 
 /**
  * Sensor log around the incident detection time (DetectedAt ± 15s) — used as EVIDENCE for

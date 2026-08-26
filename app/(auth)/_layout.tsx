@@ -1,13 +1,11 @@
 import { Stack } from 'expo-router';
+import { useStackTransition } from '@/src/hooks/useScreenTransition';
 
 export default function AuthLayout() {
+  const screenOptions = useStackTransition();
   return (
     <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: '#FFFFFF' },
-        animation: 'slide_from_right',
-      }}
+      screenOptions={{ ...screenOptions, contentStyle: { backgroundColor: '#FFFFFF' } }}
     >
       <Stack.Screen name="login" />
       <Stack.Screen name="login-2fa" />

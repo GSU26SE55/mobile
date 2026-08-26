@@ -1,4 +1,5 @@
-import type { TicketDetailDTO, TicketDTO, TicketPriorityEnum, TicketStatusEnum } from '../types/ticket.types';
+import { ActivityActionEnum } from '../types/ticket.types';
+import type { TicketActivityDTO, TicketDetailDTO, TicketDTO, TicketPriorityEnum, TicketStatusEnum } from '../types/ticket.types';
 
 export const ACTIVE_TICKET_STATUSES: readonly TicketStatusEnum[] =
   ['Open', 'Pending', 'InProgress', 'Request', 'ReAssign', 'Completed'];
@@ -22,6 +23,38 @@ export const CHAT_LOCKED_TICKET_STATUSES: readonly TicketStatusEnum[] =
 
 export function isTicketChatLocked(status: TicketStatusEnum) {
   return CHAT_LOCKED_TICKET_STATUSES.includes(status);
+}
+
+/**
+ * Log bảo trì bị khoá từ lúc Staff bấm hoàn thành, KHÔNG phải lúc ticket đóng: bản log đó
+ * chính là thứ Manager dựa vào để duyệt, sửa được sau khi nộp thì buổi duyệt mất ý nghĩa.
+ *
+ * Mirror đúng guard của BE (MaintenanceLogUpdateCommandHandler: Completed || Closed → 403).
+ * Trước đây mobile chỉ ẩn Edit khi ticket đã đóng, nên ở trạng thái "Review" nút vẫn hiện
+ * và bấm vào chỉ nhận 403.
+ *
+ * Tính luôn ClosedRejected — BE không liệt kê nhưng ticket đã đóng thì không còn gì để sửa.
+ */
+export function isMaintenanceLogLocked(status: TicketStatusEnum) {
+  return CHAT_LOCKED_TICKET_STATUSES.includes(status);
+}
+
+/**
+ * Mốc bắt đầu lượt xử lý HIỆN TẠI — lần chuyển sang InProgress gần nhất, nên nó
+ * reset sau mỗi Hold → Resume ("ticket này đang xử lý bao lâu rồi", không phải tổng
+ * cộng dồn). Suy từ activity log đã fetch sẵn, không tốn thêm API.
+ *
+ * Dùng chung bởi đồng hồ Processing time trên màn chi tiết và ô Duration của log
+ * bảo trì — hai con số đó buộc phải khớp nhau vì cùng một mốc.
+ */
+export function inProgressStartedAt(activities: TicketActivityDTO[]): string | null {
+  const entries = activities.filter(
+    a => a.action === ActivityActionEnum.StatusChanged && a.newValue === 'InProgress',
+  );
+  if (entries.length === 0) return null;
+  return entries.reduce((latest, a) =>
+    new Date(a.createdAt) > new Date(latest.createdAt) ? a : latest,
+  ).createdAt;
 }
 
 export function isPrimaryHandler(ticket: Pick<TicketDTO, 'assignments'>, staffId?: string | null) {
@@ -48,6 +81,23 @@ export function canComplete(ticket: TicketDTO, staffId?: string | null) {
 
 export function shouldShowLiveSla(status: TicketStatusEnum, priority: TicketPriorityEnum | null, timerStatus?: string) {
   return status === 'InProgress' && priority !== 'Urgent' && timerStatus === 'Running';
+}
+
+/**
+ * Wider than `shouldShowLiveSla`, for LIST rows: a queued or paused ticket still
+ * has a deadline the reader needs to see, not just the one being worked on right
+ * now. Detail screens keep the narrow predicate above — they show the full SLA
+ * card, which only makes sense while the clock is actually running.
+ *
+ * `Urgent` tickets run without an SLA timer at all.
+ */
+export function showsSlaInList(
+  status: TicketStatusEnum,
+  priority: TicketPriorityEnum | null,
+  timerStatus?: string,
+) {
+  if (isTerminalTicket(status) || priority === 'Urgent') return false;
+  return timerStatus === 'Running' || timerStatus === 'Paused' || timerStatus === 'Breached';
 }
 
 export function canRateOrReopen(ticket: TicketDetailDTO, now = Date.now()) {

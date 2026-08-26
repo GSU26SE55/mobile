@@ -14,6 +14,7 @@ import { SiteHealthBadge } from '@/src/features/sites/components/SiteHealthBadge
 import { useAmbientLatest } from '@/src/features/ambient/hooks/useAmbientLatest';
 import { AmbientTile } from '@/src/features/ambient/components/AmbientTile';
 import { AmbientTrendChart } from '@/src/features/ambient/components/AmbientTrendChart';
+import { AmbientEvidencePanel } from '@/src/features/ambient/components/AmbientEvidencePanel';
 import { BatteryAssetDto } from '@/src/features/batteries/types/battery.types';
 import { BackButton } from '@/src/shared/components/ScreenHeader';
 
@@ -27,7 +28,7 @@ export default function StaffSiteDetailScreen() {
 
 function SiteDetailInner() {
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, at } = useLocalSearchParams<{ id: string; at?: string }>();
   const siteId = id ?? '';
 
   const { data: site, isLoading, isError } = useSiteDetail(siteId);
@@ -91,6 +92,14 @@ function SiteDetailInner() {
         <AmbientTile data={ambient} />
         <AmbientTrendChart siteId={siteId} />
 
+        {/* `at` arrives when opened from an environmental ticket's "View site log at
+            this time" — same ±2' window as that ticket's evidence table. */}
+        {at ? (
+          <View style={styles.evidenceCard}>
+            <AmbientEvidencePanel siteId={siteId} anchorAt={at} mode="log" />
+          </View>
+        ) : null}
+
         <Text style={styles.sectionTitle}>Battery List ({assets.length})</Text>
         {assets.length === 0 ? (
           <Text style={styles.empty}>This site has no batteries yet.</Text>
@@ -126,6 +135,7 @@ function Stat({ value, label }: { value: number; label: string }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
+  evidenceCard: { backgroundColor: Colors.card, borderRadius: 20, padding: 16, marginTop: 12 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bg, gap: 10 },
   notFoundTitle: { fontSize: 16, fontWeight: '800', color: Colors.accent, marginTop: 8 },
   goBackBtn: { backgroundColor: Colors.primary, borderRadius: 16, paddingHorizontal: 24, paddingVertical: 10, marginTop: 8 },

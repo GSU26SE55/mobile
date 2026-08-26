@@ -14,7 +14,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStaffTickets } from '@/src/features/staff/hooks/useStaffTickets';
 import { useMyMentions } from '@/src/features/tickets/hooks/useChatInbox';
 import { TicketDTO, TicketStatusEnum } from '@/src/features/tickets/types/ticket.types';
-import { formatDateShort } from '@/src/lib/date';
 import { BadgeColors, Colors, Shadow } from '@/src/lib/theme';
 import { P } from '@/src/lib/authz';
 import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';

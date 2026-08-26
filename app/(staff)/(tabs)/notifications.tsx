@@ -5,10 +5,12 @@ import { router } from 'expo-router';
 import { Shadow, Solar } from '@/src/lib/theme';
 import { NotificationList } from '@/src/features/notifications/components/NotificationList';
 import { StaffHeader } from '@/src/features/staff/components/StaffHeader';
+import { EnergyBackdrop } from '@/src/features/batteries/components/EnergyBackdrop';
 
 export default function StaffNotificationsScreen() {
   return (
     <View style={styles.root}>
+      <EnergyBackdrop />
       <StaffHeader title="Notifications" />
 
       {/* GH-55 — entry into the Alerts & Incidents screen */}

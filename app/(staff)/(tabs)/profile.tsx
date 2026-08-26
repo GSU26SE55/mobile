@@ -8,6 +8,7 @@ import { useStaffProfile } from '@/src/features/staff/hooks/useStaffProfile';
 import { useSessionStore } from '@/src/stores/sessionStore';
 import { StaffSkillTierEnum } from '@/src/features/staff/types/staff.types';
 import { clearTokens } from '@/src/lib/secureStore';
+import { EnergyBackdrop } from '@/src/features/batteries/components/EnergyBackdrop';
 
 const TIER_LABEL: Record<StaffSkillTierEnum, string> = {
   Tier1: 'Tier 1 — Junior',
@@ -47,6 +48,7 @@ export default function StaffProfileScreen() {
   if (isLoading) {
     return (
       <View style={styles.root}>
+        <EnergyBackdrop />
         <StaffHeader title="Profile" />
         <View style={styles.center}>
           <ActivityIndicator color={Colors.primary} size="large" />
@@ -59,6 +61,7 @@ export default function StaffProfileScreen() {
   if (isError || !profile) {
     return (
       <View style={styles.root}>
+        <EnergyBackdrop />
         <StaffHeader title="Profile" />
         <View style={styles.center}>
           <Ionicons name="cloud-offline-outline" size={48} color={Colors.textFaint} />
@@ -77,6 +80,7 @@ export default function StaffProfileScreen() {
 
   return (
     <View style={styles.root}>
+      <EnergyBackdrop />
       <StaffHeader title="Profile" />
       <ScrollView contentContainerStyle={styles.content}>
       <View style={[styles.profileCard, Shadow]}>

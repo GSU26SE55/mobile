@@ -121,10 +121,7 @@ export function renderMentionedText(
 const styles = StyleSheet.create({
   popupContainer: {
     marginBottom: 8,
-    borderRadius: 20,
     padding: 12,
-    borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.96)',
     shadowColor: '#8C7A4B',
     shadowOpacity: 0.12,
     shadowRadius: 16,

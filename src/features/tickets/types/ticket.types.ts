@@ -267,6 +267,7 @@ export interface MaintenanceLogDTO {
   actionsTaken: string | null;
   durationMinutes: number;
   resolutionNote: string | null;
+  partsUsed: string | null;
   startedAt: string;
   completedAt: string | null;
   attachmentFileIds: string[] | null;

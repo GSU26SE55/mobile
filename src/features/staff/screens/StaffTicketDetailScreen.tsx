@@ -17,11 +17,12 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate, formatDateTime } from '@/src/lib/date';
-import { BadgeColors, Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
+import { Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
 import { ActivityTimeline } from '@/src/features/tickets/components/ActivityTimeline';
 import { TypingIndicator } from '@/src/features/tickets/components/TypingIndicator';
 import { SlaCountdown } from '@/src/features/tickets/components/SlaCountdown';
 import { TicketStatusBadge } from '@/src/features/tickets/components/TicketStatusBadge';
+import { categoryLabel, escalationReasonLabel, priorityMeta } from '@/src/features/tickets/utils/ticketLabels';
 import { TicketActionBar } from '@/src/features/staff/components/TicketActionBar';
 import { HoldModal } from '@/src/features/staff/components/HoldModal';
 import { ResumeModal } from '@/src/features/staff/components/ResumeModal';
@@ -60,10 +61,10 @@ import { CommentThread, ChatTab } from '@/src/features/tickets/components/Commen
 import { ChatAiToolbar } from '@/src/features/tickets/components/ChatAiToolbar';
 import { ChatReadersSheet } from '@/src/features/tickets/components/ChatReadersSheet';
 import { VoiceRecordingModal } from '@/src/features/tickets/components/VoiceRecordingModal';
-import { ProcessingDurationTimer } from '@/src/features/staff/components/ProcessingDurationTimer';
+import { formatDurationMinutes, ProcessingDurationTimer } from '@/src/features/staff/components/ProcessingDurationTimer';
 import { MaintenanceLogPayload, UpdateMaintenanceLogPayload } from '@/src/features/staff/types/staff.types';
 import { EscalationReasonEnum, PauseReasonEnum, MaintenanceLogDTO, MaintenanceLogTypeEnum } from '@/src/features/tickets/types/ticket.types';
-import { canComplete, canEscalate, canHold, canResume, isTerminalTicket, isTicketChatLocked, shouldShowLiveSla } from '@/src/features/tickets/utils/ticketWorkflow';
+import { canComplete, canEscalate, canHold, canResume, isMaintenanceLogLocked, isTerminalTicket, isTicketChatLocked, shouldShowLiveSla } from '@/src/features/tickets/utils/ticketWorkflow';
 import { PendingContextCard } from '@/src/features/tickets/components/PendingContextCard';
 import type { ChatMentionInput } from '@/src/features/tickets/types/ticket.types';
 import { AttachmentPicker, UploadedAttachment } from '@/src/features/file-storage/components/AttachmentPicker';
@@ -79,6 +80,10 @@ import { KbReferencePicker } from '@/src/features/staff/components/KbReferencePi
 import { KbSuggestionPanel } from '@/src/features/tickets/components/KbSuggestionPanel';
 import { BackButton } from '@/src/shared/components/ScreenHeader';
 import { BatteryWarningEvidencePanel } from '@/src/features/batteries/components/BatteryWarningEvidencePanel';
+import { EVIDENCE_WINDOW_MS } from '@/src/features/batteries/hooks/useReadingEvidence';
+import EnvironmentalIncidentCard from '@/src/features/tickets/components/EnvironmentalIncidentCard';
+import { AmbientEvidencePanel } from '@/src/features/ambient/components/AmbientEvidencePanel';
+import { useIncident } from '@/src/features/incidents/hooks/useIncident';
 
 type TabKey = 'comments' | 'activities' | 'logs' | 'kb';
 
@@ -89,17 +94,6 @@ const TABS: { key: TabKey; label: string; icon: keyof typeof Ionicons.glyphMap }
   { key: 'kb',         label: 'Guide',       icon: 'book-outline' },
 ];
 
-const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
-  P1Critical: { bg: BadgeColors.p1.bg, text: BadgeColors.p1.text },
-  P2High:     { bg: BadgeColors.p2.bg, text: BadgeColors.p2.text },
-  P3Normal:   { bg: BadgeColors.p3.bg, text: BadgeColors.p3.text },
-};
-
-const PRIORITY_LABELS: Record<string, string> = {
-  P1Critical: 'P1 Critical',
-  P2High:     'P2 High',
-  P3Normal:   'P3 Normal',
-};
 
 function TabsRow({
   activeTab,
@@ -187,6 +181,9 @@ function StaffTicketDetailScreenInner() {
   // GH-44 — comments/activities via a dedicated GET + realtime (Staff can see internal comments too).
   const commentsQuery = useTicketChatsCursor(ticketId || undefined);
   const activitiesQuery = useTicketActivities(ticketId || undefined, ticket?.status);
+  // Site-level tickets carry the incident id only; siteId and detectedAt live on the
+  // incident record, and both are needed to anchor the ambient evidence window.
+  const { data: incident } = useIncident(ticket?.environmentalIncidentId ?? '');
   const { typingUsers, notifyTyping } = useTicketCommentsRealtime(ticketId || undefined);
   const { mutate: updateChat, isPending: editChatPending } = useUpdateTicketChat(ticketId);
   const { mutate: deleteChat, isPending: deleteChatPending } = useDeleteTicketChat(ticketId);
@@ -250,12 +247,14 @@ function StaffTicketDetailScreenInner() {
       return true;
     });
   const activities = activitiesQuery.data ?? [];
-  // Editing a log is only allowed when: user is the log owner + ticket isn't closed (BE also blocks these cases with 403).
   const ticketClosed = ticket ? isTerminalTicket(ticket.status) : false;
   // Chat khoá khi ticket đã xong việc — rộng hơn ticketClosed vì tính cả Completed (ticket
   // vẫn ACTIVE chờ Manager duyệt, nhưng phần trao đổi đã chốt). Khớp với web.
   const chatLocked = ticket ? isTicketChatLocked(ticket.status) : false;
-  const canEditLog = (log: MaintenanceLogDTO) => !ticketClosed && !!accountId && log.staffId === accountId;
+  // Chủ log sửa được, và chỉ tới lúc bấm hoàn thành — từ "Review" trở đi BE trả 403
+  // (MaintenanceLogUpdateCommandHandler), nên nút Edit phải tắt theo, đừng để bấm rồi mới báo lỗi.
+  const logLocked = ticket ? isMaintenanceLogLocked(ticket.status) : false;
+  const canEditLog = (log: MaintenanceLogDTO) => !logLocked && !!accountId && log.staffId === accountId;
 
   // Composer chỉ hiện khi InProgress/Pending — khớp web (staff TicketDetailPage.tsx
   // canComment = isInProgress || isPending). Ở các status khác (Open, Request, ReAssign,
@@ -380,7 +379,7 @@ function StaffTicketDetailScreenInner() {
     );
   }
 
-  const pColor = ticket.priority ? (PRIORITY_COLORS[ticket.priority] ?? PRIORITY_COLORS.P3Normal) : PRIORITY_COLORS.P3Normal;
+  const pMeta = priorityMeta(ticket.priority);
 
   return (
     <View style={styles.root}>
@@ -563,10 +562,10 @@ function StaffTicketDetailScreenInner() {
             <View style={[styles.card, Shadow]}>
               <Text style={styles.ticketTitle}>{ticket.title}</Text>
               <View style={styles.metaRow}>
-                <View style={[styles.priorityBadge, { backgroundColor: pColor.bg }]}>
-                  <Text style={[styles.priorityText, { color: pColor.text }]}>{ticket.priority ? (PRIORITY_LABELS[ticket.priority] ?? ticket.priority) : 'Untriaged'}</Text>
+                <View style={[styles.priorityBadge, { backgroundColor: pMeta.chipBg }]}>
+                  <Text style={[styles.priorityText, { color: pMeta.chipText }]}>{pMeta.short}</Text>
                 </View>
-                <Text style={styles.metaCategory}>{ticket.category}</Text>
+                <Text style={styles.metaCategory}>{categoryLabel(ticket.category)}</Text>
               </View>
               {ticket.slaTimer && shouldShowLiveSla(ticket.status, ticket.priority, ticket.slaTimer.status) && <SlaCountdown sla={ticket.slaTimer} />}
               <View style={styles.durationRow}>
@@ -574,6 +573,22 @@ function StaffTicketDetailScreenInner() {
                 <ProcessingDurationTimer activities={activities} status={ticket.status} />
               </View>
             </View>
+
+            {/* Escalation — parity with web's staff/manager detail. On an SLA
+                breach the system escalates on its own (raises priority, moves the
+                ticket to ReAssign, demotes the primary handler), so without this
+                the ticket just changes under the technician with no reason given. */}
+            {ticket.escalatedAt && (
+              <View style={[styles.card, styles.escalationCard, Shadow]}>
+                <Text style={styles.escalationTitle}>Escalation</Text>
+                {ticket.escalationReason && (
+                  <Text style={styles.escalationReason}>
+                    {escalationReasonLabel(ticket.escalationReason)}
+                  </Text>
+                )}
+                <Text style={styles.escalationTime}>{formatDateTime(ticket.escalatedAt)}</Text>
+              </View>
+            )}
 
             {/* Description */}
             {ticket.description && (
@@ -585,8 +600,68 @@ function StaffTicketDetailScreenInner() {
 
             {/* Warning evidence — sensor logs exceeding threshold around the time the issue was detected.
                 Auto-hides when the ticket has no batteryAssetId or detectedAt. */}
+            {/* Site-level ticket → incident card + ambient log instead of the battery
+                panel. Checked FIRST because these tickets carry an empty batteryAssetId:
+                the fault is in the cabinet, not in one battery, so "no battery" is the
+                correct shape here rather than missing data. */}
+            {ticket.environmentalIncidentId ? (
+              <>
+                <View style={[styles.card, Shadow]}>
+                  <EnvironmentalIncidentCard
+                    incidentId={ticket.environmentalIncidentId}
+                    description={ticket.description}
+                  />
+                </View>
+
+                {incident?.siteId && incident?.detectedAt && (
+                  <View style={[styles.card, Shadow]}>
+                    <Pressable
+                      style={styles.realtimeBtn}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/(staff)/sites/[id]',
+                          params: { id: incident.siteId, at: incident.detectedAt },
+                        })
+                      }
+                    >
+                      <Ionicons name="thermometer-outline" size={15} color={Colors.accent} />
+                      <Text style={styles.realtimeText}>View site log at this time</Text>
+                      <Ionicons name="chevron-forward" size={15} color={Colors.textMute} />
+                    </Pressable>
+
+                    <AmbientEvidencePanel
+                      siteId={incident.siteId}
+                      anchorAt={incident.detectedAt}
+                    />
+                  </View>
+                )}
+              </>
+            ) : null}
+
             {ticket.batteryAssetId && ticket.detectedAt && (
               <View style={[styles.card, Shadow]}>
+                {/* Same entry point web puts on its battery info panel. The window
+                    comes from the SAME constant the evidence table below uses, so the
+                    raw log opens on exactly the rows this ticket was judged on. */}
+                <Pressable
+                  style={styles.realtimeBtn}
+                  onPress={() => {
+                    const t = new Date(ticket.detectedAt!).getTime();
+                    router.push({
+                      pathname: '/(staff)/batteries/[id]',
+                      params: {
+                        id: ticket.batteryAssetId!,
+                        from: new Date(t - EVIDENCE_WINDOW_MS).toISOString(),
+                        to: new Date(t + EVIDENCE_WINDOW_MS).toISOString(),
+                      },
+                    });
+                  }}
+                >
+                  <Ionicons name="pulse-outline" size={15} color={Colors.accent} />
+                  <Text style={styles.realtimeText}>View real-time detail</Text>
+                  <Ionicons name="chevron-forward" size={15} color={Colors.textMute} />
+                </Pressable>
+
                 <BatteryWarningEvidencePanel
                   batteryAssetId={ticket.batteryAssetId}
                   detectedAt={ticket.detectedAt}
@@ -642,7 +717,7 @@ function StaffTicketDetailScreenInner() {
             )}
 
             {showLogForm && (
-              <MaintenanceLogForm onSubmit={handleAddLog} isLoading={isAddingLog} />
+              <MaintenanceLogForm onSubmit={handleAddLog} isLoading={isAddingLog} activities={activities} />
             )}
 
             <View style={styles.tabContent}>
@@ -662,7 +737,9 @@ function StaffTicketDetailScreenInner() {
                   {!!log.actionsTaken && <Text style={styles.logMeta}>Action: {log.actionsTaken}</Text>}
                   {!!log.diagnosisDetails && <Text style={styles.logMeta}>Diagnosis: {log.diagnosisDetails}</Text>}
                   {!!log.resolutionNote && <Text style={styles.logMeta}>Result: {log.resolutionNote}</Text>}
-                  {log.durationMinutes > 0 && <Text style={styles.logMeta}>Duration: {log.durationMinutes} mins</Text>}
+                  {log.durationMinutes > 0 && (
+                    <Text style={styles.logMeta}>Duration: {formatDurationMinutes(log.durationMinutes)}</Text>
+                  )}
                   {(log.beforePhotosFileIds?.length ?? 0) > 0 && (
                     <>
                       <Text style={styles.logMeta}>Before photos:</Text>
@@ -789,6 +866,7 @@ function StaffTicketDetailScreenInner() {
                 title="Complete ticket"
                 submitLabel="Save log & complete"
                 fixedLogType={MaintenanceLogTypeEnum.Completion}
+                activities={activities}
               />
             </ScrollView>
           </View>
@@ -811,9 +889,11 @@ function StaffTicketDetailScreenInner() {
                     diagnosisDetails: editingLog.diagnosisDetails ?? undefined,
                     actionsTaken: editingLog.actionsTaken ?? undefined,
                     resolutionNote: editingLog.resolutionNote ?? undefined,
-                    partsUsed: undefined,
+                    partsUsed: editingLog.partsUsed ?? undefined,
                     durationMinutes: editingLog.durationMinutes || undefined,
                   }}
+                  existingBeforePhotoIds={editingLog.beforePhotosFileIds}
+                  existingAfterPhotoIds={editingLog.afterPhotosFileIds}
                   title="Edit Maintenance Log"
                   submitLabel="Update"
                 />
@@ -860,6 +940,20 @@ function StaffTicketDetailScreenInner() {
 }
 
 const styles = StyleSheet.create({
+  realtimeBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingVertical: 11, paddingHorizontal: 12, marginBottom: 14,
+    borderRadius: 12, borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.card2,
+  },
+  realtimeText: { flex: 1, fontSize: 13, fontWeight: '700', color: Colors.accent },
+  escalationCard: { backgroundColor: Colors.warningLight },
+  escalationTitle: {
+    fontSize: 10, fontWeight: '800', letterSpacing: 0.8,
+    textTransform: 'uppercase', color: Colors.warningDark, marginBottom: 6,
+  },
+  escalationReason: { fontSize: 13, fontWeight: '600', color: Colors.text },
+  escalationTime: { fontSize: 11, color: Colors.warningDark, marginTop: 4 },
   root: { flex: 1, backgroundColor: Colors.bg },
   loadingRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bg, gap: 10 },
   notFoundTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, marginTop: 4 },

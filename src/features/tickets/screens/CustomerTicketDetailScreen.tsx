@@ -57,12 +57,17 @@ import { TypingIndicator } from '@/src/features/tickets/components/TypingIndicat
 import { useAuthImageHeaders } from '@/src/features/file-storage/hooks/useAuthImageHeaders';
 import { AuthImage } from '@/src/features/file-storage/components/AuthImage';
 import { AttachmentForm } from '@/src/features/tickets/schemas/comment.schema';
-import { RatePayload, ReopenPayload, TicketStatusEnum } from '@/src/features/tickets/types/ticket.types';
+import {
+  RatePayload,
+  ReopenPayload,
+  type ChatMentionInput,
+  type TicketPriorityEnum,
+} from '@/src/features/tickets/types/ticket.types';
+import { priorityMeta } from '@/src/features/tickets/utils/ticketLabels';
 import { canRateOrReopen, isTerminalTicket, isTicketChatLocked, shouldShowLiveSla } from '@/src/features/tickets/utils/ticketWorkflow';
 import { PendingContextCard } from '@/src/features/tickets/components/PendingContextCard';
-import type { ChatMentionInput } from '@/src/features/tickets/types/ticket.types';
 import { formatDateTime } from '@/src/lib/date';
-import { BadgeColors, Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
+import { Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
 import { useMyBatteryAssets } from '@/src/features/batteries/hooks/useMyBatteryAssets';
 import { BatteryAssetDto } from '@/src/features/batteries/types/battery.types';
 import { useSessionStore } from '@/src/stores/sessionStore';
@@ -70,93 +75,13 @@ import { getPrimaryHandlerName, getSupporterNames } from '@/src/features/tickets
 import { BackButton } from '@/src/shared/components/ScreenHeader';
 import EnvironmentalIncidentCard from '@/src/features/tickets/components/EnvironmentalIncidentCard';
 
-const PRIORITY_MAP: Record<string, { label: string; badge: keyof typeof BadgeColors }> = {
-  P1Critical: { label: 'P1 Critical', badge: 'p1' },
-  P2High:     { label: 'P2 High',     badge: 'p2' },
-  P3Normal:   { label: 'P3 Standard', badge: 'p3' },
-};
-
-function PriorityBadge({ priority }: { priority: string | null }) {
-  // priority null khi ticket chưa triage — hiển thị nhãn trung tính, không nhầm P3.
-  const cfg = priority
-    ? (PRIORITY_MAP[priority] ?? { label: priority, badge: 'p3' as const })
-    : { label: 'Unclassified', badge: 'p3' as const };
-  const bc = BadgeColors[cfg.badge];
+function PriorityBadge({ priority }: { priority: TicketPriorityEnum | null }) {
+  // priority null khi ticket chưa triage — priorityMeta trả nhãn trung tính, không nhầm P3.
+  const meta = priorityMeta(priority);
   return (
-    <View style={[styles.badge, { backgroundColor: bc.bg }]}>
-      <View style={[styles.badgeDot, { backgroundColor: bc.text }]} />
-      <Text style={[styles.badgeLabel, { color: bc.text }]}>{cfg.label}</Text>
-    </View>
-  );
-}
-
-const STEP_CONFIGS = [
-  { key: 'create', label: 'Created' },
-  { key: 'accept', label: 'Accepted' },
-  { key: 'assign', label: 'Assigned' },
-  { key: 'progress', label: 'Processing' },
-  { key: 'resolve', label: 'Completed' },
-  { key: 'close', label: 'Closed' },
-];
-
-function HorizontalStepper({ status }: { status: TicketStatusEnum }) {
-  const getActiveStepIndex = (st: TicketStatusEnum) => {
-    if (['Closed', 'ClosedRejected'].includes(st)) return 5;
-    if (st === 'Completed') return 4;
-    if (['InProgress', 'Pending', 'Request', 'ReAssign'].includes(st)) return 3;
-    return 0;
-  };
-
-  const activeIndex = getActiveStepIndex(status);
-
-  return (
-    <View style={[styles.stepperContainer, Shadow]}>
-      <Text style={styles.stepperTitle}>Processing progress</Text>
-      <View style={styles.stepperRow}>
-        {STEP_CONFIGS.map((step, idx) => {
-          const done = idx < activeIndex;
-          const current = idx === activeIndex;
-          const reached = idx <= activeIndex;
-          const isLast = idx === STEP_CONFIGS.length - 1;
-
-          return (
-            <View key={step.key} style={styles.stepItemCol}>
-              <View style={styles.circleRow}>
-                <View
-                  style={[
-                    styles.stepLine,
-                    idx === 0 ? styles.lineHidden : reached && styles.stepLineActive,
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.stepCircle,
-                    done && styles.stepCircleDone,
-                    current && styles.stepCircleCurrent,
-                  ]}
-                >
-                  {done ? (
-                    <Ionicons name="checkmark" size={13} color="#fff" />
-                  ) : current ? (
-                    <View style={styles.currentDot} />
-                  ) : (
-                    <View style={styles.inactiveInnerDot} />
-                  )}
-                </View>
-                <View
-                  style={[
-                    styles.stepLine,
-                    isLast ? styles.lineHidden : done && styles.stepLineActive,
-                  ]}
-                />
-              </View>
-              <Text style={[styles.stepLabel, reached && styles.stepLabelActive]} numberOfLines={1}>
-                {step.label}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
+    <View style={[styles.badge, { backgroundColor: meta.chipBg }]}>
+      <View style={[styles.badgeDot, { backgroundColor: meta.chipText }]} />
+      <Text style={[styles.badgeLabel, { color: meta.chipText }]}>{meta.short}</Text>
     </View>
   );
 }
@@ -480,7 +405,7 @@ function TicketDetailScreenInner() {
           <View style={[styles.titleCard, Shadow]}>
             <View style={styles.badgeRow}>
               <PriorityBadge priority={ticket.priority} />
-              <TicketStatusBadge status={ticket.status} />
+              <TicketStatusBadge status={ticket.status} audience="customer" />
             </View>
             {/* Đã bỏ ngày tạo + danh mục. Đếm ngược SLA giữ lại, đặt cùng kiểu
                 với màn Staff: một dòng riêng dưới tiêu đề. */}
@@ -488,8 +413,6 @@ function TicketDetailScreenInner() {
           {ticket.slaTimer && shouldShowLiveSla(ticket.status, ticket.priority, ticket.slaTimer.status) && <SlaCountdown sla={ticket.slaTimer} />}
           </View>
 
-          {/* Stepper progress */}
-          <HorizontalStepper status={ticket.status} />
           <PendingContextCard ticket={ticket} />
 
           {/* Waiting customer response banner */}
@@ -960,85 +883,6 @@ const styles = StyleSheet.create({
   badgeDot:       { width: 6, height: 6, borderRadius: 3 },
   badgeLabel:     { fontSize: 11, fontWeight: '700' },
   title:          { fontSize: 18, fontWeight: '800', color: Colors.text, lineHeight: 26, letterSpacing: -0.3 },
-
-  stepperContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
-  },
-  stepperTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: Colors.text,
-    marginBottom: 14,
-  },
-  stepperRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  stepItemCol: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  circleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-  },
-  stepLine: {
-    flex: 1,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: '#EDECE8',
-  },
-  stepLineActive: {
-    backgroundColor: '#34C759',
-  },
-  lineHidden: {
-    backgroundColor: 'transparent',
-  },
-  stepCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#EDECE8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepCircleDone: {
-    backgroundColor: '#34C759',
-  },
-  stepCircleCurrent: {
-    backgroundColor: '#34C759',
-    borderWidth: 3,
-    borderColor: '#C6EFD3',
-  },
-  currentDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FFFFFF',
-  },
-  inactiveInnerDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: '#C9C7BF',
-  },
-  stepLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Colors.textMute,
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  stepLabelActive: {
-    fontWeight: '800',
-    color: '#34C759',
-  },
 
   waitBanner:     {
     backgroundColor: Colors.stWaiting, borderRadius: 16,

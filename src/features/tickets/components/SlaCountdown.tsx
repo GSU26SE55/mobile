@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { formatDateTime } from '@/src/lib/date';
-import { Colors } from '@/src/lib/theme';
+import { BadgeColors, Colors } from '@/src/lib/theme';
 import { SlaTimerDTO } from '../types/ticket.types';
 
 interface Props {
@@ -11,12 +11,32 @@ interface Props {
   compact?: boolean;
 }
 
-/** Đếm lùi dạng `3h 59m` / `12m 30s` — dưới 1 giờ thì hiện giây để thấy nó đang chạy. */
+/**
+ * How far PAST due. Breach is an exception state, so the row says how bad it is
+ * — "3d overdue" and "20m overdue" need different reactions from a technician.
+ */
+function formatOverdue(ms: number): string {
+  const over = Math.abs(ms);
+  const d = Math.floor(over / 86_400_000);
+  const h = Math.floor(over / 3_600_000);
+  const m = Math.floor((over % 3_600_000) / 60_000);
+  if (d > 0) return `${d}d overdue`;
+  if (h > 0) return `${h}h overdue`;
+  return `${m}m overdue`;
+}
+
+/**
+ * Đếm lùi dạng `13d 23h` / `3h 59m` / `12m 30s` — càng gần hết hạn càng mịn.
+ * Tách ngày ra vì SLA dài ngày dồn hết vào giờ thì đọc ra `335h 57m`, không ai
+ * quy ra được là gần hai tuần. Dưới 1 giờ hiện giây để thấy nó đang chạy.
+ */
 function formatRemaining(ms: number): string {
   if (ms <= 0) return 'Overdue';
+  const d = Math.floor(ms / 86_400_000);
   const h = Math.floor(ms / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
   const s = Math.floor((ms % 60_000) / 1000);
+  if (d > 0) return `${d}d ${h % 24}h`;
   if (h > 0) return `${h}h ${m}m`;
   if (m > 0) return `${m}m ${s}s`;
   return `${s}s`;
@@ -27,15 +47,23 @@ export function SlaCountdown({ sla, compact = false }: Props) {
   const isPaused = sla.status === 'Paused';
   const isMet = sla.status === 'Met';
 
-  // Tick 1s để đồng hồ thực sự đếm lùi. Dừng khi timer không còn chạy — không có lý do
+  // Tick để đồng hồ thực sự đếm lùi. Dừng khi timer không còn chạy — không có lý do
   // để re-render mỗi giây một ticket đã đóng/tạm dừng.
   const isLive = !isMet && !isPaused && !isBreached;
   const [now, setNow] = useState(() => Date.now());
+
+  // Hai tốc độ: mỗi list row mount một interval riêng, mà `formatRemaining` chỉ hiện
+  // giây khi còn dưới 1 giờ — trên mức đó, tick 1s là 30 lần re-render thừa mỗi phút
+  // cho mỗi dòng.
+  // ponytail: two-speed tick; gom về một clock context dùng chung nếu list vượt ~200 dòng
+  const dueAtMs = new Date(sla.dueAt).getTime();
+  const tickPeriod = dueAtMs - now < 3_600_000 ? 1_000 : 30_000;
+
   useEffect(() => {
     if (!isLive) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
+    const id = setInterval(() => setNow(Date.now()), tickPeriod);
     return () => clearInterval(id);
-  }, [isLive]);
+  }, [isLive, tickPeriod]);
 
   const remainingMs = useMemo(
     () => new Date(sla.dueAt).getTime() - now,
@@ -86,20 +114,30 @@ export function SlaCountdown({ sla, compact = false }: Props) {
         ? 'Completed on time'
         : formatRemaining(remainingMs);
 
+  // Bản gọn — góc trên phải của một dòng ticket. Chỉ icon + số: thanh progress ở
+  // kích thước đó không đọc được, chỉ thêm nhiễu cạnh dải ưu tiên bên trái.
+  //
+  // Breach phải KHÁC HẲN một đồng hồ đang chạy, không chỉ đổi màu chữ: nền đặc
+  // + icon cảnh báo + chữ hoa. Priority không tự nhảy bậc khi breach
+  // (design.md §Priority Policy), nên dòng ticket là chỗ duy nhất báo trạng thái
+  // này cho tới khi Manager reassign.
   if (compact) {
-    return (
-      <View style={styles.compactWrap}>
-        <View style={styles.row}>
-          <Ionicons name={icon} size={12} color={color} />
-          <Text style={[styles.compactLabel, { color }]}>
-            {isLive ? `SLA ${label}` : label}
+    if (isBreached) {
+      return (
+        <View style={[styles.row, styles.compactWrap, styles.breachWrap]}>
+          <Ionicons name="alert-circle" size={13} color={BadgeColors.crit.text} />
+          <Text style={styles.breachLabel} numberOfLines={1}>
+            {formatOverdue(remainingMs)}
           </Text>
         </View>
-        {!isMet && (
-          <View style={[styles.trackThin, { backgroundColor: trackColor }]}>
-            <View style={[styles.fill, { width: `${percent}%`, backgroundColor: color }]} />
-          </View>
-        )}
+      );
+    }
+    return (
+      <View style={[styles.row, styles.compactWrap, { backgroundColor: trackColor }]}>
+        <Ionicons name={icon} size={12} color={color} />
+        <Text style={[styles.compactLabel, { color }]} numberOfLines={1}>
+          {isPaused ? 'Paused' : label}
+        </Text>
       </View>
     );
   }
@@ -155,7 +193,22 @@ const styles = StyleSheet.create({
   footPercent: { fontSize: 11, fontWeight: '800', fontVariant: ['tabular-nums'] },
 
   // Bản gọn — dùng trong TicketCard.
-  compactWrap: { gap: 4 },
-  compactLabel: { fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  trackThin: { height: 4, borderRadius: 3, overflow: 'hidden' },
+  compactWrap: {
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  compactLabel: { fontSize: 12, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  // BadgeColors.crit is the accessible pair (>=4.5:1). White on #FF3B30 is 3.4:1
+  // and would fail AA at this size.
+  breachWrap: { backgroundColor: BadgeColors.crit.bg },
+  breachLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: BadgeColors.crit.text,
+    fontVariant: ['tabular-nums'],
+  },
 });

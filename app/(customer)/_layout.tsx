@@ -1,10 +1,13 @@
 import { Redirect, Stack } from 'expo-router';
+import { useModalTransition, useStackTransition } from '@/src/hooks/useScreenTransition';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuthContext } from '@/src/context/authContext';
 import { useSessionStore } from '@/src/stores/sessionStore';
 import { Colors } from '@/src/lib/theme';
 
 export default function CustomerLayout() {
+  const screenOptions = useStackTransition();
+  const modalOptions = useModalTransition();
   const { isHydrating } = useAuthContext();
   const user = useSessionStore((s) => s.user);
 
@@ -21,13 +24,7 @@ export default function CustomerLayout() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: Colors.bg },
-        animation: 'slide_from_right',
-      }}
-    >
+    <Stack screenOptions={screenOptions}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen
         name="edit-profile"
@@ -41,6 +38,9 @@ export default function CustomerLayout() {
         }}
       />
       <Stack.Screen name="blog" options={{ headerShown: false }} /> {/* GH-78 */}
+      {/* Task flow, not a drill-down — rising from the bottom means dismissing it
+          does not read as losing your place in the ticket list. */}
+      <Stack.Screen name="tickets/create" options={modalOptions} />
     </Stack>
   );
 }

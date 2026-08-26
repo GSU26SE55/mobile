@@ -84,6 +84,7 @@ export const ENDPOINTS = {
   AMBIENT: {
     LATEST:  '/api/ambient/readings/latest',  // ?siteId=
     HISTORY: '/api/ambient/readings/history', // ?siteId=&from=&to=&pageNumber=&pageSize=
+    THRESHOLD_BY_SITE: (siteId: string) => `/api/ambient/threshold-configs/by-site/${siteId}`,
   },
   REPORTS: {
     AMBIENT_TREND: '/api/reports/ambient-trend', // ?siteId=&from=&to=&granularity=

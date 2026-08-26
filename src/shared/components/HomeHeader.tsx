@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors } from '@/src/lib/theme';
+import { Colors, Font, Solar } from '@/src/lib/theme';
 
 // New Home header (shared between staff + customer): round avatar + greeting + subtitle,
 // action on the right (notification bell). Colors keep the current palette.
@@ -66,7 +66,7 @@ export function HomeHeader({
 }
 
 const styles = StyleSheet.create({
-  container: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
+  container: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   avatar: {
     width: 44,
     height: 44,
@@ -77,17 +77,24 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   avatarImg: { width: '100%', height: '100%' },
-  avatarText: { fontSize: 18, fontWeight: '800', color: '#FFFFFF' },
+  avatarText: { fontSize: 18, fontWeight: '700', color: Solar.ink },
   textWrap: { flex: 1 },
-  greeting: { fontSize: 18, fontWeight: '800', color: Colors.accent },
-  subtitle: { fontSize: 12, color: Colors.gray, marginTop: 2, fontWeight: '500' },
+  greeting: { ...Font.title },
+  subtitle: { ...Font.meta, marginTop: 2 },
   bell: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.white,
+    backgroundColor: Solar.card,
+    borderWidth: 1,
+    borderColor: Solar.cardEdge,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: Solar.shadow,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   badge: {
     position: 'absolute',
@@ -101,6 +108,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badgeText: { color: '#FFFFFF', fontSize: 8, fontWeight: '800', lineHeight: 11 },
+  badgeText: { color: Solar.white, fontSize: 8, fontWeight: '700', lineHeight: 11 },
   dot: { position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primary },
 });
