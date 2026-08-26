@@ -11,6 +11,7 @@ import { useBatterySensorStream } from '@/src/features/batteries/hooks/useBatter
 import { useAssetAlerts } from '@/src/features/batteries/hooks/useAssetAlerts';
 import { useCascadeRisk } from '@/src/features/batteries/hooks/useCascadeRisk';
 import { BatteryInfoCard } from '@/src/features/batteries/components/BatteryInfoCard';
+import { MaintenanceHistoryCard } from '@/src/features/batteries/components/MaintenanceHistoryCard';
 import { CascadeRiskBadge } from '@/src/features/batteries/components/CascadeRiskBadge';
 import { BmsSwitchCard } from '@/src/features/batteries/components/BmsSwitchCard';
 import { SensorChart } from '@/src/features/batteries/components/SensorChart';
@@ -274,6 +275,8 @@ function BatteryDetailScreenInner() {
         <Text style={styles.sectionTitle}>Information</Text>
         <View style={{ height: 10 }} />
         <BatteryInfoCard battery={battery} customerName={customerName} />
+
+        <MaintenanceHistoryCard battery={battery} />
 
         <Text style={styles.sectionTitle}>Alerts</Text>
         <View style={{ height: 10 }} />

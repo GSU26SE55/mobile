@@ -29,6 +29,14 @@ export interface BatteryAssetDto {
   status: BatteryStatusEnum;
   notes: string | null;
   lastSensorReadingAt: string | null;
+  /** Mốc bảo trì định kỳ gần nhất đã ghi. Null = chưa có mốc nào. */
+  lastMaintenanceAtUtc: string | null;
+  /** Kỳ kế tiếp — luôn có giá trị, pin chưa có mốc nào thì tính từ installDate. */
+  nextMaintenanceDueAtUtc: string;
+  /** Số thứ tự kỳ kế tiếp. */
+  maintenanceCycleNo: number;
+  /** Chu kỳ (tháng) đang áp dụng cho pin này — theo loại pin. */
+  maintenanceIntervalMonths: number;
   createdAt: string;
 }
 
