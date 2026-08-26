@@ -2,6 +2,9 @@ import { axiosInstance } from '@/src/lib/axios';
 import { ENDPOINTS } from '@/src/lib/endpoints';
 import { CommonResponse } from '@/src/types/api.types';
 import {
+  AmbientHistoryParams,
+  AmbientThresholdConfigDto,
+  AmbientHistoryResponse,
   AmbientReadingDto,
   AmbientTrendPoint,
   AmbientTrendParams,
@@ -12,6 +15,17 @@ export const ambientService = {
     axiosInstance.get<CommonResponse<AmbientReadingDto>>(
       ENDPOINTS.AMBIENT.LATEST,
       { params: { siteId } },
+    ),
+  // Backend filters by Time >= From / Time <= To (GetAmbientReadingHistoryQuery),
+  // so no client-side trimming.
+  getHistory: (params: AmbientHistoryParams) =>
+    axiosInstance.get<CommonResponse<AmbientHistoryResponse>>(
+      ENDPOINTS.AMBIENT.HISTORY,
+      { params },
+    ),
+  getThresholdBySite: (siteId: string) =>
+    axiosInstance.get<CommonResponse<AmbientThresholdConfigDto>>(
+      ENDPOINTS.AMBIENT.THRESHOLD_BY_SITE(siteId),
     ),
   getTrend: (siteId: string, params?: AmbientTrendParams) =>
     axiosInstance.get<CommonResponse<AmbientTrendPoint[]>>(

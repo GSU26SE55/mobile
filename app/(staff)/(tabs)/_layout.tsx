@@ -1,7 +1,9 @@
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { PressableScale } from '@/src/shared/components/motion';
+import { useTabTransition } from '@/src/hooks/useScreenTransition';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ACCENT = '#FFD500';
@@ -42,12 +44,13 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         };
 
         return (
-          <Pressable
+          <PressableScale
             key={route.key}
             onPress={onPress}
+            scaleTo={0.88}
             accessibilityRole="button"
             accessibilityState={focused ? { selected: true } : {}}
-            style={({ pressed }) => [styles.tabButton, pressed && styles.pressed]}
+            style={styles.tabButton}
           >
             <View style={[styles.iconBox, focused && styles.iconBoxActive]}>
               <Ionicons
@@ -56,7 +59,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                 color={focused ? INK : MUTED}
               />
             </View>
-          </Pressable>
+          </PressableScale>
         );
       })}
     </View>
@@ -64,8 +67,12 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 }
 
 export default function StaffTabsLayout() {
+  const tabTransition = useTabTransition();
   return (
-    <Tabs tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false }}>
+    <Tabs
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{ headerShown: false, ...tabTransition }}
+    >
       <Tabs.Screen name="dashboard" />
       <Tabs.Screen name="customers" />
       <Tabs.Screen name="notifications" options={{ href: null }} />
@@ -111,5 +118,4 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
   },
-  pressed: { opacity: 0.75, transform: [{ scale: 0.96 }] },
 });

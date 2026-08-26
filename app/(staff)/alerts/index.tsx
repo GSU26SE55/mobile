@@ -11,6 +11,7 @@ import { ANOMALY_LABEL } from '@/src/features/batteries/components/AssetAlertLis
 import { useIncidents } from '@/src/features/incidents/hooks/useIncidents';
 import { IncidentList } from '@/src/features/incidents/components/IncidentList';
 import { BackButton } from '@/src/shared/components/ScreenHeader';
+import { EnergyBackdrop } from '@/src/features/batteries/components/EnergyBackdrop';
 
 type Segment = 'alerts' | 'incidents';
 
@@ -58,6 +59,7 @@ export default function StaffAlertsIncidentsScreen() {
 
   return (
     <View style={styles.container}>
+      <EnergyBackdrop />
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <BackButton />
         <Text style={styles.headerTitle}>Alerts & Incidents</Text>

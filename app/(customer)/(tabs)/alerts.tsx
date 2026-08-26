@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -15,6 +15,8 @@ import { useMyIncidents } from '@/src/features/incidents/hooks/useMyIncidents';
 import { IncidentList } from '@/src/features/incidents/components/IncidentList';
 import { EnergyBackdrop, GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
 import { BackButton } from '@/src/shared/components/ScreenHeader';
+import { FilterChips } from '@/src/shared/components/FilterChips';
+import { PressableScale } from '@/src/shared/components/motion';
 
 type FilterKey = 'all' | AlertSeverityEnum;
 type Segment = 'alerts' | 'incidents';
@@ -61,40 +63,39 @@ export default function AlertsScreen() {
     const colors = SEVERITY_COLORS[item.severity] ?? SEVERITY_COLORS[AlertSeverityEnum.Info];
 
     return (
-      <Pressable
+      <PressableScale
         onPress={() => router.push({ pathname: '/(customer)/alerts/[id]', params: { id: item.id } })}
+        scaleTo={0.98}
       >
-        {({ pressed }) => (
-          <GlassSurface style={[styles.card, pressed && styles.pressed]}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.iconWrap, { backgroundColor: colors.bg }]}>
-                <Ionicons name="alert-circle-outline" size={20} color={colors.iconColor} />
-              </View>
-              <View style={styles.headerInfo}>
-                <View style={styles.tagRow}>
-                  <View style={[styles.typeBadge, { backgroundColor: colors.badgeBg }]}>
-                    <View style={[styles.badgeDot, { backgroundColor: colors.badgeText }]} />
-                    <Text style={[styles.typeBadgeText, { color: colors.badgeText }]}>{colors.label}</Text>
-                  </View>
-                  {item.status === AlertStatusEnum.Open && <View style={styles.unreadDot} />}
-                </View>
-                <Text style={styles.alertTitle}>{ANOMALY_LABEL[item.anomalyType] ?? 'Alert'}</Text>
-                <Text style={styles.alertMeta}>
-                  {item.batterySerialNumber} · {STATUS_LABEL[item.status] ?? ''}
-                </Text>
-              </View>
-              <View style={styles.valueWrap}>
-                <Text style={[styles.valText, { color: colors.badgeText }]}>
-                  {formatMeasure(item.actualValue, item.unit)}
-                </Text>
-                <Text style={styles.thrText}>
-                  thr {formatMeasure(item.thresholdValue, item.unit)}
-                </Text>
-              </View>
+        <GlassSurface style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={[styles.iconWrap, { backgroundColor: colors.bg }]}>
+              <Ionicons name="alert-circle-outline" size={20} color={colors.iconColor} />
             </View>
-          </GlassSurface>
-        )}
-      </Pressable>
+            <View style={styles.headerInfo}>
+              <View style={styles.tagRow}>
+                <View style={[styles.typeBadge, { backgroundColor: colors.badgeBg }]}>
+                  <View style={[styles.badgeDot, { backgroundColor: colors.badgeText }]} />
+                  <Text style={[styles.typeBadgeText, { color: colors.badgeText }]}>{colors.label}</Text>
+                </View>
+                {item.status === AlertStatusEnum.Open && <View style={styles.unreadDot} />}
+              </View>
+              <Text style={styles.alertTitle}>{ANOMALY_LABEL[item.anomalyType] ?? 'Alert'}</Text>
+              <Text style={styles.alertMeta}>
+                {item.batterySerialNumber} · {STATUS_LABEL[item.status] ?? ''}
+              </Text>
+            </View>
+            <View style={styles.valueWrap}>
+              <Text style={[styles.valText, { color: colors.badgeText }]}>
+                {formatMeasure(item.actualValue, item.unit)}
+              </Text>
+              <Text style={styles.thrText}>
+                thr {formatMeasure(item.thresholdValue, item.unit)}
+              </Text>
+            </View>
+          </View>
+        </GlassSurface>
+      </PressableScale>
     );
   };
 
@@ -139,25 +140,8 @@ export default function AlertsScreen() {
 
       {segment === 'alerts' ? (
         <>
-          {/* Filter Horizontal Row */}
           <View style={styles.filterContainer}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterScroll}
-            >
-              {FILTERS.map((f) => (
-                <Pressable
-                  key={String(f.key)}
-                  style={[styles.filterTab, activeFilter === f.key && styles.filterTabActive]}
-                  onPress={() => setActiveFilter(f.key)}
-                >
-                  <Text style={[styles.filterText, activeFilter === f.key && styles.filterTextActive]}>
-                    {f.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
+            <FilterChips items={FILTERS} value={activeFilter} onChange={setActiveFilter} />
           </View>
 
           {/* Alerts List */}
@@ -207,19 +191,6 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   headerLeft: { flex: 1 },
-  backBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-    shadowColor: '#8C7A4B',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
-  },
   title: { fontSize: 24, fontWeight: '900', color: Solar.ink, letterSpacing: -0.5 },
   subtitle: { fontSize: 12, color: Solar.mute, marginTop: 2, fontWeight: '600' },
   segmentRowWrap: {
@@ -228,7 +199,6 @@ const styles = StyleSheet.create({
   },
   segmentRow: {
     flexDirection: 'row',
-    borderRadius: 18,
     padding: 4,
     gap: 4,
   },
@@ -243,24 +213,8 @@ const styles = StyleSheet.create({
   segmentText: { fontSize: 13, fontWeight: '700', color: Solar.mute },
   segmentTextActive: { color: Solar.ink, fontWeight: '900' },
   filterContainer: { marginBottom: 14 },
-  filterScroll: { paddingHorizontal: 20, gap: 8 },
-  filterTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(235, 230, 215, 0.7)',
-  },
-  filterTabActive: {
-    backgroundColor: Solar.yellow,
-    borderWidth: 0,
-  },
-  filterText: { fontSize: 12, fontWeight: '700', color: Solar.mute },
-  filterTextActive: { color: Solar.ink, fontWeight: '900' },
   list: { paddingHorizontal: 20, paddingBottom: 110 },
   card: {
-    borderRadius: 24,
     padding: 16,
     marginBottom: 12,
   },
@@ -292,7 +246,6 @@ const styles = StyleSheet.create({
   valText: { fontSize: 14, fontWeight: '900' },
   thrText: { fontSize: 10, color: Solar.mute, marginTop: 3, fontWeight: '600' },
   emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40, width: '100%' },
-  emptyCard: { borderRadius: 24, padding: 30, alignItems: 'center', width: '100%' },
+  emptyCard: { padding: 30, alignItems: 'center', width: '100%' },
   emptyText: { fontSize: 13, color: Solar.mute, fontWeight: '600', marginTop: 8 },
-  pressed: { opacity: 0.8, transform: [{ scale: 0.98 }] },
 });

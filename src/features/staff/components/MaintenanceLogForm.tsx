@@ -7,7 +7,8 @@ import { MaintenanceLogTypeEnum } from '@/src/shared/enums/ticket.enum';
 import { handleErrorApi } from '@/src/lib/errors';
 import type { TicketActivityDTO } from '@/src/features/tickets/types/ticket.types';
 import { inProgressStartedAt } from '@/src/features/tickets/utils/ticketWorkflow';
-import { formatElapsed } from './ProcessingDurationTimer';
+import { AttachmentThumbnails } from '@/src/features/file-storage/components/AttachmentThumbnails';
+import { formatDurationMinutes, formatElapsed } from './ProcessingDurationTimer';
 import type { MaintenanceLogPayload } from '../types/staff.types';
 
 // BE distinguishes 4 types for compliance reporting — don't hardcode one value for every log.
@@ -32,6 +33,13 @@ interface Props {
   // depend on what Staff chooses, it's determined by the action that created it.
   fixedLogType?: MaintenanceLogTypeEnum;
   /**
+   * Ảnh đã lưu của log đang sửa. Chỉ để XEM: PATCH là partial nên để trống hai ô chọn
+   * ảnh bên dưới nghĩa là "giữ nguyên", nhưng không hiện gì cả thì staff tưởng ảnh cũ
+   * đã mất và chụp lại từ đầu.
+   */
+  existingBeforePhotoIds?: string[] | null;
+  existingAfterPhotoIds?: string[] | null;
+  /**
    * Activity log của ticket — dùng để lấy mốc InProgress gần nhất, cùng nguồn với
    * đồng hồ "Processing time" trên màn chi tiết. Có nó thì Duration tự tính, không có
    * thì rơi về ô nhập tay.
@@ -47,6 +55,8 @@ export function MaintenanceLogForm({
   submitLabel,
   fixedLogType,
   activities,
+  existingBeforePhotoIds,
+  existingAfterPhotoIds,
 }: Props) {
   const [logType, setLogType] = useState<MaintenanceLogTypeEnum>(
     fixedLogType ?? initialValues?.logType ?? MaintenanceLogTypeEnum.OnSite,
@@ -80,6 +90,9 @@ export function MaintenanceLogForm({
   }, [autoDuration]);
 
   const elapsedMs = startedAt ? Math.max(0, nowMs - new Date(startedAt).getTime()) : 0;
+  const durationMins = parseInt(duration, 10);
+  const hasExistingPhotos =
+    (existingBeforePhotoIds?.length ?? 0) > 0 || (existingAfterPhotoIds?.length ?? 0) > 0;
 
   const handleSubmit = async () => {
     const trimmed = description.trim();
@@ -236,21 +249,35 @@ export function MaintenanceLogForm({
               <Text style={styles.durationValue}>{formatElapsed(elapsedMs)}</Text>
             </View>
           ) : (
-            <TextInput
-              style={styles.input}
-              value={duration}
-              onChangeText={setDuration}
-              placeholder="30"
-              placeholderTextColor={Colors.textFaint}
-              keyboardType="numeric"
-              maxLength={4}
-            />
+            <>
+              <TextInput
+                style={styles.input}
+                value={duration}
+                onChangeText={setDuration}
+                placeholder="30"
+                placeholderTextColor={Colors.textFaint}
+                keyboardType="numeric"
+                maxLength={4}
+              />
+              {/* Ô nhập phải giữ số phút thô để còn sửa được; dòng này dịch nó ra giờ
+                  để "729" không bắt người đọc tự chia 60. */}
+              <Text style={styles.durationHint}>
+                {durationMins > 0 ? formatDurationMinutes(durationMins) : 'minutes'}
+              </Text>
+            </>
           )}
         </View>
       </View>
 
       <View style={styles.field}>
         <Text style={styles.label}>Before / after photos</Text>
+        {hasExistingPhotos && (
+          <View style={styles.existingPhotos}>
+            <Text style={styles.hint}>Already saved — kept unless you add new ones</Text>
+            <AttachmentThumbnails fileIds={existingBeforePhotoIds} size={56} />
+            <AttachmentThumbnails fileIds={existingAfterPhotoIds} size={56} />
+          </View>
+        )}
         <AttachmentPicker
           purpose={FilePurposeEnum.MaintenancePhoto}
           value={beforePhotos}
@@ -333,6 +360,18 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontVariant: ['tabular-nums'],
   },
+  durationHint: {
+    marginTop: 4,
+    fontSize: 11,
+    color: Colors.textMute,
+    textAlign: 'center',
+  },
+  hint: {
+    fontSize: 11,
+    color: Colors.textMute,
+    marginBottom: 6,
+  },
+  existingPhotos: { marginBottom: 10 },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

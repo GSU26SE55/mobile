@@ -39,7 +39,7 @@ import { HoldModal } from '../../staff/components/HoldModal';
 import { KbReferencePicker } from '../../staff/components/KbReferencePicker';
 import { MaintenanceLogForm } from '../../staff/components/MaintenanceLogForm';
 import { ResolveModal } from '../../staff/components/ResolveModal';
-import { StaffTicketCard } from '../../staff/components/StaffTicketCard';
+import { categoryLabel, priorityMeta } from '../../tickets/utils/ticketLabels';
 import { TicketActionBar } from '../../staff/components/TicketActionBar';
 import { useAddMaintenanceLog } from '../../staff/hooks/useAddMaintenanceLog';
 import { useEscalateTicket } from '../../staff/hooks/useEscalateTicket';
@@ -116,21 +116,6 @@ const queryClient = new QueryClient({
     queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false },
   },
 });
-
-const CATEGORY_LABEL: Record<string, string> = {
-  Charging: 'Charging',
-  Overheat: 'Overheating',
-  NoPower: 'Power Loss',
-  Performance: 'Performance',
-  Repair: 'Repair',
-  Other: 'Other',
-};
-
-const PRIORITY_LABEL: Record<string, string> = {
-  P1Critical: 'P1',
-  P2High: 'P2',
-  P3Normal: 'P3',
-};
 
 function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLaunchProps) {
   const insets = useSafeAreaInsets();
@@ -435,24 +420,17 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                 <Text style={styles.emptyText}>No tickets yet</Text>
               </View>
             }
-            renderItem={({ item }) =>
-              isOperator ? (
-                <StaffTicketCard
-                  ticket={item}
-                  onPress={() => {
-                    setActiveTicketId(item.id);
-                    setViewMode('chat');
-                  }}
-                />
-              ) : (
-                <TicketCard
-                  ticket={item}
-                  onPress={() => {
-                    setActiveTicketId(item.id);
-                    setViewMode('chat');
-                  }}
-                />
-              )
+            renderItem={({ item }) => (
+              <TicketCard
+                ticket={item}
+                audience={isOperator ? 'staff' : 'customer'}
+                showAssignee={!isOperator}
+                onPress={() => {
+                  setActiveTicketId(item.id);
+                  setViewMode('chat');
+                }}
+              />
+            )
             }
           />
         )}
@@ -476,7 +454,7 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
         <View style={styles.headerInfoCompact}>
           <View style={styles.headerCodeRow}>
             <Text style={styles.headerCode}>{ticketDetail?.code || 'Ticket'}</Text>
-            {ticketDetail?.status && <TicketStatusBadge status={ticketDetail.status} />}
+            {ticketDetail?.status && <TicketStatusBadge status={ticketDetail.status} audience={isOperator ? 'staff' : 'customer'} />}
           </View>
           {ticketDetail?.title ? (
             <Text style={styles.headerSubCompact} numberOfLines={1}>
@@ -795,20 +773,18 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                     <View style={styles.metaGrid}>
                       <View style={styles.metaItem}>
                         <Text style={styles.metaLabel}>Status</Text>
-                        <TicketStatusBadge status={ticketDetail.status} />
+                        <TicketStatusBadge status={ticketDetail.status} audience={isOperator ? 'staff' : 'customer'} />
                       </View>
                       <View style={styles.metaItem}>
                         <Text style={styles.metaLabel}>Category</Text>
                         <Text style={styles.metaVal}>
-                          {CATEGORY_LABEL[ticketDetail.category] ?? ticketDetail.category}
+                          {categoryLabel(ticketDetail.category)}
                         </Text>
                       </View>
                       <View style={styles.metaItem}>
                         <Text style={styles.metaLabel}>Priority</Text>
                         <Text style={styles.metaVal}>
-                          {ticketDetail.priority
-                            ? PRIORITY_LABEL[ticketDetail.priority] ?? ticketDetail.priority
-                            : 'Not classified'}
+                          {priorityMeta(ticketDetail.priority).short}
                         </Text>
                       </View>
                       <View style={styles.metaItem}>
@@ -1041,12 +1017,16 @@ function BubbleChat({ ticketId: initialTicketId = '', notificationId }: BubbleLa
                       ? {
                           summary: editingLog.summary ?? '',
                           logType: editingLog.logType,
-                          actionsTaken: editingLog.actionsTaken ?? '',
-                          partsUsed: '',
+                          diagnosisDetails: editingLog.diagnosisDetails ?? undefined,
+                          actionsTaken: editingLog.actionsTaken ?? undefined,
+                          resolutionNote: editingLog.resolutionNote ?? undefined,
+                          partsUsed: editingLog.partsUsed ?? undefined,
                           durationMinutes: editingLog.durationMinutes,
                         }
                       : undefined
                   }
+                  existingBeforePhotoIds={editingLog?.beforePhotosFileIds}
+                  existingAfterPhotoIds={editingLog?.afterPhotosFileIds}
                   onSubmit={async (data: MaintenanceLogPayload) => {
                     if (editingLog) {
                       await updateLog.mutateAsync({

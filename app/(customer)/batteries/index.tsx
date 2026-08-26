@@ -194,7 +194,6 @@ const styles = StyleSheet.create({
   columnWrapper: { gap: 14, marginBottom: 14 },
   card: {
     height: 215,
-    borderRadius: 24,
     padding: 14,
     justifyContent: 'space-between',
   },
@@ -234,7 +233,7 @@ const styles = StyleSheet.create({
   voltageText: { fontSize: 18, lineHeight: 21, fontWeight: '900', color: Solar.ink },
   typeNameText: { fontSize: 10, color: Solar.mute, fontWeight: '600', marginTop: 2 },
   emptyWrap: { flex: 1, paddingHorizontal: 20, paddingTop: 40 },
-  emptyCard: { borderRadius: 24, alignItems: 'center', padding: 30 },
+  emptyCard: { alignItems: 'center', padding: 30 },
   emptyTitle: { fontSize: 16, fontWeight: '900', color: Solar.ink, marginTop: 12 },
   emptySub: { fontSize: 12, color: Solar.mute, textAlign: 'center', marginTop: 6 },
   pressed: { opacity: 0.78, transform: [{ scale: 0.98 }] },

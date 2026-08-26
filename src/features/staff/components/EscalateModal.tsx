@@ -5,15 +5,19 @@ import { Colors } from '@/src/lib/theme';
 import { BottomSheet } from '@/src/shared/components/BottomSheet';
 import { EscalationReasonEnum } from '@/src/features/tickets/types/ticket.types';
 import { handleErrorApi } from '@/src/lib/errors';
+import { ESCALATION_REASON_LABELS } from '@/src/features/tickets/utils/ticketLabels';
 
 // PartsRequired is left out of the picker — the system has no warehouse/parts inventory
 // flow, so selecting it wouldn't lead to any further action. Matches web's EscalateRequestDialog.
-const ESCALATION_OPTIONS: { value: EscalationReasonEnum; label: string }[] = [
-  { value: 'SkillGap',          label: 'Exceeds technical capability' },
-  { value: 'SafetyConcern',     label: 'Safety concern' },
-  { value: 'SlaBreach',         label: 'SLA breached' },
-  { value: 'CustomerComplaint', label: 'Customer complaint' },
+// Deliberate subset (see note above). Wording comes from the shared labels so
+// the picker and the detail screen cannot drift apart.
+const OFFERED_REASONS: EscalationReasonEnum[] = [
+  'SkillGap', 'SafetyConcern', 'SlaBreach', 'CustomerComplaint',
 ];
+const ESCALATION_OPTIONS = OFFERED_REASONS.map((value) => ({
+  value,
+  label: ESCALATION_REASON_LABELS[value],
+}));
 
 interface Props {
   visible: boolean;

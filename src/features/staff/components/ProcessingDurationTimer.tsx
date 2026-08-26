@@ -20,6 +20,23 @@ export function formatElapsed(ms: number): string {
 }
 
 /**
+ * "8h 24m" / "45m" / "2h" — thời lượng đã CHỐT của một log bảo trì.
+ *
+ * Khác `formatElapsed`: cái kia là đồng hồ đang chạy nên cần giây và bề rộng cố định
+ * (HH:MM:SS). Log đã nộp thì giây vô nghĩa, mà "504 mins" bắt người đọc tự chia 60 để
+ * biết là hơn tám tiếng.
+ *
+ * Bỏ phần phút khi tròn giờ ("2h" chứ không "2h 0m").
+ */
+export function formatDurationMinutes(minutes: number): string {
+  const total = Math.max(0, Math.round(minutes));
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (h === 0) return `${m}m`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+/**
  * Counts processing time since the most recent transition to InProgress — resets
  * whenever staff Resumes after a Hold (matches the meaning of "how long has this
  * been in progress", not a cumulative total). Derived from the activity log already

@@ -314,7 +314,6 @@ const styles = StyleSheet.create({
   pageSub: { fontSize: 12, color: Solar.mute, marginTop: 2, fontWeight: '600' },
 
   profileCard: {
-    borderRadius: 26,
     padding: 16,
     marginBottom: 14,
   },
@@ -356,7 +355,6 @@ const styles = StyleSheet.create({
   },
 
   statsCard: {
-    borderRadius: 24,
     paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -370,7 +368,6 @@ const styles = StyleSheet.create({
 
   sectionH: { fontSize: 17, fontWeight: '900', color: Solar.ink, letterSpacing: -0.3, paddingLeft: 4, paddingBottom: 10, marginTop: 8 },
   menuCard: {
-    borderRadius: 24,
     marginBottom: 14,
     overflow: 'hidden',
   },
@@ -393,12 +390,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    borderRadius: 20,
     padding: 16,
     marginTop: 10,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(235, 230, 215, 0.7)',
     shadowColor: '#8C7A4B',
     shadowOpacity: 0.04,
     shadowRadius: 8,

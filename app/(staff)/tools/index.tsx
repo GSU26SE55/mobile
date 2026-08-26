@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Radius, Shadow } from '@/src/lib/theme';
 import { BackButton } from '@/src/shared/components/ScreenHeader';
+import { EnergyBackdrop } from '@/src/features/batteries/components/EnergyBackdrop';
 
 // GH-56 — "Technical Tools" hub for Staff. Role gating via (staff)/_layout.
 type ToolRow = {
@@ -60,6 +61,7 @@ export default function ToolsHubScreen() {
   const insets = useSafeAreaInsets();
   return (
     <View style={styles.root}>
+      <EnergyBackdrop />
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <BackButton />
         <Text style={styles.topTitle}>Technical Tools</Text>

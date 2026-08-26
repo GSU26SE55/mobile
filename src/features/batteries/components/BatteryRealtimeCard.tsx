@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDateTime } from '@/src/lib/date';
 import { Colors, Radius, Shadow } from '@/src/lib/theme';
-import { RingStat } from '@/src/shared/components/StatTrio';
+import { RingStat } from '@/src/shared/components/RingStat';
 import { BatteryAssetRealtimeDto } from '../types/battery.types';
 import { ChargingStateEnum } from '../enums/battery.enum';
 

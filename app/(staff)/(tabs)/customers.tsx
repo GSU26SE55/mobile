@@ -18,6 +18,7 @@ import { P } from '@/src/lib/authz';
 import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
 import { StaffHeader } from '@/src/features/staff/components/StaffHeader';
 import { useUnreadByCustomer } from '@/src/features/tickets/hooks/useChatInbox';
+import { EnergyBackdrop } from '@/src/features/batteries/components/EnergyBackdrop';
 
 const PALETTE = [
   '#FF6B6B', '#F7A440', '#4ECDC4', '#45B7D1',
@@ -119,6 +120,7 @@ function CustomersScreenInner() {
 
   return (
     <View style={styles.root}>
+      <EnergyBackdrop />
       <StaffHeader
         title="Customers"
         subtitle={!isLoading && !isError ? `${groups.length} conversations` : undefined}

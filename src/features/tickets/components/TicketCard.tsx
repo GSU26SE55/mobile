@@ -1,174 +1,162 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { formatDate } from '@/src/lib/date';
-import { BadgeColors, Solar } from '@/src/lib/theme';
+import { Colors, Font, Solar } from '@/src/lib/theme';
+import { PressableScale } from '@/src/shared/components/motion';
 import { TicketDTO } from '../types/ticket.types';
 import { assignmentSummary } from '../utils/assignments';
+import { categoryLabel, priorityMeta, ticketChip, TicketAudience } from '../utils/ticketLabels';
+import { showsSlaInList } from '../utils/ticketWorkflow';
 import { SlaCountdown } from './SlaCountdown';
-import { TicketStatusBadge } from './TicketStatusBadge';
-import { GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
-import { shouldShowLiveSla } from '../utils/ticketWorkflow';
 
-const PRIORITY_BADGE: Record<string, keyof typeof BadgeColors> = {
-  P1Critical: 'p1',
-  P2High:     'p2',
-  P3Normal:   'p3',
-};
-
-const PRIORITY_LABEL: Record<string, string> = {
-  P1Critical: 'P1',
-  P2High:     'P2',
-  P3Normal:   'P3',
-};
-
-const CATEGORY_LABEL: Record<string, string> = {
-  Charging: 'Charging',
-  Overheat: 'Overheating',
-  NoPower: 'Power outage',
-  Performance: 'Performance',
-  Repair: 'Repair',
-  Other: 'Other',
-};
-
+/**
+ * The one ticket row for both roles.
+ *
+ * Priority leads the card as a filled P1/P2/P3 pill — the only coloured element
+ * in the top row, so severity reads first. The old card buried it in a 10px pill
+ * among five competing elements at `gap: 6`.
+ *
+ * Status sits next to it as one plain word, never in the meta line — it used to
+ * be the third of four `·`-joined items and got truncated away on a 360dp
+ * screen. `audience` picks the vocabulary: customers read five words, staff
+ * seven (see TICKET_STAGE).
+ */
 interface Props {
   ticket: TicketDTO;
   onPress: () => void;
+  audience?: TicketAudience;
+  /** Staff only: Primary / Supporter / Previous on this ticket. */
+  roleBadge?: { label: string; bg: string; text: string } | null;
+  showAssignee?: boolean;
 }
 
-export function TicketCard({ ticket, onPress }: Props) {
-  const pKey = ticket.priority ? (PRIORITY_BADGE[ticket.priority] ?? 'p3') : 'p3';
-  const pColors = BadgeColors[pKey];
-  const pLabel = ticket.priority
-    ? (PRIORITY_LABEL[ticket.priority] ?? ticket.priority)
-    : 'Unclassified';
-
-  // BE trả kèm `staffName` trong assignments nên card hiện được TÊN thật.
-  // Nhiều người thì chỉ show 2 tên đầu, dư bao nhiêu đếm số (xem assignmentSummary).
-  const technicianName = assignmentSummary(ticket.assignments);
+function TicketCardBase({
+  ticket,
+  onPress,
+  audience = 'customer',
+  roleBadge = null,
+  showAssignee = true,
+}: Props) {
+  const priority = priorityMeta(ticket.priority);
+  const showSla =
+    !!ticket.slaTimer &&
+    showsSlaInList(ticket.status, ticket.priority, ticket.slaTimer.status);
 
   return (
-    <Pressable onPress={onPress}>
-      {({ pressed }) => (
-        <GlassSurface style={[styles.card, pressed && styles.pressed]}>
-          {/* Top Header Row */}
-          <View style={styles.topRow}>
-            <Text style={styles.code}>{ticket.code}</Text>
-
-            {/* Chat chưa đọc — BE tính sẵn theo user hiện tại. Dùng icon thay chấm
-                trơn: hàng này đã có dot ưu tiên + 2 badge, thêm chấm nữa dễ lẫn. */}
-            {ticket.hasUnreadChat && (
-              <Ionicons
-                name="chatbubble-ellipses"
-                size={14}
-                color={Solar.yellowDeep}
-                accessibilityLabel="Unread messages"
-              />
-            )}
-
-            {/* Priority Badge */}
-            <View style={[styles.priorityBadge, { backgroundColor: pColors.bg }]}>
-              <View style={[styles.dot, { backgroundColor: pColors.text }]} />
-              <Text style={[styles.priorityText, { color: pColors.text }]}>{pLabel}</Text>
-            </View>
-
-            {/* Status Badge */}
-            <TicketStatusBadge status={ticket.status} />
-
-            <View style={{ flex: 1 }} />
-
-            {/* SLA remaining */}
-      {ticket.slaTimer && shouldShowLiveSla(ticket.status, ticket.priority, ticket.slaTimer.status) && <SlaCountdown sla={ticket.slaTimer} compact />}
-          </View>
-
-          {/* Title */}
-          <View style={styles.body}>
-            <Text style={styles.title} numberOfLines={2}>{ticket.title}</Text>
-          </View>
-
-          {/* Footer Row */}
-          <View style={styles.footer}>
-            <Text style={styles.subtitle} numberOfLines={1}>
-              {CATEGORY_LABEL[ticket.category] ?? ticket.category} · {formatDate(ticket.createdAt)}
+    <PressableScale onPress={onPress} accessibilityRole="button" scaleTo={0.98}>
+      <View style={styles.card}>
+        <View style={styles.topRow}>
+          <View
+            style={[styles.priorityPill, { backgroundColor: priority.chipBg }]}
+            accessibilityLabel={priority.short}
+          >
+            <Text style={[styles.priorityCode, { color: priority.chipText }]}>
+              {priority.code}
             </Text>
-            <View style={styles.technicianWrap}>
-              <Ionicons name="person-circle-outline" size={14} color={Solar.mute} />
-              <Text style={styles.technicianText}>{technicianName}</Text>
-            </View>
           </View>
-        </GlassSurface>
-      )}
-    </Pressable>
+
+          <Text style={styles.status} numberOfLines={1}>
+            {ticketChip(ticket.status, audience)}
+          </Text>
+
+          {roleBadge && (
+            <View style={[styles.roleBadge, { backgroundColor: roleBadge.bg }]}>
+              <Text style={[styles.roleText, { color: roleBadge.text }]}>{roleBadge.label}</Text>
+            </View>
+          )}
+
+          <View style={styles.spacer} />
+
+          {ticket.hasUnreadChat && (
+            <Ionicons
+              name="chatbubble-ellipses"
+              size={14}
+              color={Solar.yellowDeep}
+              accessibilityLabel="Unread messages"
+            />
+          )}
+
+          {showSla && ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} compact />}
+        </View>
+
+        <Text style={styles.title} numberOfLines={2}>
+          {ticket.title || ticket.code}
+        </Text>
+
+        <View style={styles.footer}>
+          <Text style={styles.meta} numberOfLines={1}>
+            {ticket.code} · {categoryLabel(ticket.category)} · {formatDate(ticket.createdAt)}
+          </Text>
+          {showAssignee && (
+            <View style={styles.assignee}>
+              <Ionicons name="person-circle-outline" size={14} color={Solar.mute} />
+              <Text style={styles.metaStrong} numberOfLines={1}>
+                {assignmentSummary(ticket.assignments)}
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </PressableScale>
   );
 }
 
+/**
+ * Memoised: the list re-renders on every refetch and on each SLA tick. Without
+ * this, a countdown updating in one row re-renders all of them.
+ */
+export const TicketCard = React.memo(TicketCardBase);
+
 const styles = StyleSheet.create({
+  // A plain View, not GlassSurface. The glass gradient runs
+  // rgba(255,255,255,.98) → rgba(255,252,244,.94) — invisible at card size, but
+  // it costs a LinearGradient plus its own compositing layer on EVERY row.
+  // Solid `Solar.card` is the same colour for one flat draw.
   card: {
-    borderRadius: 24,
-    padding: 16,
+    backgroundColor: Solar.card,
+    borderRadius: 20,
     marginBottom: 12,
-    gap: 12,
+    padding: 14,
+    gap: 8,
+    shadowColor: Solar.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
-  topRow: {
-    flexDirection: 'row',
+
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  spacer: { flex: 1 },
+
+  priorityPill: {
+    minWidth: 34,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
     alignItems: 'center',
-    gap: 6,
   },
-  code: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: Solar.mute,
-    letterSpacing: 0.2,
-  },
-  priorityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-  },
-  priorityText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  body: {},
-  title: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: Solar.ink,
-    lineHeight: 20,
-  },
+  priorityCode: { fontSize: 13, fontWeight: '800', letterSpacing: 0.3 },
+
+  // One plain word. The filter chip already scopes the list, so this does not
+  // need its own colour competing with the priority pill.
+  status: { ...Font.meta, color: Solar.ink2, flexShrink: 1 },
+
+  roleBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999 },
+  roleText: { fontSize: 10, fontWeight: '700' },
+
+  title: { ...Font.body, lineHeight: 20 },
+
   footer: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 10,
+    gap: 10,
+    paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(235, 230, 215, 0.6)',
+    borderTopColor: Colors.border,
   },
-  subtitle: {
-    fontSize: 11,
-    color: Solar.mute,
-    fontWeight: '600',
-  },
-  technicianWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  technicianText: {
-    fontSize: 11,
-    color: Solar.mute,
-    fontWeight: '600',
-  },
-  pressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.98 }],
-  },
+  meta: { ...Font.meta, flexShrink: 1 },
+  metaStrong: { ...Font.meta, color: Solar.ink2 },
+  assignee: { flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '45%' },
 });

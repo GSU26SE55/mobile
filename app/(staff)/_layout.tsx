@@ -1,10 +1,12 @@
 import { Stack, Redirect } from 'expo-router';
+import { useStackTransition } from '@/src/hooks/useScreenTransition';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuthContext } from '@/src/context/authContext';
 import { useSessionStore } from '@/src/stores/sessionStore';
 import { Colors } from '@/src/lib/theme';
 
 export default function StaffLayout() {
+  const screenOptions = useStackTransition();
   const { isHydrating } = useAuthContext();
   const user = useSessionStore((s) => s.user);
 
@@ -21,13 +23,7 @@ export default function StaffLayout() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: Colors.bg },
-        animation: 'slide_from_right',
-      }}
-    >
+    <Stack screenOptions={screenOptions}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="tickets/[id]" />
       <Stack.Screen name="customers/[customerId]" />

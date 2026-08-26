@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
   batteryImage: { width: '105%', height: 250 },
 
   socPillHero: {
-    borderRadius: 20,
+    borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 9,
     flexDirection: 'row',
@@ -435,7 +435,6 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 17, fontWeight: '900', color: Solar.ink, letterSpacing: -0.3 },
 
   perfCard: {
-    borderRadius: 24,
     padding: 16,
     marginBottom: 16,
   },
@@ -460,7 +459,6 @@ const styles = StyleSheet.create({
   metricCard: {
     flexGrow: 1,
     flexBasis: '47%',
-    borderRadius: 22,
     padding: 16,
     height: 104,
     justifyContent: 'space-between',
@@ -472,7 +470,6 @@ const styles = StyleSheet.create({
   metricCaptionBottom: { fontSize: 10, color: Solar.mute, fontWeight: '600' },
 
   linkCard: {
-    borderRadius: 22,
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',

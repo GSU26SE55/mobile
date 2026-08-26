@@ -64,7 +64,6 @@ export function GlassSurface({ children, style, warm = false }: GlassSurfaceProp
       end={{ x: 0.95, y: 0.95 }}
       style={[styles.glass, style]}
     >
-      <View pointerEvents="none" style={styles.glassHighlight} />
       {children}
     </LinearGradient>
   );
@@ -89,23 +88,17 @@ const styles = StyleSheet.create({
     left: -135,
     backgroundColor: 'rgba(255,255,255,0.75)',
   },
+  // Borderless — the 1.5px white stroke read as a second edge next to the
+  // shadow, so depth comes from the shadow alone now.
+  // One radius for every card in the app: call sites no longer set their own,
+  // which is what let them drift to 20/22/24/26/28 across screens.
   glass: {
-    borderRadius: 24,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
+    borderRadius: 20,
     shadowColor: '#8C7A4B',
     shadowOpacity: 0.09,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 6 },
     elevation: 4,
     overflow: 'hidden',
-  },
-  glassHighlight: {
-    position: 'absolute',
-    top: 1,
-    left: 18,
-    right: 18,
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.9)',
   },
 });

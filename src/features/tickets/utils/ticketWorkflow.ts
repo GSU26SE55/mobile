@@ -26,6 +26,20 @@ export function isTicketChatLocked(status: TicketStatusEnum) {
 }
 
 /**
+ * Log bảo trì bị khoá từ lúc Staff bấm hoàn thành, KHÔNG phải lúc ticket đóng: bản log đó
+ * chính là thứ Manager dựa vào để duyệt, sửa được sau khi nộp thì buổi duyệt mất ý nghĩa.
+ *
+ * Mirror đúng guard của BE (MaintenanceLogUpdateCommandHandler: Completed || Closed → 403).
+ * Trước đây mobile chỉ ẩn Edit khi ticket đã đóng, nên ở trạng thái "Review" nút vẫn hiện
+ * và bấm vào chỉ nhận 403.
+ *
+ * Tính luôn ClosedRejected — BE không liệt kê nhưng ticket đã đóng thì không còn gì để sửa.
+ */
+export function isMaintenanceLogLocked(status: TicketStatusEnum) {
+  return CHAT_LOCKED_TICKET_STATUSES.includes(status);
+}
+
+/**
  * Mốc bắt đầu lượt xử lý HIỆN TẠI — lần chuyển sang InProgress gần nhất, nên nó
  * reset sau mỗi Hold → Resume ("ticket này đang xử lý bao lâu rồi", không phải tổng
  * cộng dồn). Suy từ activity log đã fetch sẵn, không tốn thêm API.
@@ -67,6 +81,23 @@ export function canComplete(ticket: TicketDTO, staffId?: string | null) {
 
 export function shouldShowLiveSla(status: TicketStatusEnum, priority: TicketPriorityEnum | null, timerStatus?: string) {
   return status === 'InProgress' && priority !== 'Urgent' && timerStatus === 'Running';
+}
+
+/**
+ * Wider than `shouldShowLiveSla`, for LIST rows: a queued or paused ticket still
+ * has a deadline the reader needs to see, not just the one being worked on right
+ * now. Detail screens keep the narrow predicate above — they show the full SLA
+ * card, which only makes sense while the clock is actually running.
+ *
+ * `Urgent` tickets run without an SLA timer at all.
+ */
+export function showsSlaInList(
+  status: TicketStatusEnum,
+  priority: TicketPriorityEnum | null,
+  timerStatus?: string,
+) {
+  if (isTerminalTicket(status) || priority === 'Urgent') return false;
+  return timerStatus === 'Running' || timerStatus === 'Paused' || timerStatus === 'Breached';
 }
 
 export function canRateOrReopen(ticket: TicketDetailDTO, now = Date.now()) {

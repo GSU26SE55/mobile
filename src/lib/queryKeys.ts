@@ -51,6 +51,8 @@ export const QUERY_KEY = {
   ambient: {
     latest: (siteId: string) => [...KEY.ambient, 'latest', siteId] as const,
     trend:  (siteId: string, params?: Record<string, unknown>) => [...KEY.ambient, 'trend', siteId, params] as const,
+    history: (siteId: string, params?: Record<string, unknown>) => [...KEY.ambient, 'history', siteId, params] as const,
+    thresholdBySite: (siteId: string) => [...KEY.ambient, 'threshold', siteId] as const,
   },
   sensorReadings: {
     latest:    (assetId: string) => [...KEY.sensorReadings, 'latest', assetId] as const,

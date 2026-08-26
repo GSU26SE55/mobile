@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
+import { useStackTransition } from '@/src/hooks/useScreenTransition';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -32,8 +33,9 @@ const queryClient = new QueryClient({
 // in the same commit as <Redirect>, and the two overlapping navigations right after hydration
 // cause a Fabric crash `addViewAt: The specified child already has a parent`.
 function RootLayoutNav() {
+  const screenOptions = useStackTransition();
   return (
-    <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+    <Stack screenOptions={screenOptions}>
       <Stack.Screen name="index" />
       <Stack.Screen name="(auth)" />
       <Stack.Screen name="(customer)" />

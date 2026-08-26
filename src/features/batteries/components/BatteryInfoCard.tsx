@@ -56,7 +56,6 @@ export function BatteryInfoCard({ battery, customerName }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 24,
     paddingHorizontal: 18,
     marginBottom: 16,
   },

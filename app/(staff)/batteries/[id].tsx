@@ -14,6 +14,7 @@ import { BatteryRealtimeCard } from '@/src/features/batteries/components/Battery
 import { CascadeRiskBadge } from '@/src/features/batteries/components/CascadeRiskBadge';
 import { BmsSwitchCard } from '@/src/features/batteries/components/BmsSwitchCard';
 import { SensorChart } from '@/src/features/batteries/components/SensorChart';
+import { SensorHistoryTable } from '@/src/features/batteries/components/SensorHistoryTable';
 import { ChargeDischargeChart } from '@/src/features/batteries/components/ChargeDischargeChart';
 import { AssetAlertList } from '@/src/features/batteries/components/AssetAlertList';
 import { P } from '@/src/lib/authz';
@@ -36,7 +37,9 @@ export default function StaffBatteryViewScreen() {
 
 function StaffBatteryViewScreenInner() {
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // `from`/`to` arrive when opened from a ticket's "View real-time detail", so the
+  // log lands on the same window as that ticket's evidence table.
+  const { id, from, to } = useLocalSearchParams<{ id: string; from?: string; to?: string }>();
   const assetId = id ?? '';
 
   const { data: battery, isLoading, isError } = useBatteryAsset(assetId);
@@ -122,6 +125,10 @@ function StaffBatteryViewScreenInner() {
         <SensorChart assetId={assetId} />
         <ChargeDischargeChart assetId={assetId} />
 
+        <View style={[styles.card, Shadow]}>
+          <SensorHistoryTable assetId={assetId} from={from} to={to} />
+        </View>
+
         <Text style={styles.sectionTitle}>Details</Text>
         <BatteryInfoCard battery={battery} />
 
@@ -140,6 +147,7 @@ function StaffBatteryViewScreenInner() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
+  card: { backgroundColor: Colors.card, borderRadius: 20, padding: 16, marginBottom: 8 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bg, gap: 10 },
   notFoundTitle: { fontSize: 16, fontWeight: '800', color: Colors.accent, marginTop: 8 },
   goBackBtn: { backgroundColor: Colors.primary, borderRadius: 16, paddingHorizontal: 24, paddingVertical: 10, marginTop: 8 },
