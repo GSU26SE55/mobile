@@ -165,7 +165,7 @@ function StaffTicketDetailScreenInner() {
   const imageHeaders = useAuthImageHeaders();
   const user = useSessionStore((s) => s.user);
   const canResolve = checkPermission(user, P.TICKET_RESOLVE); // GH-47
-  const { data: ticket, isLoading, isError, refetch } = useStaffTicketDetail(ticketId);
+  const { data: ticket, isLoading, isError, isRefetching, refetch } = useStaffTicketDetail(ticketId);
   const { mutateAsync: holdTicket, isPending: isHolding } = useHoldTicket(ticketId);
   const { mutateAsync: resumeTicket, isPending: isResuming } = useResumeTicket(ticketId);
   const { mutateAsync: resolveTicket, isPending: isResolving } = useResolveTicket(ticketId);
@@ -390,9 +390,26 @@ function StaffTicketDetailScreenInner() {
           <Text style={styles.headerCode}>{ticket.code}</Text>
           <TicketStatusBadge status={ticket.status} />
         </View>
-        {/* Spacer keeps the header balanced. The unread badge lives on the "Chat" tab,
-            not repeated here to avoid two places reporting the same number. */}
-        <View style={styles.unreadSlot} />
+        <View style={styles.unreadSlot}>
+          <Pressable
+            accessibilityLabel="Refresh ticket"
+            accessibilityRole="button"
+            accessibilityState={{ busy: isRefetching, disabled: isRefetching }}
+            disabled={isRefetching}
+            hitSlop={8}
+            onPress={() => refetch()}
+            style={({ pressed }) => [
+              styles.refreshBtn,
+              (pressed || isRefetching) && styles.refreshBtnMuted,
+            ]}
+          >
+            {isRefetching ? (
+              <ActivityIndicator color={Colors.primaryDark} size="small" />
+            ) : (
+              <Ionicons name="refresh-outline" size={19} color={Colors.primaryDark} />
+            )}
+          </Pressable>
+        </View>
       </View>
 
       {activeTab === 'comments' ? (
@@ -970,6 +987,13 @@ const styles = StyleSheet.create({
   headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerCode: { fontSize: 16, fontWeight: '800', color: Colors.text },
   unreadSlot: { width: 36, alignItems: 'flex-end', justifyContent: 'center' },
+  refreshBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.card2,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  refreshBtnMuted: { opacity: 0.55 },
   unreadBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
     backgroundColor: Colors.primary, borderRadius: 999,
