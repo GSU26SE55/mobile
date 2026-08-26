@@ -58,6 +58,8 @@ export const ENDPOINTS = {
     DELETE:        (id: string) => `/api/files/${id}`,
   },
   BATTERY_ASSETS: {
+    // Nhật ký bảo trì định kỳ ở tầng tài sản (khác maintenance log của ticket).
+    MAINTENANCE_CYCLES: (id: string) => `/api/battery-assets/${id}/maintenance-cycles`,
     MY:           '/api/battery-assets/me',
     DETAIL:       (id: string) => `/api/battery-assets/${id}`,
     REALTIME:     (id: string) => `/api/battery-assets/${id}/realtime`,
@@ -138,8 +140,6 @@ export const ENDPOINTS = {
     ACTIVITIES:      (id: string) => `/api/tickets/${id}/activities`, // GH-44 — timeline
     REOPEN:          (id: string) => `/api/customer/tickets/${id}/reopen`,
     RATE:            (id: string) => `/api/customer/tickets/${id}/rate`,
-    PERIODIC_MAINTENANCE_SCHEDULE: (id: string) =>
-      `/api/customer/tickets/${id}/periodic-maintenance/schedule`,
   },
   // GH-68 — cross-ticket chat (any role)
   CHATS: {

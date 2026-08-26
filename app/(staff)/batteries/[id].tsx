@@ -10,6 +10,7 @@ import { useBatterySensorStream } from '@/src/features/batteries/hooks/useBatter
 import { useAssetAlerts } from '@/src/features/batteries/hooks/useAssetAlerts';
 import { useCascadeRisk } from '@/src/features/batteries/hooks/useCascadeRisk';
 import { BatteryInfoCard } from '@/src/features/batteries/components/BatteryInfoCard';
+import { MaintenanceHistoryCard } from '@/src/features/batteries/components/MaintenanceHistoryCard';
 import { BatteryRealtimeCard } from '@/src/features/batteries/components/BatteryRealtimeCard';
 import { CascadeRiskBadge } from '@/src/features/batteries/components/CascadeRiskBadge';
 import { BmsSwitchCard } from '@/src/features/batteries/components/BmsSwitchCard';
@@ -131,6 +132,8 @@ function StaffBatteryViewScreenInner() {
 
         <Text style={styles.sectionTitle}>Details</Text>
         <BatteryInfoCard battery={battery} />
+
+        <MaintenanceHistoryCard battery={battery} />
 
         <Text style={styles.sectionTitle}>Alerts</Text>
         <AssetAlertList

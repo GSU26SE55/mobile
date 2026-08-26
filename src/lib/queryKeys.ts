@@ -41,6 +41,7 @@ export const QUERY_KEY = {
     realtime:    (id: string) => [...KEY.batteryAssets, 'realtime', id] as const,
     cascadeRisk: (id: string) => [...KEY.batteryAssets, 'cascade-risk', id] as const, // GH-57
     bmsSwitch:   (id: string) => [...KEY.batteryAssets, 'bms-switch', id] as const,
+    maintenanceCycles: (id: string) => [...KEY.batteryAssets, 'maintenance-cycles', id] as const,
   },
   sites: {
     me:        (params?: Record<string, unknown>) => [...KEY.sites, 'me', params] as const,
