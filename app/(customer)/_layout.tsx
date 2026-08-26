@@ -1,10 +1,13 @@
 import { Redirect, Stack } from 'expo-router';
+import { useModalTransition, useStackTransition } from '@/src/hooks/useScreenTransition';
 import { ActivityIndicator, View } from 'react-native';
-import { useAuthContext } from '../../src/context/authContext';
-import { useSessionStore } from '../../src/stores/sessionStore';
-import { Colors } from '../../src/lib/theme';
+import { useAuthContext } from '@/src/context/authContext';
+import { useSessionStore } from '@/src/stores/sessionStore';
+import { Colors } from '@/src/lib/theme';
 
 export default function CustomerLayout() {
+  const screenOptions = useStackTransition();
+  const modalOptions = useModalTransition();
   const { isHydrating } = useAuthContext();
   const user = useSessionStore((s) => s.user);
 
@@ -21,29 +24,23 @@ export default function CustomerLayout() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: Colors.bg },
-        animation: 'slide_from_right',
-      }}
-    >
+    <Stack screenOptions={screenOptions}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen
         name="edit-profile"
         options={{
           headerShown: true,
-          title: 'Chỉnh sửa thông tin',
-          headerBackTitle: 'Quay lại',
+          title: 'Edit Information',
+          headerBackTitle: 'Back',
           headerStyle: { backgroundColor: Colors.white },
           headerTintColor: Colors.primary,
           headerTitleStyle: { fontWeight: '600', color: Colors.text },
         }}
       />
-      <Stack.Screen name="settings" options={{ headerShown: false }} />
-      <Stack.Screen name="kb" options={{ headerShown: false }} />
-      <Stack.Screen name="chats" options={{ headerShown: false }} />
-      <Stack.Screen name="incidents/[id]" />
+      <Stack.Screen name="blog" options={{ headerShown: false }} /> {/* GH-78 */}
+      {/* Task flow, not a drill-down — rising from the bottom means dismissing it
+          does not read as losing your place in the ticket list. */}
+      <Stack.Screen name="tickets/create" options={modalOptions} />
     </Stack>
   );
 }

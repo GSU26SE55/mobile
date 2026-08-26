@@ -1,15 +1,15 @@
 import * as Crypto from 'expo-crypto';
 import { getToken, setToken } from './secureStore';
 
-// #AUTH-48: device id ổn định per-install → fingerprint trust device (SHA256(deviceId|UA) ở BE).
+// #AUTH-48: stable per-install device id → trusted-device fingerprint (SHA256(deviceId|UA) on the BE).
 const DEVICE_ID_KEY = 'device_id';
 
-// Cache in-memory — tránh đọc SecureStore mỗi request (interceptor gọi mỗi call).
+// In-memory cache — avoids reading SecureStore on every request (the interceptor calls this every request).
 let cachedDeviceId: string | null = null;
 
 /**
- * Trả về device id ổn định: đọc SecureStore, nếu chưa có thì sinh UUID v4 (expo-crypto) và lưu lại.
- * Cố định per-install — KHÔNG đổi theo phiên/bản app để trust device sống sót qua restart/update.
+ * Returns a stable device id: reads SecureStore, and if none exists yet, generates a UUID v4 (expo-crypto) and saves it.
+ * Fixed per install — does NOT change across sessions/app versions, so trusted-device status survives restarts/updates.
  */
 export async function getDeviceId(): Promise<string> {
   if (cachedDeviceId) return cachedDeviceId;

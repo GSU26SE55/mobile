@@ -1,93 +1,62 @@
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import { Platform, StyleSheet, View, Pressable } from 'react-native';
-import Animated, { useAnimatedStyle, withTiming, FadeIn, FadeOut, useSharedValue, interpolateColor } from 'react-native-reanimated';
-import { Colors, ShadowLg } from '../../../src/lib/theme';
+import { StyleSheet, View } from 'react-native';
+import { PressableScale } from '@/src/shared/components/motion';
+import { useTabTransition } from '@/src/hooks/useScreenTransition';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-function AnimatedTabIcon({ focused, activeIcon, inactiveIcon, label }: { focused: boolean; activeIcon: any; inactiveIcon: any; label: string }) {
-  const isFocusedSV = useSharedValue(focused ? 1 : 0);
+const ACCENT = '#FFD500';
+const INK = '#1C1C1E';
+const MUTED = '#9A968B';
 
-  React.useEffect(() => {
-    isFocusedSV.value = withTiming(focused ? 1 : 0, { duration: 250 });
-  }, [focused]);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    const width = 44 + isFocusedSV.value * (110 - 44);
-    const backgroundColor = interpolateColor(
-      isFocusedSV.value,
-      [0, 1],
-      ['rgba(17, 24, 39, 0)', '#111827']
-    );
-
-    return {
-      width,
-      backgroundColor,
-    };
-  });
-
-  return (
-    <Animated.View style={[styles.tabItemBase, animatedStyle]}>
-      <Ionicons
-        name={focused ? activeIcon : inactiveIcon}
-        size={18}
-        color={focused ? '#FFFFFF' : '#64748B'}
-      />
-      {focused && (
-        <Animated.Text
-          entering={FadeIn.delay(50).duration(200)}
-          exiting={FadeOut.duration(100)}
-          style={styles.tabLabel}
-          numberOfLines={1}
-        >
-          {label}
-        </Animated.Text>
-      )}
-    </Animated.View>
-  );
-}
+const tabMeta: Record<string, {
+  active: React.ComponentProps<typeof Ionicons>['name'];
+  inactive: React.ComponentProps<typeof Ionicons>['name'];
+}> = {
+  dashboard: { active: 'home', inactive: 'home-outline' },
+  tickets: { active: 'pie-chart', inactive: 'pie-chart-outline' },
+  profile: { active: 'person', inactive: 'person-outline' },
+};
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 8);
+
   return (
-    <View style={styles.tabBarContainer}>
+    <View style={[styles.tabBar, { paddingBottom: bottomInset, height: 60 + bottomInset }]}>
       {state.routes.map((route: any, index: number) => {
-        const { options } = descriptors[route.key];
+        const options = descriptors[route.key]?.options;
+        const meta = tabMeta[route.name];
+        if (!meta || options?.href === null) return null;
 
-        if (options.href === null) return null;
-
-        const isFocused = state.index === index;
-
+        const focused = state.index === index;
         const onPress = () => {
           const event = navigation.emit({
             type: 'tabPress',
             target: route.key,
             canPreventDefault: true,
           });
-
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name, route.params);
-          }
+          if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params);
         };
 
-        let activeIcon, inactiveIcon, label;
-        if (route.name === 'dashboard') { activeIcon = 'grid'; inactiveIcon = 'grid-outline'; label = 'Dashboard'; }
-        else if (route.name === 'tickets') { activeIcon = 'document-text'; inactiveIcon = 'document-text-outline'; label = 'Tickets'; }
-        else if (route.name === 'profile') { activeIcon = 'settings'; inactiveIcon = 'settings-outline'; label = 'Settings'; }
-        else return null;
-
         return (
-          <Pressable
+          <PressableScale
             key={route.key}
             onPress={onPress}
+            scaleTo={0.88}
+            accessibilityRole="button"
+            accessibilityState={focused ? { selected: true } : {}}
             style={styles.tabButton}
           >
-            <AnimatedTabIcon
-              focused={isFocused}
-              activeIcon={activeIcon}
-              inactiveIcon={inactiveIcon}
-              label={label}
-            />
-          </Pressable>
+            <View style={[styles.iconBox, focused && styles.iconBoxActive]}>
+              <Ionicons
+                name={focused ? meta.active : meta.inactive}
+                size={26}
+                color={focused ? INK : MUTED}
+              />
+            </View>
+          </PressableScale>
         );
       })}
     </View>
@@ -95,57 +64,55 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 }
 
 export default function CustomerTabsLayout() {
+  const tabTransition = useTabTransition();
   return (
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-      }}
+      screenOptions={{ headerShown: false, ...tabTransition }}
     >
       <Tabs.Screen name="dashboard" />
       <Tabs.Screen name="tickets" />
       <Tabs.Screen name="profile" />
-
-      {/* Hidden but routable */}
       <Tabs.Screen name="alerts" options={{ href: null }} />
     </Tabs>
   );
 }
 
 const styles = StyleSheet.create({
-  tabBarContainer: {
+  tabBar: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 30 : 20,
-    alignSelf: 'center',
-    width: 230,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    height: 56,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    paddingHorizontal: 16,
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingHorizontal: 10,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(235,230,215,0.7)',
+    shadowColor: '#8C7A4B',
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -4 },
     elevation: 10,
-    ...ShadowLg,
   },
-  tabButton: {
+  tabButton: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  iconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tabItemBase: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 44,
-    borderRadius: 22,
-    overflow: 'hidden',
-  },
-  tabLabel: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-    marginLeft: 5,
+  iconBoxActive: {
+    backgroundColor: ACCENT,
+    borderRadius: 18,
+    shadowColor: '#D9A000',
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
   },
 });

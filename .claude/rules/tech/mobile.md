@@ -59,7 +59,7 @@ src/
 ├── context/
 │   └── authContext.tsx           ← AuthProvider: isHydrating + 3-case boot logic
 ├── hooks/
-│   └── useAuthGuard.ts           ← useSegments + useRouter redirect logic
+│   └── useCountdown.ts           ← guard auth là KHAI BÁO (<Redirect>), KHÔNG dùng router.replace trong effect
 ├── shared/
 │   └── enums/                    ← `as const` object + type alias — KHÔNG dùng TypeScript enum
 │       ├── session.enum.ts        ← UserRole

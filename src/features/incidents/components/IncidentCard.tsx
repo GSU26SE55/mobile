@@ -1,8 +1,9 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Shadow } from '../../../lib/theme';
-import { AlertSeverityEnum } from '../../../shared/enums/alert.enum';
+import { formatDateTime } from '@/src/lib/date';
+import { Colors, Shadow } from '@/src/lib/theme';
+import { AlertSeverityEnum } from '@/src/shared/enums/alert.enum';
 import {
   EnvironmentalIncidentDto,
   EnvironmentalIncidentTypeEnum,
@@ -43,9 +44,9 @@ export function IncidentCard({
         <Ionicons name={icon} size={20} color={sev.iconColor} />
       </View>
       <View style={styles.info}>
-        <Text style={styles.title}>{INCIDENT_TYPE_LABEL[incident.incidentType] ?? 'Sự cố'}</Text>
+        <Text style={styles.title}>{INCIDENT_TYPE_LABEL[incident.incidentType] ?? 'Incident'}</Text>
         {siteName ? <Text style={styles.meta}>{siteName}</Text> : null}
-        <Text style={styles.time}>{new Date(incident.detectedAt).toLocaleString()}</Text>
+        <Text style={styles.time}>{formatDateTime(incident.detectedAt)}</Text>
       </View>
       <View style={styles.right}>
         <IncidentStatusBadge status={incident.status} />

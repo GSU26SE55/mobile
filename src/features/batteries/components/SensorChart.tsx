@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
-import { Colors, Radius, Shadow } from '../../../lib/theme';
+import { formatDateShort, formatTime } from '@/src/lib/date';
+import { Colors, Radius, Shadow, Solar } from '@/src/lib/theme';
 import { useSensorReadingAggregate } from '../hooks/useSensorReadingAggregate';
 import { SensorReadingAggregateDto, SensorReadingInterval } from '../types/sensor-reading.types';
 
@@ -9,17 +10,17 @@ type MetricKey = 'socPercent' | 'voltage' | 'current' | 'temperature';
 
 const METRICS: { key: MetricKey; label: string; unit: string; pick: (d: SensorReadingAggregateDto) => number }[] = [
   { key: 'socPercent', label: 'SOC', unit: '%', pick: (d) => d.avgSocPercent },
-  { key: 'voltage', label: 'Điện áp', unit: 'V', pick: (d) => d.avgVoltage },
-  { key: 'current', label: 'Dòng điện', unit: 'A', pick: (d) => d.avgCurrent },
-  { key: 'temperature', label: 'Nhiệt độ', unit: '°C', pick: (d) => d.avgTemperature },
+  { key: 'voltage', label: 'Voltage', unit: 'V', pick: (d) => d.avgVoltage },
+  { key: 'current', label: 'Current', unit: 'A', pick: (d) => d.avgCurrent },
+  { key: 'temperature', label: 'Temperature', unit: '°C', pick: (d) => d.avgTemperature },
 ];
 
-// Range lớn dùng bucket thô hơn — khớp cách BE tổng hợp qua TimescaleDB time_bucket.
+// Large ranges use a coarser bucket — matches how BE aggregates via TimescaleDB time_bucket.
 const RANGES: Record<string, { hours: number; interval: SensorReadingInterval; label: string }> = {
-  '1h': { hours: 1, interval: '1m', label: '1 giờ' },
-  '24h': { hours: 24, interval: '1h', label: '24 giờ' },
-  '7d': { hours: 24 * 7, interval: '1h', label: '7 ngày' },
-  '30d': { hours: 24 * 30, interval: '1d', label: '30 ngày' },
+  '1h': { hours: 1, interval: '1m', label: '1h' },
+  '24h': { hours: 24, interval: '1h', label: '24h' },
+  '7d': { hours: 24 * 7, interval: '1h', label: '7d' },
+  '30d': { hours: 24 * 30, interval: '1d', label: '30d' },
 };
 type RangeKey = keyof typeof RANGES;
 const RANGE_KEYS = Object.keys(RANGES) as RangeKey[];
@@ -27,11 +28,11 @@ const RANGE_KEYS = Object.keys(RANGES) as RangeKey[];
 const CHART_HEIGHT = 180;
 const MAX_X_LABELS = 5;
 
+// Nhãn trục X phải ngắn — dùng dạng rút gọn thay vì `formatDateTime` để chữ không tràn.
 function formatBucketLabel(iso: string, range: RangeKey): string {
-  const d = new Date(iso);
-  if (range === '1h') return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-  if (range === '30d') return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-  return d.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  if (range === '1h') return formatTime(iso);
+  if (range === '30d') return formatDateShort(iso);
+  return `${formatDateShort(iso)} ${formatTime(iso)}`;
 }
 
 export function SensorChart({ assetId }: { assetId: string }) {
@@ -62,8 +63,8 @@ export function SensorChart({ assetId }: { assetId: string }) {
     if (isLoading) {
       return (
         <View style={styles.empty}>
-          <ActivityIndicator color={Colors.primary} />
-          <Text style={styles.emptyText}>Đang tải dữ liệu…</Text>
+          <ActivityIndicator color={Solar.yellowDeep} />
+          <Text style={styles.emptyText}>Loading data…</Text>
         </View>
       );
     }
@@ -71,7 +72,7 @@ export function SensorChart({ assetId }: { assetId: string }) {
     if (data.length < 2) {
       return (
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>Chưa đủ dữ liệu để vẽ biểu đồ</Text>
+          <Text style={styles.emptyText}>Not enough data to render the chart</Text>
         </View>
       );
     }
@@ -86,16 +87,16 @@ export function SensorChart({ assetId }: { assetId: string }) {
             adjustToWidth
             initialSpacing={12}
             endSpacing={12}
-            color={Colors.primary}
+            color={Solar.yellow}
             thickness={2.5}
             curved
             areaChart
-            startFillColor={Colors.primary}
+            startFillColor={Solar.yellow}
             endFillColor={Colors.white}
-            startOpacity={0.25}
+            startOpacity={0.3}
             endOpacity={0.02}
             hideDataPoints={chartPoints.length > 16}
-            dataPointsColor={Colors.primary}
+            dataPointsColor={Solar.yellowDeep}
             dataPointsRadius={3}
             yAxisTextStyle={styles.axisTickText}
             xAxisLabelTextStyle={styles.axisTickText}
@@ -109,7 +110,7 @@ export function SensorChart({ assetId }: { assetId: string }) {
             pointerConfig={{
               pointerStripHeight: CHART_HEIGHT,
               pointerStripColor: Colors.border,
-              pointerColor: Colors.primary,
+              pointerColor: Solar.yellow,
               radius: 5,
               pointerLabelWidth: 110,
               pointerLabelHeight: 44,
@@ -136,7 +137,7 @@ export function SensorChart({ assetId }: { assetId: string }) {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.titleRow}>
-            <Text style={styles.title}>Biểu đồ cảm biến</Text>
+            <Text style={styles.title}>Sensor chart</Text>
             {isFetching && !isLoading ? <ActivityIndicator size="small" color={Colors.textFaint} /> : null}
           </View>
           <View style={styles.rangeTabs}>
@@ -194,9 +195,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: Colors.bg,
   },
-  tabActive: { backgroundColor: Colors.primaryLight },
+  tabActive: { backgroundColor: Solar.yellowSoft },
   tabText: { fontSize: 12, fontWeight: '700', color: Colors.textMute },
-  tabTextActive: { color: Colors.primaryDark },
+  tabTextActive: { color: Solar.yellowDeep },
   empty: { height: CHART_HEIGHT, alignItems: 'center', justifyContent: 'center', gap: 8 },
   emptyText: { fontSize: 13, color: Colors.textMute },
   axisTickText: { fontSize: 10, color: Colors.textFaint, fontWeight: '600' },

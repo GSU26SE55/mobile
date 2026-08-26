@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, Pressable, View } from 'react-native';
 import { useForgotPassword } from '../hooks/useForgotPassword';
 import { loginSchema } from '../schemas/login.schema';
-import { HttpError, EntityError } from '../../../lib/errors';
-import { Colors } from '../../../lib/theme';
+import { HttpError, EntityError } from '@/src/lib/errors';
+import { Colors } from '@/src/lib/theme';
 
 interface Props { onSuccess: (email: string) => void; }
 
@@ -22,7 +22,7 @@ export function ForgotPasswordStep1({ onSuccess }: Props) {
     setGeneralError('');
     const result = loginSchema.shape.email.safeParse(email.trim());
     if (!result.success) {
-      setEmailError(result.error.issues[0]?.message ?? 'Email không hợp lệ');
+      setEmailError(result.error.issues[0]?.message ?? 'Invalid email');
       return;
     }
     try {
@@ -30,20 +30,20 @@ export function ForgotPasswordStep1({ onSuccess }: Props) {
       onSuccess(result.data);
     } catch (error) {
       if (error instanceof EntityError) {
-        const emailMsg = error.payload.listErrors?.find(e => e.field.toLowerCase() === 'email')?.detail;
+        const emailMsg = error.errors.find(e => e.field.toLowerCase() === 'email')?.detail;
         if (emailMsg) setEmailError(emailMsg);
         else setGeneralError(error.message);
       } else if (error instanceof HttpError) {
         setGeneralError(error.message);
       } else if (error instanceof Error) {
-        setGeneralError('Không thể kết nối. Kiểm tra lại mạng.');
+        setGeneralError('Unable to connect. Please check your network.');
       }
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Email tài khoản</Text>
+      <Text style={styles.label}>Account email</Text>
       <View style={[
         styles.inputRow,
         focused && styles.inputRowFocused,
@@ -81,7 +81,7 @@ export function ForgotPasswordStep1({ onSuccess }: Props) {
         onPress={handleSubmit}
         disabled={isPending}
       >
-        {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Gửi mã OTP</Text>}
+        {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Send OTP code</Text>}
       </Pressable>
     </View>
   );

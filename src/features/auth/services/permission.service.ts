@@ -1,12 +1,12 @@
-import { axiosInstance } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { CommonResponse } from '../../../types/api.types';
+import { axiosInstance } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { CommonResponse } from '@/src/types/api.types';
 import { MyPermissionsDto } from '../types/permission.types';
 
 const { AUTH } = ENDPOINTS;
 
 export const permissionService = {
-  // GH-47 — permission tươi của role user hiện tại (BE resolve qua DB, không đọc perm[] token)
+  // GH-47 — fresh permissions for the current user's role (BE resolves via DB, doesn't read token perm[])
   getMyPermissions: () =>
     axiosInstance.get<CommonResponse<MyPermissionsDto>>(AUTH.ME_PERMISSIONS),
 };

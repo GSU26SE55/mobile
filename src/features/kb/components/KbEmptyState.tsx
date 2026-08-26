@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Colors } from '../../../lib/theme';
-import type { TicketCategoryEnum } from '../../../shared/enums/ticket.enum';
-import { KbCategoryLabel } from '../../../shared/enums/kb.enum';
+import { Colors } from '@/src/lib/theme';
+import type { TicketCategoryEnum } from '@/src/shared/enums/ticket.enum';
+import { KbCategoryLabel } from '@/src/shared/enums/kb.enum';
 
 interface Props {
   query?: string;
@@ -11,15 +11,15 @@ interface Props {
 }
 
 export function KbEmptyState({ query, category }: Props) {
-  let title = 'Chưa có bài viết nào';
-  let subtitle = 'Quay lại sau khi có nội dung mới được xuất bản.';
+  let title = 'No articles yet';
+  let subtitle = 'Check back later once new content is published.';
 
   if (query && query.trim().length > 0) {
-    title = `Không tìm thấy bài viết khớp với "${query.trim()}"`;
-    subtitle = 'Thử bỏ bộ lọc hoặc đổi từ khóa khác.';
+    title = `No articles found matching "${query.trim()}"`;
+    subtitle = 'Try clearing the filter or using a different keyword.';
   } else if (category) {
-    title = `Chưa có bài viết trong danh mục "${KbCategoryLabel[category]}"`;
-    subtitle = 'Hãy chọn danh mục khác hoặc xem tất cả.';
+    title = `No articles in the "${KbCategoryLabel[category]}" category yet`;
+    subtitle = 'Try selecting a different category or view all.';
   }
 
   return (

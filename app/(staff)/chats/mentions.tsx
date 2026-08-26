@@ -1,18 +1,17 @@
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../../src/lib/theme';
-import { ScreenHeader } from '../../../src/shared/components/ScreenHeader';
-import { useMyMentions, useAcknowledgeMention } from '../../../src/features/tickets/hooks/useChatInbox';
+import { formatDateTime } from '@/src/lib/date';
+import { Colors } from '@/src/lib/theme';
+import { ScreenHeader } from '@/src/shared/components/ScreenHeader';
+import { useMyMentions } from '@/src/features/tickets/hooks/useChatInbox';
 
-// GH-68 — @mention tới Staff. Nút "Đã đọc" → acknowledge.
+// GH-68 — @mentions to Staff. GH-866: BE removed the acknowledge endpoint; yellow dot = internal chat.
 export default function StaffMentionsScreen() {
   const { data: mentions = [], isLoading, refetch, isRefetching } = useMyMentions();
-  const { mutate: acknowledge } = useAcknowledgeMention();
 
   return (
     <View style={styles.root}>
-      <ScreenHeader title="Nhắc đến tôi" />
+      <ScreenHeader title="Mentions" />
       {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={Colors.primary} />
@@ -24,29 +23,23 @@ export default function StaffMentionsScreen() {
           contentContainerStyle={styles.content}
           onRefresh={refetch}
           refreshing={isRefetching}
-          ListEmptyComponent={<Text style={styles.empty}>Chưa có ai nhắc đến bạn.</Text>}
+          ListEmptyComponent={<Text style={styles.empty}>No one has mentioned you yet.</Text>}
           renderItem={({ item }) => (
             <Pressable
               style={styles.row}
               onPress={() => item.ticketId && router.push(`/(staff)/tickets/${item.ticketId}`)}
             >
-              <View style={[styles.dot, item.isAcknowledged && styles.dotRead]} />
+              <View style={[styles.dot, item.isInternal && styles.dotInternal]} />
               <View style={styles.body}>
-                <Text style={styles.name} numberOfLines={1}>
-                  {item.mentionedDisplayName ?? 'Bạn được nhắc đến'}
-                </Text>
-                <Text style={styles.time}>
-                  {new Date(item.createdAt).toLocaleString('vi-VN', {
-                    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
-                  })}
-                </Text>
+                <View style={styles.nameRow}>
+                  <Text style={styles.name} numberOfLines={1}>
+                    {item.mentionedDisplayName ?? 'You were mentioned'}
+                  </Text>
+                  {/* Text label alongside the yellow dot — a color-only dot wouldn't convey the meaning. */}
+                  {item.isInternal && <Text style={styles.internalTag}>Internal</Text>}
+                </View>
+                <Text style={styles.time}>{formatDateTime(item.createdAt)}</Text>
               </View>
-              {!item.isAcknowledged && (
-                <Pressable style={styles.ackBtn} hitSlop={8} onPress={() => acknowledge(item.id)}>
-                  <Ionicons name="checkmark-done" size={16} color={Colors.primaryDark} />
-                  <Text style={styles.ackText}>Đã đọc</Text>
-                </Pressable>
-              )}
             </Pressable>
           )}
         />
@@ -65,11 +58,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 12, marginBottom: 8,
   },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primary },
-  dotRead: { backgroundColor: Colors.border },
+  dotInternal: { backgroundColor: Colors.warning },
   body: { flex: 1, gap: 2 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  internalTag: {
+    fontSize: 10, fontWeight: '700', color: Colors.warning,
+    borderWidth: 1, borderColor: Colors.warning, borderRadius: 4,
+    paddingHorizontal: 4, paddingVertical: 1,
+  },
   name: { fontSize: 13.5, fontWeight: '700', color: Colors.text },
   time: { fontSize: 11, color: Colors.textFaint },
-  ackBtn: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  ackText: { fontSize: 12, fontWeight: '700', color: Colors.primaryDark },
   empty: { fontSize: 13, color: Colors.textMute, textAlign: 'center', marginTop: 40 },
 });

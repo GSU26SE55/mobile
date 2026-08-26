@@ -2,13 +2,13 @@ import { useMutation } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import { router } from 'expo-router';
 import { authService } from '../services/auth.service';
-import { saveTokens, clearTokens, clearToken } from '../../../lib/secureStore';
-import { decodeToken, redirectByRole } from '../../../types/session.types';
-import { useSessionStore } from '../../../stores/sessionStore';
+import { saveTokens, clearTokens, clearToken } from '@/src/lib/secureStore';
+import { decodeToken, redirectByRole } from '@/src/types/session.types';
+import { useSessionStore } from '@/src/stores/sessionStore';
 import { Verify2faLoginPayload, CHALLENGE_TOKEN_KEY } from '../types/auth.types';
-import { syncDeviceTokenOnLogin } from '../../notifications/services/device-token.service';
+import { syncDeviceTokenOnLogin } from '@/src/features/notifications/services/device-token.service';
 
-// GH-295: bước 2 của 2FA login — verify TOTP/backup code → cấp token (giống login Case A)
+// GH-295: step 2 of 2FA login — verify TOTP/backup code → issue token (same as login Case A)
 export function useVerify2faLogin() {
   const setSession = useSessionStore((s) => s.setSession);
   const clearSession = useSessionStore((s) => s.clearSession);
@@ -18,7 +18,7 @@ export function useVerify2faLogin() {
     onSuccess: async (res) => {
       const tokens = res.data.data?.tokens;
       if (!tokens) {
-        Alert.alert('Lỗi', 'Xác thực 2FA thất bại.');
+        Alert.alert('Error', '2FA verification failed.');
         return;
       }
 
@@ -29,9 +29,10 @@ export function useVerify2faLogin() {
       const dest = redirectByRole(user.role);
 
       if (!dest) {
-        Alert.alert('Không hỗ trợ', 'Tài khoản Admin/Manager vui lòng dùng Web App.');
+        // ADMIN/MANAGER don't use mobile — don't keep the session, redirect to the "use Web App" guidance page
         await clearTokens();
         clearSession();
+        router.replace('/(auth)/use-web-app' as never);
         return;
       }
 

@@ -1,24 +1,56 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../../lib/theme';
-import { TicketActivityDTO } from '../types/ticket.types';
+import { formatDateTime } from '@/src/lib/date';
+import { Colors } from '@/src/lib/theme';
+import { TicketActivityDTO, TicketAssignmentDTO } from '../types/ticket.types';
 import { getActivityMeta, activityToneStyle } from '../utils/activityMeta';
+import { statusLabel } from './TicketStatusBadge';
 
 interface Props {
   activities?: TicketActivityDTO[];
+  assignments?: TicketAssignmentDTO[] | null;
   isLoading?: boolean;
 }
 
-// Format dd/MM/yyyy HH:mm — khớp frontend (date-fns "dd/MM/yyyy HH:mm").
-// Tự viết để không thêm package date-fns vào mobile.
-function formatActivityTime(iso: string): string {
-  const d = new Date(iso);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+const IS_GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function renderActivityValue(
+  item: TicketActivityDTO,
+  assignments?: TicketAssignmentDTO[] | null,
+): string | null {
+  if (!item.newValue) return null;
+  const val = item.newValue.trim();
+  if (!val) return null;
+
+  if (item.action === 'StatusChanged') {
+    if (val === 'Resolved' || val === 'Completed') {
+      return 'Completed';
+    }
+    const label = statusLabel(val);
+    return label === 'Resolved' ? 'Completed' : label;
+  }
+
+  // Handle staff assignment or any raw GUID value
+  if (item.action === 'StaffAssigned' || item.action === 'StaffReassigned' || IS_GUID.test(val)) {
+    if (IS_GUID.test(val)) {
+      const matched = assignments?.find((a) => a.staffId === val);
+      if (matched?.staffName) {
+        return matched.staffName;
+      }
+      // Hide raw GUID if staff name is unavailable
+      return null;
+    }
+  }
+
+  if (val === 'Resolved') {
+    return 'Completed';
+  }
+
+  return val;
 }
 
-export function ActivityTimeline({ activities, isLoading }: Props) {
+export function ActivityTimeline({ activities, assignments, isLoading }: Props) {
   if (isLoading) {
     return (
       <View>
@@ -30,7 +62,7 @@ export function ActivityTimeline({ activities, isLoading }: Props) {
   }
 
   if (!activities?.length) {
-    return <Text style={styles.empty}>Chưa có hoạt động nào.</Text>;
+    return <Text style={styles.empty}>No activity yet.</Text>;
   }
 
   return (
@@ -39,6 +71,13 @@ export function ActivityTimeline({ activities, isLoading }: Props) {
         const isLast = index === activities.length - 1;
         const meta = getActivityMeta(item.action);
         const style = activityToneStyle(meta.tone);
+        const displayValue = renderActivityValue(item, assignments);
+
+        // Sanitize actor display name if it happens to be a GUID
+        const actorName = item.actorDisplayName && !IS_GUID.test(item.actorDisplayName)
+          ? item.actorDisplayName
+          : null;
+
         return (
           <View key={item.id ?? `activity-${index}`} style={styles.item}>
             <View style={styles.dotCol}>
@@ -52,19 +91,18 @@ export function ActivityTimeline({ activities, isLoading }: Props) {
                 <Text style={[styles.action, { color: style.dot }]} numberOfLines={1}>
                   {meta.label}
                 </Text>
-                <Text style={styles.time}>{formatActivityTime(item.createdAt)}</Text>
+                <Text style={styles.time}>{formatDateTime(item.createdAt)}</Text>
               </View>
-              {item.actorDisplayName && (
-                <Text style={styles.actor}>{item.actorDisplayName} · {item.actorRole}</Text>
-              )}
-              {(item.oldValue || item.newValue) && (
-                <Text style={styles.value}>
-                  {item.oldValue && <Text style={styles.oldValue}>{item.oldValue} </Text>}
-                  {item.newValue && <Text>{item.newValue}</Text>}
+              {(actorName || item.actorRole) && (
+                <Text style={styles.actor}>
+                  {actorName ? `${actorName} · ${item.actorRole}` : item.actorRole}
                 </Text>
               )}
+              {!!displayValue && (
+                <Text style={styles.value}>{displayValue}</Text>
+              )}
               {item.reason && (
-                <Text style={styles.reason}>Lý do: {item.reason}</Text>
+                <Text style={styles.reason}>Reason: {item.reason}</Text>
               )}
             </View>
           </View>
@@ -90,7 +128,6 @@ const styles = StyleSheet.create({
   action:         { flex: 1, fontSize: 13, fontWeight: '700' },
   actor:          { fontSize: 12, color: Colors.textMute },
   value:          { fontSize: 12, color: Colors.textMute },
-  oldValue:       { textDecorationLine: 'line-through' },
   reason:         { fontSize: 12, color: Colors.textMute, fontStyle: 'italic' },
   time:           { fontSize: 11, color: Colors.textFaint },
 });

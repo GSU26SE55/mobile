@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors, ShadowPrimary } from '../../../lib/theme';
-import { useCountdown } from '../../../hooks/useCountdown';
+import { Colors, ShadowPrimary } from '@/src/lib/theme';
+import { useCountdown } from '@/src/hooks/useCountdown';
 import { phoneOtpSchema, PhoneOtpInput } from '../schemas/phoneVerify.schema';
 
 interface Props {

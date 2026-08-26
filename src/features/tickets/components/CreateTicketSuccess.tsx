@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, Pressable, View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, ShadowPrimary } from '../../../lib/theme';
+import { Colors, ShadowPrimary } from '@/src/lib/theme';
 
 interface Props {
   ticketCode: string;
@@ -17,25 +17,25 @@ export function CreateTicketSuccess({ ticketCode, onViewDetails, onBackToList }:
           <Ionicons name="checkmark-circle" size={80} color="#2E7D32" />
         </View>
         
-        <Text style={styles.title}>Tạo Ticket Thành Công</Text>
+        <Text style={styles.title}>Ticket Created Successfully</Text>
         <Text style={styles.subtitle}>
-          Yêu cầu hỗ trợ của bạn đã được ghi nhận thành công và đang được xử lý.
+          Your support request has been received and is being processed.
         </Text>
 
         <View style={styles.codeBox}>
-          <Text style={styles.codeLabel}>MÃ TICKET CỦA BẠN</Text>
+          <Text style={styles.codeLabel}>YOUR TICKET CODE</Text>
           <Text style={styles.codeValue}>{ticketCode}</Text>
         </View>
       </View>
 
       <View style={styles.actions}>
         <Pressable style={[styles.primaryBtn, ShadowPrimary]} onPress={onViewDetails}>
-          <Text style={styles.primaryBtnText}>Xem chi tiết ticket</Text>
+          <Text style={styles.primaryBtnText}>View ticket details</Text>
           <Ionicons name="arrow-forward" size={16} color="#fff" style={{ marginLeft: 6 }} />
         </Pressable>
 
         <Pressable style={styles.secondaryBtn} onPress={onBackToList}>
-          <Text style={styles.secondaryBtnText}>Quay lại danh sách</Text>
+          <Text style={styles.secondaryBtnText}>Back to list</Text>
         </Pressable>
       </View>
     </View>

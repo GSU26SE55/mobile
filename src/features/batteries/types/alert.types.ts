@@ -1,19 +1,23 @@
-// Alert DTOs — mirror docs/api-battery.md §Nhóm 1.
+// Alert DTOs — mirror docs/api-battery.md §Group 1.
 import type {
   AlertSeverityEnum,
   AlertStatusEnum,
   AnomalyTypeEnum,
-} from '../../../shared/enums/alert.enum';
+} from '@/src/shared/enums/alert.enum';
 
 export {
   AlertSeverityEnum,
   AlertStatusEnum,
   AnomalyTypeEnum,
-} from '../../../shared/enums/alert.enum';
+} from '@/src/shared/enums/alert.enum';
 
 export interface AlertDto {
   id: string;
+  /** Empty string `""` for SITE-level alerts (ambient 9/10/11, EnvironmentalIncident 14) — use `siteId` in that case. */
   batteryAssetId: string;
+  /** Sprint Bonus NS-21 (#661) — Site ID for site-level alerts. `null` for alerts tied to a specific battery. */
+  siteId: string | null;
+  /** Empty `""` for site-level alerts (not tied to a battery). */
   batterySerialNumber: string;
   anomalyType: AnomalyTypeEnum;
   severity: AlertSeverityEnum;
@@ -41,7 +45,7 @@ export interface AlertListParams {
   to?: string;
 }
 
-// Giá trị đo có thể null từ BE (thresholdValue/actualValue/unit là nullable).
+// Measured values may be null from BE (thresholdValue/actualValue/unit are nullable).
 export const formatMeasure = (
   value?: number | null,
   unit?: string | null,

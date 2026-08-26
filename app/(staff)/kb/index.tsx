@@ -11,17 +11,18 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '../../../src/lib/theme';
-import type { TicketCategoryEnum } from '../../../src/shared/enums/ticket.enum';
-import { KbArticleCard } from '../../../src/features/kb/components/KbArticleCard';
-import { KbCategoryChips } from '../../../src/features/kb/components/KbCategoryChips';
-import { KbEmptyState } from '../../../src/features/kb/components/KbEmptyState';
-import { KbSearchBar } from '../../../src/features/kb/components/KbSearchBar';
-import { useDebouncedValue } from '../../../src/features/kb/hooks/useDebouncedValue';
-import { useKbInfiniteList } from '../../../src/features/kb/hooks/useKbInfiniteList';
-import type { KbArticleSummaryDTO } from '../../../src/features/kb/types/kb.types';
-import { P } from '../../../src/lib/authz';
-import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
+import { Colors } from '@/src/lib/theme';
+import type { TicketCategoryEnum } from '@/src/shared/enums/ticket.enum';
+import { KbArticleCard } from '@/src/features/kb/components/KbArticleCard';
+import { KbCategoryChips } from '@/src/features/kb/components/KbCategoryChips';
+import { KbEmptyState } from '@/src/features/kb/components/KbEmptyState';
+import { KbSearchBar } from '@/src/features/kb/components/KbSearchBar';
+import { useDebouncedValue } from '@/src/features/kb/hooks/useDebouncedValue';
+import { useKbInfiniteList } from '@/src/features/kb/hooks/useKbInfiniteList';
+import type { KbArticleSummaryDTO } from '@/src/features/kb/types/kb.types';
+import { P } from '@/src/lib/authz';
+import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 export default function StaffKbListScreen() {
   return (
@@ -63,10 +64,8 @@ function StaffKbListScreenInner() {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Ionicons name="chevron-back" size={22} color={Colors.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Tài liệu KB</Text>
+        <BackButton />
+        <Text style={styles.headerTitle}>Guide</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -107,9 +106,9 @@ function StaffKbListScreenInner() {
           ) : isError ? (
             <View style={styles.errorWrap}>
               <Ionicons name="cloud-offline-outline" size={32} color={Colors.textFaint} />
-              <Text style={styles.errorTitle}>Không tải được danh sách</Text>
+              <Text style={styles.errorTitle}>Failed to load the list</Text>
               <Pressable onPress={() => refetch()} style={styles.retryBtn}>
-                <Text style={styles.retryText}>Thử lại</Text>
+                <Text style={styles.retryText}>Retry</Text>
               </Pressable>
             </View>
           ) : (

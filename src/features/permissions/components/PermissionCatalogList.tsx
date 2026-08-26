@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
 import { SectionList, StyleSheet, Text, View } from 'react-native';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 import { PermissionDto } from '../types/permission.types';
 
 interface Props {
   permissions: PermissionDto[];
 }
 
-// GH-68 — catalog permission read-only, group theo module.
+// GH-68 — read-only permission catalog, grouped by module.
 export function PermissionCatalogList({ permissions }: Props) {
   const sections = useMemo(() => {
     const byModule = new Map<string, PermissionDto[]>();
@@ -36,7 +36,7 @@ export function PermissionCatalogList({ permissions }: Props) {
           {!!item.description && <Text style={styles.desc}>{item.description}</Text>}
         </View>
       )}
-      ListEmptyComponent={<Text style={styles.empty}>Chưa có permission nào.</Text>}
+      ListEmptyComponent={<Text style={styles.empty}>No permissions yet.</Text>}
     />
   );
 }

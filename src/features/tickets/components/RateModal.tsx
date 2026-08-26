@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors, Shadow, ShadowPrimary } from '../../../lib/theme';
-import { BottomSheet } from '../../../shared/components/BottomSheet';
+import { Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
+import { BottomSheet } from '@/src/shared/components/BottomSheet';
 import { rateTicketSchema } from '../schemas/rateTicket.schema';
 import { RatePayload } from '../types/ticket.types';
 
@@ -41,15 +41,15 @@ export function RateModal({ visible, isLoading, onClose, onSubmit }: Props) {
     <BottomSheet visible={visible} onClose={handleClose}>
       <View style={styles.body}>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Đánh giá xử lý</Text>
-          <Pressable style={styles.closeBtn} onPress={handleClose} accessibilityRole="button" accessibilityLabel="Đóng">
+          <Text style={styles.title}>Submit Rating</Text>
+          <Pressable style={styles.closeBtn} onPress={handleClose} accessibilityRole="button" accessibilityLabel="Close">
             <Ionicons name="close" size={16} color={Colors.text2} />
           </Pressable>
         </View>
 
         <View style={styles.stars}>
           {[1, 2, 3, 4, 5].map((s) => (
-            <Pressable key={s} onPress={() => setRating(s)} accessibilityRole="button" accessibilityLabel={`${s} sao`}>
+            <Pressable key={s} onPress={() => setRating(s)} accessibilityRole="button" accessibilityLabel={`${s} star(s)`}>
               <Ionicons
                 name={s <= rating ? 'star' : 'star-outline'}
                 size={40}
@@ -60,12 +60,12 @@ export function RateModal({ visible, isLoading, onClose, onSubmit }: Props) {
         </View>
         {ratingError ? <Text style={styles.error}>{ratingError}</Text> : null}
 
-        <Text style={styles.inputLabel}>Nhận xét (không bắt buộc)</Text>
+        <Text style={styles.inputLabel}>Comments (optional)</Text>
         <TextInput
           style={styles.input}
           value={comment}
           onChangeText={setComment}
-          placeholder="KTV xử lý nhanh chóng..."
+          placeholder="Technician resolved the issue quickly..."
           placeholderTextColor={Colors.textFaint}
           multiline
           numberOfLines={4}
@@ -79,7 +79,7 @@ export function RateModal({ visible, isLoading, onClose, onSubmit }: Props) {
         >
           {isLoading
             ? <ActivityIndicator color="#fff" size="small" />
-            : <Text style={styles.submitText}>Gửi đánh giá & đóng</Text>
+            : <Text style={styles.submitText}>Submit & Close</Text>
           }
         </Pressable>
       </View>

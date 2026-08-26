@@ -1,26 +1,36 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors } from '../../../lib/theme';
-import { BottomSheet } from '../../../shared/components/BottomSheet';
+import { Colors } from '@/src/lib/theme';
+import { BottomSheet } from '@/src/shared/components/BottomSheet';
+import { handleErrorApi } from '@/src/lib/errors';
 
 interface Props {
   visible: boolean;
   isLoading: boolean;
   onClose: () => void;
-  onSubmit: (resolutionSummary: string) => void;
+  onSubmit: (resolutionSummary: string) => Promise<void>;
 }
 
 export function ResolveModal({ visible, isLoading, onClose, onSubmit }: Props) {
   const [summary, setSummary] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const trimmed = summary.trim();
-    if (trimmed.length < 10) {
-      setError('Mô tả kết quả cần ít nhất 10 ký tự');
+    if (!trimmed) {
+      setError('This field is required');
       return;
     }
-    onSubmit(trimmed);
+    try {
+      await onSubmit(trimmed);
+    } catch (err) {
+      handleErrorApi({
+        error: err,
+        setFieldError: (field, message) => {
+          if (field === 'resolutionSummary') setError(message);
+        },
+      });
+    }
   };
 
   const handleClose = () => {
@@ -32,15 +42,15 @@ export function ResolveModal({ visible, isLoading, onClose, onSubmit }: Props) {
   return (
     <BottomSheet visible={visible} onClose={handleClose}>
       <View style={styles.body}>
-        <Text style={styles.title}>Hoàn thành ticket</Text>
-        <Text style={styles.desc}>Mô tả kết quả xử lý để Manager duyệt.</Text>
+        <Text style={styles.title}>Complete ticket</Text>
+        <Text style={styles.desc}>Describe the resolution for the Manager to review.</Text>
 
         <View>
           <TextInput
             style={[styles.input, error ? styles.inputError : null]}
             value={summary}
             onChangeText={(t) => { setSummary(t); setError(''); }}
-            placeholder="Mô tả công việc đã thực hiện, kết quả..."
+            placeholder="Describe the work performed and the outcome..."
             placeholderTextColor={Colors.textFaint}
             multiline
             maxLength={2000}
@@ -51,7 +61,7 @@ export function ResolveModal({ visible, isLoading, onClose, onSubmit }: Props) {
 
         <View style={styles.actions}>
           <Pressable style={styles.cancelBtn} onPress={handleClose}>
-            <Text style={styles.cancelText}>Hủy</Text>
+            <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
           <Pressable
             style={[styles.submitBtn, isLoading && styles.btnDisabled]}
@@ -61,7 +71,7 @@ export function ResolveModal({ visible, isLoading, onClose, onSubmit }: Props) {
             {isLoading ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.submitText}>Hoàn thành</Text>
+              <Text style={styles.submitText}>Complete</Text>
             )}
           </Pressable>
         </View>

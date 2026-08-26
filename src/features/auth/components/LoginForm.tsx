@@ -9,8 +9,8 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors } from '../../../lib/theme';
-import { HttpError, EntityError } from '../../../lib/errors';
+import { Colors } from '@/src/lib/theme';
+import { HttpError, EntityError } from '@/src/lib/errors';
 import { useLogin } from '../hooks/useLogin';
 import { loginSchema } from '../schemas/login.schema';
 
@@ -46,7 +46,7 @@ export function LoginForm() {
     } catch (error) {
       if (error instanceof EntityError) {
         const errs: Record<string, string> = {};
-        error.payload.listErrors?.forEach(({ field, detail }) => {
+        error.errors.forEach(({ field, detail }) => {
           const key = field.charAt(0).toLowerCase() + field.slice(1);
           errs[key] = detail;
         });
@@ -54,7 +54,7 @@ export function LoginForm() {
       } else if (error instanceof HttpError) {
         setGeneralError(error.message);
       } else if (error instanceof Error) {
-        setGeneralError('Không thể kết nối. Kiểm tra lại mạng.');
+        setGeneralError('Unable to connect. Please check your network.');
       }
     }
   };
@@ -63,7 +63,7 @@ export function LoginForm() {
     <View style={styles.container}>
       {/* Email */}
       <View>
-        <Text style={styles.label}>Email hoặc tên đăng nhập</Text>
+        <Text style={styles.label}>Email or username</Text>
         <View style={[
           styles.inputRow,
           emailFocused && styles.inputRowFocused,
@@ -71,7 +71,7 @@ export function LoginForm() {
         ]}>
           <TextInput
             style={styles.input}
-            placeholder="Tên đăng nhập hoặc email"
+            placeholder="Username or email"
             placeholderTextColor={Colors.textFaint}
             autoCapitalize="none"
             keyboardType="email-address"
@@ -93,7 +93,7 @@ export function LoginForm() {
 
       {/* Password */}
       <View>
-        <Text style={styles.label}>Mật khẩu</Text>
+        <Text style={styles.label}>Password</Text>
         <View style={[
           styles.inputRow,
           passwordFocused && styles.inputRowFocused,
@@ -101,7 +101,7 @@ export function LoginForm() {
         ]}>
           <TextInput
             style={styles.input}
-            placeholder="Nhập mật khẩu"
+            placeholder="Enter password"
             placeholderTextColor={Colors.textFaint}
             secureTextEntry={!showPassword}
             value={password}
@@ -122,7 +122,7 @@ export function LoginForm() {
 
       {/* Forgot Password Link */}
       <Pressable onPress={() => router.push('/(auth)/forgot-password')} style={styles.forgotBtn}>
-        <Text style={styles.forgotText}>Quên mật khẩu?</Text>
+        <Text style={styles.forgotText}>Forgot password?</Text>
       </Pressable>
 
       {/* General error */}
@@ -142,7 +142,7 @@ export function LoginForm() {
         {isPending ? (
           <ActivityIndicator color="#FFFFFF" />
         ) : (
-          <Text style={styles.buttonText}>Đăng nhập</Text>
+          <Text style={styles.buttonText}>Sign in</Text>
         )}
       </Pressable>
     </View>

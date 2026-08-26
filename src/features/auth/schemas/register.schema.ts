@@ -1,23 +1,23 @@
 import { z } from 'zod';
 
-export const registerSchema = z.object({
-  fullName:    z.string().min(1, 'Họ tên không được để trống').max(150, 'Tối đa 150 ký tự'),
-  email:       z.string().min(1, 'Email không được để trống').email('Email không đúng định dạng'),
-  password:    z
-    .string()
-    .min(8, 'Mật khẩu tối thiểu 8 ký tự')
-    .max(100, 'Tối đa 100 ký tự')
-    .regex(/[A-Z]/, 'Cần ít nhất 1 chữ hoa')
-    .regex(/[a-z]/, 'Cần ít nhất 1 chữ thường')
-    .regex(/[0-9]/, 'Cần ít nhất 1 chữ số')
-    // Khớp BE PasswordPolicy: ký tự đặc biệt = bất kỳ ký tự không phải chữ-số-khoảng trắng (không chỉ !@#$%^&*).
-    .regex(/[^A-Za-z0-9\s]/, 'Cần ít nhất 1 ký tự đặc biệt'),
-  // BE chỉ validate độ dài (≤20), không ép định dạng số VN → nới cho khớp (số cố định/quốc tế vẫn hợp lệ).
-  phoneNumber: z
-    .string()
-    .max(20, 'Số điện thoại tối đa 20 ký tự')
-    .optional()
-    .or(z.literal('')),
-});
+export const registerSchema = z
+  .object({
+    fullName:    z.string().min(1, 'Full name is required').max(150, 'Maximum 150 characters'),
+    email:       z.string().min(1, 'Email is required').email('Invalid email format'),
+    password:    z
+      .string()
+      .min(8, 'Password must be at least 8 characters')
+      .max(100, 'Maximum 100 characters')
+      .regex(/[A-Z]/, 'Must contain at least 1 uppercase letter')
+      .regex(/[a-z]/, 'Must contain at least 1 lowercase letter')
+      .regex(/[0-9]/, 'Must contain at least 1 digit')
+      // Matches BE PasswordPolicy: special character = any character that isn't a letter/digit/whitespace (not just !@#$%^&*).
+      .regex(/[^A-Za-z0-9\s]/, 'Must contain at least 1 special character'),
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Password confirmation does not match',
+    path: ['confirmPassword'],
+  });
 
 export type RegisterInput = z.infer<typeof registerSchema>;

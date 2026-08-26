@@ -1,7 +1,7 @@
-import { axiosInstance } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { CommonResponse, PaginationResponse } from '../../../types/api.types';
-import { KbCategoryCode } from '../../../shared/enums/kb.enum';
+import { axiosInstance } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { CommonResponse, PaginationResponse } from '@/src/types/api.types';
+import { KbCategoryCode } from '@/src/shared/enums/kb.enum';
 import type {
   KbArticleSummaryDTO,
   KbArticleSuggestDTO,
@@ -43,16 +43,16 @@ export const kbService = {
       ENDPOINTS.KB_REFERENCES.LIST,
       { params: { ticketId } },
     ),
-  // GH-44 #7 — gợi ý KB theo ticket (param BE là `TicketId`, Guid).
+  // GH-44 #7 — KB suggestions per ticket (BE param is `TicketId`, Guid).
   suggest: (ticketId: string) =>
     axiosInstance.get<CommonResponse<KbArticleSuggestDTO[]>>(
       ENDPOINTS.KNOWLEDGE_BASE.SUGGEST,
       { params: { TicketId: ticketId } },
     ),
-  // GH-44 #5 — gán bài KB vào ticket.
+  // GH-44 #5 — attach a KB article to a ticket.
   addReference: (data: AddKbReferencePayload) =>
     axiosInstance.post<CommonResponse<object>>(ENDPOINTS.KB_REFERENCES.LIST, data),
-  // GH-44 #6 — gỡ tham chiếu KB (soft delete).
+  // GH-44 #6 — remove a KB reference (soft delete).
   removeReference: (referenceId: string) =>
     axiosInstance.delete<CommonResponse<object>>(ENDPOINTS.KB_REFERENCES.ITEM(referenceId)),
 };

@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { KEY } from '../../../lib/queryKeys';
+import { KEY } from '@/src/lib/queryKeys';
 import { incidentService } from '../services/incident.service';
 import { ResolveIncidentPayload } from '../types/incident.types';
 
-// Staff — Open/Acknowledged → Resolved kèm resolutionNote (5–2000 ký tự).
+// Staff — Open/Acknowledged → Resolved with resolutionNote (5–2000 characters).
 export function useResolveIncident() {
   const queryClient = useQueryClient();
   return useMutation({

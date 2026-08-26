@@ -1,9 +1,9 @@
 import React from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSessions } from '../../../src/features/account/hooks/useSessions';
-import { SessionCard } from '../../../src/features/account/components/SessionCard';
-import { handleErrorApi } from '../../../src/lib/errors';
-import { Colors } from '../../../src/lib/theme';
+import { useSessions } from '@/src/features/account/hooks/useSessions';
+import { SessionCard } from '@/src/features/account/components/SessionCard';
+import { handleErrorApi } from '@/src/lib/errors';
+import { Colors } from '@/src/lib/theme';
 
 export default function SessionsScreen() {
   const { sessions, revokeSession, revokeAll } = useSessions();
@@ -27,12 +27,12 @@ export default function SessionsScreen() {
           <SessionCard
             session={item}
             onRevoke={(id) => {
-              Alert.alert('Thu hồi phiên', 'Đăng xuất thiết bị này khỏi tài khoản của bạn?', [
-                { text: 'Hủy', style: 'cancel' },
+              Alert.alert('Revoke session', 'Sign this device out of your account?', [
+                { text: 'Cancel', style: 'cancel' },
                 {
-                  text: 'Thu hồi',
+                  text: 'Revoke',
                   style: 'destructive',
-                  // non-form → onError trực tiếp
+                  // non-form → onError directly
                   onPress: () => revokeSession.mutate(id, { onError: (error) => handleErrorApi({ error }) }),
                 },
               ]);
@@ -41,7 +41,7 @@ export default function SessionsScreen() {
           />
         )}
         ListEmptyComponent={
-          <Text style={styles.empty}>Không có phiên nào đang hoạt động.</Text>
+          <Text style={styles.empty}>No active sessions.</Text>
         }
         contentContainerStyle={styles.list}
       />
@@ -49,12 +49,12 @@ export default function SessionsScreen() {
       <Pressable
         style={[styles.revokeAllBtn, (revokeAll.isPending || data.filter((s) => !s.isCurrent).length === 0) && styles.disabledBtn]}
         onPress={() => {
-          Alert.alert('Đăng xuất thiết bị khác', 'Đăng xuất tất cả phiên khác trừ thiết bị hiện tại?', [
-            { text: 'Hủy', style: 'cancel' },
+          Alert.alert('Sign out other devices', 'Sign out of all sessions except this device?', [
+            { text: 'Cancel', style: 'cancel' },
             {
-              text: 'Đăng xuất',
+              text: 'Sign out',
               style: 'destructive',
-              // non-form → onError trực tiếp
+              // non-form → onError directly
               onPress: () => revokeAll.mutate(undefined, { onError: (error) => handleErrorApi({ error }) }),
             },
           ]);
@@ -64,7 +64,7 @@ export default function SessionsScreen() {
         {revokeAll.isPending ? (
           <ActivityIndicator color={Colors.primary} />
         ) : (
-          <Text style={styles.revokeAllText}>Đăng xuất tất cả thiết bị khác</Text>
+          <Text style={styles.revokeAllText}>Sign out all other devices</Text>
         )}
       </Pressable>
     </View>

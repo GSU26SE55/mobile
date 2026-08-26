@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { sensorReadingService } from '../services/sensor-reading.service';
 import { SensorReadingHistoryParams } from '../types/sensor-reading.types';
 
-// Trang đầu lịch sử (limit 100). Infinite scroll bằng nextCursor để issue sau nếu cần.
+// First page of history (limit 100). Infinite scroll via nextCursor as a follow-up issue if needed.
 export function useSensorReadingHistory(
   assetId: string,
   params?: SensorReadingHistoryParams,

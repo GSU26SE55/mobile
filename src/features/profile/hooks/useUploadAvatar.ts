@@ -1,9 +1,9 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
-import { fileStorageService } from '../../file-storage/services/file-storage.service';
-import { validateFile } from '../../file-storage/utils/fileValidation';
-import { FilePurposeEnum } from '../../file-storage/enums/file-storage.enum';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
+import { fileStorageService } from '@/src/features/file-storage/services/file-storage.service';
+import { validateFile } from '@/src/features/file-storage/utils/fileValidation';
+import { FilePurposeEnum } from '@/src/features/file-storage/enums/file-storage.enum';
 import { profileService } from '../services/profile.service';
 
 export function useUploadAvatar() {
@@ -12,10 +12,10 @@ export function useUploadAvatar() {
   return useMutation({
     mutationFn: async () => {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) throw new Error('Cần quyền truy cập thư viện ảnh');
+      if (!permission.granted) throw new Error('Photo library access permission is required');
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -28,7 +28,7 @@ export function useUploadAvatar() {
       const type = asset.mimeType ?? 'image/jpeg';
 
       const check = validateFile(name, asset.fileSize, FilePurposeEnum.Avatar);
-      if (!check.valid) throw new Error(check.message ?? 'File không hợp lệ');
+      if (!check.valid) throw new Error(check.message ?? 'Invalid file');
 
       const uploadRes = await fileStorageService.uploadFile({
         uri: asset.uri,
@@ -38,7 +38,7 @@ export function useUploadAvatar() {
         purpose: FilePurposeEnum.Avatar,
       });
       if (!uploadRes.data.isSuccess || !uploadRes.data.data) {
-        throw new Error(uploadRes.data.message ?? 'Upload thất bại');
+        throw new Error(uploadRes.data.message ?? 'Upload failed');
       }
 
       await profileService.setAvatar(uploadRes.data.data.fileId);

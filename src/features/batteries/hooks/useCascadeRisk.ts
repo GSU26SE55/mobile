@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { batteryService } from '../services/battery.service';
 
-// 404 = asset không tồn tại / chưa tính → ẩn badge, KHÔNG retry.
+// 404 = asset doesn't exist / not yet computed → hide the badge, do NOT retry.
 export function useCascadeRisk(assetId: string) {
   return useQuery({
     queryKey: QUERY_KEY.batteryAssets.cascadeRisk(assetId),

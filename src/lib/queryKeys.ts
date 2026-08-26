@@ -8,7 +8,7 @@ export const KEY = {
   sites:         ['sites'] as const,   // GH-57
   ambient:       ['ambient'] as const, // GH-57
   alerts:        ['alerts'] as const,
-  incidents:     ['incidents'] as const, // GH-55 — environmental incidents
+  incidents:     ['incidents'] as const, // GH-55 — environmental incidents (unchanged)
   tickets:       ['tickets'] as const,
   staffProfile:  ['staffProfile'] as const,
   staffTickets:  ['staffTickets'] as const,
@@ -16,12 +16,13 @@ export const KEY = {
   notificationPreferences: ['notificationPreferences'] as const,
   files:         ['files'] as const,
   kb:            ['kb'] as const,
+  blog:          ['blog'] as const,          // GH-78
   permissions:   ['permissions'] as const, // GH-47
   batteryTypes:  ['batteryTypes'] as const, // GH-56
   iotDevices:    ['iotDevices'] as const,   // GH-56
   loginHistory:  ['loginHistory'] as const,
-  chatsInbox:    ['chatsInbox'] as const,   // GH-68 — /chats/me
-  chatMentions:  ['chatMentions'] as const, // GH-68 — /chats/mentions/me
+  chatsInbox:    ['chatsInbox'] as const,   // GH-68 — /chats/me (unchanged)
+  chatMentions:  ['chatMentions'] as const, // GH-68 — /chats/mentions/me (unchanged)
 } as const;
 
 export const QUERY_KEY = {
@@ -39,6 +40,8 @@ export const QUERY_KEY = {
     detail:      (id: string) => [...KEY.batteryAssets, 'detail', id] as const,
     realtime:    (id: string) => [...KEY.batteryAssets, 'realtime', id] as const,
     cascadeRisk: (id: string) => [...KEY.batteryAssets, 'cascade-risk', id] as const, // GH-57
+    bmsSwitch:   (id: string) => [...KEY.batteryAssets, 'bms-switch', id] as const,
+    maintenanceCycles: (id: string) => [...KEY.batteryAssets, 'maintenance-cycles', id] as const,
   },
   sites: {
     me:        (params?: Record<string, unknown>) => [...KEY.sites, 'me', params] as const,
@@ -49,6 +52,8 @@ export const QUERY_KEY = {
   ambient: {
     latest: (siteId: string) => [...KEY.ambient, 'latest', siteId] as const,
     trend:  (siteId: string, params?: Record<string, unknown>) => [...KEY.ambient, 'trend', siteId, params] as const,
+    history: (siteId: string, params?: Record<string, unknown>) => [...KEY.ambient, 'history', siteId, params] as const,
+    thresholdBySite: (siteId: string) => [...KEY.ambient, 'threshold', siteId] as const,
   },
   sensorReadings: {
     latest:    (assetId: string) => [...KEY.sensorReadings, 'latest', assetId] as const,
@@ -56,6 +61,12 @@ export const QUERY_KEY = {
       [...KEY.sensorReadings, 'history', assetId, params] as const,
     aggregate: (assetId: string, params?: Record<string, unknown>) =>
       [...KEY.sensorReadings, 'aggregate', assetId, params] as const,
+    // GH-74 — key KEPT SEPARATE from `aggregate` so the two endpoints don't overwrite each other's cache.
+    aggregateHourly: (assetId: string, params?: Record<string, unknown>) =>
+      [...KEY.sensorReadings, 'aggregate-hourly', assetId, params] as const,
+    // GH-74 — realtime stats from SSE (§5.3bis). Keyed by (assetId, window) — BE pushes 2 independent windows.
+    stats: (assetId: string, window: string) =>
+      [...KEY.sensorReadings, 'stats', assetId, window] as const,
   },
   alerts: {
     list:   (params?: Record<string, unknown>) => [...KEY.alerts, 'list', params] as const,
@@ -69,10 +80,12 @@ export const QUERY_KEY = {
   tickets: {
     list:           (params?: Record<string, unknown>) => [...KEY.tickets, 'list', params] as const,
     detail:         (id: string) => [...KEY.tickets, 'detail', id] as const,
-    chats:          (id: string) => [...KEY.tickets, 'chats', id] as const,   // GH-44/GH-68 — infinite (cursor). Giữ key cho realtime prepend
+    chats:          (id: string) => [...KEY.tickets, 'chats', id] as const,   // GH-44/GH-68 — infinite (cursor). Key kept stable for realtime prepend
     chatUnreadCount:(id: string) => [...KEY.tickets, 'chat-unread-count', id] as const, // GH-68
     chatReactions:  (tid: string, cid: string) => [...KEY.tickets, 'chat-reactions', tid, cid] as const, // GH-68
+    chatReaders:    (tid: string, cid: string) => [...KEY.tickets, 'chat-readers', tid, cid] as const, // Staff/Manager/Admin only
     activities:     (id: string) => [...KEY.tickets, 'activities', id] as const, // GH-44
+    kbSuggestions:  (id: string, topN: number) => [...KEY.tickets, 'kb-suggestions', id, topN] as const,
   },
   staffProfile: {
     me: () => [...KEY.staffProfile, 'me'] as const,
@@ -85,10 +98,17 @@ export const QUERY_KEY = {
   },
   notifications: {
     list: (params?: Record<string, unknown>) => [...KEY.notifications, 'list', params] as const,
+    // Infinite-scroll feed — kept separate from `list` since its cache shape is entirely different
+    // (pages[] from useInfiniteQuery); sharing a key would make the two hooks overwrite each other.
+    infinite: (params?: Record<string, unknown>) => [...KEY.notifications, 'infinite', params] as const,
     unreadCount: () => [...KEY.notifications, 'unread-count'] as const,
   },
   notificationPreferences: {
-    detail: () => [...KEY.notificationPreferences, 'detail'] as const,
+    // GH-83 — group × channel matrix; already includes `channels`, so this is the ONLY source for the settings screen.
+    // The old `detail()` was removed: keeping it would create a second source for the same data, and nothing reads it anymore.
+    matrix: () => [...KEY.notificationPreferences, 'matrix'] as const,
+    // Type → group lookup table; nearly static, so a long staleTime is fine.
+    categories: () => [...KEY.notificationPreferences, 'categories'] as const,
   },
   files: {
     metadata:     (id: string) => [...KEY.files, 'metadata', id] as const,
@@ -101,12 +121,18 @@ export const QUERY_KEY = {
     related:  (ticketId: string) => [...KEY.kb, 'related', ticketId] as const,
     suggest:  (ticketId: string) => [...KEY.kb, 'suggest', ticketId] as const, // GH-44 #7
   },
+  blog: { // GH-78
+    infinite: (params?: Record<string, unknown>) => [...KEY.blog, 'infinite', params] as const,
+    detail:   (id: string) => [...KEY.blog, 'detail', id] as const,
+  },
   permissions: {
     me:      () => [...KEY.permissions, 'me'] as const, // GH-47
     catalog: (module?: string) => [...KEY.permissions, 'catalog', module ?? null] as const, // GH-68
   },
   chatsInbox: {
     list: (params?: Record<string, unknown>) => [...KEY.chatsInbox, 'list', params] as const, // GH-68
+    unreadCount:      () => [...KEY.chatsInbox, 'unread-count'] as const,
+    unreadByCustomer: () => [...KEY.chatsInbox, 'unread-by-customer'] as const,
   },
   chatMentions: {
     list: (params?: Record<string, unknown>) => [...KEY.chatMentions, 'list', params] as const, // GH-68
@@ -114,9 +140,14 @@ export const QUERY_KEY = {
   batteryTypes: {
     list:   (params?: Record<string, unknown>) => [...KEY.batteryTypes, 'list', params] as const, // GH-56
     detail: (id: string) => [...KEY.batteryTypes, 'detail', id] as const,
+    threshold: (id: string) => [...KEY.batteryTypes, 'threshold', id] as const,
   },
   iotDevices: {
     byCode:       (deviceCode: string) => [...KEY.iotDevices, 'by-code', deviceCode] as const, // GH-56
+    list:         (params: unknown) => [...KEY.iotDevices, 'list', params] as const,            // IOT3-57
+    detail:       (deviceId: string) => [...KEY.iotDevices, 'detail', deviceId] as const,       // IOT3-63
+    heartbeats:   (deviceId: string, params: unknown) =>
+      [...KEY.iotDevices, 'heartbeats', deviceId, params] as const,                              // IOT3-58
     calibrations: (deviceId: string, params?: Record<string, unknown>) =>
       [...KEY.iotDevices, 'calibrations', deviceId, params] as const,
   },

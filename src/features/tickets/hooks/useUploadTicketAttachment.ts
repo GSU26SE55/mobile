@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
-import { fileStorageService } from '../../file-storage/services/file-storage.service';
-import { FilePurposeEnum } from '../../file-storage/enums/file-storage.enum';
+import { fileStorageService } from '@/src/features/file-storage/services/file-storage.service';
+import { FilePurposeEnum } from '@/src/features/file-storage/enums/file-storage.enum';
+import { resolveFileUrl } from '@/src/features/file-storage/utils/fileUrl';
 import type { UploadedTicketAttachment } from '../types/ticket.types';
 
 export function useUploadTicketAttachment() {
@@ -23,6 +24,10 @@ export function useUploadTicketAttachment() {
         fileName:    data.fileName,
         contentType: data.contentType,
         sizeBytes:   data.size,
+        // BE ticket create requires `url`. publicUrl is null when PublicBaseUrl isn't
+        // configured → resolveFileUrl falls back to the download endpoint, and already
+        // prepends the origin so it returns an absolute URL (BE only validates non-empty).
+        url:         resolveFileUrl(data.publicUrl, data.fileId),
       };
     },
   });

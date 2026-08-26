@@ -1,134 +1,167 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { TicketCard } from '../../../src/features/tickets/components/TicketCard';
-import { useTickets } from '../../../src/features/tickets/hooks/useTickets';
-import { checkPermission, P } from '../../../src/lib/authz';
-import { useSessionStore } from '../../../src/stores/sessionStore';
-import { Colors, Shadow, ShadowPrimary } from '../../../src/lib/theme';
+import { TicketCard } from '@/src/features/tickets/components/TicketCard';
+import { useTickets } from '@/src/features/tickets/hooks/useTickets';
+import { customerLaneOf, CustomerLane } from '@/src/features/tickets/utils/ticketLabels';
+import { checkPermission, P } from '@/src/lib/authz';
+import { useSessionStore } from '@/src/stores/sessionStore';
+import { Colors, Font, Solar } from '@/src/lib/theme';
+import { EnergyBackdrop, GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
+import { FilterChips } from '@/src/shared/components/FilterChips';
+import { TicketCardSkeleton } from '@/src/features/tickets/components/TicketCardSkeleton';
+import { enterRow, PressableScale } from '@/src/shared/components/motion';
 
-type FilterKey = 'all' | 'open' | 'closed';
+// Six lanes, no "All". They partition all eight backend statuses — the
+// `Record<TicketStatusEnum, …>` in ticketLabels.ts is what guarantees no ticket
+// becomes unreachable now that there is no catch-all tab.
+const LANES: { key: CustomerLane; label: string }[] = [
+  { key: 'new', label: 'New' },
+  { key: 'inprocess', label: 'In progress' },
+  { key: 'pending', label: 'Scheduled' },
+  { key: 'complete', label: 'Completed' },
+  { key: 'closed', label: 'Closed' },
+  { key: 'reject', label: 'Declined' },
+];
+
+const EMPTY_COPY: Record<CustomerLane, string> = {
+  new: 'No new tickets',
+  inprocess: 'Nothing being worked on',
+  pending: 'Nothing scheduled',
+  complete: 'Nothing awaiting your review',
+  closed: 'Nothing closed yet',
+  reject: 'No declined tickets',
+};
 
 export default function TicketListScreen() {
   const insets = useSafeAreaInsets();
-  const [filter, setFilter] = useState<FilterKey>('all');
+  // Opens on live work, not on a mixed list with closed tickets in it.
+  const [lane, setLane] = useState<CustomerLane>('inprocess');
   const user = useSessionStore((s) => s.user);
-  const canCreate = checkPermission(user, P.TICKET_CREATE); // GH-47
+  const canCreate = checkPermission(user, P.TICKET_CREATE);
 
-  // Fetch all tickets from API
-  const { data: allData, isLoading, isError, isRefetching, refetch } = useTickets({ PageSize: 100 });
-  const allTickets = allData?.items ?? [];
-  const totalCount = allTickets.length;
+  const { data, isLoading, isError, isRefetching, refetch } = useTickets({ PageSize: 100 });
+  const allTickets = useMemo(() => data?.items ?? [], [data]);
 
-  const openCount = allTickets.filter((t) =>
-    !['Resolved', 'Closed', 'ClosedPendingRate', 'ClosedRejected'].includes(t.status)
-  ).length;
-
-  const closedCount = totalCount - openCount;
-
-  // Filter local items based on state
-  const displayedTickets = allTickets.filter((t) => {
-    if (filter === 'open') {
-      return !['Resolved', 'Closed', 'ClosedPendingRate', 'ClosedRejected'].includes(t.status);
+  const counts = useMemo(() => {
+    const acc: Record<CustomerLane, number> = {
+      new: 0,
+      inprocess: 0,
+      pending: 0,
+      complete: 0,
+      closed: 0,
+      reject: 0,
+    };
+    for (const ticket of allTickets) {
+      const key = customerLaneOf(ticket.status);
+      if (key) acc[key] += 1;
     }
-    if (filter === 'closed') {
-      return ['Resolved', 'Closed', 'ClosedPendingRate', 'ClosedRejected'].includes(t.status);
-    }
-    return true;
-  });
+    return acc;
+  }, [allTickets]);
 
-  const handleFilterChange = (key: FilterKey) => {
-    setFilter(key);
-  };
+  const visible = useMemo(
+    () => allTickets.filter((t) => customerLaneOf(t.status) === lane),
+    [allTickets, lane],
+  );
 
-  const filters: { key: FilterKey; label: string }[] = [
-    { key: 'all', label: `Tất cả (${totalCount})` },
-    { key: 'open', label: `Đang mở (${openCount})` },
-    { key: 'closed', label: `Đã đóng (${closedCount})` },
-  ];
+  const chips = LANES.map((l) => ({ ...l, count: counts[l.key] }));
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+      <EnergyBackdrop />
+
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerLeft}>
           <Text style={styles.title}>Tickets</Text>
-          <Text style={styles.subtitle}>{openCount} đang mở · {totalCount} tổng</Text>
+          {/* Describes the list underneath, not a mix of every lane. */}
+          <Text style={styles.subtitle}>
+            {visible.length} {LANES.find((l) => l.key === lane)?.label.toLowerCase()}
+          </Text>
         </View>
         {canCreate && (
-          <Pressable
-            style={[styles.addBtn, Shadow]}
+          <PressableScale
+            style={styles.addBtn}
+            scaleTo={0.9}
             onPress={() => router.push('/(customer)/tickets/create')}
+            accessibilityRole="button"
+            accessibilityLabel="Create ticket"
           >
-            <Ionicons name="add" size={20} color="#34C759" />
-          </Pressable>
+            <Ionicons name="add" size={22} color={Solar.ink} />
+          </PressableScale>
         )}
       </View>
 
-      {/* Filter tabs */}
       <View style={styles.filterWrap}>
-        <View style={[styles.filterBar, Shadow]}>
-          {filters.map((f) => (
-            <Pressable
-              key={f.key}
-              style={[styles.filterTab, filter === f.key && styles.filterTabActive]}
-              onPress={() => handleFilterChange(f.key)}
-            >
-              <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>
-                {f.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        {/* No `fill`: six chips split evenly would truncate every label at 360dp,
+            so the row scrolls instead. */}
+        <FilterChips items={chips} value={lane} onChange={setLane} />
       </View>
 
-      {/* List */}
       {isLoading ? (
-        <View style={styles.empty}>
-          <ActivityIndicator color="#34C759" size="large" />
+        // Skeleton, not a spinner: it reserves the real row shape so the list
+        // does not reflow when data lands.
+        <View style={styles.list}>
+          <TicketCardSkeleton />
         </View>
       ) : isError ? (
         <View style={styles.empty}>
-          <Ionicons name="alert-circle-outline" size={36} color={Colors.textFaint} />
-          <Text style={styles.emptyText}>Không thể tải danh sách ticket</Text>
-          <Pressable style={[styles.emptyBtn, ShadowPrimary]} onPress={() => refetch()}>
-            <Text style={styles.emptyBtnText}>Thử lại</Text>
+          <Ionicons name="cloud-offline-outline" size={36} color={Solar.mute} />
+          <Text style={styles.emptyText}>Unable to load the ticket list</Text>
+          <Pressable style={styles.emptyBtn} onPress={() => refetch()}>
+            <Text style={styles.emptyBtnText}>Retry</Text>
           </Pressable>
-        </View>
-      ) : displayedTickets.length === 0 ? (
-        <View style={styles.empty}>
-          <Ionicons name="document-text-outline" size={36} color={Colors.textFaint} />
-          <Text style={styles.emptyText}>Không có ticket nào</Text>
-          {canCreate && (
-            <Pressable
-              style={[styles.emptyBtn, ShadowPrimary]}
-              onPress={() => router.push('/(customer)/tickets/create')}
-            >
-              <Text style={styles.emptyBtnText}>Tạo ticket đầu tiên</Text>
-            </Pressable>
-          )}
         </View>
       ) : (
         <FlatList
-          data={displayedTickets}
+          // Remount per lane so the stagger replays — makes it read as a new
+          // list rather than the same one silently rewritten.
+          key={lane}
+          data={visible}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TicketCard
-              ticket={item}
-              onPress={() => router.push({ pathname: '/(customer)/tickets/[id]', params: { id: item.id } })}
-            />
+          renderItem={({ item, index }) => (
+            // Rows arrive top-down so the eye lands on the first one.
+            <Animated.View entering={enterRow(index)}>
+              <TicketCard
+                ticket={item}
+                audience="customer"
+                onPress={() =>
+                  router.push({ pathname: '/(customer)/tickets/[id]', params: { id: item.id } })
+                }
+              />
+            </Animated.View>
           )}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, visible.length === 0 && styles.listEmpty]}
           showsVerticalScrollIndicator={false}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          removeClippedSubviews
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}
               onRefresh={refetch}
-              colors={['#34C759']}
-              tintColor="#34C759"
+              colors={[Solar.yellowDeep]}
+              tintColor={Solar.yellowDeep}
             />
+          }
+          ListEmptyComponent={
+            <Animated.View entering={FadeIn.duration(220)}>
+            <GlassSurface style={styles.emptyCard}>
+              <Ionicons name="document-text-outline" size={42} color={Solar.faint} />
+              <Text style={styles.emptyText}>{EMPTY_COPY[lane]}</Text>
+              {canCreate && lane !== 'complete' && (
+                <Pressable
+                  style={styles.emptyBtn}
+                  onPress={() => router.push('/(customer)/tickets/create')}
+                >
+                  <Text style={styles.emptyBtnText}>Create a ticket</Text>
+                </Pressable>
+              )}
+            </GlassSurface>
+            </Animated.View>
           }
         />
       )}
@@ -137,10 +170,7 @@ export default function TicketListScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.bg,
-  },
+  container: { flex: 1, backgroundColor: Solar.bg },
   header: {
     paddingHorizontal: 20,
     paddingBottom: 14,
@@ -148,86 +178,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerLeft: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: Colors.text,
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 12,
-    color: Colors.textMute,
-    marginTop: 2,
-  },
+  headerLeft: { flex: 1 },
+  title: { ...Font.display },
+  subtitle: { ...Font.meta, marginTop: 2 },
   addBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Solar.yellow,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.02)',
+    shadowColor: Solar.yellowDeep,
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  filterWrap: {
-    paddingHorizontal: 20,
-    marginBottom: 14,
-  },
-  filterBar: {
-    flexDirection: 'row',
-    gap: 6,
-    padding: 4,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.02)',
-  },
-  filterTab: {
-    flex: 1,
-    paddingVertical: 9,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  filterTabActive: {
-    backgroundColor: '#34C759',
-  },
-  filterText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.textMute,
-  },
-  filterTextActive: {
-    color: '#FFFFFF',
-  },
-  list: {
-    paddingHorizontal: 20,
-    paddingBottom: 110,
-    paddingTop: 4,
-  },
+  // No horizontal padding: FilterChips' scrolling row brings its own 20dp inset, and
+  // padding here would clip the scroll before the screen edge.
+  filterWrap: { marginBottom: 14 },
+  list: { paddingHorizontal: 20, paddingBottom: 110, paddingTop: 4 },
+  listEmpty: { flexGrow: 1, justifyContent: 'center', paddingBottom: 150 },
   empty: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
     paddingBottom: 80,
+    paddingHorizontal: 20,
   },
-  emptyText: {
-    color: Colors.textMute,
-    fontSize: 13,
+  emptyCard: {
+    padding: 30,
+    alignItems: 'center',
   },
+  emptyText: { ...Font.meta, fontSize: 13, marginTop: 8 },
   emptyBtn: {
-    backgroundColor: '#34C759',
-    borderRadius: 16,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    marginTop: 8,
+    backgroundColor: Solar.yellow,
+    borderRadius: 999,
+    paddingHorizontal: 22,
+    paddingVertical: 11,
+    marginTop: 14,
   },
-  emptyBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 13,
-  },
+  emptyBtnText: { color: Colors.accent, fontWeight: '700', fontSize: 14 },
 });

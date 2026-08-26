@@ -1,6 +1,6 @@
-import { axiosInstance } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { CommonResponse, PaginationResponse } from '../../../types/api.types';
+import { axiosInstance } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { CommonResponse, PaginationResponse } from '@/src/types/api.types';
 import {
   EnvironmentalIncidentDto,
   IncidentListParams,
@@ -17,17 +17,17 @@ export const incidentService = {
     axiosInstance.get<CommonResponse<EnvironmentalIncidentDto>>(
       ENDPOINTS.ENVIRONMENTAL_INCIDENTS.DETAIL(id),
     ),
-  // GH-68 — incident đang Active (Open+Acknowledged) theo site, 1 call server-side.
+  // GH-68 — Active incidents (Open+Acknowledged) by site, 1 server-side call.
   getActiveBySite: (siteId: string) =>
     axiosInstance.get<CommonResponse<PaginationResponse<EnvironmentalIncidentDto>>>(
       ENDPOINTS.ENVIRONMENTAL_INCIDENTS.BY_SITE_ACTIVE(siteId),
     ),
-  // Staff-only — POST, Open → Acknowledged. 409 nếu state ≠ Open. Trả DTO mới.
+  // Staff-only — POST, Open → Acknowledged. 409 if state ≠ Open. Returns the updated DTO.
   acknowledge: (id: string) =>
     axiosInstance.post<CommonResponse<EnvironmentalIncidentDto>>(
       ENDPOINTS.ENVIRONMENTAL_INCIDENTS.ACKNOWLEDGE(id),
     ),
-  // Staff-only — POST { resolutionNote } (5–2000 ký tự). Trả DTO mới.
+  // Staff-only — POST { resolutionNote } (5–2000 characters). Returns the updated DTO.
   resolve: (id: string, payload: ResolveIncidentPayload) =>
     axiosInstance.post<CommonResponse<EnvironmentalIncidentDto>>(
       ENDPOINTS.ENVIRONMENTAL_INCIDENTS.RESOLVE(id),

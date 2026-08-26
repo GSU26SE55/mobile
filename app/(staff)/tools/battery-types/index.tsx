@@ -1,29 +1,27 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Shadow } from '../../../../src/lib/theme';
-import { useBatteryTypes } from '../../../../src/features/battery-types/hooks/useBatteryTypes';
-import { BatteryTypeCard } from '../../../../src/features/battery-types/components/BatteryTypeCard';
+import { Colors, Radius, Shadow } from '@/src/lib/theme';
+import { useBatteryTypes } from '@/src/features/battery-types/hooks/useBatteryTypes';
+import { BatteryTypeCard } from '@/src/features/battery-types/components/BatteryTypeCard';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
+import { SearchBar } from '@/src/shared/components/SearchBar';
+import { useDebouncedValue } from '@/src/shared/hooks/useDebouncedValue';
 
-// GH-56 — danh sách loại pin (read-only). Search keyword + phân trang đơn giản (1 trang lớn).
+// GH-56 — battery type list (read-only). Keyword search + simple pagination (1 large page).
 export default function BatteryTypesListScreen() {
   const insets = useSafeAreaInsets();
   const [keyword, setKeyword] = useState('');
-  const [debounced, setDebounced] = useState('');
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(keyword), 400);
-    return () => clearTimeout(t);
-  }, [keyword]);
+  const debounced = useDebouncedValue(keyword, 300);
   const { data, isLoading, isError, refetch, isFetching } = useBatteryTypes({
     pageNumber: 1,
     pageSize: 50,
@@ -34,28 +32,17 @@ export default function BatteryTypesListScreen() {
   return (
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <Pressable onPress={() => router.back()} style={[styles.backBtn, Shadow]}>
-          <Ionicons name="chevron-back" size={18} color={Colors.text} />
-        </Pressable>
-        <Text style={styles.topTitle}>Loại pin</Text>
-        <View style={styles.backBtn} />
+        <BackButton />
+        <Text style={styles.topTitle}>Battery Types</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
       <View style={styles.searchWrap}>
-        <Ionicons name="search" size={16} color={Colors.textMute} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Tìm theo tên hoặc nhà sản xuất"
-          placeholderTextColor={Colors.textMute}
+        <SearchBar
           value={keyword}
           onChangeText={setKeyword}
-          autoCapitalize="none"
+          placeholder="Search by name or manufacturer"
         />
-        {keyword.length > 0 && (
-          <Pressable hitSlop={8} onPress={() => setKeyword('')}>
-            <Ionicons name="close-circle" size={16} color={Colors.textMute} />
-          </Pressable>
-        )}
       </View>
 
       {isLoading ? (
@@ -65,15 +52,15 @@ export default function BatteryTypesListScreen() {
       ) : isError ? (
         <View style={styles.center}>
           <Ionicons name="alert-circle-outline" size={32} color={Colors.textMute} />
-          <Text style={styles.emptyText}>Không tải được danh sách.</Text>
+          <Text style={styles.emptyText}>Failed to load the list.</Text>
           <Pressable onPress={() => refetch()} style={[styles.retryBtn, Shadow]}>
-            <Text style={styles.retryText}>Thử lại</Text>
+            <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
       ) : items.length === 0 ? (
         <View style={styles.center}>
           <Ionicons name="battery-dead-outline" size={32} color={Colors.textMute} />
-          <Text style={styles.emptyText}>Không có loại pin phù hợp.</Text>
+          <Text style={styles.emptyText}>No matching battery types.</Text>
         </View>
       ) : (
         <FlatList
@@ -98,10 +85,11 @@ export default function BatteryTypesListScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12 },
+  headerSpacer: { width: 44 },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
-  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.card, borderRadius: Radius.md, marginHorizontal: 16, marginBottom: 12, paddingHorizontal: 12, height: 44, gap: 8, borderWidth: 1, borderColor: Colors.border },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.text },
+  // Only handles spacing — the search box styling lives in the shared <SearchBar>.
+  searchWrap: { marginHorizontal: 16, marginBottom: 12 },
   listContent: { paddingHorizontal: 16, paddingBottom: 24 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 10 },
   emptyText: { fontSize: 14, color: Colors.textMute },

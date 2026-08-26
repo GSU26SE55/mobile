@@ -1,8 +1,9 @@
-import { axiosInstance } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { CommonResponse } from '../../../types/api.types';
+import { axiosInstance } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { CommonResponse } from '@/src/types/api.types';
 import {
   ForgotPasswordPayload,
+  GoogleLoginPayload,
   LoginPayload,
   LoginResultData,
   Verify2faLoginPayload,
@@ -26,19 +27,23 @@ export const authService = {
   login: (data: LoginPayload) =>
     axiosInstance.post<CommonResponse<LoginResultData>>(AUTH.LOGIN, data),
 
-  // GH-295: bước 2 của 2FA login. Header X-Challenge-Token để rate-limit partition đúng (#AUTH-58).
+  // Google login — sends idToken (native Google Sign-In). Response shape matches login (token or 2FA challenge).
+  googleLogin: (data: GoogleLoginPayload) =>
+    axiosInstance.post<CommonResponse<LoginResultData>>(AUTH.GOOGLE, data),
+
+  // GH-295: step 2 of 2FA login. X-Challenge-Token header so rate-limit partitioning works correctly (#AUTH-58).
   verify2faLogin: (data: Verify2faLoginPayload) =>
     axiosInstance.post<CommonResponse<LoginResultData>>(AUTH.LOGIN_VERIFY_2FA, data, {
       headers: { 'X-Challenge-Token': data.challengeToken },
     }),
 
-  // #AUTH-58: gửi OTP qua SMS (fallback khi mất Authenticator). data = số điện thoại đã mask.
+  // #AUTH-58: sends the OTP via SMS (fallback when Authenticator is lost). data = masked phone number.
   send2faSms: (data: Sms2faPayload) =>
     axiosInstance.post<CommonResponse<string>>(AUTH.LOGIN_2FA_SMS, data, {
       headers: { 'X-Challenge-Token': data.challengeToken },
     }),
 
-  // #AUTH-50: khôi phục account đã xóa — bước 1 (gửi OTP), bước 2 (verify, KHÔNG cấp token).
+  // #AUTH-50: reactivates a deleted account — step 1 (send OTP), step 2 (verify, NO token issued).
   reactivateRequest: (data: ReactivateRequestPayload) =>
     axiosInstance.post<CommonResponse<string>>(AUTH.REACTIVATE_REQUEST, data),
 
@@ -69,14 +74,14 @@ export const authService = {
   logout: (refreshToken: string) =>
     axiosInstance.post<CommonResponse<null>>(AUTH.LOGOUT, { refreshToken }),
 
-  // #AUTH-51: Device A gửi cross-device 2FA request (challengeToken từ login), nhận requestId.
+  // #AUTH-51: Device A sends a cross-device 2FA request (challengeToken from login), receives a requestId.
   requestCrossDevice2fa: (data: CrossDevice2faRequestPayload) =>
     axiosInstance.post<CommonResponse<CrossDevice2faRequestResponse>>(
       AUTH.TWO_FA_CROSS_DEVICE_REQUEST,
       data,
     ),
 
-  // #AUTH-51: Device B confirm request bằng TOTP (requestId + totpCode).
+  // #AUTH-51: Device B confirms the request with a TOTP (requestId + totpCode).
   confirmCrossDevice2fa: (data: CrossDevice2faConfirmPayload) =>
     axiosInstance.post<CommonResponse<null>>(AUTH.TWO_FA_CROSS_DEVICE_CONFIRM, data),
 };

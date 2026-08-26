@@ -1,31 +1,31 @@
-// GH-56 — Zod schemas. Parse thủ công bằng safeParse() (mobile không dùng React Hook Form).
+// GH-56 — Zod schemas. Parsed manually with safeParse() (mobile doesn't use React Hook Form).
 import { z } from 'zod';
 
-// deviceCode (mã in trên thiết bị). BE Trim().ToUpperInvariant() rồi match unique index (L3)
-// → client cũng trim + uppercase để hiển thị/gửi nhất quán. Regex bỏ cờ `i` vì value đã uppercase.
+// deviceCode (code printed on the device). BE does Trim().ToUpperInvariant() then matches the unique index (L3)
+// → client also trims + uppercases for consistent display/submission. Regex drops the `i` flag since the value is already uppercase.
 export const deviceCodeSchema = z
   .string()
   .trim()
   .toUpperCase()
-  .min(3, 'deviceCode tối thiểu 3 ký tự')
-  .max(64, 'deviceCode tối đa 64 ký tự')
-  .regex(/^[A-Z0-9-]+$/, 'Chỉ gồm chữ in hoa, số và dấu gạch ngang');
+  .min(3, 'deviceCode must be at least 3 characters')
+  .max(64, 'deviceCode must be at most 64 characters')
+  .regex(/^[A-Z0-9-]+$/, 'Only uppercase letters, digits, and hyphens allowed');
 
-// createCalibrationSchema — field-level rules. Cross-field (expiresAt > calibratedAt) ở superRefine.
+// createCalibrationSchema — field-level rules. Cross-field rule (expiresAt > calibratedAt) is in superRefine.
 export const createCalibrationSchema = z
   .object({
-    channel: z.string().trim().toLowerCase().min(1, 'Bắt buộc').max(32, 'Tối đa 32 ký tự'),
-    unit: z.string().trim().min(1, 'Bắt buộc').max(16, 'Tối đa 16 ký tự'),
-    scale: z.number().refine((v) => v !== 0, 'scale phải khác 0'), // doc: "khác 0"
+    channel: z.string().trim().toLowerCase().min(1, 'Required').max(32, 'Max 32 characters'),
+    unit: z.string().trim().min(1, 'Required').max(16, 'Max 16 characters'),
+    scale: z.number().refine((v) => v !== 0, 'scale must be nonzero'), // doc: "must be nonzero"
     offset: z.number(),
-    calibratedAt: z.string().min(1, 'Bắt buộc'), // ISO UTC — N2: KHÔNG chặn tương lai (đúng contract)
+    calibratedAt: z.string().min(1, 'Required'), // ISO UTC — N2: does NOT block future dates (per contract)
     expiresAt: z.string().optional(),
-    batteryAssetId: z.string().uuid('batteryAssetId không hợp lệ').optional().nullable(),
-    notes: z.string().max(500, 'Tối đa 500 ký tự').optional(),
+    batteryAssetId: z.string().uuid('Invalid batteryAssetId').optional().nullable(),
+    notes: z.string().max(500, 'Max 500 characters').optional(),
   })
-  // N1: cross-field — field-level Zod không so 2 field được, phải đặt ở cấp object.
+  // N1: cross-field — field-level Zod can't compare two fields, must be placed at the object level.
   .refine((v) => !v.expiresAt || new Date(v.expiresAt) > new Date(v.calibratedAt), {
-    message: 'expiresAt phải sau calibratedAt',
+    message: 'expiresAt must be after calibratedAt',
     path: ['expiresAt'],
   });
 

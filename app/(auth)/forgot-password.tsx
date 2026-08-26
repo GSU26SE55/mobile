@@ -3,10 +3,9 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ForgotPasswordStep1 } from '../../src/features/auth/components/ForgotPasswordStep1';
-import { ForgotPasswordStep2 } from '../../src/features/auth/components/ForgotPasswordStep2';
-import { ForgotPasswordStep3 } from '../../src/features/auth/components/ForgotPasswordStep3';
-import { Colors, Spacing } from '../../src/lib/theme';
+import { ForgotPasswordStep1 } from '@/src/features/auth/components/ForgotPasswordStep1';
+import { ForgotPasswordStep2 } from '@/src/features/auth/components/ForgotPasswordStep2';
+import { ForgotPasswordStep3 } from '@/src/features/auth/components/ForgotPasswordStep3';
 
 type Step = 1 | 2 | 3;
 
@@ -36,7 +35,7 @@ export default function ForgotPasswordScreen() {
     setExpiresInSeconds(0);
   };
 
-  // Back nội bộ step: đang ở step 2/3 thì lùi step (giữ tiến trình), chỉ thoát màn khi ở step 1.
+  // Internal step back: at step 2/3, go back one step (keep progress); only exit the screen at step 1.
   const handleBack = () => {
     if (step > 1) {
       setStep((s) => (s - 1) as Step);
@@ -46,15 +45,15 @@ export default function ForgotPasswordScreen() {
   };
 
   const stepTitles: Record<Step, string> = {
-    1: 'Quên mật khẩu',
-    2: 'Nhập mã OTP',
-    3: 'Mật khẩu mới',
+    1: 'Forgot password',
+    2: 'Enter OTP',
+    3: 'New password',
   };
 
   const stepHints: Record<Step, string> = {
-    1: 'Nhập email để nhận mã xác thực đặt lại mật khẩu',
-    2: 'Kiểm tra hộp thư email của bạn',
-    3: 'Tạo mật khẩu mới cho tài khoản của bạn',
+    1: 'Enter your email to receive a password reset code',
+    2: 'Check your email inbox',
+    3: 'Create a new password for your account',
   };
 
   return (
@@ -67,7 +66,7 @@ export default function ForgotPasswordScreen() {
         onPress={handleBack}
         style={[styles.backBtn, { top: insets.top + 16 }]}
         accessibilityRole="button"
-        accessibilityLabel="Quay lại"
+        accessibilityLabel="Go back"
       >
         <Ionicons name="chevron-back" size={20} color="#1A1A1C" />
       </Pressable>
@@ -98,7 +97,7 @@ export default function ForgotPasswordScreen() {
           <Text style={styles.subtitle}>
             {step === 2 ? (
               <>
-                Mã OTP đã gửi đến <Text style={styles.emailHighlight}>{email}</Text>
+                OTP sent to <Text style={styles.emailHighlight}>{email}</Text>
               </>
             ) : (
               stepHints[step]

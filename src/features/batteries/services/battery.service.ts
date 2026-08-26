@@ -1,12 +1,13 @@
-import { axiosInstance } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { CommonResponse, PaginationResponse } from '../../../types/api.types';
+import { axiosInstance } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { CommonResponse, PaginationResponse } from '@/src/types/api.types';
 import {
   BatteryAssetDto,
   BatteryAssetRealtimeDto,
   BatteryAssetListParams,
 } from '../types/battery.types';
 import { CascadeRiskDto } from '../types/cascade.types';
+import { MaintenanceCycleDto } from '../types/maintenance-cycle.types';
 
 export const batteryService = {
   getMyAssets: (params?: BatteryAssetListParams) =>
@@ -25,5 +26,10 @@ export const batteryService = {
   getCascadeRisk: (id: string) =>
     axiosInstance.get<CommonResponse<CascadeRiskDto>>(
       ENDPOINTS.BATTERY_ASSETS.CASCADE_RISK(id),
+    ),
+
+  getMaintenanceCycles: (id: string) =>
+    axiosInstance.get<CommonResponse<MaintenanceCycleDto[]>>(
+      ENDPOINTS.BATTERY_ASSETS.MAINTENANCE_CYCLES(id),
     ),
 };

@@ -1,6 +1,7 @@
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../../lib/theme';
+import { formatDateShort } from '@/src/lib/date';
+import { Colors } from '@/src/lib/theme';
 import { TicketCommentDTO } from '../types/ticket.types';
 
 interface Props {
@@ -13,20 +14,20 @@ interface Props {
 }
 
 const ROLE_LABEL: Record<string, string> = {
-  System: 'Hệ thống',
-  Customer: 'Khách hàng',
+  System: 'System',
+  Customer: 'Customer',
   Manager: 'Manager',
-  Staff: 'Nhân viên',
+  Staff: 'Staff',
 };
 
-// GH-68 — inbox chat của tôi (FLAT, BE không group). Tap → mở ticket chứa chat.
+// GH-68 — my chat inbox (FLAT, BE doesn't group). Tap → opens the ticket containing the chat.
 export function ChatInboxList({
   chats,
   isLoading,
   onRefresh,
   refreshing,
   onPressChat,
-  emptyText = 'Chưa có tin nhắn nào.',
+  emptyText = 'No messages yet.',
 }: Props) {
   return (
     <FlatList
@@ -48,11 +49,11 @@ export function ChatInboxList({
               {item.authorDisplayName ?? ROLE_LABEL[item.authorRole] ?? item.authorRole}
             </Text>
             <Text style={styles.snippet} numberOfLines={1}>
-              {item.body?.trim() || '(không có nội dung)'}
+              {item.body?.trim() || '(no content)'}
             </Text>
           </View>
           <Text style={styles.time}>
-            {new Date(item.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+            {formatDateShort(item.createdAt)}
           </Text>
         </Pressable>
       )}

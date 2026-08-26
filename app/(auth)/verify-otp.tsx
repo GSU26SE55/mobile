@@ -1,10 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { OtpVerifyForm } from '../../src/features/auth/components/OtpVerifyForm';
-import { Colors, Spacing } from '../../src/lib/theme';
+import { OtpVerifyForm } from '@/src/features/auth/components/OtpVerifyForm';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 export default function VerifyOtpScreen() {
   const { email } = useLocalSearchParams<{ email: string }>();
@@ -23,15 +22,13 @@ export default function VerifyOtpScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* Back button */}
-      <Pressable onPress={() => router.back()} style={[styles.backBtn, { top: insets.top + 16 }]}>
-        <Ionicons name="chevron-back" size={20} color="#1A1A1C" />
-      </Pressable>
+      <BackButton />
 
       <View style={[styles.container, { paddingTop: insets.top + 76 }]}>
         <View style={styles.header}>
-          <Text style={styles.title}>Xác thực mã OTP</Text>
+          <Text style={styles.title}>Verify OTP</Text>
           <Text style={styles.subtitle}>
-            Mã OTP đã gửi đến <Text style={styles.emailHighlight}>{email}</Text>
+            OTP sent to <Text style={styles.emailHighlight}>{email}</Text>
           </Text>
         </View>
 

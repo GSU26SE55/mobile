@@ -1,43 +1,63 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors } from '../../../lib/theme';
-import { BottomSheet } from '../../../shared/components/BottomSheet';
-import { EscalationReasonEnum } from '../../tickets/types/ticket.types';
+import { Colors } from '@/src/lib/theme';
+import { BottomSheet } from '@/src/shared/components/BottomSheet';
+import { EscalationReasonEnum } from '@/src/features/tickets/types/ticket.types';
+import { handleErrorApi } from '@/src/lib/errors';
+import { ESCALATION_REASON_LABELS } from '@/src/features/tickets/utils/ticketLabels';
 
-const ESCALATION_OPTIONS: { value: EscalationReasonEnum; label: string }[] = [
-  { value: 'SkillGap',          label: 'Vượt quá năng lực xử lý' },
-  { value: 'PartsRequired',     label: 'Cần thiết bị/linh kiện đặc biệt' },
-  { value: 'SafetyConcern',     label: 'Vấn đề an toàn' },
-  { value: 'CustomerComplaint', label: 'Khách hàng phàn nàn' },
+// PartsRequired is left out of the picker — the system has no warehouse/parts inventory
+// flow, so selecting it wouldn't lead to any further action. Matches web's EscalateRequestDialog.
+// Deliberate subset (see note above). Wording comes from the shared labels so
+// the picker and the detail screen cannot drift apart.
+const OFFERED_REASONS: EscalationReasonEnum[] = [
+  'SkillGap', 'SafetyConcern', 'SlaBreach', 'CustomerComplaint',
 ];
+const ESCALATION_OPTIONS = OFFERED_REASONS.map((value) => ({
+  value,
+  label: ESCALATION_REASON_LABELS[value],
+}));
 
 interface Props {
   visible: boolean;
   isLoading: boolean;
   onClose: () => void;
-  onSubmit: (reason: EscalationReasonEnum, note?: string) => void;
+  onSubmit: (reason: EscalationReasonEnum, note: string) => Promise<void>;
 }
 
 export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) {
   const [selected, setSelected] = useState<EscalationReasonEnum | null>(null);
   const [note, setNote] = useState('');
+  const [reasonError, setReasonError] = useState('');
 
-  const handleSubmit = () => {
-    if (selected) onSubmit(selected, note.trim() || undefined);
+  const handleSubmit = async () => {
+    if (!selected) return;
+    setReasonError('');
+    try {
+      await onSubmit(selected, note.trim());
+    } catch (error) {
+      handleErrorApi({
+        error,
+        setFieldError: (field, message) => {
+          if (field === 'reason') setReasonError(message);
+        },
+      });
+    }
   };
 
   const handleClose = () => {
     setSelected(null);
     setNote('');
+    setReasonError('');
     onClose();
   };
 
   return (
     <BottomSheet visible={visible} onClose={handleClose}>
       <View style={styles.body}>
-        <Text style={styles.title}>Yêu cầu escalate</Text>
-        <Text style={styles.desc}>Manager sẽ xem xét và reassign cho Staff cấp cao hơn.</Text>
+        <Text style={styles.title}>Escalation request</Text>
+        <Text style={styles.desc}>Manager will review and reassign to a higher-tier Staff.</Text>
 
         <View style={styles.options}>
           {ESCALATION_OPTIONS.map((opt) => {
@@ -54,12 +74,13 @@ export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) 
             );
           })}
         </View>
+        {reasonError ? <Text style={styles.errorText}>{reasonError}</Text> : null}
 
         <TextInput
           style={styles.noteInput}
           value={note}
           onChangeText={setNote}
-          placeholder="Ghi chú thêm (tùy chọn)..."
+          placeholder="Note (optional)..."
           placeholderTextColor={Colors.textFaint}
           multiline
           maxLength={500}
@@ -68,7 +89,7 @@ export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) 
 
         <View style={styles.actions}>
           <Pressable style={styles.cancelBtn} onPress={handleClose}>
-            <Text style={styles.cancelText}>Hủy</Text>
+            <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
           <Pressable
             style={[styles.submitBtn, !selected && styles.btnDisabled]}
@@ -78,7 +99,7 @@ export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) 
             {isLoading ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.submitText}>Gửi yêu cầu</Text>
+              <Text style={styles.submitText}>Send request</Text>
             )}
           </Pressable>
         </View>
@@ -89,6 +110,11 @@ export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) 
 
 const styles = StyleSheet.create({
   body: { gap: 16 },
+  errorText: {
+    fontSize: 12,
+    color: Colors.danger,
+    marginTop: -8,
+  },
   title: {
     fontSize: 18,
     fontWeight: '800',

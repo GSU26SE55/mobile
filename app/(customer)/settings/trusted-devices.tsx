@@ -1,9 +1,9 @@
 import React from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useTrustedDevices } from '../../../src/features/account/hooks/useTrustedDevices';
-import { TrustedDeviceCard } from '../../../src/features/account/components/TrustedDeviceCard';
-import { handleErrorApi } from '../../../src/lib/errors';
-import { Colors } from '../../../src/lib/theme';
+import { useTrustedDevices } from '@/src/features/account/hooks/useTrustedDevices';
+import { TrustedDeviceCard } from '@/src/features/account/components/TrustedDeviceCard';
+import { handleErrorApi } from '@/src/lib/errors';
+import { Colors } from '@/src/lib/theme';
 
 export default function TrustedDevicesScreen() {
   const { devices, revokeOne, revokeAll } = useTrustedDevices();
@@ -19,10 +19,10 @@ export default function TrustedDevicesScreen() {
   const data = devices.data ?? [];
 
   const confirmRevokeOne = (id: string, label: string) => {
-    Alert.alert('Thu hồi thiết bị', `Thu hồi "${label}"? Thiết bị này sẽ phải xác thực 2FA khi đăng nhập lần sau.`, [
-      { text: 'Hủy', style: 'cancel' },
+    Alert.alert('Revoke device', `Revoke "${label}"? This device will need to verify with 2FA on its next sign-in.`, [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Thu hồi',
+        text: 'Revoke',
         style: 'destructive',
         onPress: () => revokeOne.mutate(id, { onError: (error) => handleErrorApi({ error }) }),
       },
@@ -30,10 +30,10 @@ export default function TrustedDevicesScreen() {
   };
 
   const confirmRevokeAll = () => {
-    Alert.alert('Thu hồi tất cả', 'Thu hồi toàn bộ thiết bị tin cậy? Mọi thiết bị sẽ phải xác thực 2FA khi đăng nhập.', [
-      { text: 'Hủy', style: 'cancel' },
+    Alert.alert('Revoke all', 'Revoke all trusted devices? Every device will need to verify with 2FA on its next sign-in.', [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Thu hồi tất cả',
+        text: 'Revoke all',
         style: 'destructive',
         onPress: () => revokeAll.mutate(undefined, { onError: (error) => handleErrorApi({ error }) }),
       },
@@ -53,7 +53,7 @@ export default function TrustedDevicesScreen() {
           />
         )}
         ListEmptyComponent={
-          <Text style={styles.empty}>Chưa có thiết bị tin cậy nào.</Text>
+          <Text style={styles.empty}>No trusted devices yet.</Text>
         }
         contentContainerStyle={styles.list}
       />
@@ -66,7 +66,7 @@ export default function TrustedDevicesScreen() {
         {revokeAll.isPending ? (
           <ActivityIndicator color={Colors.danger} />
         ) : (
-          <Text style={styles.revokeAllText}>Thu hồi tất cả thiết bị</Text>
+          <Text style={styles.revokeAllText}>Revoke all devices</Text>
         )}
       </Pressable>
     </View>

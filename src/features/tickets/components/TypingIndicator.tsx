@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 
 const DOT_COUNT = 3;
 const DOT_DURATION = 500;
@@ -46,7 +46,7 @@ interface Props {
 export function TypingIndicator({ names }: Props) {
   if (names.length === 0) return null;
 
-  const label = names.length === 1 ? `${names[0]} đang nhập` : `${names.length} người đang nhập`;
+  const label = names.length === 1 ? `${names[0]} is typing` : `${names.length} people are typing`;
 
   return (
     <View style={styles.row}>

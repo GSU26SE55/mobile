@@ -1,37 +1,35 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { notificationPreferenceService } from '../services/notification-preference.service';
-import {
-  NotificationPreferenceDto,
-  UpdateNotificationPreferencePayload,
-} from '../types/notification-preference.types';
+import { NotificationPreferenceMatrixDto } from '../types/notification-matrix.types';
+import { UpdateNotificationPreferencePayload } from '../types/notification-preference.types';
 
-export function useNotificationPreferences() {
+/**
+ * Writes the global channel toggle — `PUT /api/notification-preferences`.
+ *
+ * GH-83: this hook now **only holds the mutation**. The previous version also wrapped a `useQuery` reading
+ * `GET /api/notification-preferences`; after the settings screen switched to reading `GET /matrix`
+ * (which returns both `channels` and `categories`), that query was no longer read by anyone but **still fired
+ * a request** on every mount, since calling the hook alone runs `useQuery` → the screen cost 2 requests instead of 1.
+ *
+ * Writes still have to go through this endpoint: `PUT /matrix` only accepts `items` (category rows), it doesn't touch `channels`.
+ */
+export function useUpdateNotificationPreference() {
   const queryClient = useQueryClient();
 
-  const pref = useQuery({
-    queryKey: QUERY_KEY.notificationPreferences.detail(),
-    queryFn: async () => {
-      const res = await notificationPreferenceService.get();
-      return res.data.data;
-    },
-    staleTime: 5 * 60_000, // 5 phút
-  });
-
-  const updatePref = useMutation({
+  return useMutation({
     mutationFn: (payload: UpdateNotificationPreferencePayload) =>
       notificationPreferenceService.update(payload),
     onSuccess: (res) => {
-      // PUT trả full DTO → ghi đè cache, tránh refetch thừa.
       const dto = res.data.data;
-      if (dto) {
-        queryClient.setQueryData<NotificationPreferenceDto>(
-          QUERY_KEY.notificationPreferences.detail(),
-          dto,
-        );
-      }
+      if (!dto) return;
+
+      // PUT returns the full DTO → patch the `channels` branch of the matrix cache directly, skipping a refetch.
+      // Without patching, the UI would show the old value until the cache expires, even though BE saved it correctly.
+      queryClient.setQueryData<NotificationPreferenceMatrixDto>(
+        QUERY_KEY.notificationPreferences.matrix(),
+        (prev) => (prev ? { ...prev, channels: dto } : prev),
+      );
     },
   });
-
-  return { pref, updatePref };
 }

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "code",
-    "slug": "code",
+    "name": "Sonari",
+    "slug": "sonari",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
-    "scheme": "code",
+    "scheme": "sonari",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -14,16 +14,23 @@
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         }
-      }
+      },
+      "bundleIdentifier": "com.shu1237.code"
     },
     "android": {
+      "package": "com.shu1237.code",
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/logo.png",
         "backgroundColor": "#FFFFFF"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "output": "static",
@@ -46,11 +53,29 @@
       ],
       "expo-font",
       "expo-secure-store",
-      "expo-audio"
+      "expo-audio",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.85758470906-f314b54brseebe2ed2us1e8b03ip62j6"
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-background-task",
+      "expo-notifications",
+      "./plugins/withAndroidChatBubbles",
+      "./plugins/withWindowsCmakeVersion"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ef390898-c9fd-4d10-ab00-ac13cbb9fb8c"
+      }
+    },
+    "owner": "shu1237"
   }
 }

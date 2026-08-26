@@ -1,23 +1,76 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors, Shadow } from '../../../lib/theme';
-import { AttachmentPicker, UploadedAttachment } from '../../file-storage/components/AttachmentPicker';
-import { FilePurposeEnum } from '../../file-storage/enums/file-storage.enum';
+import { Colors, Shadow } from '@/src/lib/theme';
+import { AttachmentPicker, UploadedAttachment } from '@/src/features/file-storage/components/AttachmentPicker';
+import { FilePurposeEnum } from '@/src/features/file-storage/enums/file-storage.enum';
+import { MaintenanceLogTypeEnum } from '@/src/shared/enums/ticket.enum';
+import { handleErrorApi } from '@/src/lib/errors';
+import type { TicketActivityDTO } from '@/src/features/tickets/types/ticket.types';
+import { inProgressStartedAt } from '@/src/features/tickets/utils/ticketWorkflow';
+import { AttachmentThumbnails } from '@/src/features/file-storage/components/AttachmentThumbnails';
+import { formatDurationMinutes, formatElapsed } from './ProcessingDurationTimer';
 import type { MaintenanceLogPayload } from '../types/staff.types';
+
+// BE distinguishes 4 types for compliance reporting — don't hardcode one value for every log.
+const LOG_TYPE_OPTIONS: { value: MaintenanceLogTypeEnum; label: string }[] = [
+  { value: MaintenanceLogTypeEnum.RemoteSupport, label: 'Remote support' },
+  { value: MaintenanceLogTypeEnum.OnSite, label: 'On-site' },
+  { value: MaintenanceLogTypeEnum.PartReplacement, label: 'Part replacement' },
+  { value: MaintenanceLogTypeEnum.Inspection, label: 'Inspection' },
+];
 
 interface Props {
   isLoading: boolean;
-  onSubmit: (data: MaintenanceLogPayload) => void;
-  // GH-44 — tái dùng cho sửa log (PATCH): prefill các field text. Ảnh không prefill (PATCH partial — bỏ trống = giữ nguyên).
-  initialValues?: Pick<MaintenanceLogPayload, 'summary' | 'actionsTaken' | 'partsUsed' | 'durationMinutes'>;
+  onSubmit: (data: MaintenanceLogPayload) => Promise<void>;
+  // GH-44 — reused for editing a log (PATCH): prefill text fields. Photos are not prefilled (PATCH partial — leaving blank keeps them unchanged).
+  initialValues?: Pick<
+    MaintenanceLogPayload,
+    'summary' | 'diagnosisDetails' | 'actionsTaken' | 'resolutionNote' | 'partsUsed' | 'durationMinutes' | 'logType'
+  >;
   title?: string;
   submitLabel?: string;
+  // Complete flow: force LogType=Completion and hide the picker — the log's type doesn't
+  // depend on what Staff chooses, it's determined by the action that created it.
+  fixedLogType?: MaintenanceLogTypeEnum;
+  /**
+   * Ảnh đã lưu của log đang sửa. Chỉ để XEM: PATCH là partial nên để trống hai ô chọn
+   * ảnh bên dưới nghĩa là "giữ nguyên", nhưng không hiện gì cả thì staff tưởng ảnh cũ
+   * đã mất và chụp lại từ đầu.
+   */
+  existingBeforePhotoIds?: string[] | null;
+  existingAfterPhotoIds?: string[] | null;
+  /**
+   * Activity log của ticket — dùng để lấy mốc InProgress gần nhất, cùng nguồn với
+   * đồng hồ "Processing time" trên màn chi tiết. Có nó thì Duration tự tính, không có
+   * thì rơi về ô nhập tay.
+   */
+  activities?: TicketActivityDTO[];
 }
 
-export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, submitLabel }: Props) {
+export function MaintenanceLogForm({
+  isLoading,
+  onSubmit,
+  initialValues,
+  title,
+  submitLabel,
+  fixedLogType,
+  activities,
+  existingBeforePhotoIds,
+  existingAfterPhotoIds,
+}: Props) {
+  const [logType, setLogType] = useState<MaintenanceLogTypeEnum>(
+    fixedLogType ?? initialValues?.logType ?? MaintenanceLogTypeEnum.OnSite,
+  );
   const [description, setDescription] = useState(initialValues?.summary ?? '');
+  const [diagnosisDetails, setDiagnosisDetails] = useState(initialValues?.diagnosisDetails ?? '');
   const [actionTaken, setActionTaken] = useState(initialValues?.actionsTaken ?? '');
+  const [resolutionNote, setResolutionNote] = useState(initialValues?.resolutionNote ?? '');
   const [partsUsed, setPartsUsed] = useState(initialValues?.partsUsed ?? '');
+  const startedAt = useMemo(() => inProgressStartedAt(activities ?? []), [activities]);
+  // Sửa log cũ thì giữ nguyên số đã lưu — nếu auto-tính lại, mở log ra sửa lỗi chính tả
+  // sẽ âm thầm ghi đè thời lượng thành "tính từ lần Resume gần nhất".
+  const isEditing = initialValues?.durationMinutes != null;
+  const autoDuration = !isEditing && !!startedAt;
   const [duration, setDuration] = useState(
     initialValues?.durationMinutes != null ? String(initialValues.durationMinutes) : '',
   );
@@ -28,22 +81,69 @@ export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, 
   const uploading = uploadingBefore || uploadingAfter;
   const [error, setError] = useState('');
 
-  const handleSubmit = () => {
+  // Đồng hồ chỉ chạy khi đang ở chế độ auto — form sửa log cũ không cần tick.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!autoDuration) return;
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [autoDuration]);
+
+  const elapsedMs = startedAt ? Math.max(0, nowMs - new Date(startedAt).getTime()) : 0;
+  const durationMins = parseInt(duration, 10);
+  const hasExistingPhotos =
+    (existingBeforePhotoIds?.length ?? 0) > 0 || (existingAfterPhotoIds?.length ?? 0) > 0;
+
+  const handleSubmit = async () => {
     const trimmed = description.trim();
-    if (trimmed.length < 5) {
-      setError('Mô tả cần ít nhất 5 ký tự');
+    if (!trimmed) {
+      setError('Work summary is required');
       return;
     }
-    onSubmit({
-      summary: trimmed,
-      actionsTaken: actionTaken.trim() || undefined,
-      partsUsed: partsUsed.trim() || undefined,
-      durationMinutes: duration ? parseInt(duration, 10) : undefined,
-      beforePhotos: beforePhotos.length > 0 ? beforePhotos : undefined,
-      afterPhotos: afterPhotos.length > 0 ? afterPhotos : undefined,
-    });
+
+    const completedAt = new Date();
+    // Chốt số phút NGAY LÚC SUBMIT chứ không lấy state đang tick — form có thể mở treo
+    // vài phút trước khi bấm lưu, và đó cũng là thời gian làm việc thật.
+    const autoMinutes = startedAt
+      ? Math.max(0, Math.round((completedAt.getTime() - new Date(startedAt).getTime()) / 60_000))
+      : undefined;
+    const durationMinutes = autoDuration
+      ? autoMinutes
+      : duration.trim()
+        ? parseInt(duration, 10)
+        : undefined;
+
+    try {
+      await onSubmit({
+        summary: trimmed,
+        logType,
+        diagnosisDetails: diagnosisDetails.trim() || undefined,
+        actionsTaken: actionTaken.trim() || undefined,
+        resolutionNote: resolutionNote.trim() || undefined,
+        partsUsed: partsUsed.trim() || undefined,
+        durationMinutes,
+        // Mốc InProgress thật khi có. Không có (ticket chưa từng vào InProgress) thì
+        // đóng dấu now — BE bắt buộc StartedAt, và bịa một khoảng thời gian giả còn
+        // tệ hơn là ghi nhận khoảng rỗng.
+        startedAt: startedAt ?? completedAt.toISOString(),
+        completedAt: completedAt.toISOString(),
+        beforePhotos: beforePhotos.length > 0 ? beforePhotos : undefined,
+        afterPhotos: afterPhotos.length > 0 ? afterPhotos : undefined,
+      });
+    } catch (err) {
+      handleErrorApi({
+        error: err,
+        setFieldError: (field, message) => {
+          if (field === 'summary') setError(message);
+        },
+      });
+      return;
+    }
+    setLogType(fixedLogType ?? MaintenanceLogTypeEnum.OnSite);
     setDescription('');
+    setDiagnosisDetails('');
     setActionTaken('');
+    setResolutionNote('');
     setPartsUsed('');
     setDuration('');
     setBeforePhotos([]);
@@ -53,15 +153,37 @@ export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, 
 
   return (
     <View style={[styles.container, Shadow]}>
-      <Text style={styles.title}>{title ?? 'Ghi nhật ký bảo trì'}</Text>
+      <Text style={styles.title}>{title ?? 'Log maintenance entry'}</Text>
+
+      {!fixedLogType && (
+        <View style={styles.field}>
+          <Text style={styles.label}>Work type *</Text>
+          <View style={styles.chipRow}>
+            {LOG_TYPE_OPTIONS.map((opt) => {
+              const selected = logType === opt.value;
+              return (
+                <Pressable
+                  key={opt.value}
+                  style={[styles.chip, selected && styles.chipSelected]}
+                  onPress={() => setLogType(opt.value)}
+                >
+                  <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      )}
 
       <View style={styles.field}>
-        <Text style={styles.label}>Mô tả công việc *</Text>
+        <Text style={styles.label}>Work summary *</Text>
         <TextInput
           style={[styles.input, styles.inputLarge, error ? styles.inputError : null]}
           value={description}
           onChangeText={(t) => { setDescription(t); setError(''); }}
-          placeholder="Mô tả việc đã làm..."
+          placeholder="Describe the work performed..."
           placeholderTextColor={Colors.textFaint}
           multiline
           textAlignVertical="top"
@@ -71,12 +193,36 @@ export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, 
       </View>
 
       <View style={styles.field}>
-        <Text style={styles.label}>Hành động đã thực hiện</Text>
+        <Text style={styles.label}>Diagnosis details</Text>
+        <TextInput
+          style={styles.input}
+          value={diagnosisDetails}
+          onChangeText={setDiagnosisDetails}
+          placeholder="Diagnosis results..."
+          placeholderTextColor={Colors.textFaint}
+          maxLength={500}
+        />
+      </View>
+
+      <View style={styles.field}>
+        <Text style={styles.label}>Actions taken</Text>
         <TextInput
           style={styles.input}
           value={actionTaken}
           onChangeText={setActionTaken}
-          placeholder="VD: Thay module inverter, vệ sinh kết nối..."
+          placeholder="e.g. Replaced inverter module, cleaned connections..."
+          placeholderTextColor={Colors.textFaint}
+          maxLength={500}
+        />
+      </View>
+
+      <View style={styles.field}>
+        <Text style={styles.label}>Resolution note</Text>
+        <TextInput
+          style={styles.input}
+          value={resolutionNote}
+          onChangeText={setResolutionNote}
+          placeholder="Outcome after handling..."
           placeholderTextColor={Colors.textFaint}
           maxLength={500}
         />
@@ -84,45 +230,67 @@ export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, 
 
       <View style={styles.row}>
         <View style={[styles.field, { flex: 1 }]}>
-          <Text style={styles.label}>Linh kiện sử dụng</Text>
+          <Text style={styles.label}>Parts used</Text>
           <TextInput
             style={styles.input}
             value={partsUsed}
             onChangeText={setPartsUsed}
-            placeholder="VD: Module XYZ"
+            placeholder="e.g. Module XYZ"
             placeholderTextColor={Colors.textFaint}
             maxLength={200}
           />
         </View>
-        <View style={[styles.field, { width: 100 }]}>
-          <Text style={styles.label}>Thời gian (phút)</Text>
-          <TextInput
-            style={styles.input}
-            value={duration}
-            onChangeText={setDuration}
-            placeholder="30"
-            placeholderTextColor={Colors.textFaint}
-            keyboardType="numeric"
-            maxLength={4}
-          />
+        <View style={[styles.field, { width: 110 }]}>
+          <Text style={styles.label}>Duration</Text>
+          {autoDuration ? (
+            // Chạy theo đúng mốc của đồng hồ "Processing time" trên màn chi tiết, chốt
+            // lại thành số phút lúc bấm lưu — staff không phải nhớ rồi gõ tay.
+            <View style={styles.durationAuto}>
+              <Text style={styles.durationValue}>{formatElapsed(elapsedMs)}</Text>
+            </View>
+          ) : (
+            <>
+              <TextInput
+                style={styles.input}
+                value={duration}
+                onChangeText={setDuration}
+                placeholder="30"
+                placeholderTextColor={Colors.textFaint}
+                keyboardType="numeric"
+                maxLength={4}
+              />
+              {/* Ô nhập phải giữ số phút thô để còn sửa được; dòng này dịch nó ra giờ
+                  để "729" không bắt người đọc tự chia 60. */}
+              <Text style={styles.durationHint}>
+                {durationMins > 0 ? formatDurationMinutes(durationMins) : 'minutes'}
+              </Text>
+            </>
+          )}
         </View>
       </View>
 
       <View style={styles.field}>
-        <Text style={styles.label}>Ảnh trước / sau khi xử lý</Text>
+        <Text style={styles.label}>Before / after photos</Text>
+        {hasExistingPhotos && (
+          <View style={styles.existingPhotos}>
+            <Text style={styles.hint}>Already saved — kept unless you add new ones</Text>
+            <AttachmentThumbnails fileIds={existingBeforePhotoIds} size={56} />
+            <AttachmentThumbnails fileIds={existingAfterPhotoIds} size={56} />
+          </View>
+        )}
         <AttachmentPicker
           purpose={FilePurposeEnum.MaintenancePhoto}
           value={beforePhotos}
           onChange={setBeforePhotos}
           onUploadingChange={setUploadingBefore}
-          label="Ảnh trước"
+          label="Before photo"
         />
         <AttachmentPicker
           purpose={FilePurposeEnum.MaintenancePhoto}
           value={afterPhotos}
           onChange={setAfterPhotos}
           onUploadingChange={setUploadingAfter}
-          label="Ảnh sau"
+          label="After photo"
         />
       </View>
 
@@ -134,7 +302,7 @@ export function MaintenanceLogForm({ isLoading, onSubmit, initialValues, title, 
         {isLoading ? (
           <ActivityIndicator color="#fff" size="small" />
         ) : (
-          <Text style={styles.submitText}>{submitLabel ?? 'Lưu nhật ký'}</Text>
+          <Text style={styles.submitText}>{submitLabel ?? 'Save log'}</Text>
         )}
       </Pressable>
     </View>
@@ -175,6 +343,59 @@ const styles = StyleSheet.create({
   },
   inputLarge: {
     minHeight: 80,
+  },
+  // Cùng khuôn với `input` để hàng Parts used / Duration không lệch nhau.
+  durationAuto: {
+    backgroundColor: Colors.card2,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    alignItems: 'center',
+  },
+  durationValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.text,
+    fontVariant: ['tabular-nums'],
+  },
+  durationHint: {
+    marginTop: 4,
+    fontSize: 11,
+    color: Colors.textMute,
+    textAlign: 'center',
+  },
+  hint: {
+    fontSize: 11,
+    color: Colors.textMute,
+    marginBottom: 6,
+  },
+  existingPhotos: { marginBottom: 10 },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    backgroundColor: Colors.card2,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  chipSelected: {
+    backgroundColor: Colors.info,
+    borderColor: Colors.info,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textMute,
+  },
+  chipTextSelected: {
+    color: '#fff',
   },
   inputError: {
     borderColor: Colors.danger,

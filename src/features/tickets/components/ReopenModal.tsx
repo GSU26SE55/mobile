@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors, Shadow, ShadowPrimary } from '../../../lib/theme';
-import { BottomSheet } from '../../../shared/components/BottomSheet';
+import { Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
+import { BottomSheet } from '@/src/shared/components/BottomSheet';
 import { ReopenPayload } from '../types/ticket.types';
 
 interface Props {
@@ -20,7 +20,7 @@ export function ReopenModal({ visible, isLoading, onClose, onSubmit }: Props) {
     const trimmed = reason.trim();
     // BE required (TicketReopenCommand) — rỗng → 400. Chặn sớm ở client.
     if (!trimmed) {
-      setError('Vui lòng nhập lý do reopen');
+      setError('Please enter a reason for reopening');
       return;
     }
     onSubmit({ reopenReason: trimmed });
@@ -37,8 +37,8 @@ export function ReopenModal({ visible, isLoading, onClose, onSubmit }: Props) {
     <BottomSheet visible={visible} onClose={handleClose}>
       <View style={styles.body}>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Mở lại ticket</Text>
-          <Pressable style={styles.closeBtn} onPress={handleClose} accessibilityRole="button" accessibilityLabel="Đóng">
+          <Text style={styles.title}>Reopen ticket</Text>
+          <Pressable style={styles.closeBtn} onPress={handleClose} accessibilityRole="button" accessibilityLabel="Close">
             <Ionicons name="close" size={16} color={Colors.text2} />
           </Pressable>
         </View>
@@ -46,16 +46,16 @@ export function ReopenModal({ visible, isLoading, onClose, onSubmit }: Props) {
         <View style={styles.warningBox}>
           <Ionicons name="information-circle" size={16} color={Colors.warning} />
           <Text style={styles.warningText}>
-            Mở lại khả dụng trong 7 ngày sau khi ticket được giải quyết. Mô tả vấn đề còn lại.
+            You can reopen a ticket within 7 days after it is resolved. Describe the remaining issue.
           </Text>
         </View>
 
-        <Text style={styles.inputLabel}>Lý do mở lại *</Text>
+        <Text style={styles.inputLabel}>Reason for reopening *</Text>
         <TextInput
           style={styles.input}
           value={reason}
           onChangeText={(t) => { setReason(t); setError(''); }}
-          placeholder="VD: Pin vẫn nóng vào buổi trưa..."
+          placeholder="E.g. The battery is still hot at noon..."
           placeholderTextColor={Colors.textFaint}
           multiline
           numberOfLines={4}
@@ -70,7 +70,7 @@ export function ReopenModal({ visible, isLoading, onClose, onSubmit }: Props) {
         >
           {isLoading
             ? <ActivityIndicator color="#fff" size="small" />
-            : <Text style={styles.submitText}>Mở lại ticket</Text>
+            : <Text style={styles.submitText}>Reopen ticket</Text>
           }
         </Pressable>
       </View>

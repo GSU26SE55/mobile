@@ -1,6 +1,6 @@
-import { axiosInstance } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { CommonResponse, PaginationResponse } from '../../../types/api.types';
+import { axiosInstance } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { CommonResponse, PaginationResponse } from '@/src/types/api.types';
 import {
   AddCommentPayload,
   CommentListParams,
@@ -13,6 +13,7 @@ import {
   TicketDetailDTO,
   TicketDTO,
   TicketListParams,
+  TicketParticipantDTO,
 } from '../types/ticket.types';
 
 const { TICKETS } = ENDPOINTS;
@@ -44,4 +45,8 @@ export const ticketService = {
 
   rate: (id: string, data: RatePayload) =>
     axiosInstance.post<TicketActionResponse>(TICKETS.RATE(id), data),
+
+
+  getParticipants: (ticketId: string) =>
+    axiosInstance.get<CommonResponse<TicketParticipantDTO[]>>(TICKETS.PARTICIPANTS(ticketId)),
 };

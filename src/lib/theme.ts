@@ -1,14 +1,37 @@
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, TextStyle } from 'react-native';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Solar — the single source of truth for surfaces and neutrals.
+// Bright cream ground, solar-energy yellow accent, warm shadows.
+// `Colors` below is a projection of this, kept only so the ~150 screens that
+// already import `Colors` inherit the palette without being rewritten.
+// ─────────────────────────────────────────────────────────────────────────────
+export const Solar = {
+  bg:          '#FAF6E9', // full-screen bright cream background
+  bgDeep:      '#F3ECCF',
+  card:        '#FFFDF7', // warm white card — matches the GlassSurface midpoint
+  cardPure:    '#FFFFFF',
+  cardCream:   '#FFFBEA', // soft warm cream card (performance/chart blocks)
+  cardEdge:    '#FFFFFF', // 1.5px highlight edge on every raised surface
+  tile:        '#EFECE1', // unfilled cell/segment
+  yellow:      '#FFD500', // vivid design-standard energy yellow
+  yellowDeep:  '#D9A000', // deep yellow for icon/text on light background
+  yellowSoft:  '#FFF6D6', // light yellow pill background
+  ink:         '#1C1C1E', // sharp primary text
+  ink2:        '#484742',
+  mute:        '#7C7C80', // muted secondary text
+  faint:       '#C4BFB0',
+  border:      '#EFE8D6',
+  white:       '#FFFFFF',
+  shadow:      '#8C7A4B', // warm cast — never pure black on a cream ground
+} as const;
 
 export const Colors = {
-  primary:      '#34C759',
-  primaryDark:  '#248A3D',
-  primaryLight: '#E8F8EE',
-  primaryGlow:  'rgba(52, 199, 89, 0.22)',
-  accent:       '#1A1A1A',
-  yellow:       '#FFB703',
-  yellowSoft:   '#FFF1B8',
-  yellowDark:   '#9C7800',
+  primary:      Solar.yellow,
+  primaryDark:  Solar.yellowDeep,
+  primaryLight: Solar.yellowSoft,
+  accent:       Solar.ink,
+  yellow:       Solar.yellow,
 
   success:      '#34C759',
   successLight: '#E8F8EE',
@@ -23,41 +46,33 @@ export const Colors = {
   infoLight:    '#E5F1FF',
   infoDark:     '#0055B3',
 
-  white:        '#FFFFFF',
-  bg:           '#F9F9F9',
-  bg2:          '#F2F2F2',
-  card:         '#FFFFFF',
-  card2:        '#F5F5F5',
-  card3:        '#EEEEEE',
-  gray:         '#8E8E93',
-  graySoft:     '#C7C7CC',
+  white:        Solar.white,
+  bg:           Solar.bg,
+  bg2:          Solar.bgDeep,
+  card:         Solar.card,
+  card2:        Solar.cardCream,
+  card3:        Solar.tile,
+  gray:         Solar.mute,
+  graySoft:     Solar.faint,
 
-  border:       'rgba(0,0,0,0.06)',
-  borderStrong: 'rgba(0,0,0,0.12)',
+  border:       Solar.border,
+  borderStrong: '#E2D8BE',
   overlay:      'rgba(20,15,5,0.35)',
 
-  text:         '#1A1A1C',
-  text2:        '#45464A',
-  textMute:     '#7A7872',
-  textFaint:    '#B0AEA6',
+  text:         Solar.ink,
+  text2:        Solar.ink2,
+  textMute:     Solar.mute,
+  textFaint:    Solar.faint,
 
-  // Legacy aliases
-  textSecondary:'#45464A',
-  textTertiary: '#7A7872',
-  placeholder:  '#B0AEA6',
-  inputBg:      '#F5F2EC',
-  borderLight:  '#E6E2DB',
-  tabBar:       '#1A1A1C',
-  tabBarInactive:'#7A7872',
+  // Kept for the handful of screens still referencing them.
+  textSecondary: Solar.ink2,
+  textTertiary:  Solar.mute,
+  placeholder:   Solar.faint,
+  borderLight:   Solar.border,
 
-  // Ticket status colors
-  stNew:        '#8E8B85',
-  stOpen:       '#5081C7',
-  stAssigned:   '#4FAFC7',
+  // Ticket status colors — used by charts/timelines, not by badges.
   stProgress:   '#E0A832',
   stWaiting:    '#EF8A28',
-  stResolved:   '#5BA85B',
-  stClosed:     '#3FA496',
   stEscalated:  '#DC4F3D',
 } as const;
 
@@ -90,47 +105,55 @@ export const Spacing = {
   xxxl: 32,
 } as const;
 
+// One radius scale. Cards 20, tiles 16, pills 999 — no mixed systems.
 export const Radius = {
   xs: 8,
   sm: 10,
+  tile: 16,
   md: 16,
+  card: 20,
   lg: 24,
   xl: 32,
   full: 9999,
 } as const;
 
+// Type scale. Hierarchy comes from size + color, not from stacking weight —
+// `900` on every label is what made every screen read the same.
 export const Font = {
-  h1:       { fontSize: 28, fontWeight: '700' as const, color: Colors.text, letterSpacing: -0.5 },
-  h2:       { fontSize: 22, fontWeight: '700' as const, color: Colors.text, letterSpacing: -0.3 },
-  h3:       { fontSize: 18, fontWeight: '700' as const, color: Colors.text },
-  body:     { fontSize: 14, fontWeight: '400' as const, color: Colors.text, lineHeight: 20 },
-  bodyBold: { fontSize: 14, fontWeight: '600' as const, color: Colors.text },
-  caption:  { fontSize: 13, fontWeight: '400' as const, color: Colors.textMute },
-  small:    { fontSize: 12, fontWeight: '400' as const, color: Colors.textMute },
-  eyebrow:  { fontSize: 11, fontWeight: '600' as const, color: Colors.textMute, letterSpacing: 0.5 },
-  display:  { fontSize: 32, fontWeight: '600' as const, color: Colors.text, letterSpacing: -0.5 },
-  stat:     { fontSize: 32, fontWeight: '700' as const, color: Colors.text },
-  section:  { fontSize: 17, fontWeight: '600' as const, color: Colors.text, letterSpacing: -0.3 },
+  display:  { fontSize: 28, fontWeight: '700' as const, letterSpacing: -0.6, color: Solar.ink },
+  title:    { fontSize: 18, fontWeight: '700' as const, letterSpacing: -0.3, color: Solar.ink },
+  body:     { fontSize: 15, fontWeight: '600' as const, color: Solar.ink },
+  bodyMute: { fontSize: 15, fontWeight: '500' as const, color: Solar.mute },
+  meta:     { fontSize: 12, fontWeight: '600' as const, color: Solar.mute },
+  micro:    {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase' as const,
+  },
 } as const;
+
+/** Digits that never change width — required on any live countdown. */
+export const numeric: TextStyle = { fontVariant: ['tabular-nums'] };
 
 export const Shadow = Platform.select({
   ios: {
-    shadowColor: '#000000',
-    shadowOpacity: 0.03,
+    shadowColor: Solar.shadow,
+    shadowOpacity: 0.09,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 6 },
   },
   android: {
-    elevation: 2,
+    elevation: 3,
   },
   default: {},
 }) as object;
 
 export const ShadowSm = Platform.select({
   ios: {
-    shadowColor: '#000000',
-    shadowOpacity: 0.015,
-    shadowRadius: 6,
+    shadowColor: Solar.shadow,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
   },
   android: {
@@ -141,21 +164,21 @@ export const ShadowSm = Platform.select({
 
 export const ShadowLg = Platform.select({
   ios: {
-    shadowColor: '#000000',
-    shadowOpacity: 0.05,
+    shadowColor: Solar.shadow,
+    shadowOpacity: 0.13,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 12 },
   },
   android: {
-    elevation: 4,
+    elevation: 6,
   },
   default: {},
 }) as object;
 
 export const ShadowPrimary = Platform.select({
   ios: {
-    shadowColor: '#34C759',
-    shadowOpacity: 0.25,
+    shadowColor: Solar.yellowDeep,
+    shadowOpacity: 0.3,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
   },
@@ -176,13 +199,17 @@ export const CommonStyles = StyleSheet.create({
   },
   card: {
     backgroundColor: Colors.card,
-    borderRadius: Radius.md,
+    borderRadius: Radius.card,
+    borderWidth: 1.5,
+    borderColor: Solar.cardEdge,
     padding: 18,
     ...Shadow,
   },
   cardLg: {
     backgroundColor: Colors.card,
     borderRadius: Radius.lg,
+    borderWidth: 1.5,
+    borderColor: Solar.cardEdge,
     padding: 22,
     ...Shadow,
   },
@@ -193,7 +220,7 @@ export const CommonStyles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: Platform.OS === 'ios' ? 13 : 11,
-    fontSize: 14,
+    fontSize: 15,
     color: Colors.text,
   },
   inputFocused: {
@@ -205,7 +232,7 @@ export const CommonStyles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 12,
-    fontWeight: '500' as const,
+    fontWeight: '600' as const,
     color: Colors.textMute,
     marginBottom: 6,
   },
@@ -225,9 +252,9 @@ export const CommonStyles = StyleSheet.create({
     ...ShadowPrimary,
   },
   btnPrimaryText: {
-    color: Colors.white,
-    fontSize: 14,
-    fontWeight: '600' as const,
+    color: Colors.accent,
+    fontSize: 15,
+    fontWeight: '700' as const,
   },
   btnGhost: {
     backgroundColor: Colors.card2,
@@ -240,21 +267,21 @@ export const CommonStyles = StyleSheet.create({
   },
   btnGhostText: {
     color: Colors.text,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600' as const,
   },
   btnOutline: {
     backgroundColor: 'transparent',
     borderWidth: 1.5,
-    borderColor: Colors.primary,
+    borderColor: Colors.primaryDark,
     borderRadius: 14,
     paddingVertical: 12,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
   btnOutlineText: {
-    color: Colors.primary,
-    fontSize: 14,
+    color: Colors.primaryDark,
+    fontSize: 15,
     fontWeight: '600' as const,
   },
   btnDisabled: {
@@ -306,8 +333,8 @@ export const CommonStyles = StyleSheet.create({
     ...ShadowPrimary,
   },
   sectionHeader: {
-    fontSize: 17,
-    fontWeight: '600' as const,
+    fontSize: 18,
+    fontWeight: '700' as const,
     color: Colors.text,
     letterSpacing: -0.3,
   },

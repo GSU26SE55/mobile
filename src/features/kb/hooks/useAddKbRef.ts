@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { kbService } from '../services/kb.service';
-import { handleErrorApi } from '../../../lib/errors';
+import { handleErrorApi } from '@/src/lib/errors';
 import { AddKbReferencePayload } from '../types/kb.types';
 
-// GH-44 #5 — gán bài KB vào ticket. Invalidate danh sách refs (kb.related).
+// GH-44 #5 — attach a KB article to a ticket. Invalidate the refs list (kb.related).
 export function useAddKbRef(ticketId: string) {
   const queryClient = useQueryClient();
   return useMutation({

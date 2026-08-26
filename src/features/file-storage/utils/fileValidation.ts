@@ -1,9 +1,9 @@
 import { FilePurposeEnum } from '../enums/file-storage.enum';
 
-// BE giới hạn 20 MB cho mọi purpose (api-filestorage.md). Lọt qua client → BE trả 413.
+// BE limits every purpose to 20 MB (api-filestorage.md). If it slips past the client, BE returns 413.
 export const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 
-// Extension whitelist theo FilePurposeEnum — đồng bộ với BE (api-filestorage.md).
+// Extension whitelist per FilePurposeEnum — kept in sync with BE (api-filestorage.md).
 export const EXTENSION_WHITELIST: Record<FilePurposeEnum, readonly string[]> = {
   [FilePurposeEnum.Other]: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'csv'],
   [FilePurposeEnum.Avatar]: ['jpg', 'jpeg', 'png', 'webp'],
@@ -24,9 +24,9 @@ export interface FileValidationResult {
 }
 
 /**
- * Validate file phía client trước khi upload — fail nhanh, không tốn round-trip.
- * - size > 20 MB → lỗi (BE trả 413). Bỏ qua check size nếu `size` undefined (không biết bytes).
- * - extension không thuộc whitelist của purpose → lỗi (BE trả 400)
+ * Validate the file client-side before upload — fail fast, no wasted round-trip.
+ * - size > 20 MB → error (BE returns 413). Skip the size check if `size` is undefined (bytes unknown).
+ * - extension not in the purpose's whitelist → error (BE returns 400)
  */
 export function validateFile(
   name: string,
@@ -34,7 +34,7 @@ export function validateFile(
   purpose: FilePurposeEnum = FilePurposeEnum.Other,
 ): FileValidationResult {
   if (size !== undefined && size > MAX_FILE_SIZE) {
-    return { valid: false, message: 'Kích thước file tối đa là 20 MB.' };
+    return { valid: false, message: 'Maximum file size is 20 MB.' };
   }
 
   const ext = getExtension(name);
@@ -42,7 +42,7 @@ export function validateFile(
   if (!ext || !allowed.includes(ext)) {
     return {
       valid: false,
-      message: `Định dạng không hợp lệ. Cho phép: ${allowed.map((e) => `.${e}`).join(', ')}`,
+      message: `Invalid format. Allowed: ${allowed.map((e) => `.${e}`).join(', ')}`,
     };
   }
 

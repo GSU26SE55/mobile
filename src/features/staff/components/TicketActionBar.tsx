@@ -1,21 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors, Shadow, ShadowPrimary } from '../../../lib/theme';
-import { TicketStatusEnum } from '../../tickets/types/ticket.types';
+import { Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
+import { TicketStatusEnum } from '@/src/features/tickets/types/ticket.types';
 
 interface Props {
   status: TicketStatusEnum;
-  onStart?: () => void;
   onHold?: () => void;
   onResume?: () => void;
   onResolve?: () => void;
   onEscalate?: () => void;
   isLoading?: boolean;
-  canResolve?: boolean; // GH-47 — gate nút Resolve theo ticket.resolve
+  canResolve?: boolean; // GH-47 — gate the Resolve button on ticket.resolve
+  canHold?: boolean;
+  canResume?: boolean;
+  canEscalate?: boolean;
 }
 
-export function TicketActionBar({ status, onStart, onHold, onResume, onResolve, onEscalate, isLoading, canResolve = true }: Props) {
+export function TicketActionBar({ status, onHold, onResume, onResolve, onEscalate, isLoading, canResolve = true, canHold = true, canResume = true, canEscalate = true }: Props) {
   if (isLoading) {
     return (
       <View style={[styles.bar, Shadow]}>
@@ -24,44 +26,35 @@ export function TicketActionBar({ status, onStart, onHold, onResume, onResolve, 
     );
   }
 
-  if (status === 'Assigned') {
-    return (
-      <View style={[styles.bar, Shadow]}>
-        <Pressable style={[styles.btnPrimary, ShadowPrimary, { flex: 1 }]} onPress={onStart}>
-          <Ionicons name="play" size={16} color="#fff" />
-          <Text style={styles.btnPrimaryText}>Bắt đầu xử lý</Text>
-        </Pressable>
-      </View>
-    );
-  }
-
   if (status === 'InProgress') {
     return (
       <View style={[styles.bar, Shadow]}>
-        <Pressable style={styles.btnOutline} onPress={onHold}>
+        {canHold && <Pressable style={styles.btnOutline} onPress={onHold}>
           <Ionicons name="pause-outline" size={16} color={Colors.warning} />
-          <Text style={[styles.btnOutlineText, { color: Colors.warning }]}>Tạm dừng</Text>
-        </Pressable>
+          <Text style={[styles.btnOutlineText, { color: Colors.warning }]}>Hold</Text>
+        </Pressable>}
         {canResolve && (
-          <Pressable style={[styles.btnPrimary, ShadowPrimary, { flex: 1 }]} onPress={onResolve}>
+          // Green + white text: the "successfully completed" action, clearly distinct
+          // from yellow (in progress) / orange (on hold) / red (escalate) beside it.
+          <Pressable style={[styles.btnSuccess, { flex: 1 }]} onPress={onResolve}>
             <Ionicons name="checkmark-circle" size={16} color="#fff" />
-            <Text style={styles.btnPrimaryText}>Hoàn thành</Text>
+            <Text style={styles.btnSuccessText}>Complete</Text>
           </Pressable>
         )}
-        <Pressable style={styles.btnDanger} onPress={onEscalate}>
+        {canEscalate && <Pressable style={styles.btnDanger} onPress={onEscalate}>
           <Ionicons name="arrow-up-circle-outline" size={16} color={Colors.danger} />
           <Text style={[styles.btnOutlineText, { color: Colors.danger }]}>Escalate</Text>
-        </Pressable>
+        </Pressable>}
       </View>
     );
   }
 
-  if (['WaitingCustomer', 'WaitingParts', 'WaitingOnsiteSchedule'].includes(status)) {
+  if (status === 'Pending' && canResume) {
     return (
       <View style={[styles.bar, Shadow]}>
         <Pressable style={[styles.btnPrimary, ShadowPrimary, { flex: 1 }]} onPress={onResume}>
           <Ionicons name="play" size={16} color="#fff" />
-          <Text style={styles.btnPrimaryText}>Tiếp tục xử lý</Text>
+          <Text style={styles.btnPrimaryText}>Resume processing</Text>
         </Pressable>
       </View>
     );
@@ -91,6 +84,23 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   btnPrimaryText: {
+    // Primary background is YELLOW (#FFD500) — white text on it is nearly unreadable.
+    // Use dark ink for contrast, don't switch this back to '#fff'.
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  btnSuccess: {
+    backgroundColor: Colors.success,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  btnSuccessText: {
     color: '#fff',
     fontSize: 13,
     fontWeight: '800',

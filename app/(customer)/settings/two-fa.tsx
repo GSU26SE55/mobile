@@ -9,15 +9,15 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useProfile } from '../../../src/features/profile/hooks/useProfile';
-import { useInit2FA } from '../../../src/features/account/hooks/useInit2FA';
-import { useConfirm2FA } from '../../../src/features/account/hooks/useConfirm2FA';
-import { useDisable2FA } from '../../../src/features/account/hooks/useDisable2FA';
-import { useRegenerateBackupCodes } from '../../../src/features/account/hooks/useRegenerateBackupCodes';
-import { TwoFASetup } from '../../../src/features/account/components/TwoFASetup';
-import { Init2faResponse } from '../../../src/features/account/types/account.types';
-import { handleErrorApi } from '../../../src/lib/errors';
-import { Colors } from '../../../src/lib/theme';
+import { useProfile } from '@/src/features/profile/hooks/useProfile';
+import { useInit2FA } from '@/src/features/account/hooks/useInit2FA';
+import { useConfirm2FA } from '@/src/features/account/hooks/useConfirm2FA';
+import { useDisable2FA } from '@/src/features/account/hooks/useDisable2FA';
+import { useRegenerateBackupCodes } from '@/src/features/account/hooks/useRegenerateBackupCodes';
+import { TwoFASetup } from '@/src/features/account/components/TwoFASetup';
+import { Init2faResponse } from '@/src/features/account/types/account.types';
+import { handleErrorApi } from '@/src/lib/errors';
+import { Colors } from '@/src/lib/theme';
 
 export default function TwoFAScreen() {
   const { data: account, isLoading } = useProfile();
@@ -46,7 +46,7 @@ export default function TwoFAScreen() {
     );
   }
 
-  // Backup codes — hiển thị 1 lần (sau confirm hoặc regenerate)
+  // Backup codes — shown once (after confirm or regenerate)
   if (backupCodes) {
     return (
       <ScrollView style={styles.root} contentContainerStyle={styles.container}>
@@ -54,20 +54,20 @@ export default function TwoFAScreen() {
           <Ionicons name="key" size={56} color={Colors.primary} />
         </View>
         <Text style={styles.title}>Backup codes</Text>
-        <Text style={styles.warn}>⚠️ Lưu/in 8 mã này ngay — chỉ hiển thị 1 lần.</Text>
+        <Text style={styles.warn}>⚠️ Save/print these 8 codes now — they are shown only once.</Text>
         <View style={styles.codesBox}>
           {backupCodes.map((c) => (
             <Text key={c} style={styles.codeText} selectable>{c}</Text>
           ))}
         </View>
         <Pressable style={styles.enableBtn} onPress={() => setBackupCodes(null)}>
-          <Text style={styles.enableText}>Tôi đã lưu</Text>
+          <Text style={styles.enableText}>I&apos;ve saved it</Text>
         </Pressable>
       </ScrollView>
     );
   }
 
-  // Enroll wizard — QR + nhập TOTP
+  // Enroll wizard — QR + enter TOTP
   if (setupData) {
     return (
       <TwoFASetup
@@ -94,22 +94,22 @@ export default function TwoFAScreen() {
     );
   }
 
-  // 2FA đang bật → disable / regenerate
+  // 2FA is enabled → disable / regenerate
   if (account?.twoFactorEnabled) {
     return (
       <ScrollView style={styles.root} contentContainerStyle={styles.container}>
         <View style={styles.iconContainerActive}>
           <Ionicons name="shield-checkmark" size={64} color={Colors.primary} />
         </View>
-        <Text style={styles.status}>Xác thực 2 yếu tố (2FA) đang BẬT</Text>
+        <Text style={styles.status}>Two-Factor Authentication (2FA) is ON</Text>
         <Text style={styles.desc}>
-          Mỗi lần đăng nhập sẽ yêu cầu mã OTP từ ứng dụng xác thực.
+          Every login will require an OTP code from your authenticator app.
         </Text>
 
         {/* Regenerate backup codes */}
         {regenMode ? (
           <View style={styles.formBlock}>
-            <Text style={styles.label}>Nhập mã TOTP để sinh lại backup codes</Text>
+            <Text style={styles.label}>Enter your TOTP code to regenerate backup codes</Text>
             <TextInput
               style={styles.input}
               keyboardType="number-pad"
@@ -141,32 +141,32 @@ export default function TwoFAScreen() {
               {regen.isPending ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.enableText}>Sinh codes mới</Text>
+                <Text style={styles.enableText}>Generate new codes</Text>
               )}
             </Pressable>
             <Pressable onPress={() => { setRegenMode(false); setRegenTotp(''); }}>
-              <Text style={styles.linkText}>Hủy</Text>
+              <Text style={styles.linkText}>Cancel</Text>
             </Pressable>
           </View>
         ) : (
           <Pressable style={styles.outlineBtn} onPress={() => setRegenMode(true)}>
-            <Text style={styles.outlineText}>Sinh lại backup codes</Text>
+            <Text style={styles.outlineText}>Regenerate backup codes</Text>
           </Pressable>
         )}
 
         {/* Disable 2FA — password + TOTP */}
         {disableMode ? (
           <View style={styles.formBlock}>
-            <Text style={styles.label}>Mật khẩu hiện tại</Text>
+            <Text style={styles.label}>Current password</Text>
             <TextInput
               style={styles.input}
               secureTextEntry
-              placeholder="Mật khẩu"
+              placeholder="Password"
               placeholderTextColor={Colors.textMute}
               value={disablePassword}
               onChangeText={setDisablePassword}
             />
-            <Text style={styles.label}>Mã TOTP</Text>
+            <Text style={styles.label}>TOTP code</Text>
             <TextInput
               style={styles.input}
               keyboardType="number-pad"
@@ -196,31 +196,31 @@ export default function TwoFAScreen() {
               {disable2FA.isPending ? (
                 <ActivityIndicator color={Colors.danger} />
               ) : (
-                <Text style={styles.disableText}>Xác nhận tắt 2FA</Text>
+                <Text style={styles.disableText}>Confirm disabling 2FA</Text>
               )}
             </Pressable>
             <Pressable onPress={() => { setDisableMode(false); setDisablePassword(''); setDisableTotp(''); }}>
-              <Text style={styles.linkText}>Hủy</Text>
+              <Text style={styles.linkText}>Cancel</Text>
             </Pressable>
           </View>
         ) : (
           <Pressable style={styles.disableBtn} onPress={() => setDisableMode(true)}>
-            <Text style={styles.disableText}>Tắt xác thực 2FA</Text>
+            <Text style={styles.disableText}>Disable 2FA</Text>
           </Pressable>
         )}
       </ScrollView>
     );
   }
 
-  // 2FA chưa bật → init
+  // 2FA is not enabled → init
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.container}>
       <View style={styles.iconContainerInactive}>
         <Ionicons name="shield-outline" size={64} color={Colors.gray} />
       </View>
-      <Text style={styles.title}>Xác thực 2 yếu tố (2FA)</Text>
+      <Text style={styles.title}>Two-Factor Authentication (2FA)</Text>
       <Text style={styles.desc}>
-        Bảo vệ tài khoản bằng cách yêu cầu mã OTP từ Google Authenticator hoặc Authy khi đăng nhập.
+        Protect your account by requiring an OTP code from Google Authenticator or Authy when logging in.
       </Text>
       <Pressable
         style={styles.enableBtn}
@@ -237,7 +237,7 @@ export default function TwoFAScreen() {
         {init2FA.isPending ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.enableText}>Bật xác thực 2 yếu tố</Text>
+          <Text style={styles.enableText}>Enable Two-Factor Authentication</Text>
         )}
       </Pressable>
     </ScrollView>

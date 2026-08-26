@@ -2,11 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Shadow } from '../../../lib/theme';
-import { KbReferenceTypeEnum, KbReferenceTypeLabel } from '../../../shared/enums/kb.enum';
-import { useKbSuggest } from '../../kb/hooks/useKbSuggest';
-import { useAddKbRef } from '../../kb/hooks/useAddKbRef';
-import { KbSuggestCard } from '../../kb/components/KbSuggestCard';
+import { Colors, Shadow } from '@/src/lib/theme';
+import { KbReferenceTypeEnum, KbReferenceTypeLabel } from '@/src/shared/enums/kb.enum';
+import { useKbSuggest } from '@/src/features/kb/hooks/useKbSuggest';
+import { useAddKbRef } from '@/src/features/kb/hooks/useAddKbRef';
+import { KbSuggestCard } from '@/src/features/kb/components/KbSuggestCard';
 
 interface Props {
   visible: boolean;
@@ -20,7 +20,7 @@ const REF_TYPES = [
   KbReferenceTypeEnum.GeneratedAfterResolve,
 ] as const;
 
-// GH-44 #5/#7 — chọn bài KB gợi ý theo ticket rồi gán làm reference.
+// GH-44 #5/#7 — pick a suggested KB article for the ticket and assign it as a reference.
 export function KbReferencePicker({ visible, ticketId, onClose }: Props) {
   const insets = useSafeAreaInsets();
   const { data: suggestions = [], isLoading } = useKbSuggest(visible ? ticketId : undefined);
@@ -45,10 +45,10 @@ export function KbReferencePicker({ visible, ticketId, onClose }: Props) {
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
           <View style={styles.handle} />
-          <Text style={styles.title}>Gán bài viết KB</Text>
+          <Text style={styles.title}>Assign guide article</Text>
 
-          {/* Chọn loại tham chiếu */}
-          <Text style={styles.label}>Loại tham chiếu</Text>
+          {/* Select reference type */}
+          <Text style={styles.label}>Reference type</Text>
           <View style={styles.typeRow}>
             {REF_TYPES.map((t) => (
               <Pressable
@@ -63,12 +63,12 @@ export function KbReferencePicker({ visible, ticketId, onClose }: Props) {
             ))}
           </View>
 
-          <Text style={styles.label}>Gợi ý theo ticket</Text>
+          <Text style={styles.label}>Suggestions for this ticket</Text>
           <ScrollView style={styles.list} keyboardShouldPersistTaps="handled">
             {isLoading ? (
               <ActivityIndicator color={Colors.primary} style={{ marginTop: 16 }} />
             ) : suggestions.length === 0 ? (
-              <Text style={styles.empty}>Không có gợi ý phù hợp.</Text>
+              <Text style={styles.empty}>No matching suggestions.</Text>
             ) : (
               suggestions.map((a) => (
                 <KbSuggestCard

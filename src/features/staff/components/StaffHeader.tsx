@@ -3,8 +3,8 @@ import { router, usePathname } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '../../../lib/theme';
-import { useUnreadCount } from '../../notifications/hooks/useNotifications';
+import { Colors } from '@/src/lib/theme';
+import { useUnreadCount } from '@/src/features/notifications/hooks/useNotifications';
 import { useStaffProfile } from '../hooks/useStaffProfile';
 
 interface Props {
@@ -43,7 +43,7 @@ export function StaffHeader({ showGreeting = false, title, subtitle }: Props) {
       <View style={styles.left}>
         {showGreeting ? (
           <Text style={styles.name}>
-            <Text style={styles.greeting}>Xin chào, </Text>
+            <Text style={styles.greeting}>Hello, </Text>
             {profile?.fullName ?? 'Staff'}
           </Text>
         ) : (
@@ -56,8 +56,8 @@ export function StaffHeader({ showGreeting = false, title, subtitle }: Props) {
       <Pressable style={styles.bell} onPress={handleBell} hitSlop={8}>
         <Ionicons
           name={isOnNotifications ? 'notifications' : 'notifications-outline'}
-          size={22}
-          color={isOnNotifications ? Colors.primary : Colors.text}
+          size={20}
+          color={isOnNotifications ? Colors.primaryDark : Colors.accent}
         />
         {unreadCount > 0 && (
           <View style={styles.badge}>
@@ -79,26 +79,31 @@ const styles = StyleSheet.create({
   },
   left: { flex: 1 },
   greeting: { fontSize: 16, fontWeight: '500', color: Colors.textMute },
-  name: { fontSize: 20, fontWeight: '800', color: Colors.text },
-  pageTitle: { fontSize: 20, fontWeight: '800', color: Colors.text },
-  subtitleText: { fontSize: 12, color: Colors.textMute, marginTop: 2 },
+  name: { fontSize: 22, fontWeight: '900', color: Colors.accent, letterSpacing: -0.4 },
+  pageTitle: { fontSize: 22, fontWeight: '900', color: Colors.accent, letterSpacing: -0.4 },
+  subtitleText: { fontSize: 12, color: Colors.textMute, marginTop: 2, fontWeight: '500' },
   bell: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: Colors.card2,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 12,
+    shadowColor: '#8C7A4B',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   badge: {
     position: 'absolute',
     top: 6,
     right: 6,
-    minWidth: 14,
-    height: 14,
+    minWidth: 15,
+    height: 15,
     paddingHorizontal: 3,
-    borderRadius: 7,
+    borderRadius: 7.5,
     backgroundColor: Colors.danger,
     alignItems: 'center',
     justifyContent: 'center',

@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { accountService } from '../services/account.service';
 import type { Confirm2faPayload } from '../types/account.types';
 
-// GH-295: bước 2 enroll 2FA — verify TOTP → activate, trả 8 backup codes (1 lần)
+// GH-295: 2FA enroll step 2 — verify TOTP → activate, returns 8 backup codes (one-time)
 export function useConfirm2FA() {
   const queryClient = useQueryClient();
   return useMutation({

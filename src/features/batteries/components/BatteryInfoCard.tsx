@@ -1,109 +1,78 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Shadow } from '../../../lib/theme';
+import { formatDate } from '@/src/lib/date';
+import { Solar } from '@/src/lib/theme';
 import { BatteryAssetDto } from '../types/battery.types';
 import {
   BatteryStatusEnum,
   WarrantyStatusEnum,
 } from '../enums/battery.enum';
+import { GlassSurface } from './EnergyBackdrop';
 
 const STATUS_LABEL: Record<BatteryStatusEnum, string> = {
   [BatteryStatusEnum.Active]: 'Active',
   [BatteryStatusEnum.Inactive]: 'Inactive',
-  [BatteryStatusEnum.Decommissioned]: 'Ngừng sử dụng',
+  [BatteryStatusEnum.Decommissioned]: 'Decommissioned',
 };
 
 const WARRANTY_LABEL: Record<WarrantyStatusEnum, string> = {
-  [WarrantyStatusEnum.Active]: 'Còn bảo hành',
-  [WarrantyStatusEnum.Expired]: 'Hết bảo hành',
-  [WarrantyStatusEnum.Void]: 'Vô hiệu',
+  [WarrantyStatusEnum.Active]: 'Under warranty',
+  [WarrantyStatusEnum.Expired]: 'Warranty expired',
+  [WarrantyStatusEnum.Void]: 'Void',
 };
 
-function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString();
+interface Props {
+  battery: BatteryAssetDto;
+  customerName?: string | null;
 }
 
-export function BatteryInfoCard({ battery }: { battery: BatteryAssetDto }) {
+export function BatteryInfoCard({ battery, customerName }: Props) {
+  const finalCustomerName = customerName || battery.customerName || (battery as any).accountName || 'Individual customer';
+
+  const rows: { label: string; value: string }[] = [
+    { label: 'Serial', value: battery.serialNumber },
+    { label: 'Battery type', value: battery.batteryTypeName },
+    { label: 'Site', value: battery.siteName ?? 'Unassigned' },
+    { label: 'Customer', value: finalCustomerName },
+    { label: 'Install date', value: formatDate(battery.installDate) },
+    { label: 'Warranty', value: WARRANTY_LABEL[battery.warrantyStatus] ?? '—' },
+    { label: 'Status', value: STATUS_LABEL[battery.status] ?? 'Unknown' },
+  ];
+  // Location row removed per user's screenshot-marked request
+
   return (
-    <View style={[styles.card, Shadow]}>
-      <InfoRow icon="barcode-outline" label="Serial Number" value={battery.serialNumber} />
-      <Divider />
-      <InfoRow icon="cube-outline" label="Loại pin" value={battery.batteryTypeName} />
-      <Divider />
-      <InfoRow icon="location-outline" label="Site" value={battery.siteName ?? 'Chưa gán'} />
-      <Divider />
-      <InfoRow icon="person-outline" label="Khách hàng" value={battery.customerName} />
-      <Divider />
-      <InfoRow icon="calendar-outline" label="Ngày lắp đặt" value={formatDate(battery.installDate)} />
-      <Divider />
-      <InfoRow
-        icon="shield-checkmark-outline"
-        label="Bảo hành"
-        value={WARRANTY_LABEL[battery.warrantyStatus] ?? '—'}
-      />
-      <Divider />
-      <InfoRow
-        icon="pulse-outline"
-        label="Trạng thái"
-        value={STATUS_LABEL[battery.status] ?? 'Unknown'}
-      />
-      {battery.location ? (
-        <>
-          <Divider />
-          <InfoRow icon="navigate-outline" label="Vị trí" value={battery.location} />
-        </>
-      ) : null}
-    </View>
+    <GlassSurface style={styles.card}>
+      {rows.map((r, i) => (
+        <View key={r.label} style={[styles.row, i > 0 && styles.rowBorder]}>
+          <Text style={styles.label}>{r.label}</Text>
+          <Text style={styles.value} numberOfLines={1}>
+            {r.value}
+          </Text>
+        </View>
+      ))}
+    </GlassSurface>
   );
-}
-
-function InfoRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: string;
-}) {
-  return (
-    <View style={styles.row}>
-      <View style={styles.iconWrap}>
-        <Ionicons name={icon} size={16} color={Colors.textMute} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.label}>{label}</Text>
-        <Text style={styles.value}>{value}</Text>
-      </View>
-    </View>
-  );
-}
-
-function Divider() {
-  return <View style={styles.divider} />;
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.white,
-    borderRadius: Radius.lg,
+    paddingHorizontal: 18,
     marginBottom: 16,
-    overflow: 'hidden',
   },
-  row: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: Colors.bg,
+  row: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 12,
   },
-  label: { fontSize: 11, color: Colors.textMute, fontWeight: '600' },
-  value: { fontSize: 14, fontWeight: '800', color: Colors.accent, marginTop: 2 },
-  divider: { height: 1, backgroundColor: 'rgba(0,0,0,0.03)' },
+  rowBorder: { borderTopWidth: 1, borderTopColor: 'rgba(235, 230, 215, 0.6)' },
+  label: { fontSize: 13, color: Solar.mute, fontWeight: '600' },
+  value: {
+    flex: 1,
+    textAlign: 'right',
+    fontSize: 13.5,
+    fontWeight: '900',
+    color: Solar.ink,
+  },
 });

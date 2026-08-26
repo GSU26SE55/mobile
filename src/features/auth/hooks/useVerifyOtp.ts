@@ -8,7 +8,7 @@ export function useVerifyOtp() {
   return useMutation({
     mutationFn: (data: OtpVerifyPayload) => authService.verifyOtp(data),
     onSuccess: () => {
-      Alert.alert('Xác thực thành công', 'Tài khoản đã được kích hoạt. Vui lòng đăng nhập.', [
+      Alert.alert('Verification successful', 'Your account has been activated. Please sign in.', [
         { text: 'OK', onPress: () => router.replace('/(auth)/login') },
       ]);
     },

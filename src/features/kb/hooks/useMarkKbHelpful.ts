@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { KEY, QUERY_KEY } from '../../../lib/queryKeys';
+import { KEY, QUERY_KEY } from '@/src/lib/queryKeys';
 import { kbService } from '../services/kb.service';
 import type { KbArticleDTO, KbArticleSummaryDTO } from '../types/kb.types';
 
@@ -12,11 +12,11 @@ export function useMarkKbHelpful() {
     onMutate: async (id: string) => {
       await qc.cancelQueries({ queryKey: KEY.kb });
 
-      // Snapshot cache trước khi optimistic update — để rollback nếu request fail.
+      // Snapshot the cache before the optimistic update — for rollback if the request fails.
       const prevLists = qc.getQueriesData({ queryKey: KEY.kb, type: 'active' });
       const prevDetail = qc.getQueryData<KbArticleDTO>(QUERY_KEY.kb.detail(id));
 
-      // optimistic update trên infinite list cache
+      // optimistic update on the infinite list cache
       qc.setQueriesData<{ pages: { items: KbArticleSummaryDTO[] }[] }>(
         { queryKey: KEY.kb, type: 'active' },
         (old) => {
@@ -35,7 +35,7 @@ export function useMarkKbHelpful() {
         },
       );
 
-      // optimistic update trên detail cache
+      // optimistic update on the detail cache
       qc.setQueryData<KbArticleDTO>(
         QUERY_KEY.kb.detail(id),
         (old) => old ? { ...old, helpfulCount: old.helpfulCount + 1 } : old,
@@ -44,7 +44,7 @@ export function useMarkKbHelpful() {
       return { prevLists, prevDetail };
     },
 
-    // Fail → khôi phục cache về trạng thái trước optimistic (count không bị sai +1 vĩnh viễn).
+    // Fail → restore the cache to its pre-optimistic state (count doesn't stay wrongly +1 forever).
     onError: (_err, id, context) => {
       context?.prevLists?.forEach(([key, data]) => qc.setQueryData(key, data));
       if (context?.prevDetail) qc.setQueryData(QUERY_KEY.kb.detail(id), context.prevDetail);

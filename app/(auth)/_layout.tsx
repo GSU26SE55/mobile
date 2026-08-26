@@ -1,14 +1,11 @@
 import { Stack } from 'expo-router';
-import { Colors } from '../../src/lib/theme';
+import { useStackTransition } from '@/src/hooks/useScreenTransition';
 
 export default function AuthLayout() {
+  const screenOptions = useStackTransition();
   return (
     <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: '#FFFFFF' },
-        animation: 'slide_from_right',
-      }}
+      screenOptions={{ ...screenOptions, contentStyle: { backgroundColor: '#FFFFFF' } }}
     >
       <Stack.Screen name="login" />
       <Stack.Screen name="login-2fa" />
@@ -16,6 +13,7 @@ export default function AuthLayout() {
       <Stack.Screen name="verify-otp" />
       <Stack.Screen name="forgot-password" />
       <Stack.Screen name="reactivate" />
+      <Stack.Screen name="use-web-app" />
     </Stack>
   );
 }

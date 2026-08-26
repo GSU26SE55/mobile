@@ -1,12 +1,12 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 
-// Ngưỡng màu khuyến nghị doc: 80–100 xanh / 50–79 vàng / 0–49 đỏ.
+// Color thresholds per doc recommendation: 80-100 green / 50-79 yellow / 0-49 red.
 function healthStyle(score: number): { bg: string; text: string; label: string } {
-  if (score >= 80) return { bg: Colors.successLight, text: Colors.successDark, label: 'Tốt' };
-  if (score >= 50) return { bg: Colors.warningLight, text: Colors.warningDark, label: 'Cần theo dõi' };
-  return { bg: Colors.dangerLight, text: Colors.dangerDark, label: 'Nguy hiểm' };
+  if (score >= 80) return { bg: Colors.successLight, text: Colors.successDark, label: 'Good' };
+  if (score >= 50) return { bg: Colors.warningLight, text: Colors.warningDark, label: 'Needs attention' };
+  return { bg: Colors.dangerLight, text: Colors.dangerDark, label: 'Critical' };
 }
 
 export function SiteHealthBadge({ score }: { score: number }) {

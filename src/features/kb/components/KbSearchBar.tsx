@@ -1,7 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
-import { Colors } from '../../../lib/theme';
+import { SearchBar } from '@/src/shared/components/SearchBar';
 
 interface Props {
   value: string;
@@ -10,61 +8,19 @@ interface Props {
   autoFocus?: boolean;
 }
 
+/** KB search field — just the shared SearchBar with its own placeholder. */
 export function KbSearchBar({
   value,
   onChangeText,
-  placeholder = 'Tìm theo tiêu đề, mã hoặc tag…',
+  placeholder = 'Search by title, code, or tag…',
   autoFocus,
 }: Props) {
-  const hasValue = value.length > 0;
   return (
-    <View style={styles.wrap}>
-      <Ionicons name="search-outline" size={18} color={Colors.textMute} style={styles.iconLeft} />
-      <TextInput
-        style={styles.input}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={Colors.placeholder}
-        autoFocus={autoFocus}
-        autoCorrect={false}
-        autoCapitalize="none"
-        returnKeyType="search"
-      />
-      {hasValue && (
-        <Pressable
-          onPress={() => onChangeText('')}
-          hitSlop={8}
-          style={styles.clearBtn}
-        >
-          <Ionicons name="close-circle" size={18} color={Colors.textFaint} />
-        </Pressable>
-      )}
-    </View>
+    <SearchBar
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      autoFocus={autoFocus}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.card2,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  iconLeft: {
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    fontSize: 14,
-    color: Colors.text,
-    paddingVertical: 9,
-  },
-  clearBtn: {
-    padding: 4,
-  },
-});

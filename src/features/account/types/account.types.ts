@@ -21,25 +21,25 @@ export interface PhoneOtpPayload {
   otp: string;
 }
 
-// ── GH-295: 2FA enroll flow 2 bước ──
-// Bước 1 — POST /api/accounts/me/2fa/init (CHƯA activate)
+// ── GH-295: 2FA enroll flow — 2 steps ──
+// Step 1 — POST /api/accounts/me/2fa/init (NOT activated yet)
 export interface Init2faResponse {
-  secret: string; // base32 — nhập tay nếu không quét QR
+  secret: string; // base32 — enter manually if not scanning the QR
   otpAuthUri: string; // otpauth://... — render QR
-  pendingToken: string; // gửi kèm bước confirm
+  pendingToken: string; // sent along with the confirm step
 }
 
-// Bước 2 — POST /api/accounts/me/2fa/confirm
+// Step 2 — POST /api/accounts/me/2fa/confirm
 export interface Confirm2faPayload {
   pendingToken: string;
-  code: string; // TOTP 6 số
+  code: string; // TOTP 6 digits
 }
 export interface Confirm2faResponse {
   enabled: boolean;
-  backupCodes: string[]; // 8 codes — hiển thị 1 lần
+  backupCodes: string[]; // 8 codes — shown once
 }
 
-// POST /api/accounts/me/2fa/disable — re-auth bằng password + TOTP
+// POST /api/accounts/me/2fa/disable — re-auth with password + TOTP
 export interface Disable2faPayload {
   password: string;
   totpCode: string;
@@ -86,7 +86,7 @@ export interface TrustedDeviceDto {
 }
 
 // ── #AUTH-62: GDPR data export (GET /api/accounts/me/export) ──
-// Lưu ý: mọi field enum BE serialize thành STRING ("Active", "LoginSuccess", "Tier2") — type là string.
+// Note: every enum field is serialized by the BE as a STRING ("Active", "LoginSuccess", "Tier2") — type is string.
 export interface AccountExportSnapshot {
   id: string;
   email: string;

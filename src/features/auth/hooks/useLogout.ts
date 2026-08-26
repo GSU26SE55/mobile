@@ -1,9 +1,10 @@
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { authService } from '../services/auth.service';
-import { clearTokens, getRefreshToken } from '../../../lib/secureStore';
-import { useSessionStore } from '../../../stores/sessionStore';
-import { syncDeviceTokenOnLogout } from '../../notifications/services/device-token.service';
+import { clearTokens, getRefreshToken } from '@/src/lib/secureStore';
+import { useSessionStore } from '@/src/stores/sessionStore';
+import { clearLastSeen } from '@/src/features/notifications/lib/lastSeen';
+import { syncDeviceTokenOnLogout } from '@/src/features/notifications/services/device-token.service';
 
 export function useLogout() {
   const clearSession = useSessionStore((s) => s.clearSession);
@@ -18,9 +19,10 @@ export function useLogout() {
         try {
           await authService.logout(refreshToken);
         } catch {
-          // best-effort — vẫn clear local state dù server call fail
+          // best-effort — still clear local state even if the server call fails
         }
       }
+      await clearLastSeen();
       await clearTokens();
       clearSession();
     },

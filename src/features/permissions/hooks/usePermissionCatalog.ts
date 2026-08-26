@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { permissionService } from '../services/permission.service';
 
-// GH-68 — catalog toàn bộ permission (mọi role). Ít đổi → staleTime dài.
+// GH-68 — catalog of all permissions (every role). Rarely changes → long staleTime.
 export function usePermissionCatalog(module?: string) {
   return useQuery({
     queryKey: QUERY_KEY.permissions.catalog(module),

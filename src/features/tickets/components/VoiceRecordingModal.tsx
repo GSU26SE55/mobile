@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { ActivityIndicator, Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 
 function formatElapsed(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
@@ -101,7 +101,7 @@ export function VoiceRecordingModal({ visible, elapsedSeconds, level, transcribi
         </View>
 
         <Text style={styles.timer}>{formatElapsed(elapsedSeconds)}</Text>
-        <Text style={styles.hint}>{transcribing ? 'Đang xử lý...' : 'Đang nghe...'}</Text>
+        <Text style={styles.hint}>{transcribing ? 'Processing...' : 'Listening...'}</Text>
 
         <View style={styles.actions}>
           <Pressable style={styles.cancelBtn} onPress={onCancel} disabled={transcribing}>

@@ -13,18 +13,20 @@ import {
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Shadow } from '../../../src/lib/theme';
-import { handleErrorApi } from '../../../src/lib/errors';
-import { useIncident } from '../../../src/features/incidents/hooks/useIncident';
-import { useAcknowledgeIncident } from '../../../src/features/incidents/hooks/useAcknowledgeIncident';
-import { useResolveIncident } from '../../../src/features/incidents/hooks/useResolveIncident';
-import { IncidentStatusBadge } from '../../../src/features/incidents/components/IncidentStatusBadge';
+import { formatDateTime } from '@/src/lib/date';
+import { Colors, Shadow } from '@/src/lib/theme';
+import { handleErrorApi } from '@/src/lib/errors';
+import { useIncident } from '@/src/features/incidents/hooks/useIncident';
+import { useAcknowledgeIncident } from '@/src/features/incidents/hooks/useAcknowledgeIncident';
+import { useResolveIncident } from '@/src/features/incidents/hooks/useResolveIncident';
+import { IncidentStatusBadge } from '@/src/features/incidents/components/IncidentStatusBadge';
 import {
   EnvironmentalIncidentStatusEnum,
   INCIDENT_TYPE_LABEL,
-} from '../../../src/features/incidents/types/incident.types';
-import { resolveIncidentSchema } from '../../../src/features/incidents/schemas/resolveIncident.schema';
-import { AlertSeverityEnum } from '../../../src/shared/enums/alert.enum';
+} from '@/src/features/incidents/types/incident.types';
+import { resolveIncidentSchema } from '@/src/features/incidents/schemas/resolveIncident.schema';
+import { AlertSeverityEnum } from '@/src/shared/enums/alert.enum';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 const SEVERITY_STYLE: Record<AlertSeverityEnum, { label: string; color: string; bg: string }> = {
   [AlertSeverityEnum.Info]: { label: 'Info', color: Colors.info, bg: Colors.infoLight },
@@ -55,9 +57,9 @@ export default function StaffIncidentDetailScreen() {
     return (
       <View style={styles.center}>
         <Ionicons name="alert-circle-outline" size={32} color={Colors.textFaint} />
-        <Text style={styles.notFound}>Không tìm thấy sự cố</Text>
+        <Text style={styles.notFound}>Incident not found</Text>
         <Pressable onPress={() => router.back()} style={styles.goBackBtn}>
-          <Text style={styles.goBackText}>Quay lại</Text>
+          <Text style={styles.goBackText}>Go back</Text>
         </Pressable>
       </View>
     );
@@ -72,7 +74,7 @@ export default function StaffIncidentDetailScreen() {
   const handleAcknowledge = async () => {
     try {
       await acknowledge(incident.id);
-      Alert.alert('Thành công', 'Đã xác nhận sự cố này.');
+      Alert.alert('Success', 'This incident has been acknowledged.');
     } catch (error) {
       handleErrorApi({ error });
     }
@@ -81,7 +83,7 @@ export default function StaffIncidentDetailScreen() {
   const submitResolve = async () => {
     const parsed = resolveIncidentSchema.safeParse({ resolutionNote: note });
     if (!parsed.success) {
-      setNoteError(parsed.error.issues[0]?.message ?? 'Ghi chú không hợp lệ');
+      setNoteError(parsed.error.issues[0]?.message ?? 'Invalid note');
       return;
     }
     setNoteError(null);
@@ -89,7 +91,7 @@ export default function StaffIncidentDetailScreen() {
       await resolve({ id: incident.id, payload: parsed.data });
       setModalOpen(false);
       setNote('');
-      Alert.alert('Thành công', 'Đã xử lý sự cố này.');
+      Alert.alert('Success', 'This incident has been resolved.');
     } catch (error) {
       handleErrorApi({ error });
     }
@@ -98,10 +100,8 @@ export default function StaffIncidentDetailScreen() {
   return (
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <Pressable onPress={() => router.back()} style={[styles.headerBtn, Shadow]}>
-          <Ionicons name="chevron-back" size={18} color={Colors.accent} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Chi tiết sự cố</Text>
+        <BackButton />
+        <Text style={styles.headerTitle}>Incident Details</Text>
         <View style={{ width: 44 }} />
       </View>
 
@@ -113,33 +113,33 @@ export default function StaffIncidentDetailScreen() {
             </View>
             <IncidentStatusBadge status={incident.status} />
           </View>
-          <Text style={styles.title}>{INCIDENT_TYPE_LABEL[incident.incidentType] ?? 'Sự cố'}</Text>
+          <Text style={styles.title}>{INCIDENT_TYPE_LABEL[incident.incidentType] ?? 'Incident'}</Text>
         </View>
 
         <View style={[styles.card, Shadow]}>
-          <Row label="Phát hiện lúc" value={new Date(incident.detectedAt).toLocaleString()} />
+          <Row label="Detected at" value={formatDateTime(incident.detectedAt)} />
           {incident.reportedBy ? (
             <>
               <Divider />
-              <Row label="Báo cáo bởi" value={incident.reportedBy} />
+              <Row label="Reported by" value={incident.reportedBy} />
             </>
           ) : null}
           {incident.acknowledgedAt ? (
             <>
               <Divider />
-              <Row label="Xác nhận lúc" value={new Date(incident.acknowledgedAt).toLocaleString()} />
+              <Row label="Acknowledged at" value={formatDateTime(incident.acknowledgedAt)} />
             </>
           ) : null}
           {incident.resolvedAt ? (
             <>
               <Divider />
-              <Row label="Xử lý lúc" value={new Date(incident.resolvedAt).toLocaleString()} />
+              <Row label="Resolved at" value={formatDateTime(incident.resolvedAt)} />
             </>
           ) : null}
           {incident.resolutionNote ? (
             <>
               <Divider />
-              <Row label="Ghi chú xử lý" value={incident.resolutionNote} />
+              <Row label="Resolution note" value={incident.resolutionNote} />
             </>
           ) : null}
         </View>
@@ -176,13 +176,13 @@ export default function StaffIncidentDetailScreen() {
       <Modal visible={modalOpen} transparent animationType="fade" onRequestClose={() => setModalOpen(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Xử lý sự cố</Text>
-            <Text style={styles.modalLabel}>Ghi chú xử lý (5–2000 ký tự)</Text>
+            <Text style={styles.modalTitle}>Resolve Incident</Text>
+            <Text style={styles.modalLabel}>Resolution note (5–2000 characters)</Text>
             <TextInput
               style={styles.input}
               value={note}
               onChangeText={setNote}
-              placeholder="Mô tả cách xử lý sự cố…"
+              placeholder="Describe how the incident was resolved…"
               placeholderTextColor={Colors.textFaint}
               multiline
               numberOfLines={4}
@@ -197,7 +197,7 @@ export default function StaffIncidentDetailScreen() {
                   setNoteError(null);
                 }}
               >
-                <Text style={styles.cancelText}>Hủy</Text>
+                <Text style={styles.cancelText}>Cancel</Text>
               </Pressable>
               <Pressable
                 style={[styles.modalBtn, styles.confirmBtn]}
@@ -207,7 +207,7 @@ export default function StaffIncidentDetailScreen() {
                 {resolvePending ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.confirmText}>Xác nhận</Text>
+                  <Text style={styles.confirmText}>Confirm</Text>
                 )}
               </Pressable>
             </View>

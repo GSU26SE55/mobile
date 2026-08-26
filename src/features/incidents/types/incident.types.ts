@@ -1,15 +1,15 @@
-// Environmental Incident DTOs — mirror docs/api-battery.md §Nhóm 9.
-// ⚠️ DTO KHÔNG có siteName (chỉ siteId) — map tên site client-side từ battery assets.
+// Environmental Incident DTOs — mirror docs/api-battery.md §Group 9.
+// ⚠️ DTO has NO siteName (only siteId) — map the site name client-side from battery assets.
 import {
   EnvironmentalIncidentTypeEnum,
   EnvironmentalIncidentStatusEnum,
-} from '../../../shared/enums/incident.enum';
-import type { AlertSeverityEnum } from '../../../shared/enums/alert.enum';
+} from '@/src/features/incidents/enums/incident.enum';
+import type { AlertSeverityEnum } from '@/src/shared/enums/alert.enum';
 
 export {
   EnvironmentalIncidentTypeEnum,
   EnvironmentalIncidentStatusEnum,
-} from '../../../shared/enums/incident.enum';
+} from '@/src/features/incidents/enums/incident.enum';
 
 export interface EnvironmentalIncidentDto {
   id: string;
@@ -17,6 +17,12 @@ export interface EnvironmentalIncidentDto {
   incidentType: EnvironmentalIncidentTypeEnum;
   status: EnvironmentalIncidentStatusEnum;
   severity: AlertSeverityEnum;
+  /**
+   * Raw sensor reading from the firmware — e.g. `"MQ-2 raw=3100 > thr=2000 (GPIO1)"`.
+   * The site-level equivalent of a battery ticket's reading table: the measurement that proves
+   * the incident. Free-form, so render verbatim as a fallback and only parse opportunistically.
+   */
+  notes?: string | null;
   reportedBy: string | null;
   detectedAt: string; // UTC
   acknowledgedAt: string | null;
@@ -42,17 +48,17 @@ export interface ResolveIncidentPayload {
 }
 
 export const INCIDENT_TYPE_LABEL: Record<EnvironmentalIncidentTypeEnum, string> = {
-  [EnvironmentalIncidentTypeEnum.Smoke]: 'Khói',
-  [EnvironmentalIncidentTypeEnum.FireDetected]: 'Cháy',
-  [EnvironmentalIncidentTypeEnum.GasLeak]: 'Rò rỉ khí',
-  [EnvironmentalIncidentTypeEnum.Flood]: 'Ngập nước',
-  [EnvironmentalIncidentTypeEnum.OverheatHazard]: 'Nguy cơ quá nhiệt',
-  [EnvironmentalIncidentTypeEnum.Other]: 'Khác',
+  [EnvironmentalIncidentTypeEnum.Smoke]: 'Smoke',
+  [EnvironmentalIncidentTypeEnum.FireDetected]: 'Fire',
+  [EnvironmentalIncidentTypeEnum.GasLeak]: 'Gas Leak',
+  [EnvironmentalIncidentTypeEnum.Flood]: 'Flood',
+  [EnvironmentalIncidentTypeEnum.OverheatHazard]: 'Overheat Hazard',
+  [EnvironmentalIncidentTypeEnum.Other]: 'Other',
 };
 
 export const INCIDENT_STATUS_LABEL: Record<EnvironmentalIncidentStatusEnum, string> = {
-  [EnvironmentalIncidentStatusEnum.Open]: 'Mở',
-  [EnvironmentalIncidentStatusEnum.Acknowledged]: 'Đã xác nhận',
-  [EnvironmentalIncidentStatusEnum.Resolved]: 'Đã xử lý',
-  [EnvironmentalIncidentStatusEnum.FalseAlarm]: 'Báo nhầm',
+  [EnvironmentalIncidentStatusEnum.Open]: 'Open',
+  [EnvironmentalIncidentStatusEnum.Acknowledged]: 'Acknowledged',
+  [EnvironmentalIncidentStatusEnum.Resolved]: 'Resolved',
+  [EnvironmentalIncidentStatusEnum.FalseAlarm]: 'False Alarm',
 };

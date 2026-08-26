@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
-import { useChangeEmail } from '../../../src/features/account/hooks/useChangeEmail';
-import { useConfirmEmailChange } from '../../../src/features/account/hooks/useConfirmEmailChange';
-import { ChangeEmailForm } from '../../../src/features/account/components/ChangeEmailForm';
-import { ConfirmEmailOtpForm } from '../../../src/features/account/components/ConfirmEmailOtpForm';
-import { handleErrorApi } from '../../../src/lib/errors';
-import { ChangeEmailInput, ConfirmEmailOtpInput } from '../../../src/features/account/schemas/changeEmail.schema';
-import { Colors } from '../../../src/lib/theme';
+import { useChangeEmail } from '@/src/features/account/hooks/useChangeEmail';
+import { useConfirmEmailChange } from '@/src/features/account/hooks/useConfirmEmailChange';
+import { ChangeEmailForm } from '@/src/features/account/components/ChangeEmailForm';
+import { ConfirmEmailOtpForm } from '@/src/features/account/components/ConfirmEmailOtpForm';
+import { handleErrorApi } from '@/src/lib/errors';
+import { ChangeEmailInput, ConfirmEmailOtpInput } from '@/src/features/account/schemas/changeEmail.schema';
+import { Colors } from '@/src/lib/theme';
 
 export default function ChangeEmailScreen() {
   const [step, setStep] = useState<1 | 2>(1);
@@ -20,19 +20,19 @@ export default function ChangeEmailScreen() {
   const setFieldError = (setter: typeof setStep1Errors) => (field: string, msg: string) =>
     setter((prev) => ({ ...prev, [field]: msg }));
 
-  // Step 1 — mutateAsync + try-catch + handleErrorApi (có form)
+  // Step 1 — mutateAsync + try-catch + handleErrorApi (has form)
   const handleStep1 = async (data: ChangeEmailInput) => {
     setStep1Errors({});
     try {
       await changeEmail.mutateAsync(data);
-      // chuyển step trong onSuccess của mutateAsync — tránh race condition
+      // step transition happens in mutateAsync's onSuccess — avoids race condition
       setStep(2);
     } catch (error) {
       handleErrorApi({ error, setFieldError: setFieldError(setStep1Errors) });
     }
   };
 
-  // Step 2 — mutateAsync + try-catch + handleErrorApi (có form)
+  // Step 2 — mutateAsync + try-catch + handleErrorApi (has form)
   const handleStep2 = async (data: ConfirmEmailOtpInput) => {
     setStep2Errors({});
     try {
@@ -42,7 +42,7 @@ export default function ChangeEmailScreen() {
     }
   };
 
-  // Quay lại step 1 để nhập email khác / gửi lại OTP (tránh kẹt khi OTP hết hạn ở step 2).
+  // Go back to step 1 to enter a different email / resend OTP (avoids being stuck when OTP expires at step 2).
   const backToStep1 = () => {
     setStep(1);
     setStep2Errors({});
@@ -50,7 +50,7 @@ export default function ChangeEmailScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.step}>Bước {step}/2</Text>
+      <Text style={styles.step}>Step {step}/2</Text>
 
       {step === 1 ? (
         <ChangeEmailForm
@@ -67,7 +67,7 @@ export default function ChangeEmailScreen() {
           />
           <Pressable style={styles.backLink} onPress={backToStep1} accessibilityRole="button">
             <Ionicons name="chevron-back" size={16} color={Colors.primary} />
-            <Text style={styles.backText}>Nhập email khác</Text>
+            <Text style={styles.backText}>Enter a different email</Text>
           </Pressable>
         </>
       )}

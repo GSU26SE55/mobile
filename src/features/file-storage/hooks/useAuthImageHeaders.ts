@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { getAccessToken } from '../../../lib/secureStore';
+import { getAccessToken } from '@/src/lib/secureStore';
 
 /**
- * Load access token once để dựng header Authorization cho <Image> tải ảnh
- * từ FileStorageService (GET /api/files/{id}/download — endpoint cần auth).
+ * Load the access token once to build the Authorization header for <Image> loading images
+ * from FileStorageService (GET /api/files/{id}/download — endpoint requires auth).
  *
- * Dùng khi `publicUrl === null`: <Image source={{ uri: BASE_URL + DOWNLOAD(fileId), headers }} />.
+ * Used when `publicUrl === null`: <Image source={{ uri: BASE_URL + DOWNLOAD(fileId), headers }} />.
  */
 export function useAuthImageHeaders() {
   const [headers, setHeaders] = useState<{ Authorization: string } | undefined>(undefined);

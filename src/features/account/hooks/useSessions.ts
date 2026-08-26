@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { sessionService } from '../services/session.service';
-import { getRefreshToken } from '../../../lib/secureStore';
+import { getRefreshToken } from '@/src/lib/secureStore';
 
 export function useSessions() {
   const queryClient = useQueryClient();
@@ -23,7 +23,7 @@ export function useSessions() {
 
   const revokeAll = useMutation({
     mutationFn: async () => {
-      // await bắt buộc — getRefreshToken là async (expo-secure-store)
+      // await required — getRefreshToken is async (expo-secure-store)
       const currentRefreshToken = await getRefreshToken();
       return sessionService.revokeAll({
         exceptCurrent: true,

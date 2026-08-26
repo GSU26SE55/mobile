@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { siteService } from '../services/site.service';
 
-// Dashboard stats — staleTime 1 phút (giống Web: dashboard stats).
+// Dashboard stats — staleTime 1 minute (same as Web: dashboard stats).
 export function useSiteDashboard(id: string) {
   return useQuery({
     queryKey: QUERY_KEY.sites.dashboard(id),

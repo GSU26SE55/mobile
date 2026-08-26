@@ -1,17 +1,17 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius } from '../../../lib/theme';
+import { Colors, Radius } from '@/src/lib/theme';
 import { useSiteActiveIncidents } from '../hooks/useSiteActiveIncidents';
 import { IncidentStatusBadge } from './IncidentStatusBadge';
 import { INCIDENT_TYPE_LABEL } from '../types/incident.types';
 
 interface Props {
   siteId: string | undefined;
-  /** Điều hướng theo app (customer vs staff route khác nhau). */
+  /** Navigation depends on the app (customer vs staff routes differ). */
   onPressIncident: (id: string) => void;
 }
 
-// GH-68 — widget "Sự cố đang xảy ra" (Open+Acknowledged) trên site detail. Ẩn khi rỗng.
+// GH-68 — "Active Incidents" widget (Open+Acknowledged) on site detail. Hidden when empty.
 export function SiteActiveIncidentsWidget({ siteId, onPressIncident }: Props) {
   const { data: incidents = [] } = useSiteActiveIncidents(siteId);
 
@@ -21,13 +21,13 @@ export function SiteActiveIncidentsWidget({ siteId, onPressIncident }: Props) {
     <View style={styles.card}>
       <View style={styles.header}>
         <Ionicons name="warning" size={16} color={Colors.danger} />
-        <Text style={styles.title}>Sự cố đang xảy ra ({incidents.length})</Text>
+        <Text style={styles.title}>Active Incidents ({incidents.length})</Text>
       </View>
       {incidents.map((inc) => (
         <Pressable key={inc.id} style={styles.row} onPress={() => onPressIncident(inc.id)}>
           <View style={styles.rowMain}>
             <Text style={styles.rowType} numberOfLines={1}>
-              {INCIDENT_TYPE_LABEL[inc.incidentType] ?? 'Sự cố'}
+              {INCIDENT_TYPE_LABEL[inc.incidentType] ?? 'Incident'}
             </Text>
             <IncidentStatusBadge status={inc.status} />
           </View>

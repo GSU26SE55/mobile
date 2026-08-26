@@ -12,12 +12,12 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../../lib/theme';
+import { Colors } from '@/src/lib/theme';
 import { useUploadFile } from '../hooks/useUploadFile';
 import { AuthImage } from './AuthImage';
 import { FilePurposeEnum } from '../enums/file-storage.enum';
 
-// Khớp shape CommentAttachmentPayload (tickets) — required fields từ FileUploadResponse.
+// Matches the CommentAttachmentPayload shape (tickets) — required fields from FileUploadResponse.
 export interface UploadedAttachment {
   fileId: string;
   fileName: string;
@@ -26,20 +26,20 @@ export interface UploadedAttachment {
 }
 
 interface Props {
-  /** TicketAttachment(2) cho comment | MaintenancePhoto(3) cho ảnh bảo trì. */
+  /** TicketAttachment(2) for comments | MaintenancePhoto(3) for maintenance photos. */
   purpose: FilePurposeEnum;
   value: UploadedAttachment[];
   onChange: (next: UploadedAttachment[]) => void;
   onUploadingChange?: (uploading: boolean) => void;
   max?: number;
   label?: string;
-  /** Trigger icon tròn nhỏ (cho thanh chat) thay vì khung dashed 64x64. */
+  /** Small round trigger icon (for the chat bar) instead of the 64x64 dashed box. */
   compact?: boolean;
-  /** Ẩn thumbnail trong component này — dùng khi consumer tự hiển thị preview ở nơi khác. */
+  /** Hide thumbnails in this component — used when the consumer renders its own preview elsewhere. */
   hideThumbnails?: boolean;
 }
 
-// Mirror getAssetUploadFile của CreateTicketStepper: dựng { uri, name, type, size }.
+// Mirrors getAssetUploadFile from CreateTicketStepper: builds { uri, name, type, size }.
 const assetToFile = (asset: ImagePicker.ImagePickerAsset) => {
   const uriName = asset.uri.split('/').pop();
   const assetName = asset.fileName ?? uriName;
@@ -52,8 +52,8 @@ const assetToFile = (asset: ImagePicker.ImagePickerAsset) => {
 };
 
 /**
- * Picker ảnh tái dùng: chọn ảnh (camera/thư viện) → upload ngay qua useUploadFile(purpose)
- * → đẩy { fileId, ... } vào `value`. Controlled. Nút X chỉ bỏ khỏi list (file orphan để cleanup job).
+ * Reusable image picker: pick an image (camera/library) → upload immediately via useUploadFile(purpose)
+ * → push { fileId, ... } into `value`. Controlled. The X button only removes it from the list (file is left orphaned for the cleanup job).
  */
 export function AttachmentPicker({
   purpose,
@@ -79,7 +79,7 @@ export function AttachmentPicker({
   const uploadAssets = async (assets: ImagePicker.ImagePickerAsset[]) => {
     const accepted = assets.slice(0, Math.max(0, remaining));
     if (assets.length > accepted.length) {
-      Alert.alert('Giới hạn', `Tối đa ${max} ảnh.`);
+      Alert.alert('Limit reached', `Maximum ${max} photos.`);
     }
     if (accepted.length === 0) return;
 
@@ -106,18 +106,18 @@ export function AttachmentPicker({
     }
     setBusy(false);
     if (failed > 0) {
-      Alert.alert('Lỗi', `${failed} ảnh tải lên thất bại (sai định dạng hoặc vượt 20MB).`);
+      Alert.alert('Error', `${failed} photo(s) failed to upload (invalid format or over 20MB).`);
     }
   };
 
   const pickFromCamera = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Quyền truy cập', 'Vui lòng cấp quyền máy ảnh trong cài đặt.');
+      Alert.alert('Permission required', 'Please grant camera permission in settings.');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.7,
     });
     if (!result.canceled && result.assets?.[0]) await uploadAssets([result.assets[0]]);
@@ -126,11 +126,11 @@ export function AttachmentPicker({
   const pickFromGallery = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Quyền truy cập', 'Vui lòng cấp quyền thư viện ảnh trong cài đặt.');
+      Alert.alert('Permission required', 'Please grant photo library permission in settings.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsMultipleSelection: true,
       quality: 0.7,
     });
@@ -141,17 +141,17 @@ export function AttachmentPicker({
     if (uploading || remaining <= 0) return;
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
-        { options: ['Hủy', 'Chụp ảnh', 'Chọn từ thư viện'], cancelButtonIndex: 0 },
+        { options: ['Cancel', 'Take Photo', 'Choose from Library'], cancelButtonIndex: 0 },
         (idx) => {
           if (idx === 1) pickFromCamera();
           if (idx === 2) pickFromGallery();
         },
       );
     } else {
-      Alert.alert('Thêm ảnh', '', [
-        { text: 'Hủy', style: 'cancel' },
-        { text: 'Chụp ảnh', onPress: pickFromCamera },
-        { text: 'Chọn từ thư viện', onPress: pickFromGallery },
+      Alert.alert('Add Photo', '', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Take Photo', onPress: pickFromCamera },
+        { text: 'Choose from Library', onPress: pickFromGallery },
       ]);
     }
   };

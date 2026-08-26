@@ -1,11 +1,12 @@
-import { axiosInstance } from '../../../lib/axios';
-import { ENDPOINTS } from '../../../lib/endpoints';
-import { CommonResponse } from '../../../types/api.types';
+import { axiosInstance } from '@/src/lib/axios';
+import { ENDPOINTS } from '@/src/lib/endpoints';
+import { CommonResponse } from '@/src/types/api.types';
 import {
   SensorReadingDto,
   SensorReadingHistoryParams,
   SensorReadingHistoryResponseDto,
   SensorReadingAggregateParams,
+  SensorReadingAggregateHourlyParams,
   SensorReadingAggregateDto,
 } from '../types/sensor-reading.types';
 
@@ -22,6 +23,12 @@ export const sensorReadingService = {
   getAggregate: (assetId: string, params?: SensorReadingAggregateParams) =>
     axiosInstance.get<CommonResponse<SensorReadingAggregateDto[]>>(
       ENDPOINTS.SENSOR_READINGS.AGGREGATE(assetId),
+      { params },
+    ),
+  // GH-74 — fixed 1h bucket (continuous aggregate). Does NOT accept `interval`.
+  getAggregateHourly: (assetId: string, params?: SensorReadingAggregateHourlyParams) =>
+    axiosInstance.get<CommonResponse<SensorReadingAggregateDto[]>>(
+      ENDPOINTS.SENSOR_READINGS.AGGREGATE_HOURLY(assetId),
       { params },
     ),
 };

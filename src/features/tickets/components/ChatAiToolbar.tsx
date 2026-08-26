@@ -1,61 +1,52 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../../lib/theme';
-import { BottomSheet } from '../../../shared/components/BottomSheet';
-import { ChatAiIntentEnum } from '../../../shared/enums/chat.enum';
-import {
-  useExportChatPdf,
-  useSentimentCheck,
-  useSuggestChat,
-  useSummarizeThread,
-} from '../hooks/useTicketChatActions';
-import type { ChatSentimentLabel } from '../types/chat-actions.types';
+import { Colors } from '@/src/lib/theme';
+import { BottomSheet } from '@/src/shared/components/BottomSheet';
+import { ChatAiIntentEnum } from '@/src/features/tickets/enums/chat.enum';
+import { useSuggestChat, useSummarizeThread } from '../hooks/useTicketChatActions';
 
-// GH-67 — thanh AI/Export cho Staff, đặt trên ô soạn reply. CHỈ dùng ở màn Staff ticket detail.
-// Toolbar disable khi ticket đã đóng (prop disabled = ticketClosed từ [id].tsx).
+// GH-67 — AI/Export bar for Staff, placed above the reply composer. ONLY used on the Staff ticket detail screen.
+// Toolbar disables when the ticket is closed (prop disabled = ticketClosed from [id].tsx).
 
 const INTENTS: { key: ChatAiIntentEnum; label: string }[] = [
-  { key: ChatAiIntentEnum.RequestInfo, label: 'Hỏi thêm' },
-  { key: ChatAiIntentEnum.TechnicalAnswer, label: 'Kỹ thuật' },
-  { key: ChatAiIntentEnum.Resolution, label: 'Giải pháp' },
-  { key: ChatAiIntentEnum.FollowUp, label: 'Theo dõi' },
+  { key: ChatAiIntentEnum.RequestInfo, label: 'Ask more' },
+  { key: ChatAiIntentEnum.TechnicalAnswer, label: 'Technical' },
+  { key: ChatAiIntentEnum.Resolution, label: 'Solution' },
+  { key: ChatAiIntentEnum.FollowUp, label: 'Follow up' },
 ];
-
-const SENTIMENT_VI: Record<ChatSentimentLabel, string> = {
-  Positive: 'Tích cực 🙂',
-  Neutral: 'Trung lập 😐',
-  Negative: 'Tiêu cực 🙁',
-  Critical: 'Nghiêm trọng 🚨',
-};
 
 interface Props {
   ticketId: string;
   disabled?: boolean;
-  /** Chèn nội dung gợi ý vào ô soạn reply. */
-  onInsert: (text: string) => void;
+  /** Suggestion result → parent renders it as a bubble at the END of the chat thread (like web). */
+  onSuggestions: (suggestions: string[]) => void;
 }
 
-export function ChatAiToolbar({ ticketId, disabled = false, onInsert }: Props) {
-  const [sheet, setSheet] = useState<'suggest' | 'summary' | null>(null);
-  const [intent, setIntent] = useState<ChatAiIntentEnum>(ChatAiIntentEnum.TechnicalAnswer);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+export function ChatAiToolbar({ ticketId, disabled = false, onSuggestions }: Props) {
+  const [sheet, setSheet] = useState<'summary' | null>(null);
+  // Tap "Suggest" → shows the intent chip row (compact). Selecting a chip generates and
+  // pushes a bubble into the chat.
+  const [intentRowOpen, setIntentRowOpen] = useState(false);
+  const [intent, setIntent] = useState<ChatAiIntentEnum | null>(null);
   const [summary, setSummary] = useState('');
 
   const suggest = useSuggestChat(ticketId);
   const summarize = useSummarizeThread(ticketId);
-  const sentiment = useSentimentCheck(ticketId);
-  const exportPdf = useExportChatPdf(ticketId);
 
   const runSuggest = (it: ChatAiIntentEnum) => {
     setIntent(it);
-    suggest.mutate(it, { onSuccess: (dto) => setSuggestions(dto?.suggestions ?? []) });
+    suggest.mutate(it, {
+      onSuccess: (dto) => {
+        onSuggestions(dto?.suggestions ?? []);
+        setIntentRowOpen(false); // generation done → collapse the chip row, bubble already shown in chat
+      },
+    });
   };
 
   const openSuggest = () => {
-    setSuggestions([]);
-    setSheet('suggest');
-    runSuggest(intent);
+    setIntent(null);
+    setIntentRowOpen((v) => !v); // toggle the chip row
   };
 
   const openSummary = () => {
@@ -64,32 +55,16 @@ export function ChatAiToolbar({ ticketId, disabled = false, onInsert }: Props) {
     summarize.mutate(undefined, { onSuccess: (dto) => setSummary(dto?.summary ?? '') });
   };
 
-  const runSentiment = () => {
-    sentiment.mutate(undefined, {
-      onSuccess: (dto) => {
-        if (!dto) return;
-        Alert.alert(
-          'Cảm xúc khách hàng',
-          `${SENTIMENT_VI[dto.label] ?? dto.label} · score ${dto.score.toFixed(2)}` +
-            (dto.isAlertSent ? '\n\n⚠️ Đã gửi cảnh báo tới Manager.' : ''),
-        );
-      },
-    });
-  };
-
   return (
     <>
       <View style={styles.bar}>
-        <ToolBtn icon="sparkles-outline" label="Gợi ý" loading={suggest.isPending} disabled={disabled} onPress={openSuggest} />
-        <ToolBtn icon="document-text-outline" label="Tóm tắt" loading={summarize.isPending} disabled={disabled} onPress={openSummary} />
-        <ToolBtn icon="happy-outline" label="Cảm xúc" loading={sentiment.isPending} disabled={disabled} onPress={runSentiment} />
-        <ToolBtn icon="download-outline" label="PDF" loading={exportPdf.isPending} disabled={disabled} onPress={() => exportPdf.mutate()} />
+        <ToolBtn icon="sparkles-outline" label="Suggest" loading={suggest.isPending} disabled={disabled} onPress={openSuggest} />
+        <ToolBtn icon="document-text-outline" label="Summarize" loading={summarize.isPending} disabled={disabled} onPress={openSummary} />
       </View>
 
-      {/* Gợi ý AI */}
-      <BottomSheet visible={sheet === 'suggest'} onClose={() => setSheet(null)}>
-        <View style={styles.sheet}>
-          <Text style={styles.sheetTitle}>Gợi ý trả lời (AI)</Text>
+      {/* AI suggestion — just the intent chip row. Pick a type → generate → bubble appears at the END of chat. */}
+      {intentRowOpen && (
+        <View style={styles.intentPanel}>
           <View style={styles.intentRow}>
             {INTENTS.map((it) => (
               <Pressable
@@ -102,29 +77,20 @@ export function ChatAiToolbar({ ticketId, disabled = false, onInsert }: Props) {
               </Pressable>
             ))}
           </View>
-          {suggest.isPending ? (
-            <ActivityIndicator color={Colors.primary} style={styles.sheetLoading} />
-          ) : suggestions.length === 0 ? (
-            <Text style={styles.empty}>Không có gợi ý.</Text>
-          ) : (
-            suggestions.map((s, i) => (
-              <Pressable key={i} style={styles.suggestItem} onPress={() => { onInsert(s); setSheet(null); }}>
-                <Text style={styles.suggestText}>{s}</Text>
-                <Ionicons name="arrow-up-circle" size={20} color={Colors.primary} />
-              </Pressable>
-            ))
+          {suggest.isPending && (
+            <ActivityIndicator size="small" color={Colors.primary} style={styles.intentLoading} />
           )}
         </View>
-      </BottomSheet>
+      )}
 
-      {/* Tóm tắt */}
+      {/* Summary */}
       <BottomSheet visible={sheet === 'summary'} onClose={() => setSheet(null)}>
         <View style={styles.sheet}>
-          <Text style={styles.sheetTitle}>Tóm tắt hội thoại</Text>
+          <Text style={styles.sheetTitle}>Conversation summary</Text>
           {summarize.isPending ? (
             <ActivityIndicator color={Colors.primary} style={styles.sheetLoading} />
           ) : (
-            <Text style={styles.summaryText}>{summary || 'Không có nội dung.'}</Text>
+            <Text style={styles.summaryText}>{summary || 'No content.'}</Text>
           )}
         </View>
       </BottomSheet>
@@ -147,7 +113,7 @@ function ToolBtn({
       {loading ? (
         <ActivityIndicator size="small" color={Colors.primaryDark} />
       ) : (
-        <Ionicons name={icon} size={16} color={disabled ? Colors.textFaint : Colors.primaryDark} />
+        <Ionicons name={icon} size={16} color={disabled ? Colors.textMute : Colors.text} />
       )}
       <Text style={[styles.btnText, disabled && styles.btnTextOff]}>{label}</Text>
     </Pressable>
@@ -163,23 +129,27 @@ const styles = StyleSheet.create({
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
     paddingVertical: 7, borderRadius: 10, backgroundColor: Colors.primaryLight,
   },
-  btnOff: { opacity: 0.5 },
-  btnText: { fontSize: 12, fontWeight: '700', color: Colors.primaryDark },
-  btnTextOff: { color: Colors.textFaint },
+  // Previously used opacity 0.5 layered on top of yellow text #D9A000 on background
+  // #FFF6D6 (already weak ~2.4:1) → button became too faint to read. Now changing the
+  // BACKGROUND to gray instead of lowering opacity keeps the text dark enough to read
+  // the button's label even while it's disabled.
+  btnOff: { backgroundColor: Colors.card2 },
+  btnText: { fontSize: 12, fontWeight: '700', color: Colors.text },
+  btnTextOff: { color: Colors.textMute },
 
   sheet: { gap: 12, paddingBottom: 8 },
-  sheetTitle: { fontSize: 15, fontWeight: '800', color: Colors.text },
+  sheetTitle: { flex: 1, fontSize: 15, fontWeight: '800', color: Colors.text },
   sheetLoading: { paddingVertical: 20 },
-  empty: { fontSize: 13, color: Colors.textMute, textAlign: 'center', paddingVertical: 16 },
+  summaryText: { fontSize: 14, color: Colors.text, lineHeight: 22 },
+
+  intentPanel: {
+    paddingHorizontal: 12, paddingBottom: 8,
+    backgroundColor: Colors.bg,
+  },
+  intentLoading: { paddingTop: 8 },
   intentRow: { flexDirection: 'row', gap: 6 },
   chip: { flex: 1, paddingVertical: 6, borderRadius: 999, backgroundColor: Colors.card2, alignItems: 'center' },
-  chipActive: { backgroundColor: Colors.text },
+  chipActive: { backgroundColor: Colors.primary },
   chipText: { fontSize: 11, fontWeight: '700', color: Colors.textMute },
-  chipTextActive: { color: '#FFF' },
-  suggestItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: Colors.card2, borderRadius: 12, padding: 12,
-  },
-  suggestText: { flex: 1, fontSize: 13, color: Colors.text, lineHeight: 19 },
-  summaryText: { fontSize: 14, color: Colors.text, lineHeight: 22 },
+  chipTextActive: { color: Colors.text },
 });

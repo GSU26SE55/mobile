@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors, ShadowPrimary } from '../../../lib/theme';
+import { Colors, ShadowPrimary } from '@/src/lib/theme';
 import { changeEmailSchema, ChangeEmailInput } from '../schemas/changeEmail.schema';
 
 interface Props {
@@ -32,7 +32,7 @@ export function ChangeEmailForm({ onSubmit, isLoading, fieldErrors }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Email moi</Text>
+      <Text style={styles.label}>New email</Text>
       <TextInput
         style={[styles.input, getError('newEmail') && styles.inputError]}
         value={newEmail}
@@ -43,7 +43,7 @@ export function ChangeEmailForm({ onSubmit, isLoading, fieldErrors }: Props) {
       />
       {getError('newEmail') ? <Text style={styles.error}>{getError('newEmail')}</Text> : null}
 
-      <Text style={styles.label}>Mật khẩu hiện tại</Text>
+      <Text style={styles.label}>Current password</Text>
       <TextInput
         style={[styles.input, getError('currentPassword') && styles.inputError]}
         value={currentPassword}
@@ -54,7 +54,7 @@ export function ChangeEmailForm({ onSubmit, isLoading, fieldErrors }: Props) {
       {getError('currentPassword') ? <Text style={styles.error}>{getError('currentPassword')}</Text> : null}
 
       <Pressable style={[styles.button, isLoading && styles.btnDisabled]} onPress={handleSubmit} disabled={isLoading}>
-        {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Gửi OTP xác nhận</Text>}
+        {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Send confirmation OTP</Text>}
       </Pressable>
     </View>
   );

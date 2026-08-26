@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { accountService } from '../services/account.service';
 import type { Disable2faPayload } from '../types/account.types';
 
-// GH-295: tắt 2FA — re-auth bằng password + TOTP
+// GH-295: disable 2FA — re-auth with password + TOTP
 export function useDisable2FA() {
   const queryClient = useQueryClient();
   return useMutation({

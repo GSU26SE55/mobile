@@ -1,8 +1,8 @@
 import { useMyPermissions } from '../hooks/useMyPermissions';
 
 /**
- * GH-47 — mount 1 lần trong cây (root _layout) để sync permission tươi vào sessionStore
- * cho mọi authed user. Không render UI.
+ * GH-47 — mounted once in the tree (root _layout) to sync fresh permissions into sessionStore
+ * for every authenticated user. Renders no UI.
  */
 export function PermissionsSync() {
   useMyPermissions();

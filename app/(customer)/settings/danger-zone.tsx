@@ -1,11 +1,11 @@
 import React from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useDeactivateAccount } from '../../../src/features/account/hooks/useDeactivateAccount';
-import { useDeleteAccount } from '../../../src/features/account/hooks/useDeleteAccount';
-import { useExportMyData } from '../../../src/features/account/hooks/useExportMyData';
-import { useEraseMyChatData } from '../../../src/features/tickets/hooks/useChatInbox';
-import { handleErrorApi } from '../../../src/lib/errors';
-import { Colors } from '../../../src/lib/theme';
+import { useDeactivateAccount } from '@/src/features/account/hooks/useDeactivateAccount';
+import { useDeleteAccount } from '@/src/features/account/hooks/useDeleteAccount';
+import { useExportMyData } from '@/src/features/account/hooks/useExportMyData';
+import { useEraseMyChatData } from '@/src/features/tickets/hooks/useChatInbox';
+import { handleErrorApi } from '@/src/lib/errors';
+import { Colors } from '@/src/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function DangerZoneScreen() {
@@ -16,23 +16,24 @@ export default function DangerZoneScreen() {
 
   const handleEraseChat = () => {
     Alert.alert(
-      'Xóa dữ liệu chat',
-      'Toàn bộ nội dung tin nhắn của bạn sẽ bị xóa (thay bằng [ERASED]). Không thể hoàn tác. Tiếp tục?',
+      'Delete chat data',
+      'All of your message content will be deleted (replaced with [ERASED]). This cannot be undone. Continue?',
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Xóa',
+          text: 'Delete',
           style: 'destructive',
           onPress: () =>
-            Alert.alert('Xác nhận lần cuối', 'Bạn chắc chắn muốn xóa dữ liệu chat?', [
-              { text: 'Hủy', style: 'cancel' },
+            Alert.alert('Final confirmation', 'Are you sure you want to delete your chat data?', [
+              { text: 'Cancel', style: 'cancel' },
               {
-                text: 'Xóa vĩnh viễn',
+                text: 'Delete permanently',
                 style: 'destructive',
                 onPress: () =>
                   eraseChat.mutate(undefined, {
+                    // BE returns data = null; the deleted count is only in the message.
                     onSuccess: (res) =>
-                      Alert.alert('Đã xóa', `Đã xóa ${res.data.data?.erasedCount ?? 0} tin nhắn.`),
+                      Alert.alert('Deleted', res.data.message ?? 'Chat data deleted.'),
                   }),
               },
             ]),
@@ -42,7 +43,7 @@ export default function DangerZoneScreen() {
   };
 
   const handleExport = () => {
-    // non-form → onError trực tiếp. Share sheet tự mở khi success.
+    // non-form → direct onError. Share sheet opens automatically on success.
     exportData.mutate(undefined, {
       onError: (error) => handleErrorApi({ error }),
     });
@@ -50,20 +51,20 @@ export default function DangerZoneScreen() {
 
   const handleDeactivate = () => {
     Alert.alert(
-      'Vô hiệu hóa tài khoản',
-      'Tài khoản sẽ bị vô hiệu hóa. Bạn có thể liên hệ hỗ trợ để khôi phục. Tiếp tục?',
+      'Deactivate account',
+      'Your account will be deactivated. You can contact support to restore it. Continue?',
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Vô hiệu hóa',
+          text: 'Deactivate',
           style: 'destructive',
           onPress: () =>
-            Alert.alert('Xác nhận lần cuối', 'Bạn chắc chắn muốn vô hiệu hóa?', [
-              { text: 'Hủy', style: 'cancel' },
+            Alert.alert('Final confirmation', 'Are you sure you want to deactivate your account?', [
+              { text: 'Cancel', style: 'cancel' },
               {
-                text: 'Xác nhận',
+                text: 'Confirm',
                 style: 'destructive',
-                // non-form → onError trực tiếp
+                // non-form → direct onError
                 onPress: () =>
                   deactivate.mutate(undefined, {
                     onError: (error) => handleErrorApi({ error }),
@@ -77,20 +78,20 @@ export default function DangerZoneScreen() {
 
   const handleDelete = () => {
     Alert.alert(
-      'Xóa tài khoản',
-      'Tài khoản sẽ bị xóa vĩnh viễn và không thể khôi phục. Tiếp tục?',
+      'Delete account',
+      'Your account will be permanently deleted and cannot be restored. Continue?',
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Xóa tài khoản',
+          text: 'Delete account',
           style: 'destructive',
           onPress: () =>
-            Alert.alert('Xác nhận lần cuối', 'Bạn chắc chắn muốn xóa tài khoản?', [
-              { text: 'Hủy', style: 'cancel' },
+            Alert.alert('Final confirmation', 'Are you sure you want to delete your account?', [
+              { text: 'Cancel', style: 'cancel' },
               {
-                text: 'Xóa vĩnh viễn',
+                text: 'Delete permanently',
                 style: 'destructive',
-                // non-form → onError trực tiếp
+                // non-form → direct onError
                 onPress: () =>
                   deleteAccount.mutate(undefined, {
                     onError: (error) => handleErrorApi({ error }),
@@ -107,31 +108,31 @@ export default function DangerZoneScreen() {
       <View style={styles.warningBox}>
         <Ionicons name="warning" size={20} color={Colors.warningDark} style={{ marginRight: 8 }} />
         <Text style={styles.warningText}>
-          Các hành động dưới đây có tính chất nhạy cảm và ảnh hưởng trực tiếp đến tài khoản. Hãy cân nhắc thật kỹ.
+          The actions below are sensitive and directly affect your account. Please consider carefully.
         </Text>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Dữ liệu cá nhân (GDPR)</Text>
+        <Text style={styles.sectionTitle}>Personal Data (GDPR)</Text>
         <Text style={styles.sectionDesc}>
-          Tải về toàn bộ dữ liệu cá nhân của bạn dưới dạng tệp JSON (hồ sơ, phiên đăng nhập, nhật ký hoạt động).
+          Download all of your personal data as a JSON file (profile, login sessions, activity log).
         </Text>
         <Pressable style={styles.exportBtn} onPress={handleExport} disabled={exportData.isPending}>
           {exportData.isPending ? (
             <ActivityIndicator color={Colors.primary} />
           ) : (
-            <Text style={styles.exportBtnText}>Tải dữ liệu của tôi</Text>
+            <Text style={styles.exportBtnText}>Download my data</Text>
           )}
         </Pressable>
 
         <Text style={[styles.sectionDesc, { marginTop: 12 }]}>
-          Xóa toàn bộ nội dung tin nhắn chat của bạn (thay bằng [ERASED]). Không thể hoàn tác.
+          Delete all of your chat message content (replaced with [ERASED]). This cannot be undone.
         </Text>
         <Pressable style={styles.deactivateBtn} onPress={handleEraseChat} disabled={eraseChat.isPending}>
           {eraseChat.isPending ? (
             <ActivityIndicator color={Colors.warning} />
           ) : (
-            <Text style={styles.deactivateBtnText}>Xóa dữ liệu chat của tôi</Text>
+            <Text style={styles.deactivateBtnText}>Delete my chat data</Text>
           )}
         </Pressable>
       </View>
@@ -139,32 +140,32 @@ export default function DangerZoneScreen() {
       <View style={styles.divider} />
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Vô hiệu hóa tài khoản</Text>
+        <Text style={styles.sectionTitle}>Deactivate account</Text>
         <Text style={styles.sectionDesc}>
-          Tạm thời khóa tài khoản và ẩn các thiết bị của bạn. Bạn có thể khôi phục lại tài khoản bất kỳ lúc nào bằng cách liên hệ bộ phận hỗ trợ.
+          Temporarily lock your account and hide your devices. You can restore your account at any time by contacting support.
         </Text>
         <Pressable
           style={styles.deactivateBtn}
           onPress={handleDeactivate}
           disabled={deactivate.isPending}
         >
-          <Text style={styles.deactivateBtnText}>Vô hiệu hóa tài khoản</Text>
+          <Text style={styles.deactivateBtnText}>Deactivate account</Text>
         </Pressable>
       </View>
 
       <View style={styles.divider} />
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitleDanger}>Xóa tài khoản vĩnh viễn</Text>
+        <Text style={styles.sectionTitleDanger}>Delete account permanently</Text>
         <Text style={styles.sectionDesc}>
-          Hành động này sẽ xóa vĩnh viễn tài khoản của bạn, bao gồm tất cả dữ liệu thiết bị, lịch sử vận hành và vé hỗ trợ. Không thể hoàn tác.
+          This action will permanently delete your account, including all device data, operation history, and support tickets. This cannot be undone.
         </Text>
         <Pressable
           style={styles.deleteBtn}
           onPress={handleDelete}
           disabled={deleteAccount.isPending}
         >
-          <Text style={styles.deleteBtnText}>Xóa vĩnh viễn tài khoản</Text>
+          <Text style={styles.deleteBtnText}>Delete account permanently</Text>
         </Pressable>
       </View>
     </ScrollView>

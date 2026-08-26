@@ -1,36 +1,26 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { BadgeColors } from '../../../lib/theme';
+import { BadgeColors } from '@/src/lib/theme';
 import { TicketStatusEnum } from '../types/ticket.types';
+import { TicketAudience, ticketChip, ticketStatusLabel, ticketTone } from '../utils/ticketLabels';
 
-const STATUS_CONFIG: Record<TicketStatusEnum, { label: string; badge: keyof typeof BadgeColors }> = {
-  New:                    { label: 'NEW',            badge: 'new' },
-  Open:                   { label: 'OPEN',           badge: 'open' },
-  Approved:               { label: 'APPROVED',       badge: 'ok' },
-  Assigned:               { label: 'ASSIGNED',       badge: 'assigned' },
-  InProgress:             { label: 'IN PROGRESS',    badge: 'progress' },
-  WaitingCustomer:        { label: 'WAITING',        badge: 'waiting' },
-  WaitingParts:           { label: 'WAITING',        badge: 'waiting' },
-  WaitingOnsiteSchedule:  { label: 'WAITING',        badge: 'waiting' },
-  Resolved:               { label: 'RESOLVED',       badge: 'resolved' },
-  Escalated:              { label: 'ESCALATED',      badge: 'escalated' },
-  ClosedPendingRate:      { label: 'PENDING RATE',   badge: 'closed' },
-  Closed:                 { label: 'CLOSED',         badge: 'closed' },
-  ClosedRejected:         { label: 'REJECTED',       badge: 'crit' },
-  Incident:               { label: 'INCIDENT',       badge: 'crit' },
-};
+/**
+ * Status label for places that only need text (for example, ActivityTimeline),
+ * where the long precise wording is the right call.
+ */
+export const statusLabel = ticketStatusLabel;
 
 interface Props {
   status: TicketStatusEnum;
+  /** Picks the vocabulary — customers read five words, staff seven. */
+  audience?: TicketAudience;
 }
 
-export function TicketStatusBadge({ status }: Props) {
-  const config = STATUS_CONFIG[status] ?? { label: status, badge: 'new' as const };
-  const colors = BadgeColors[config.badge];
+export function TicketStatusBadge({ status, audience = 'staff' }: Props) {
+  const colors = BadgeColors[ticketTone(status)];
   return (
     <View style={[styles.badge, { backgroundColor: colors.bg }]}>
-      <View style={[styles.dot, { backgroundColor: colors.text }]} />
-      <Text style={[styles.label, { color: colors.text }]}>{config.label}</Text>
+      <Text style={[styles.label, { color: colors.text }]}>{ticketChip(status, audience)}</Text>
     </View>
   );
 }
@@ -45,14 +35,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignSelf: 'flex-start',
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
   label: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     lineHeight: 14,
   },
 });

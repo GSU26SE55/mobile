@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { incidentService } from '../services/incident.service';
 import { IncidentListParams } from '../types/incident.types';
 
-// List incident chung (Staff — toàn bộ site). BE default pageSize=50 → truyền 100 cho nhất quán.
+// Shared incident list (Staff — all sites). BE default pageSize=50 → pass 100 for consistency.
 export function useIncidents(params?: IncidentListParams) {
   const merged: IncidentListParams = { pageSize: 100, ...params };
   return useQuery({

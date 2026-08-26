@@ -1,16 +1,19 @@
 import { Stack, Redirect } from 'expo-router';
+import { useStackTransition } from '@/src/hooks/useScreenTransition';
 import { ActivityIndicator, View } from 'react-native';
-import { useAuthContext } from '../../src/context/authContext';
-import { useSessionStore } from '../../src/stores/sessionStore';
+import { useAuthContext } from '@/src/context/authContext';
+import { useSessionStore } from '@/src/stores/sessionStore';
+import { Colors } from '@/src/lib/theme';
 
 export default function StaffLayout() {
+  const screenOptions = useStackTransition();
   const { isHydrating } = useAuthContext();
   const user = useSessionStore((s) => s.user);
 
   if (isHydrating) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color="#2563eb" />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bg }}>
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
@@ -20,7 +23,7 @@ export default function StaffLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={screenOptions}>
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="tickets/[id]" />
       <Stack.Screen name="customers/[customerId]" />
@@ -37,6 +40,13 @@ export default function StaffLayout() {
       <Stack.Screen name="tools/permissions" />
       <Stack.Screen name="chats/index" />
       <Stack.Screen name="chats/mentions" />
+      {/* GH-78 — the 4 routes below already existed but were missing declarations until now. */}
+      <Stack.Screen name="kb/index" />
+      <Stack.Screen name="kb/[id]" />
+      <Stack.Screen name="maintenance-history" />
+      <Stack.Screen name="sites/[id]" />
+      <Stack.Screen name="blog/index" />
+      <Stack.Screen name="blog/[id]" />
       <Stack.Screen name="index" />
     </Stack>
   );

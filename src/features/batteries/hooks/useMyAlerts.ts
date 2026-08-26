@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { alertService } from '../services/alert.service';
 import { useMyBatteryAssets } from './useMyBatteryAssets';
 import { AlertDto } from '../types/alert.types';
 
-// Alert của Customer = gộp alert của TẤT CẢ pin Customer sở hữu.
-// ⚠️ BE GET /api/alerts KHÔNG scope theo user (xem AlertsController) → phải tự lọc theo
-// từng batteryAssetId của Customer, nếu không sẽ nhận alert của khách hàng khác (rò rỉ dữ liệu).
+// Customer's alerts = alerts from ALL batteries the Customer owns, merged together.
+// ⚠️ BE GET /api/alerts is NOT scoped by user (see AlertsController) → must filter manually by
+// each of the Customer's batteryAssetId, otherwise we'd receive other customers' alerts (data leak).
 export function useMyAlerts() {
   const { data: batteries = [] } = useMyBatteryAssets();
   const ids = batteries.map((b) => b.id);

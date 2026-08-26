@@ -1,6 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors, Shadow } from '../../../lib/theme';
+import { formatDateTime } from '@/src/lib/date';
+import { Colors, Shadow } from '@/src/lib/theme';
 import { SessionDto } from '../types/account.types';
 
 interface Props {
@@ -10,10 +11,10 @@ interface Props {
 }
 
 export function SessionCard({ session, onRevoke, isRevoking }: Props) {
-  const issuedAt = new Date(session.issuedAt).toLocaleString('vi-VN');
+  const issuedAt = formatDateTime(session.issuedAt);
   const device = session.userAgent
     ? session.userAgent.slice(0, 50) + (session.userAgent.length > 50 ? '...' : '')
-    : 'Thiết bị không xác định';
+    : 'Unknown device';
 
   return (
     <View style={[styles.card, session.isCurrent && styles.currentCard, Shadow]}>
@@ -22,12 +23,12 @@ export function SessionCard({ session, onRevoke, isRevoking }: Props) {
           <Text style={styles.device} numberOfLines={1}>{device}</Text>
           {session.isCurrent && (
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>Thiết bị này</Text>
+              <Text style={styles.badgeText}>This device</Text>
             </View>
           )}
         </View>
         {session.ipAddress ? <Text style={styles.meta}>IP: {session.ipAddress}</Text> : null}
-        <Text style={styles.meta}>Đăng nhập: {issuedAt}</Text>
+        <Text style={styles.meta}>Signed in: {issuedAt}</Text>
       </View>
 
       {!session.isCurrent && (
@@ -35,7 +36,7 @@ export function SessionCard({ session, onRevoke, isRevoking }: Props) {
           {isRevoking ? (
             <ActivityIndicator size="small" color={Colors.danger} />
           ) : (
-            <Text style={styles.revokeText}>Thu Hồi</Text>
+            <Text style={styles.revokeText}>Revoke</Text>
           )}
         </Pressable>
       )}

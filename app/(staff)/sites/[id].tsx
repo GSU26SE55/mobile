@@ -3,18 +3,20 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Shadow } from '../../../src/lib/theme';
-import { P } from '../../../src/lib/authz';
-import { PermissionGuard } from '../../../src/features/auth/components/PermissionGuard';
-import { useSiteDetail } from '../../../src/features/sites/hooks/useSiteDetail';
-import { useSiteDashboard } from '../../../src/features/sites/hooks/useSiteDashboard';
-import { SiteActiveIncidentsWidget } from '../../../src/features/incidents/components/SiteActiveIncidentsWidget';
-import { useSiteAssets } from '../../../src/features/sites/hooks/useSiteAssets';
-import { SiteHealthBadge } from '../../../src/features/sites/components/SiteHealthBadge';
-import { useAmbientLatest } from '../../../src/features/ambient/hooks/useAmbientLatest';
-import { AmbientTile } from '../../../src/features/ambient/components/AmbientTile';
-import { AmbientTrendChart } from '../../../src/features/ambient/components/AmbientTrendChart';
-import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
+import { Colors, Radius, Shadow } from '@/src/lib/theme';
+import { P } from '@/src/lib/authz';
+import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
+import { useSiteDetail } from '@/src/features/sites/hooks/useSiteDetail';
+import { useSiteDashboard } from '@/src/features/sites/hooks/useSiteDashboard';
+import { SiteActiveIncidentsWidget } from '@/src/features/incidents/components/SiteActiveIncidentsWidget';
+import { useSiteAssets } from '@/src/features/sites/hooks/useSiteAssets';
+import { SiteHealthBadge } from '@/src/features/sites/components/SiteHealthBadge';
+import { useAmbientLatest } from '@/src/features/ambient/hooks/useAmbientLatest';
+import { AmbientTile } from '@/src/features/ambient/components/AmbientTile';
+import { AmbientTrendChart } from '@/src/features/ambient/components/AmbientTrendChart';
+import { AmbientEvidencePanel } from '@/src/features/ambient/components/AmbientEvidencePanel';
+import { BatteryAssetDto } from '@/src/features/batteries/types/battery.types';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 export default function StaffSiteDetailScreen() {
   return (
@@ -26,7 +28,7 @@ export default function StaffSiteDetailScreen() {
 
 function SiteDetailInner() {
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, at } = useLocalSearchParams<{ id: string; at?: string }>();
   const siteId = id ?? '';
 
   const { data: site, isLoading, isError } = useSiteDetail(siteId);
@@ -46,9 +48,9 @@ function SiteDetailInner() {
     return (
       <View style={styles.center}>
         <Ionicons name="business-outline" size={40} color={Colors.gray} />
-        <Text style={styles.notFoundTitle}>Không tìm thấy site</Text>
+        <Text style={styles.notFoundTitle}>Site not found</Text>
         <Pressable onPress={() => router.back()} style={styles.goBackBtn}>
-          <Text style={styles.goBackText}>Quay lại</Text>
+          <Text style={styles.goBackText}>Go back</Text>
         </Pressable>
       </View>
     );
@@ -57,10 +59,8 @@ function SiteDetailInner() {
   return (
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <Pressable onPress={() => router.back()} style={[styles.headerBtn, Shadow]}>
-          <Ionicons name="chevron-back" size={18} color={Colors.accent} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Chi tiết site</Text>
+        <BackButton />
+        <Text style={styles.headerTitle}>Site Details</Text>
         <View style={{ width: 44 }} />
       </View>
 
@@ -76,15 +76,15 @@ function SiteDetailInner() {
         {dashboard ? (
           <View style={[styles.statsCard, Shadow]}>
             <View style={styles.statsTop}>
-              <Text style={styles.statsTitle}>Sức khỏe hệ thống</Text>
+              <Text style={styles.statsTitle}>System Health</Text>
               <SiteHealthBadge score={dashboard.healthScore} />
             </View>
             <View style={styles.statsRow}>
-              <Stat value={dashboard.totalAssets} label="Tổng pin" />
+              <Stat value={dashboard.totalAssets} label="Total batteries" />
               <View style={styles.statDivider} />
-              <Stat value={dashboard.activeAssets} label="Hoạt động" />
+              <Stat value={dashboard.activeAssets} label="Active" />
               <View style={styles.statDivider} />
-              <Stat value={dashboard.assetsWithActiveAlerts} label="Có cảnh báo" />
+              <Stat value={dashboard.assetsWithActiveAlerts} label="With alerts" />
             </View>
           </View>
         ) : null}
@@ -92,9 +92,17 @@ function SiteDetailInner() {
         <AmbientTile data={ambient} />
         <AmbientTrendChart siteId={siteId} />
 
-        <Text style={styles.sectionTitle}>Danh sách pin ({assets.length})</Text>
+        {/* `at` arrives when opened from an environmental ticket's "View site log at
+            this time" — same ±2' window as that ticket's evidence table. */}
+        {at ? (
+          <View style={styles.evidenceCard}>
+            <AmbientEvidencePanel siteId={siteId} anchorAt={at} mode="log" />
+          </View>
+        ) : null}
+
+        <Text style={styles.sectionTitle}>Battery List ({assets.length})</Text>
         {assets.length === 0 ? (
-          <Text style={styles.empty}>Site chưa có pin nào.</Text>
+          <Text style={styles.empty}>This site has no batteries yet.</Text>
         ) : (
           assets.map((item: BatteryAssetDto) => (
             <Pressable
@@ -127,6 +135,7 @@ function Stat({ value, label }: { value: number; label: string }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
+  evidenceCard: { backgroundColor: Colors.card, borderRadius: 20, padding: 16, marginTop: 12 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bg, gap: 10 },
   notFoundTitle: { fontSize: 16, fontWeight: '800', color: Colors.accent, marginTop: 8 },
   goBackBtn: { backgroundColor: Colors.primary, borderRadius: 16, paddingHorizontal: 24, paddingVertical: 10, marginTop: 8 },

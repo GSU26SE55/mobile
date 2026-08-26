@@ -1,411 +1,562 @@
-import React, { useEffect, useMemo } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  LayoutChangeEvent,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { router } from 'expo-router';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Path } from 'react-native-svg';
-import Animated, { useAnimatedProps, useSharedValue, withRepeat, withTiming, Easing } from 'react-native-reanimated';
-import { useProfile } from '../../../src/features/profile/hooks/useProfile';
-import { useTickets } from '../../../src/features/tickets/hooks/useTickets';
-import { useMyBatteryAssets } from '../../../src/features/batteries/hooks/useMyBatteryAssets';
-import { useMyAlerts } from '../../../src/features/batteries/hooks/useMyAlerts';
-import { useBatteryFleetStream } from '../../../src/features/batteries/hooks/useBatteryFleetStream';
-import { buildFleetScope } from '../../../src/features/batteries/utils/buildFleetScope';
-import { useMySites } from '../../../src/features/sites/hooks/useMySites';
-import { SiteCard } from '../../../src/features/sites/components/SiteCard';
-import { AlertStatusEnum } from '../../../src/shared/enums/alert.enum';
-import { BatteryAssetDto } from '../../../src/features/batteries/types/battery.types';
-import { LiveReadingDto } from '../../../src/features/batteries/types/live-reading.types';
-import { useSessionStore } from '../../../src/stores/sessionStore';
-import { PopularKbSection } from '../../../src/features/kb/components/PopularKbSection';
-import { Colors, Shadow } from '../../../src/lib/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Line } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LineChart } from 'react-native-gifted-charts';
+import { useScrollToTop } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
+import { useProfile } from '@/src/features/profile/hooks/useProfile';
+import { useMyBatteryAssets } from '@/src/features/batteries/hooks/useMyBatteryAssets';
+import { useUnreadCount } from '@/src/features/notifications/hooks/useNotifications';
+import { useBatteryFleetStream } from '@/src/features/batteries/hooks/useBatteryFleetStream';
+import { useSensorReadingAggregate } from '@/src/features/batteries/hooks/useSensorReadingAggregate';
+import { buildFleetScope } from '@/src/features/batteries/utils/buildFleetScope';
+import { useMySites } from '@/src/features/sites/hooks/useMySites';
+import { useAmbientLatest } from '@/src/features/ambient/hooks/useAmbientLatest';
+import { LiveReadingDto } from '@/src/features/batteries/types/live-reading.types';
+import { SensorReadingAggregateDto } from '@/src/features/batteries/types/sensor-reading.types';
+import { useSessionStore } from '@/src/stores/sessionStore';
+import { formatDate } from '@/src/lib/date';
+import { Colors, Font, Radius, Solar } from '@/src/lib/theme';
+import { EnergyBackdrop, GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
+import { PressableScale } from '@/src/shared/components/motion';
 
-const AnimatedPath = Animated.createAnimatedComponent(Path);
+const BATTERY_IMAGE = require('../../../assets/images/battery-storage-3d.png');
 
-const BATTERY_STATUS_MAP: Record<number, { label: string; color: string }> = {
-  1: { label: 'Active', color: '#10B981' },
-  2: { label: 'Inactive', color: Colors.gray },
-  3: { label: 'Ngừng sử dụng', color: Colors.danger },
-};
+const avg = (values: number[]): number | null =>
+  values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
 
-function BatteryCard({
-  item,
-  live,
-  onPress,
-}: {
-  item: BatteryAssetDto;
-  live?: LiveReadingDto;
-  onPress: () => void;
-}) {
-  const statusInfo = BATTERY_STATUS_MAP[item.status] ?? { label: 'Unknown', color: Colors.gray };
-
-  return (
-    <Pressable style={[styles.batteryCard, Shadow]} onPress={onPress}>
-      <View style={styles.batteryIconBg}>
-        <Ionicons name="battery-charging" size={20} color={statusInfo.color} />
-      </View>
-      <View style={styles.batteryInfo}>
-        <Text style={styles.batteryName}>{item.batteryTypeName}</Text>
-        <Text style={styles.batterySub}>{item.serialNumber}</Text>
-        {item.siteName && <Text style={styles.batterySite}>{item.siteName}</Text>}
-        {/* Live telemetry (SSE summary) — chỉ hiện khi có reading; field non-null luôn có mặt cho primary. */}
-        {live && (
-          <View style={styles.liveRow}>
-            <View style={styles.liveDot} />
-            <Text style={styles.liveMetric}>{live.socPercent.toFixed(0)}%</Text>
-            <Text style={styles.liveSep}>·</Text>
-            <Text style={styles.liveMetric}>{live.voltage.toFixed(1)}V</Text>
-            <Text style={styles.liveSep}>·</Text>
-            <Text style={styles.liveMetric}>{live.temperature.toFixed(1)}°C</Text>
-          </View>
-        )}
-      </View>
-      <View style={styles.batteryStatusWrap}>
-        <Text style={[styles.batteryStatus, { color: statusInfo.color }]}>{statusInfo.label}</Text>
-        <Ionicons name="chevron-forward" size={14} color={Colors.gray} />
-      </View>
-    </Pressable>
-  );
+function formatHourMinute(iso: string): string {
+  const date = new Date(iso);
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}.${minutes}`;
 }
 
-function EnergyFlowDiagram() {
-  const { width: screenWidth } = useWindowDimensions();
-  const cardWidth = screenWidth - 40;
-  const cx = cardWidth / 2;
-  const cy = 150;
+type MetricKey = 'volt' | 'curr' | 'temp';
 
-  const progress = useSharedValue(0);
+const METRICS: Record<MetricKey, {
+  label: string;
+  unit: string;
+  pick: (bucket: SensorReadingAggregateDto) => number;
+  format: (value: number) => string;
+}> = {
+  volt: { label: 'Voltage',     unit: 'V',  pick: (b) => b.avgVoltage,     format: (v) => `${v.toFixed(1)} V` },
+  curr: { label: 'Current',     unit: 'A',  pick: (b) => b.avgCurrent,     format: (v) => `${v.toFixed(1)} A` },
+  temp: { label: 'Temperature', unit: '°C', pick: (b) => b.avgTemperature, format: (v) => `${Math.round(v)} °C` },
+};
 
-  useEffect(() => {
-    progress.value = withRepeat(
-      withTiming(1, { duration: 3000, easing: Easing.linear }),
-      -1,
-      false
-    );
-  }, []);
+function useLiveWeather(siteId?: string, lat?: number | null, lon?: number | null) {
+  const { data: ambient } = useAmbientLatest(siteId ?? '');
 
-  const solarToHomeLength = 86;
-  const solarToHomeCycle = solarToHomeLength + 8;
+  const openMeteoQuery = useQuery({
+    queryKey: ['openMeteoWeather', lat, lon],
+    queryFn: async () => {
+      const latitude = lat ?? 10.7769;
+      const longitude = lon ?? 106.7009;
+      const res = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`,
+      );
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json?.current_weather as { temperature: number; weathercode: number } | null;
+    },
+    enabled: !ambient,
+    staleTime: 10 * 60 * 1000,
+  });
 
-  const solarToGridLength = cx - 76;
-  const solarToGridCycle = solarToGridLength + 8;
+  const temp = ambient?.ambientTemperature ?? openMeteoQuery.data?.temperature ?? null;
+  const weatherCode = openMeteoQuery.data?.weathercode ?? 0;
 
-  const gridToHomeLength = cx - 76;
-  const gridToHomeCycle = gridToHomeLength + 8;
+  let label = 'Sunny';
+  let iconName: keyof typeof Ionicons.glyphMap = 'sunny-outline';
 
-  const solarToHomeProps = useAnimatedProps(() => ({
-    strokeDashoffset: -progress.value * solarToHomeCycle,
-  }));
+  if (ambient) {
+    if (ambient.humidity != null && ambient.humidity > 80) {
+      label = 'Rainy';
+      iconName = 'rainy-outline';
+    } else if (ambient.solarIrradiance != null && ambient.solarIrradiance < 100) {
+      label = 'Cloudy';
+      iconName = 'cloudy-outline';
+    }
+  } else if (openMeteoQuery.data) {
+    if (weatherCode === 2 || weatherCode === 3) {
+      label = 'Cloudy';
+      iconName = 'cloudy-outline';
+    } else if (weatherCode >= 51) {
+      label = 'Rainy';
+      iconName = 'rainy-outline';
+    }
+  }
 
-  const solarToGridProps = useAnimatedProps(() => ({
-    strokeDashoffset: -progress.value * solarToGridCycle,
-  }));
-
-  const gridToHomeProps = useAnimatedProps(() => ({
-    strokeDashoffset: -progress.value * gridToHomeCycle,
-  }));
-
-  const crossBorderPath = `M ${cx - 17} 107 L ${cx + 17} 107 L ${cx + 17} ${cy - 31} Q ${cx + 17} ${cy - 17} ${cx + 31} ${cy - 17} L ${cardWidth - 94} ${cy - 17} L ${cardWidth - 94} ${cy + 17} L ${cx + 31} ${cy + 17} Q ${cx + 17} ${cy + 17} ${cx + 17} ${cy + 31} L ${cx + 17} 193 L ${cx - 17} 193 L ${cx - 17} ${cy + 31} Q ${cx - 17} ${cy + 17} ${cx - 31} ${cy + 17} L 94 ${cy + 17} L 94 ${cy - 17} L ${cx - 31} ${cy - 17} Q ${cx - 17} ${cy - 17} ${cx - 17} ${cy - 31} Z`;
-  const crossFillPath = `M ${cx - 15} 107 L ${cx + 15} 107 L ${cx + 15} ${cy - 27} Q ${cx + 15} ${cy - 15} ${cx + 27} ${cy - 15} L ${cardWidth - 94} ${cy - 15} L ${cardWidth - 94} ${cy + 15} L ${cx + 27} ${cy + 15} Q ${cx + 15} ${cy + 15} ${cx + 15} ${cy + 27} L ${cx + 15} 193 L ${cx - 15} 193 L ${cx - 15} ${cy + 27} Q ${cx - 15} ${cy + 15} ${cx - 27} ${cy + 15} L 94 ${cy + 15} L 94 ${cy - 15} L ${cx - 27} ${cy - 15} Q ${cx - 15} ${cy - 15} ${cx - 15} ${cy - 27} Z`;
-
-  return (
-    <View style={[styles.energyFlowCard, Shadow]}>
-      <Svg style={StyleSheet.absoluteFillObject} pointerEvents="none">
-        <Path d={crossBorderPath} fill="#F3F4F6" />
-        <Path d={crossFillPath} fill="#FCFCFD" />
-
-        {/* Solar to Home */}
-        <Path d={`M ${cx} 107 L ${cx} 193`} stroke="#FBBF24" strokeWidth={1.5} opacity={0.25} fill="none" />
-        <AnimatedPath
-          d={`M ${cx} 107 L ${cx} 193`}
-          stroke="#D97706"
-          strokeWidth={4.5}
-          strokeDasharray={`8, ${solarToHomeLength}`}
-          strokeLinecap="round"
-          fill="none"
-          animatedProps={solarToHomeProps}
-        />
-
-        {/* Solar to Grid */}
-        <Path
-          d={`M ${cx + 10} 107 L ${cx + 10} ${cy - 22} Q ${cx + 10} ${cy - 10} ${cx + 22} ${cy - 10} L ${cardWidth - 94} ${cy - 10}`}
-          stroke="#F97316" strokeWidth={1.5} opacity={0.25} fill="none"
-        />
-        <AnimatedPath
-          d={`M ${cx + 10} 107 L ${cx + 10} ${cy - 22} Q ${cx + 10} ${cy - 10} ${cx + 22} ${cy - 10} L ${cardWidth - 94} ${cy - 10}`}
-          stroke="#EA580C"
-          strokeWidth={4.5}
-          strokeDasharray={`8, ${solarToGridLength}`}
-          strokeLinecap="round"
-          fill="none"
-          animatedProps={solarToGridProps}
-        />
-
-        {/* Grid to Home */}
-        <Path
-          d={`M ${cardWidth - 94} ${cy + 10} L ${cx + 22} ${cy + 10} Q ${cx + 10} ${cy + 10} ${cx + 10} ${cy + 22} L ${cx + 10} 193`}
-          stroke="#10B981" strokeWidth={1.5} opacity={0.25} fill="none"
-        />
-        <AnimatedPath
-          d={`M ${cardWidth - 94} ${cy + 10} L ${cx + 22} ${cy + 10} Q ${cx + 10} ${cy + 10} ${cx + 10} ${cy + 22} L ${cx + 10} 193`}
-          stroke="#059669"
-          strokeWidth={4.5}
-          strokeDasharray={`8, ${gridToHomeLength}`}
-          strokeLinecap="round"
-          fill="none"
-          animatedProps={gridToHomeProps}
-        />
-      </Svg>
-
-      {/* Solar (Top) */}
-      <View style={[styles.flowPillContainer, { top: 15, left: '50%', transform: [{ translateX: -37 }] }]}>
-        <Text style={styles.flowLabelOutside}>Solar</Text>
-        <View style={[styles.flowPill, { borderColor: '#F59E0B' }]}>
-          <Ionicons name="sunny" size={20} color="#F59E0B" />
-          <Text style={styles.flowPillValue}>1.86 kW</Text>
-        </View>
-      </View>
-
-      {/* Battery (Left) */}
-      <View style={[styles.flowPillContainer, { top: 150, left: 20, transform: [{ translateY: -55 }] }]}>
-        <Text style={styles.flowLabelOutside}>Battery</Text>
-        <View style={[styles.flowPill, { borderColor: '#CBD5E1' }]}>
-          <Ionicons name="flash" size={20} color="#9CA3AF" />
-          <Text style={styles.flowPillValue}>100%</Text>
-        </View>
-      </View>
-
-      {/* Grid (Right) */}
-      <View style={[styles.flowPillContainer, { top: 150, right: 20, transform: [{ translateY: -55 }] }]}>
-        <Text style={styles.flowLabelOutside}>Grid</Text>
-        <View style={[styles.flowPill, { borderColor: '#3B82F6' }]}>
-          <Ionicons name="pulse" size={20} color="#3B82F6" />
-          <Text style={styles.flowPillValue}>2.37 kW</Text>
-        </View>
-      </View>
-
-      {/* Home (Bottom) */}
-      <View style={[styles.flowPillContainer, { bottom: 15, left: '50%', transform: [{ translateX: -37 }] }]}>
-        <View style={[styles.flowPill, { borderColor: '#1E3A8A' }]}>
-          <Ionicons name="home" size={20} color="#1E3A8A" />
-          <Text style={styles.flowPillValue}>512 W</Text>
-        </View>
-        <Text style={[styles.flowLabelOutside, { marginTop: 6, marginBottom: 0 }]}>Home</Text>
-      </View>
-    </View>
-  );
+  return { temp: temp != null ? `${Math.round(temp)}°` : '—', label, iconName };
 }
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
-  const { data: account, isLoading: profileLoading } = useProfile();
-  const { data: ticketsData, isLoading: ticketsLoading } = useTickets({ PageSize: 100 });
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollRef);
+  const { isLoading: profileLoading } = useProfile();
   const { data: batteries = [], isLoading: batteriesLoading } = useMyBatteryAssets();
-  const { data: alerts = [] } = useMyAlerts();
+  const { data: unreadCount = 0 } = useUnreadCount();
   const { data: sites = [] } = useMySites();
+  const [chartWidth, setChartWidth] = useState(0);
+  const [metric, setMetric] = useState<MetricKey>('volt');
 
-  // GH-58 — realtime nhiều pin qua SSE summary scope `customer:{accountId}`.
-  const user = useSessionStore((s) => s.user);
+  const primarySite = sites[0];
+  const weather = useLiveWeather(primarySite?.id, primarySite?.latitude, primarySite?.longitude);
+
+  const user = useSessionStore((state) => state.user);
   const fleetScope = useMemo(
     () => (user ? buildFleetScope(user.role, { accountId: user.accountId }) : null),
     [user],
   );
   const { liveByAsset } = useBatteryFleetStream(fleetScope);
+  const liveReadings = batteries
+    .map((battery) => liveByAsset.get(battery.id))
+    .filter((reading): reading is LiveReadingDto => !!reading);
 
-  const openAlertsCount = alerts.filter((a) => a.status === AlertStatusEnum.Open).length;
+  const avgSoc = avg(liveReadings.map((reading) => reading.socPercent));
+  const avgVolt = avg(liveReadings.map((reading) => reading.voltage));
+  const avgCurr = avg(liveReadings.map((reading) => reading.current));
+  const avgTemp = avg(liveReadings.map((reading) => reading.temperature));
 
-  const isLoading = profileLoading || ticketsLoading;
+  // Real 24h trend for the primary battery. The chart used to synthesise seven
+  // points by multiplying one live reading by a hardcoded array — a drawn curve
+  // that never corresponded to anything measured.
+  const primaryBattery = batteries[0];
+  const { data: buckets = [], isLoading: trendLoading } = useSensorReadingAggregate(
+    primaryBattery?.id ?? '',
+    { hours: 24, interval: '1h' },
+  );
 
-  if (isLoading) {
+  const active = METRICS[metric];
+
+  const chartPoints = useMemo(() => {
+    const focusIndex = buckets.length - 1;
+    return buckets.map((bucket, index) => {
+      const isFocused = index === focusIndex;
+      return {
+        value: active.pick(bucket),
+        // Only every 4th bucket gets a label, otherwise 24 of them collide.
+        label: index % 4 === 0 || isFocused ? formatHourMinute(bucket.time) : '',
+        hideDataPoint: !isFocused,
+        customDataPoint: isFocused
+          ? () => (
+            <View style={styles.focalContainer}>
+              <View style={styles.focalDotOuter}>
+                <View style={styles.focalDotInner} />
+              </View>
+              <LinearGradient
+                colors={['#FFD500', 'rgba(255, 213, 0, 0.02)']}
+                style={styles.needleLine}
+              />
+            </View>
+          )
+          : undefined,
+      };
+    });
+  }, [buckets, active]);
+
+
+  if (profileLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <EnergyBackdrop />
+        <ActivityIndicator size="large" color={Solar.yellowDeep} />
       </View>
     );
   }
 
-  const tickets = ticketsData?.items ?? [];
-  const openTicketsCount = tickets.filter((t) =>
-    !['Resolved', 'Closed', 'ClosedPendingRate', 'ClosedRejected'].includes(t.status)
-  ).length;
-
-  const firstName = account?.fullName ? account.fullName.split(' ')[0] : '';
+  const todayString = formatDate(new Date());
 
   return (
     <View style={styles.root}>
-      <FlatList
-        data={batteries}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 10 }]}
+      <EnergyBackdrop />
+      <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <>
-            {/* Header */}
-            <View style={styles.header}>
-              <View style={styles.headerTitleWrap}>
-                <Text style={styles.greetingText}>Hi, {firstName}</Text>
-                <Text style={styles.welcomeText}>Welcome back</Text>
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 6 }]}
+      >
+        <View style={styles.header}>
+          <View style={styles.weatherLine}>
+            <Ionicons name={weather.iconName} size={20} color={Solar.ink} />
+            <Text style={styles.tempText}>{weather.temp}</Text>
+            <Text style={styles.weatherDateText}>{weather.label} / Today, {todayString}</Text>
+          </View>
+
+          <PressableScale
+            style={styles.notificationButton}
+            scaleTo={0.9}
+            onPress={() => router.push('/(customer)/settings/notification-list')}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Notifications"
+          >
+            <Ionicons name="notifications-outline" size={20} color={Solar.ink} />
+            {unreadCount > 0 ? (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationCount}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
               </View>
-              <Pressable style={styles.bellBtn} onPress={() => router.push('/(customer)/(tabs)/alerts')}>
-                <Ionicons name="notifications-outline" size={20} color={Colors.accent} />
-                {openAlertsCount > 0 && <View style={styles.bellDot} />}
-              </Pressable>
+            ) : null}
+          </PressableScale>
+        </View>
+
+        <View style={styles.hero}>
+          <View style={styles.heroCopy}>
+            <Text style={styles.heroValue}>{avgSoc != null ? `${Math.round(avgSoc)}%` : '—'}</Text>
+            <Text style={styles.heroLabel}>Average battery charge</Text>
+          </View>
+          <Image source={BATTERY_IMAGE} style={styles.heroBattery} contentFit="contain" transition={220} />
+        </View>
+
+        <GlassSurface style={styles.waveCard} warm>
+          <View style={styles.waveTop}>
+            <View style={styles.waveTopCopy}>
+              <Text style={styles.waveCaption}>Last 24 hours</Text>
+              <Text style={styles.waveCount} numberOfLines={1}>
+                {primaryBattery?.serialNumber ?? 'No battery linked'}
+              </Text>
             </View>
+          </View>
 
-            {/* Energy Flow Diagram */}
-            <EnergyFlowDiagram />
-
-            {/* Stats Row */}
-            <View style={[styles.statsCard, Shadow]}>
-              <View style={styles.statCol}>
-                <Text style={styles.statVal}>{batteries.length}</Text>
-                <Text style={styles.statLabel}>Devices</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statCol}>
-                <Text style={styles.statVal}>{openTicketsCount}</Text>
-                <Text style={styles.statLabel}>Open Tickets</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statCol}>
-                <Text style={styles.statVal}>{openAlertsCount}</Text>
-                <Text style={styles.statLabel}>Alerts</Text>
-              </View>
-            </View>
-
-            {/* Sites overview — ẩn nếu customer chưa có site nào */}
-            {sites.length > 0 && (
-              <>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>My Sites</Text>
-                  <Text style={styles.sectionCount}>Total {sites.length}</Text>
+          <View onLayout={(event: LayoutChangeEvent) => setChartWidth(event.nativeEvent.layout.width)}>
+            {chartPoints.length >= 2 && chartWidth > 0 ? (
+              <View style={styles.chartWrapper}>
+                <LineChart
+                  data={chartPoints}
+                  height={95}
+                  width={chartWidth - 10}
+                  adjustToWidth
+                  initialSpacing={14}
+                  endSpacing={14}
+                  curved
+                  thickness={2.5}
+                  color={Solar.yellow}
+                  areaChart
+                  startFillColor={Solar.yellow}
+                  endFillColor="#FFFFFF"
+                  startOpacity={0.22}
+                  endOpacity={0.0}
+                  hideRules
+                  hideYAxisText
+                  xAxisColor="transparent"
+                  yAxisColor="transparent"
+                  yAxisLabelWidth={0}
+                  xAxisLabelsHeight={24}
+                  xAxisLabelTextStyle={styles.axisLabel}
+                  disableScroll
+                />
+                <View style={styles.dashedBaselineContainer} pointerEvents="none">
+                  <Svg height={2} width="100%">
+                    <Line
+                      x1="0"
+                      y1="1"
+                      x2="100%"
+                      y2="1"
+                      stroke="rgba(215, 210, 195, 0.85)"
+                      strokeDasharray="5 5"
+                      strokeWidth="1.2"
+                    />
+                  </Svg>
                 </View>
-                {sites.map((site) => (
-                  <SiteCard
-                    key={site.id}
-                    item={site}
-                    onPress={() => router.push({ pathname: '/(customer)/sites/[id]', params: { id: site.id } })}
-                  />
-                ))}
-              </>
+              </View>
+            ) : (
+              <View style={styles.waveEmpty}>
+                <Text style={styles.waveEmptyText}>
+                  {batteriesLoading || trendLoading
+                    ? 'Loading readings…'
+                    : !primaryBattery
+                      ? 'No battery linked to your account yet'
+                      : 'No readings in the last 24 hours'}
+                </Text>
+              </View>
             )}
+          </View>
 
-            {/* Section Title */}
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>My Devices</Text>
-              <Text style={styles.sectionCount}>Total {batteries.length}</Text>
-            </View>
+          {/* Tapping a cell switches which metric the trend above plots.
+              Values are the live fleet average — `—` when nothing is reporting. */}
+          <View style={styles.statStrip}>
+            {(Object.keys(METRICS) as MetricKey[]).map((key) => {
+              const cell = METRICS[key];
+              const value = key === 'volt' ? avgVolt : key === 'curr' ? avgCurr : avgTemp;
+              const isActive = metric === key;
+              return (
+                <PressableScale
+                  key={key}
+                  style={[styles.statCell, isActive && styles.statCellActive]}
+                  scaleTo={0.95}
+                  onPress={() => setMetric(key)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive }}
+                >
+                  <Text style={[styles.statLabel, isActive && styles.statLabelActive]}>{cell.label}</Text>
+                  <Text style={styles.statValue}>{value != null ? cell.format(value) : '—'}</Text>
+                </PressableScale>
+              );
+            })}
+          </View>
+        </GlassSurface>
 
-            {batteriesLoading && (
-              <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: 20 }} />
-            )}
-          </>
-        }
-        renderItem={({ item }) => (
-          <BatteryCard
-            item={item}
-            live={liveByAsset.get(item.id)}
-            onPress={() => router.push({ pathname: '/(customer)/batteries/[id]', params: { id: item.id } })}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>My batteries</Text>
+          <Pressable onPress={() => router.push('/(customer)/batteries' as any)}>
+            <Text style={styles.sectionLink}>View all</Text>
+          </Pressable>
+        </View>
+
+        {batteriesLoading ? (
+          <ActivityIndicator size="small" color={Solar.yellowDeep} style={styles.listLoader} />
+        ) : (
+          <FlatList
+            data={batteries}
+            keyExtractor={(item) => item.id}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.batteryRow}
+            style={styles.batteryList}
+            renderItem={({ item }) => {
+              const live = liveByAsset.get(item.id);
+              return (
+                <PressableScale
+                  scaleTo={0.96}
+                  onPress={() =>
+                    router.push({ pathname: '/(customer)/batteries/[id]', params: { id: item.id } })
+                  }
+                >
+                  <GlassSurface style={styles.batteryCard}>
+                    <View style={styles.batteryCardTop}>
+                      <Text style={styles.batteryName} numberOfLines={1}>{item.serialNumber}</Text>
+                      <View style={styles.iconBoxStack}>
+                        <Ionicons name="layers" size={15} color={Solar.ink} />
+                      </View>
+                    </View>
+
+                    <View style={styles.socPill}>
+                      <View style={styles.socIconCircle}>
+                        <Ionicons name="flash" size={12} color={Solar.yellowDeep} />
+                      </View>
+                      <Text style={styles.socText}>{live ? `${Math.round(live.socPercent)}%` : '—'}</Text>
+                    </View>
+
+                    <Image
+                      source={BATTERY_IMAGE}
+                      style={[styles.batteryThumb, !live && styles.batteryThumbMuted]}
+                      contentFit="contain"
+                    />
+
+                    <View>
+                      <Text style={styles.batteryValue}>
+                        {live ? `${live.voltage.toFixed(1)} V` : '—'}
+                      </Text>
+                      <Text style={styles.batteryCaption} numberOfLines={1}>
+                        {item.batteryTypeName || 'Current voltage'}
+                      </Text>
+                    </View>
+                  </GlassSurface>
+                </PressableScale>
+              );
+            }}
           />
         )}
-        ListEmptyComponent={
-          !batteriesLoading ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="battery-dead-outline" size={48} color={Colors.gray} />
-              <Text style={styles.emptyTitle}>No devices yet</Text>
-              <Text style={styles.emptySub}>Your battery devices will appear here once assigned.</Text>
-            </View>
-          ) : null
-        }
-        ListFooterComponent={<PopularKbSection limit={5} />}
-      />
+
+        <PressableScale
+          style={styles.blogEntry}
+          scaleTo={0.98}
+          onPress={() => router.push('/(customer)/blog' as never)}
+        >
+          <View style={styles.blogIcon}>
+            <Ionicons name="newspaper-outline" size={20} color={Solar.yellowDeep} />
+          </View>
+          <View style={styles.blogBody}>
+            <Text style={styles.blogTitle}>News</Text>
+            <Text style={styles.blogDesc}>Latest posts from the system</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Solar.mute} />
+        </PressableScale>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bg },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 120 },
+  root: { flex: 1, backgroundColor: Solar.bg },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Solar.bg },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 110 },
 
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
-  headerTitleWrap: { flex: 1 },
-  greetingText: { fontSize: 20, fontWeight: '800', color: Colors.accent },
-  welcomeText: { fontSize: 13, color: Colors.gray, marginTop: 2, fontWeight: '500' },
-  bellBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.white, alignItems: 'center', justifyContent: 'center' },
-  bellDot: { position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF9500' },
-
-  energyFlowCard: {
-    height: 300,
-    backgroundColor: Colors.white,
-    borderRadius: 28,
-    padding: 0,
-    marginBottom: 24,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  flowPillContainer: {
-    position: 'absolute',
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  weatherLine: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 12 },
+  tempText: { fontSize: 24, fontWeight: '700', color: Solar.ink, letterSpacing: -0.5 },
+  weatherDateText: { ...Font.meta, fontSize: 11, marginLeft: 2, flexShrink: 1 },
+  notificationButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Solar.card,
+    borderWidth: 1,
+    borderColor: Solar.cardEdge,
     alignItems: 'center',
-    width: 74,
-  },
-  flowLabelOutside: {
-    fontSize: 11,
-    color: '#64748B',
-    fontWeight: '600',
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  flowPill: {
-    width: 74,
-    height: 74,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderRadius: 18,
     justifyContent: 'center',
+    shadowColor: Solar.shadow,
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 5,
+    minWidth: 15,
+    height: 15,
+    borderRadius: 8,
+    backgroundColor: Colors.danger,
+    borderWidth: 1.5,
+    borderColor: Solar.white,
+    paddingHorizontal: 2,
     alignItems: 'center',
-    ...Shadow,
+    justifyContent: 'center',
   },
-  flowPillValue: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: Colors.accent,
-    marginTop: 6,
-    textAlign: 'center',
-  },
+  notificationCount: { color: Solar.white, fontSize: 8, lineHeight: 10, fontWeight: '700' },
 
-  statsCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 24,
-    paddingVertical: 16,
+  hero: { height: 170, justifyContent: 'center', marginBottom: 4 },
+  heroCopy: { flex: 1, justifyContent: 'center' },
+  heroValue: { fontSize: 58, lineHeight: 60, fontWeight: '700', color: Solar.ink, letterSpacing: -1.8 },
+  heroLabel: { ...Font.meta, fontSize: 13, marginTop: 4 },
+  heroBattery: { width: 180, height: 160, position: 'absolute', right: -10, top: 4 },
+
+  waveCard: { padding: 16, marginBottom: 16 },
+  waveTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  waveTopCopy: { flex: 1 },
+  waveCaption: { ...Font.meta },
+  waveCount: { ...Font.title, marginTop: 1 },
+  axisLabel: { fontSize: 10, color: Solar.mute, fontWeight: '600', marginTop: 8 },
+  chartWrapper: { position: 'relative', height: 125, justifyContent: 'flex-end', marginBottom: 6 },
+  dashedBaselineContainer: { position: 'absolute', bottom: 24, left: 0, right: 0 },
+  focalContainer: { alignItems: 'center', justifyContent: 'flex-start', width: 20, height: 60 },
+  focalDotOuter: {
+    width: 14,
+    height: 14,
+    backgroundColor: Solar.yellow,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Solar.yellowDeep,
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    zIndex: 10,
+  },
+  focalDotInner: { width: 6, height: 6, borderRadius: 3, backgroundColor: Solar.ink },
+  needleLine: { width: 2.5, height: 38, marginTop: -1, borderRadius: 1.25 },
+  waveEmpty: { height: 95, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12 },
+  waveEmptyText: { ...Font.meta, textAlign: 'center' },
+
+  statStrip: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  statCell: {
+    flex: 1,
+    height: 64,
+    borderRadius: Radius.tile,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Solar.card,
+    borderWidth: 1,
+    borderColor: Solar.cardEdge,
+  },
+  statCellActive: {
+    backgroundColor: Solar.yellow,
+    borderColor: Solar.yellow,
+    shadowColor: Solar.yellowDeep,
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  statLabel: { ...Font.meta, fontSize: 11, textAlign: 'center' },
+  statLabelActive: { color: Solar.ink, fontWeight: '700' },
+  statValue: { fontSize: 15, color: Solar.ink, fontWeight: '700', marginTop: 3, textAlign: 'center' },
+
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  sectionTitle: { ...Font.title },
+  sectionLink: { ...Font.meta, color: Solar.yellowDeep, fontWeight: '700' },
+  listLoader: { marginVertical: 25 },
+  batteryList: { marginBottom: 24 },
+  batteryRow: { gap: 12, paddingRight: 20, paddingBottom: 4 },
+  batteryCard: {
+    width: 185,
+    height: 215,
+    padding: 14,
+    justifyContent: 'space-between',
+  },
+  batteryCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  batteryName: { ...Font.body, fontSize: 14, flex: 1, marginRight: 4 },
+  iconBoxStack: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: Solar.tile,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  socPill: {
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    gap: 6,
+    backgroundColor: Solar.tile,
+    borderRadius: 999,
+    paddingLeft: 3,
+    paddingRight: 9,
+    paddingVertical: 3,
+    marginTop: 6,
+  },
+  socIconCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Solar.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  socText: { fontSize: 12, fontWeight: '700', color: Solar.ink },
+  batteryThumb: { width: '100%', height: 82, marginVertical: 4 },
+  batteryThumbMuted: { opacity: 0.38 },
+  batteryValue: { fontSize: 18, lineHeight: 21, color: Solar.ink, fontWeight: '700' },
+  batteryCaption: { ...Font.meta, fontSize: 10, marginTop: 2 },
+
+  blogEntry: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Solar.card,
+    borderRadius: Radius.card,
+    padding: 14,
+    marginTop: 8,
     marginBottom: 24,
   },
-  statCol: { alignItems: 'center', flex: 1 },
-  statVal: { fontSize: 20, fontWeight: '800', color: Colors.accent },
-  statLabel: { fontSize: 11, color: Colors.gray, fontWeight: '600', marginTop: 4 },
-  statDivider: { width: 1, height: 28, backgroundColor: 'rgba(0,0,0,0.06)' },
+  blogIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.tile,
+    backgroundColor: Solar.yellowSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  blogBody: { flex: 1 },
+  blogTitle: { ...Font.body },
+  blogDesc: { ...Font.meta, marginTop: 2 },
 
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: Colors.accent },
-  sectionCount: { fontSize: 13, color: Colors.gray, fontWeight: '600' },
-
-  batteryCard: { backgroundColor: Colors.white, borderRadius: 24, padding: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  batteryIconBg: { width: 48, height: 48, borderRadius: 16, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
-  batteryInfo: { flex: 1 },
-  batteryName: { fontSize: 14, fontWeight: '800', color: Colors.accent },
-  batterySub: { fontSize: 11, color: Colors.gray, fontWeight: '600', marginTop: 2 },
-  batterySite: { fontSize: 11, color: Colors.gray, fontWeight: '500', marginTop: 2 },
-  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' },
-  liveMetric: { fontSize: 11, fontWeight: '700', color: Colors.accent },
-  liveSep: { fontSize: 11, color: Colors.gray },
-  batteryStatusWrap: { alignItems: 'flex-end', gap: 4 },
-  batteryStatus: { fontSize: 11, fontWeight: '800' },
-
-  emptyState: { alignItems: 'center', paddingVertical: 40 },
-  emptyTitle: { fontSize: 16, fontWeight: '800', color: Colors.accent, marginTop: 12 },
-  emptySub: { fontSize: 13, color: Colors.gray, textAlign: 'center', marginTop: 6, paddingHorizontal: 40 },
 });

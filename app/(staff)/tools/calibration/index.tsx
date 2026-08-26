@@ -13,18 +13,20 @@ import {
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Shadow } from '../../../../src/lib/theme';
-import { handleErrorApi } from '../../../../src/lib/errors';
-import { useDeviceByCode } from '../../../../src/features/iot-devices/hooks/useDeviceByCode';
-import { useCalibrations } from '../../../../src/features/iot-devices/hooks/useCalibrations';
-import { useDeleteCalibration } from '../../../../src/features/iot-devices/hooks/useDeleteCalibration';
-import { CalibrationCard } from '../../../../src/features/iot-devices/components/CalibrationCard';
-import { deviceCodeSchema } from '../../../../src/features/iot-devices/schemas/calibration.schema';
+import { Colors, Radius, Shadow } from '@/src/lib/theme';
+import { handleErrorApi } from '@/src/lib/errors';
+import { useDeviceByCode } from '@/src/features/iot-devices/hooks/useDeviceByCode';
+import { useCalibrations } from '@/src/features/iot-devices/hooks/useCalibrations';
+import { useDeleteCalibration } from '@/src/features/iot-devices/hooks/useDeleteCalibration';
+import { CalibrationCard } from '@/src/features/iot-devices/components/CalibrationCard';
+import { DeviceStatusCard } from '@/src/features/iot-devices/components/DeviceStatusCard';
+import { deviceCodeSchema } from '@/src/features/iot-devices/schemas/calibration.schema';
 import {
   CalibrationChannel,
   CALIBRATION_CHANNEL_LABEL,
   IOT_DEVICE_STATUS_LABEL,
-} from '../../../../src/features/iot-devices/enums/iot-device.enum';
+} from '@/src/features/iot-devices/enums/iot-device.enum';
+import { BackButton } from '@/src/shared/components/ScreenHeader';
 
 const CHANNELS = Object.values(CalibrationChannel);
 
@@ -45,7 +47,7 @@ export default function CalibrationScreen() {
   const onSubmitCode = () => {
     const parsed = deviceCodeSchema.safeParse(codeInput);
     if (!parsed.success) {
-      setCodeError(parsed.error.issues[0]?.message ?? 'deviceCode không hợp lệ');
+      setCodeError(parsed.error.issues[0]?.message ?? 'Invalid deviceCode');
       return;
     }
     setCodeError(null);
@@ -53,10 +55,10 @@ export default function CalibrationScreen() {
   };
 
   const onDelete = (calibrationId: string) => {
-    Alert.alert('Xoá calibration', 'Bạn chắc chắn muốn xoá bản hiệu chỉnh này?', [
-      { text: 'Huỷ', style: 'cancel' },
+    Alert.alert('Delete calibration', 'Are you sure you want to delete this calibration record?', [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Xoá',
+        text: 'Delete',
         style: 'destructive',
         onPress: () => {
           setDeletingId(calibrationId);
@@ -75,16 +77,14 @@ export default function CalibrationScreen() {
   return (
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <Pressable onPress={() => router.back()} style={[styles.backBtn, Shadow]}>
-          <Ionicons name="chevron-back" size={18} color={Colors.text} />
-        </Pressable>
+        <BackButton />
         <Text style={styles.topTitle}>Calibration</Text>
-        <View style={styles.backBtn} />
+        <View style={styles.headerSpacer} />
       </View>
 
-      {/* Nhập deviceCode */}
+      {/* Enter deviceCode */}
       <View style={styles.searchSection}>
-        <Text style={styles.hint}>Nhập mã thiết bị (in trên thân máy, vd ESP32-SIM-001)</Text>
+        <Text style={styles.hint}>Enter the device code (printed on the device, e.g. ESP32-SIM-001)</Text>
         <View style={styles.searchRow}>
           <TextInput
             style={styles.input}
@@ -111,11 +111,11 @@ export default function CalibrationScreen() {
       ) : deviceNotFound ? (
         <View style={styles.center}>
           <Ionicons name="help-circle-outline" size={32} color={Colors.textMute} />
-          <Text style={styles.emptyText}>Không tìm thấy thiết bị với mã này.</Text>
+          <Text style={styles.emptyText}>No device found with this code.</Text>
         </View>
       ) : device.data ? (
         <>
-          {/* Thông tin device + nút thêm */}
+          {/* Device info + add button */}
           <View style={[styles.deviceCard, Shadow]}>
             <View style={{ flex: 1 }}>
               <Text style={styles.deviceName}>{device.data.displayName}</Text>
@@ -136,9 +136,19 @@ export default function CalibrationScreen() {
               }
             >
               <Ionicons name="add" size={18} color="#fff" />
-              <Text style={styles.addBtnText}>Thêm</Text>
+              <Text style={styles.addBtnText}>Add</Text>
             </Pressable>
           </View>
+
+          {/*
+            IOT3-61 — thẻ trạng thái đầy đủ.
+
+            Dòng meta phía trên chỉ có tên + mã + trạng thái. Nhưng khi kỹ thuật viên đang đứng
+            trước tủ pin, câu hỏi thật là "vì sao thiết bị này không gửi số liệu?" — và câu trả
+            lời nằm ở thấy-lần-cuối, firmware, lệch đồng hồ. Cả ba API đã trả sẵn từ IoT-2 mà
+            chưa từng được hiện lên (IOT3-60).
+          */}
+          <DeviceStatusCard device={device.data} />
 
           {/* Filter */}
           <View style={styles.filterRow}>
@@ -156,7 +166,7 @@ export default function CalibrationScreen() {
                     onPress={() => setChannel(c)}
                   >
                     <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                      {c ? CALIBRATION_CHANNEL_LABEL[c] : 'Tất cả'}
+                      {c ? CALIBRATION_CHANNEL_LABEL[c] : 'All'}
                     </Text>
                   </Pressable>
                 );
@@ -164,11 +174,11 @@ export default function CalibrationScreen() {
             />
           </View>
           <View style={styles.expiredToggle}>
-            <Text style={styles.toggleLabel}>Hiện cả đã hết hạn</Text>
+            <Text style={styles.toggleLabel}>Show expired too</Text>
             <Switch value={includeExpired} onValueChange={setIncludeExpired} />
           </View>
 
-          {/* List calibration */}
+          {/* Calibration list */}
           {calibrations.isLoading ? (
             <View style={styles.center}>
               <ActivityIndicator color={Colors.primary} size="large" />
@@ -176,15 +186,15 @@ export default function CalibrationScreen() {
           ) : calibrations.isError ? (
             <View style={styles.center}>
               <Ionicons name="alert-circle-outline" size={32} color={Colors.textMute} />
-              <Text style={styles.emptyText}>Không tải được calibration.</Text>
+              <Text style={styles.emptyText}>Failed to load calibration records.</Text>
               <Pressable onPress={() => calibrations.refetch()} style={[styles.retryBtn, Shadow]}>
-                <Text style={styles.retryText}>Thử lại</Text>
+                <Text style={styles.retryText}>Retry</Text>
               </Pressable>
             </View>
           ) : items.length === 0 ? (
             <View style={styles.center}>
               <Ionicons name="options-outline" size={32} color={Colors.textMute} />
-              <Text style={styles.emptyText}>Thiết bị chưa có bản hiệu chỉnh nào.</Text>
+              <Text style={styles.emptyText}>This device has no calibration records yet.</Text>
             </View>
           ) : (
             <FlatList
@@ -205,7 +215,7 @@ export default function CalibrationScreen() {
       ) : (
         <View style={styles.center}>
           <Ionicons name="hardware-chip-outline" size={32} color={Colors.textMute} />
-          <Text style={styles.emptyText}>Nhập mã thiết bị để xem calibration.</Text>
+          <Text style={styles.emptyText}>Enter a device code to view calibration records.</Text>
         </View>
       )}
     </View>
@@ -215,6 +225,7 @@ export default function CalibrationScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12 },
+  headerSpacer: { width: 44 },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center' },
   topTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
   searchSection: { paddingHorizontal: 16, paddingBottom: 12 },
@@ -233,7 +244,7 @@ const styles = StyleSheet.create({
   chip: { paddingHorizontal: 14, height: 32, borderRadius: 16, backgroundColor: Colors.card, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border },
   chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   chipText: { fontSize: 13, color: Colors.text },
-  chipTextActive: { color: '#fff', fontWeight: '700' },
+  chipTextActive: { color: Colors.text, fontWeight: '700' },
   expiredToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 8 },
   toggleLabel: { fontSize: 13, color: Colors.text },
   listContent: { paddingHorizontal: 16, paddingBottom: 24 },

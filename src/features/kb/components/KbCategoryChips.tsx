@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
-import { Colors } from '../../../lib/theme';
-import type { TicketCategoryEnum } from '../../../shared/enums/ticket.enum';
-import { KB_CUSTOMER_CATEGORY_OPTIONS } from '../../../shared/enums/kb.enum';
+import { Colors } from '@/src/lib/theme';
+import type { TicketCategoryEnum } from '@/src/shared/enums/ticket.enum';
+import { KB_CUSTOMER_CATEGORY_OPTIONS } from '@/src/shared/enums/kb.enum';
 
 interface Props {
   selected: TicketCategoryEnum | null;
@@ -18,7 +18,7 @@ export function KbCategoryChips({ selected, onChange }: Props) {
       contentContainerStyle={styles.row}
     >
       <Chip
-        label="Tất cả"
+        label="All"
         active={selected === null}
         onPress={() => onChange(null)}
       />

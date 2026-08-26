@@ -1,107 +1,193 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { router } from 'expo-router';
-import { Colors } from '../../../src/lib/theme';
-import { useStaffTickets } from '../../../src/features/staff/hooks/useStaffTickets';
-import { useStaffDashboardStats } from '../../../src/features/staff/hooks/useStaffDashboardStats';
-import { StaffTicketCard } from '../../../src/features/staff/components/StaffTicketCard';
-import { StaffDashboardStats } from '../../../src/features/staff/components/StaffDashboardStats';
-import { StaffHeader } from '../../../src/features/staff/components/StaffHeader';
-import { TicketStatusEnum } from '../../../src/features/tickets/types/ticket.types';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors, Font, Solar } from '@/src/lib/theme';
+import { useStaffTickets } from '@/src/features/staff/hooks/useStaffTickets';
+import { useStaffDashboardStats } from '@/src/features/staff/hooks/useStaffDashboardStats';
+import { useStaffProfile } from '@/src/features/staff/hooks/useStaffProfile';
+import { useUnreadCount } from '@/src/features/notifications/hooks/useNotifications';
+import { TicketDTO } from '@/src/features/tickets/types/ticket.types';
+import { TicketCard } from '@/src/features/tickets/components/TicketCard';
+import { staffLaneOf, StaffLane } from '@/src/features/tickets/utils/ticketLabels';
+import { EnergyBackdrop, GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
+import { HomeHeader } from '@/src/shared/components/HomeHeader';
+import { FilterChips } from '@/src/shared/components/FilterChips';
+import { TicketCardSkeleton } from '@/src/features/tickets/components/TicketCardSkeleton';
+import { enterRow } from '@/src/shared/components/motion';
+import { useSessionStore } from '@/src/stores/sessionStore';
 
-type FilterTab = 'all' | 'active' | 'waiting' | 'resolved';
-
-const FILTER_TABS: { key: FilterTab; label: string }[] = [
-  { key: 'all',      label: 'Tất cả' },
-  { key: 'active',   label: 'Đang xử lý' },
-  { key: 'waiting',  label: 'Chờ' },
-  { key: 'resolved', label: 'Hoàn thành' },
+// Split by who the ticket is waiting on: work to do now, work parked with
+// somebody else (scheduled, held, escalated, being reassigned), and work finished.
+const LANES: { key: StaffLane; label: string }[] = [
+  { key: 'process', label: 'In progress' },
+  { key: 'pending', label: 'Pending' },
+  { key: 'done', label: 'Completed' },
 ];
 
-const ACTIVE_STATUSES: TicketStatusEnum[] = ['Assigned', 'InProgress'];
-const WAITING_STATUSES: TicketStatusEnum[] = ['WaitingCustomer', 'WaitingParts', 'WaitingOnsiteSchedule'];
-const RESOLVED_STATUSES: TicketStatusEnum[] = ['Resolved', 'Escalated'];
+const EMPTY_COPY: Record<StaffLane, string> = {
+  process: 'Nothing in progress',
+  pending: 'Nothing pending',
+  done: 'Nothing completed yet',
+};
+
+const ROLE_BADGES: Record<string, { label: string; bg: string; text: string }> = {
+  PrimaryHandler:         { label: 'Primary',   bg: Solar.yellowSoft, text: '#B78103' },
+  Supporter:              { label: 'Supporter', bg: '#F3E5F5',        text: '#7B1FA2' },
+  PreviousPrimaryHandler: { label: 'Previous',  bg: Solar.tile,       text: Solar.ink2 },
+};
+
+/** Three numbers, no gauge. Overdue in red is what a technician needs above the fold. */
+function StatStrip({ open, overdue, done }: { open: number; overdue: number; done: number }) {
+  const cells = [
+    { value: open, label: 'In progress', color: Solar.ink },
+    { value: overdue, label: 'Overdue', color: overdue > 0 ? Colors.danger : Solar.faint },
+    { value: done, label: 'Completed', color: Solar.ink },
+  ];
+  return (
+    <GlassSurface style={styles.strip}>
+      {cells.map((cell, i) => (
+        <React.Fragment key={cell.label}>
+          {i > 0 && <View style={styles.stripDivider} />}
+          <View style={styles.stripCell}>
+            <Text style={[styles.stripValue, { color: cell.color }]}>{cell.value}</Text>
+            <Text style={styles.stripLabel}>{cell.label}</Text>
+          </View>
+        </React.Fragment>
+      ))}
+    </GlassSurface>
+  );
+}
 
 export default function StaffDashboardScreen() {
-  const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
-  // BE default PageSize=10 (PaginationRequest) → phải truyền để đếm/list không bị cắt còn 10.
-  // BE clamp max=100; counts dưới tính client-side trên trang này. Nếu staff vượt 100 ticket
-  // cần đếm bằng totalItems + filter status server-side (BE chưa hỗ trợ multi-status filter).
+  const insets = useSafeAreaInsets();
+  // Opens on the work in flight, not on a list mixing closed tickets in.
+  const [lane, setLane] = useState<StaffLane>('process');
   const { data: apiTickets, isLoading, isError, isRefetching, refetch } = useStaffTickets({ PageSize: 100 });
-  // GH-67 — counts đọc từ endpoint dashboard/stats (server-side, chính xác) thay vì đếm
-  // client-side trên trang cap-100. Query dùng chung cache với StaffDashboardStats (dedup).
   const { data: stats } = useStaffDashboardStats();
+  const { data: profile } = useStaffProfile();
+  const { data: unreadCount = 0 } = useUnreadCount();
+  const accountId = useSessionStore((s) => s.user?.accountId);
 
-  const allTickets = apiTickets?.items ?? [];
+  const allTickets = useMemo(() => apiTickets?.items ?? [], [apiTickets]);
 
-  const filtered = allTickets.filter((t) => {
-    if (activeFilter === 'active')   return ACTIVE_STATUSES.includes(t.status);
-    if (activeFilter === 'waiting')  return WAITING_STATUSES.includes(t.status);
-    if (activeFilter === 'resolved') return RESOLVED_STATUSES.includes(t.status);
-    return true;
-  });
+  const counts = useMemo(() => {
+    const acc: Record<StaffLane, number> = { process: 0, pending: 0, done: 0 };
+    const byStatus = stats?.countByStatus;
+    if (byStatus) {
+      for (const [status, n] of Object.entries(byStatus)) {
+        const key = staffLaneOf(status as TicketDTO['status']);
+        if (key) acc[key] += n;
+      }
+      return acc;
+    }
+    for (const ticket of allTickets) {
+      const key = staffLaneOf(ticket.status);
+      if (key) acc[key] += 1;
+    }
+    return acc;
+  }, [stats, allTickets]);
 
-  // Tab counts từ stats.countByStatus (single source). Chưa load → null → ẩn số trên tab.
-  const cbs = stats?.countByStatus;
-  const sumOf = (statuses: TicketStatusEnum[]) => statuses.reduce((s, k) => s + (cbs?.[k] ?? 0), 0);
-  const counts: Record<FilterTab, number | null> = {
-    all:      cbs ? Object.values(cbs).reduce((s, v) => s + v, 0) : null,
-    active:   cbs ? sumOf(ACTIVE_STATUSES) : null,
-    waiting:  cbs ? sumOf(WAITING_STATUSES) : null,
-    resolved: cbs ? sumOf(RESOLVED_STATUSES) : null,
+  const visible = useMemo(
+    () => allTickets.filter((t) => staffLaneOf(t.status) === lane),
+    [allTickets, lane],
+  );
+
+  const displayName = profile?.fullName?.trim() || 'there';
+  const chips = LANES.map((l) => ({ ...l, count: counts[l.key] }));
+
+  const renderTicket = ({ item, index }: { item: TicketDTO; index: number }) => {
+    const myRole = accountId
+      ? item.assignments?.find((a) => a.staffId === accountId)?.role
+      : undefined;
+    return (
+      // Rows arrive top-down so the eye lands on the first one.
+      <Animated.View entering={enterRow(index)}>
+        <TicketCard
+          ticket={item}
+          audience="staff"
+          roleBadge={myRole ? ROLE_BADGES[myRole] ?? null : null}
+          showAssignee={false}
+          onPress={() =>
+            router.push({
+              pathname: '/(staff)/tickets/[id]',
+              params: { id: item.id, ...(item.hasUnreadChat ? { jumpToUnread: '1' } : {}) },
+            })
+          }
+        />
+      </Animated.View>
+    );
   };
 
   return (
     <View style={styles.root}>
-      <StaffHeader showGreeting />
+      <EnergyBackdrop />
 
-      <StaffDashboardStats />
+      <View style={[styles.headerWrap, { paddingTop: insets.top + 10 }]}>
+        <HomeHeader
+          name={displayName}
+          avatarUrl={profile?.avatarUrl}
+          unreadCount={unreadCount}
+          onBellPress={() => router.navigate('/(staff)/notifications' as any)}
+        />
 
-      <View style={styles.filterRow}>
-        {FILTER_TABS.map((tab) => (
-          <Pressable
-            key={tab.key}
-            style={[styles.filterTab, activeFilter === tab.key && styles.filterTabActive]}
-            onPress={() => setActiveFilter(tab.key)}
-          >
-            <Text style={[styles.filterText, activeFilter === tab.key && styles.filterTextActive]} numberOfLines={1}>
-              {tab.label}{counts[tab.key] != null ? ` (${counts[tab.key]})` : ''}
-            </Text>
-          </Pressable>
-        ))}
+        <StatStrip
+          open={stats?.openCount ?? 0}
+          overdue={stats?.breachedCount ?? 0}
+          done={stats?.resolvedCount ?? 0}
+        />
+
+        <Text style={styles.sectionTitle}>Work to handle</Text>
+
+        {/* No `fill`: three chips split evenly leave ~90dp of text at 360dp, which
+            clips "In progress" once its count is appended. Scrolls instead — and the
+            negative margin cancels headerWrap's inset so it can scroll to the edge,
+            since FilterChips' own row already carries the same 20dp. */}
+        <View style={styles.chipRow}>
+          <FilterChips items={chips} value={lane} onChange={setLane} />
+        </View>
       </View>
 
       {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={Colors.primary} size="large" />
+        // Skeleton, not a spinner: it reserves the real row shape so the list
+        // does not reflow when data lands.
+        <View style={styles.list}>
+          <TicketCardSkeleton count={3} />
         </View>
       ) : isError ? (
         <View style={styles.center}>
-          <Ionicons name="cloud-offline-outline" size={48} color={Colors.textFaint} />
-          <Text style={styles.emptyText}>Không tải được danh sách ticket</Text>
+          <Ionicons name="cloud-offline-outline" size={44} color={Solar.faint} />
+          <Text style={styles.emptyText}>Failed to load the ticket list</Text>
           <Pressable onPress={() => refetch()} style={styles.retryBtn}>
-            <Text style={styles.retryText}>Thử lại</Text>
+            <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
       ) : (
         <FlatList
-          data={filtered}
+          // Remount per lane so the stagger replays — makes it read as a new
+          // list rather than the same one silently rewritten.
+          key={lane}
+          data={visible}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <StaffTicketCard
-              ticket={item}
-              onPress={() => router.push({ pathname: '/(staff)/tickets/[id]', params: { id: item.id } })}
-            />
-          )}
-          contentContainerStyle={styles.list}
+          renderItem={renderTicket}
+          contentContainerStyle={[styles.list, visible.length === 0 && styles.listEmpty]}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          removeClippedSubviews
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Solar.yellowDeep} />
+          }
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Ionicons name="checkmark-done-circle-outline" size={48} color={Colors.textFaint} />
-              <Text style={styles.emptyText}>Không có ticket nào</Text>
-            </View>
+            <Animated.View entering={FadeIn.duration(220)}>
+              <GlassSurface style={styles.emptyCard}>
+                <Ionicons name="checkmark-done-circle-outline" size={44} color={Solar.faint} />
+                <Text style={styles.emptyText}>{EMPTY_COPY[lane]}</Text>
+              </GlassSurface>
+            </Animated.View>
           }
         />
       )}
@@ -110,57 +196,33 @@ export default function StaffDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  root:   { flex: 1, backgroundColor: Colors.bg },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  filterRow: {
+  root: { flex: 1, backgroundColor: Solar.bg },
+  headerWrap: { paddingHorizontal: 20 },
+  chipRow: { marginHorizontal: -20 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
+
+  strip: {
     flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  filterTab: {
-    flex: 1,
     alignItems: 'center',
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: Colors.card2,
+    paddingVertical: 16,
+    marginBottom: 20,
   },
-  filterTabActive: {
-    backgroundColor: Colors.text,
-  },
-  filterText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.textMute,
-  },
-  filterTextActive: {
-    color: '#FFFFFF',
-  },
-  list: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
-  },
-  empty: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 80,
-    gap: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: Colors.textFaint,
-    fontWeight: '600',
-  },
+  stripCell: { flex: 1, alignItems: 'center', gap: 2 },
+  stripDivider: { width: 1, height: 32, backgroundColor: Colors.border },
+  stripValue: { fontSize: 26, fontWeight: '700', letterSpacing: -0.6 },
+  stripLabel: { ...Font.meta, fontSize: 11 },
+
+  sectionTitle: { ...Font.title, marginBottom: 12 },
+
+  list: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 110 },
+  listEmpty: { flexGrow: 1, justifyContent: 'center', paddingBottom: 150 },
+  emptyCard: { padding: 30, alignItems: 'center' },
+  emptyText: { ...Font.meta, fontSize: 13, marginTop: 8 },
   retryBtn: {
     marginTop: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    backgroundColor: Colors.primary,
+    paddingVertical: 11,
+    paddingHorizontal: 22,
+    backgroundColor: Solar.yellow,
   },
-  retryText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#fff',
-  },
+  retryText: { fontSize: 14, fontWeight: '700', color: Colors.accent },
 });

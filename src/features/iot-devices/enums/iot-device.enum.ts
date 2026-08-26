@@ -1,4 +1,4 @@
-// GH-56 — IoT Device. Nguồn: docs/api-battery.md §IotDeviceStatusEnum (dòng 182–188).
+// GH-56 — IoT Device. Source: docs/api-battery.md §IotDeviceStatusEnum (lines 182–188).
 // Pattern `as const` object + type alias.
 
 export const IotDeviceStatusEnum = {
@@ -12,15 +12,15 @@ export type IotDeviceStatusEnum =
   (typeof IotDeviceStatusEnum)[keyof typeof IotDeviceStatusEnum];
 
 export const IOT_DEVICE_STATUS_LABEL: Record<IotDeviceStatusEnum, string> = {
-  [IotDeviceStatusEnum.Pending]: 'Chờ provision',
-  [IotDeviceStatusEnum.Active]: 'Hoạt động',
-  [IotDeviceStatusEnum.Offline]: 'Mất kết nối',
-  [IotDeviceStatusEnum.Disabled]: 'Vô hiệu hoá',
-  [IotDeviceStatusEnum.Decommissioned]: 'Ngừng sử dụng',
+  [IotDeviceStatusEnum.Pending]: 'Pending provision',
+  [IotDeviceStatusEnum.Active]: 'Active',
+  [IotDeviceStatusEnum.Offline]: 'Offline',
+  [IotDeviceStatusEnum.Disabled]: 'Disabled',
+  [IotDeviceStatusEnum.Decommissioned]: 'Decommissioned',
 };
 
-// UI const cho dropdown channel ở form calibration. BE nhận string tự do (lowercase),
-// đây chỉ là tập gợi ý chuẩn (voltage/current/temperature/soc).
+// UI const for the channel dropdown in the calibration form. BE accepts a free-form string (lowercase),
+// this is just the standard suggestion set (voltage/current/temperature/soc).
 export const CalibrationChannel = {
   Voltage: 'voltage',
   Current: 'current',
@@ -31,8 +31,8 @@ export type CalibrationChannel =
   (typeof CalibrationChannel)[keyof typeof CalibrationChannel];
 
 export const CALIBRATION_CHANNEL_LABEL: Record<CalibrationChannel, string> = {
-  [CalibrationChannel.Voltage]: 'Điện áp',
-  [CalibrationChannel.Current]: 'Dòng điện',
-  [CalibrationChannel.Temperature]: 'Nhiệt độ',
+  [CalibrationChannel.Voltage]: 'Voltage',
+  [CalibrationChannel.Current]: 'Current',
+  [CalibrationChannel.Temperature]: 'Temperature',
   [CalibrationChannel.Soc]: 'SOC',
 };

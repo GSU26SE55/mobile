@@ -1,12 +1,12 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '../../../lib/queryKeys';
+import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { ticketChatActionsService } from '../services/ticketChatActions.service';
 
 const LIMIT = 20;
 
-// GH-68 — cursor pagination cho chat (thay useTicketComments page-based). Giữ key
-// tickets.chats(id) để realtime (useTicketCommentsRealtime) prepend + invalidate không vỡ.
-// BE sort DESC (mới nhất đầu); scroll chạm đáy → fetchNextPage (lịch sử cũ hơn).
+// GH-68 — cursor pagination for chat (replacing page-based useTicketComments). Keeps the
+// tickets.chats(id) key so realtime (useTicketCommentsRealtime) prepend + invalidate don't break.
+// BE sorts DESC (newest first); scrolling to the bottom → fetchNextPage (older history).
 export function useTicketChatsCursor(ticketId: string | undefined) {
   return useInfiniteQuery({
     queryKey: QUERY_KEY.tickets.chats(ticketId ?? ''),
