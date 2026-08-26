@@ -222,6 +222,19 @@ export interface TicketDTO {
   environmentalIncidentId?: string | null;
   scheduledStartAtUtc: string | null;
   scheduleVersion: number;
+
+  /**
+   * Ticket này thuộc một kỳ bảo trì định kỳ của pin. BE suy ra từ hạn kỳ, không phải cờ lưu
+   * trong bảng.
+   */
+  isPeriodicMaintenance: boolean;
+  /** Hạn theo kế hoạch của kỳ bảo trì. */
+  periodicMaintenanceDueAtUtc: string | null;
+  /** Hết mốc này thì Manager tự sắp lịch, khách không chọn được nữa. */
+  periodicMaintenanceScheduleDeadlineAtUtc: string | null;
+  /** Kỳ đã trôi qua hạn — BE tính, dùng để đổi giọng văn nhắc. */
+  isPeriodicMaintenanceOverdue: boolean;
+
   pendingContext: PendingContextEnum | null;
   pendingReason: PauseReasonEnum | null;
   activeIncidentEpisodeId: string | null;
@@ -394,4 +407,9 @@ export interface TicketListParams {
 export interface CommentListParams {
   page?: number;
   pageSize?: number;
+}
+
+/** Giờ khách chọn cho chuyến bảo trì định kỳ — ISO 8601 kèm offset. */
+export interface SchedulePeriodicMaintenancePayload {
+  scheduledStartAt: string;
 }
