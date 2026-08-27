@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { router } from 'expo-router';
@@ -65,11 +65,35 @@ export default function StaffDashboardScreen() {
   const insets = useSafeAreaInsets();
   // Opens on the work in flight, not on a list mixing closed tickets in.
   const [lane, setLane] = useState<StaffLane>('process');
-  const { data: apiTickets, isLoading, isError, isRefetching, refetch } = useStaffTickets({ PageSize: 100 });
-  const { data: stats } = useStaffDashboardStats();
-  const { data: profile } = useStaffProfile();
-  const { data: unreadCount = 0 } = useUnreadCount();
+  const {
+    data: apiTickets,
+    isLoading,
+    isError,
+    isRefetching: isTicketsRefetching,
+    refetch: refetchTickets,
+  } = useStaffTickets({ PageSize: 100 });
+  const {
+    data: stats,
+    isRefetching: isStatsRefetching,
+    refetch: refetchStats,
+  } = useStaffDashboardStats();
+  const {
+    data: profile,
+    isRefetching: isProfileRefetching,
+    refetch: refetchProfile,
+  } = useStaffProfile();
+  const {
+    data: unreadCount = 0,
+    isRefetching: isUnreadRefetching,
+    refetch: refetchUnread,
+  } = useUnreadCount();
   const accountId = useSessionStore((s) => s.user?.accountId);
+
+  const isRefreshing =
+    isTicketsRefetching || isStatsRefetching || isProfileRefetching || isUnreadRefetching;
+  const handleRefresh = useCallback(() => {
+    void Promise.all([refetchTickets(), refetchStats(), refetchProfile(), refetchUnread()]);
+  }, [refetchProfile, refetchStats, refetchTickets, refetchUnread]);
 
   const allTickets = useMemo(() => apiTickets?.items ?? [], [apiTickets]);
 
@@ -130,6 +154,8 @@ export default function StaffDashboardScreen() {
           name={displayName}
           avatarUrl={profile?.avatarUrl}
           unreadCount={unreadCount}
+          isRefreshing={isRefreshing}
+          onRefresh={handleRefresh}
           onBellPress={() => router.navigate('/(staff)/notifications' as any)}
         />
 
@@ -160,7 +186,7 @@ export default function StaffDashboardScreen() {
         <View style={styles.center}>
           <Ionicons name="cloud-offline-outline" size={44} color={Solar.faint} />
           <Text style={styles.emptyText}>Failed to load the ticket list</Text>
-          <Pressable onPress={() => refetch()} style={styles.retryBtn}>
+          <Pressable onPress={handleRefresh} style={styles.retryBtn}>
             <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
@@ -179,7 +205,11 @@ export default function StaffDashboardScreen() {
           windowSize={7}
           removeClippedSubviews
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Solar.yellowDeep} />
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor={Solar.yellowDeep}
+            />
           }
           ListEmptyComponent={
             <Animated.View entering={FadeIn.duration(220)}>

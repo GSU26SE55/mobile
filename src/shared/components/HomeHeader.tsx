@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Colors, Font, Solar } from '@/src/lib/theme';
 
 // New Home header (shared between staff + customer): round avatar + greeting + subtitle,
-// action on the right (notification bell). Colors keep the current palette.
+// actions on the right (refresh + notification bell). Colors keep the current palette.
 
 interface Props {
   name: string;
@@ -13,6 +13,8 @@ interface Props {
   avatarColor?: string; // avatar background when there's no image
   unreadCount?: number;
   showDot?: boolean; // small red dot (when not using a number)
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
   onBellPress?: () => void;
 }
 
@@ -28,6 +30,8 @@ export function HomeHeader({
   avatarColor = Colors.primary,
   unreadCount = 0,
   showDot = false,
+  isRefreshing = false,
+  onRefresh,
   onBellPress,
 }: Props) {
   return (
@@ -51,16 +55,45 @@ export function HomeHeader({
         ) : null}
       </View>
 
-      <Pressable style={styles.bell} onPress={onBellPress} hitSlop={8}>
-        <Ionicons name="notifications-outline" size={20} color={Colors.accent} />
-        {unreadCount > 0 ? (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-          </View>
-        ) : showDot ? (
-          <View style={styles.dot} />
+      <View style={styles.actions}>
+        {onRefresh ? (
+          <Pressable
+            accessibilityLabel="Refresh page"
+            accessibilityRole="button"
+            accessibilityState={{ busy: isRefreshing, disabled: isRefreshing }}
+            disabled={isRefreshing}
+            hitSlop={8}
+            onPress={onRefresh}
+            style={({ pressed }) => [
+              styles.actionButton,
+              (pressed || isRefreshing) && styles.actionButtonMuted,
+            ]}
+          >
+            {isRefreshing ? (
+              <ActivityIndicator color={Solar.yellowDeep} size="small" />
+            ) : (
+              <Ionicons name="refresh-outline" size={20} color={Solar.yellowDeep} />
+            )}
+          </Pressable>
         ) : null}
-      </Pressable>
+
+        <Pressable
+          accessibilityLabel="Open notifications"
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={onBellPress}
+          style={styles.actionButton}
+        >
+          <Ionicons name="notifications-outline" size={20} color={Colors.accent} />
+          {unreadCount > 0 ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+            </View>
+          ) : showDot ? (
+            <View style={styles.dot} />
+          ) : null}
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -81,7 +114,8 @@ const styles = StyleSheet.create({
   textWrap: { flex: 1 },
   greeting: { ...Font.title },
   subtitle: { ...Font.meta, marginTop: 2 },
-  bell: {
+  actions: { flexDirection: 'row', gap: 8 },
+  actionButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -96,6 +130,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
+  actionButtonMuted: { opacity: 0.55 },
   badge: {
     position: 'absolute',
     top: 8,
