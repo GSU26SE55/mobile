@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -82,11 +82,25 @@ function CustomerTicketsScreenInner() {
   const insets = useSafeAreaInsets();
   const { customerId } = useLocalSearchParams<{ customerId: string }>();
 
-  const { data, isLoading, isError, isRefetching, refetch } = useStaffTickets({ PageSize: 100 });
+  const {
+    data,
+    isLoading,
+    isError,
+    isRefetching: isTicketsRefetching,
+    refetch: refetchTickets,
+  } = useStaffTickets({ PageSize: 100 });
 
   // @mentions of me — BE returns a flat cross-ticket list, gathered into a Set of ticketId for O(1) lookup.
   // Separate from hasUnreadChat: a ticket can tag me while I've already read it, and vice versa.
-  const { data: mentions } = useMyMentions({ pageSize: 100 });
+  const {
+    data: mentions,
+    isRefetching: isMentionsRefetching,
+    refetch: refetchMentions,
+  } = useMyMentions({ pageSize: 100 });
+  const isRefreshing = isTicketsRefetching || isMentionsRefetching;
+  const handleRefresh = useCallback(() => {
+    void Promise.all([refetchTickets(), refetchMentions()]);
+  }, [refetchMentions, refetchTickets]);
   const mentionedTicketIds = useMemo(
     () => new Set((mentions ?? []).map((m) => m.ticketId).filter((id): id is string => !!id)),
     [mentions],
@@ -131,13 +145,31 @@ function CustomerTicketsScreenInner() {
           </Text>
         </View>
         <View style={styles.hInfo}>
-          <Text style={styles.hName}>
+          <Text style={styles.hName} numberOfLines={1}>
             {displayName(customerName, customerId ?? '')}
           </Text>
           <Text style={styles.hSub}>
             {isLoading ? '…' : `${tickets.length} ticket`}
           </Text>
         </View>
+        <Pressable
+          accessibilityLabel="Refresh page"
+          accessibilityRole="button"
+          accessibilityState={{ busy: isRefreshing, disabled: isRefreshing }}
+          disabled={isRefreshing}
+          hitSlop={6}
+          onPress={handleRefresh}
+          style={({ pressed }) => [
+            styles.refreshBtn,
+            (pressed || isRefreshing) && styles.refreshBtnMuted,
+          ]}
+        >
+          {isRefreshing ? (
+            <ActivityIndicator color={Colors.primaryDark} size="small" />
+          ) : (
+            <Ionicons name="refresh-outline" size={20} color={Colors.primaryDark} />
+          )}
+        </Pressable>
         {unreadTotal > 0 && (
           <View style={styles.hUnreadPill}>
             <Ionicons name="chatbubble-ellipses" size={13} color="#FFF" />
@@ -154,7 +186,7 @@ function CustomerTicketsScreenInner() {
         <View style={styles.center}>
           <Ionicons name="alert-circle-outline" size={40} color={Colors.textFaint} />
           <Text style={styles.errMsg}>Unable to load data</Text>
-          <Pressable style={styles.retryBtn} onPress={() => refetch()}>
+          <Pressable style={styles.retryBtn} onPress={handleRefresh}>
             <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         </View>
@@ -168,7 +200,11 @@ function CustomerTicketsScreenInner() {
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor={Colors.primary}
+            />
           }
           ListEmptyComponent={
             <View style={styles.center}>
@@ -270,6 +306,13 @@ const styles = StyleSheet.create({
   hInfo:   { flex: 1 },
   hName:   { fontSize: 16, fontWeight: '700', color: Colors.text },
   hSub:    { fontSize: 12, color: Colors.textMute, marginTop: 1 },
+  refreshBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.card2,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  refreshBtnMuted: { opacity: 0.55 },
   hUnreadPill: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: '#FF3B30', borderRadius: 12,
