@@ -66,7 +66,6 @@ import {
 import { priorityMeta } from '@/src/features/tickets/utils/ticketLabels';
 import { canRateOrReopen, isTerminalTicket, isTicketChatLocked, shouldShowLiveSla } from '@/src/features/tickets/utils/ticketWorkflow';
 import { PendingContextCard } from '@/src/features/tickets/components/PendingContextCard';
-import { PeriodicMaintenanceScheduleCard } from '@/src/features/tickets/components/PeriodicMaintenanceScheduleCard';
 import { formatDateTime } from '@/src/lib/date';
 import { Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
 import { useMyBatteryAssets } from '@/src/features/batteries/hooks/useMyBatteryAssets';
@@ -415,7 +414,6 @@ function TicketDetailScreenInner() {
           </View>
 
           <PendingContextCard ticket={ticket} />
-          <PeriodicMaintenanceScheduleCard ticket={ticket} />
 
           {/* Waiting customer response banner */}
           {isWaiting && (

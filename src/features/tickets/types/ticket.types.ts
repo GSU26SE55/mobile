@@ -408,8 +408,3 @@ export interface CommentListParams {
   page?: number;
   pageSize?: number;
 }
-
-/** Giờ khách chọn cho chuyến bảo trì định kỳ — ISO 8601 kèm offset. */
-export interface SchedulePeriodicMaintenancePayload {
-  scheduledStartAt: string;
-}

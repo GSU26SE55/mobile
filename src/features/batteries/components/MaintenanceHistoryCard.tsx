@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { formatDate } from '@/src/lib/date';
 import { Colors, Solar } from '@/src/lib/theme';
 import { BatteryAssetDto } from '../types/battery.types';
@@ -18,11 +19,29 @@ function daysUntil(iso: string): number {
   return Math.ceil(diff / 86_400_000);
 }
 
-function Stat({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
+/**
+ * Một ô chỉ số trong hàng tổng kết kỳ.
+ *
+ * Con số tách khỏi phần chú thích để mắt bắt được giá trị trước: ở cỡ chữ đồng đều,
+ * "46.2°C avg · 68.5°C peak" đọc như một câu, không như một số đo.
+ */
+function Stat({
+  label,
+  value,
+  sub,
+  warn,
+}: {
+  label: string;
+  value: string;
+  /** Dòng phụ dưới con số — giá trị đỉnh, phần diễn giải. */
+  sub?: string;
+  warn?: boolean;
+}) {
   return (
     <View style={styles.stat}>
       <Text style={styles.statLabel}>{label}</Text>
       <Text style={[styles.statValue, warn && styles.statWarn]}>{value}</Text>
+      {sub ? <Text style={styles.statSub}>{sub}</Text> : null}
     </View>
   );
 }
@@ -42,28 +61,32 @@ function CycleDetail({ cycle }: { cycle: MaintenanceCycleDto }) {
     );
   }
 
-  const temp =
-    cycle.avgTemperatureCelsius != null
-      ? `${cycle.avgTemperatureCelsius}°C avg · ${cycle.maxTemperatureCelsius}°C peak`
-      : '—';
-  const voltage =
-    cycle.minVoltage != null ? `${cycle.minVoltage}V – ${cycle.maxVoltage}V` : '—';
-  const alerts =
-    cycle.alertCount == null
-      ? '—'
-      : cycle.criticalAlertCount
-        ? `${cycle.alertCount} (${cycle.criticalAlertCount} critical)`
-        : `${cycle.alertCount}`;
+  const hasTemp = cycle.avgTemperatureCelsius != null;
+  const hasVoltage = cycle.minVoltage != null;
 
   return (
     <View style={styles.detail}>
-      <Stat label="Temperature" value={temp} />
-      <Stat label="Voltage range" value={voltage} />
+      <Stat
+        label="Temperature"
+        value={hasTemp ? `${cycle.avgTemperatureCelsius}°C` : '—'}
+        sub={hasTemp ? `peak ${cycle.maxTemperatureCelsius}°C` : undefined}
+      />
+      <Stat
+        label="Voltage range"
+        value={hasVoltage ? `${cycle.minVoltage} – ${cycle.maxVoltage}V` : '—'}
+      />
       <Stat
         label="Charge cycles"
         value={cycle.cycleCountDelta != null ? `+${cycle.cycleCountDelta}` : '—'}
       />
-      <Stat label="Alerts" value={alerts} warn={!!cycle.criticalAlertCount} />
+      <Stat
+        label="Alerts"
+        value={cycle.alertCount == null ? '—' : `${cycle.alertCount}`}
+        sub={
+          cycle.criticalAlertCount ? `${cycle.criticalAlertCount} critical` : undefined
+        }
+        warn={!!cycle.criticalAlertCount}
+      />
     </View>
   );
 }
@@ -76,6 +99,7 @@ function CycleRow({
   previousSoh?: number | null;
 }) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
 
   // Làm tròn TRƯỚC khi so sánh: hiệu hai số bằng nhau có thể ra -0 trong dấu phẩy động,
   // và (-0).toFixed(1) in ra "-0.0" — một mức sụt giả không hề tồn tại.
@@ -104,18 +128,45 @@ function CycleRow({
         </View>
         <Text style={styles.cycleDate}>{formatDate(cycle.dueAtUtc)}</Text>
         <View style={styles.sohWrap}>
+          {/* "92.4%" một mình không nói lên nó là gì — nhãn đứng ngay trước con số. */}
+          <Text style={styles.sohLabel}>SoH</Text>
           <Text style={styles.soh}>
             {cycle.sohPercentAtCycle != null ? `${cycle.sohPercentAtCycle}%` : '—'}
           </Text>
-          {changed && (
-            <Text style={[styles.delta, delta < 0 && styles.deltaDown]}>
-              {delta > 0 ? '+' : ''}
-              {delta.toFixed(1)}
-            </Text>
-          )}
+          {/* Khung giữ chỗ có bề rộng cố định: kỳ đầu tiên không có gì để so, và nếu ô
+              này biến mất thì con số phần trăm của hàng đó trôi sang phải, lệch cột với
+              các hàng khác trong cùng danh sách. */}
+          <View style={styles.deltaSlot}>
+            {changed && (
+              <Text style={[styles.delta, delta < 0 && styles.deltaDown]}>
+                {delta > 0 ? '+' : ''}
+                {delta.toFixed(1)}
+              </Text>
+            )}
+          </View>
         </View>
       </Pressable>
-      {open && <CycleDetail cycle={cycle} />}
+      {open && (
+        <>
+          <CycleDetail cycle={cycle} />
+          {/* Chỉ hiện khi đã nối được ticket — kỳ chưa có ticket thì không dựng link chết. */}
+          {cycle.ticketId && (
+            <Pressable
+              accessibilityRole="button"
+              style={styles.ticketLink}
+              onPress={() =>
+                router.push({
+                  pathname: '/(customer)/tickets/[id]',
+                  params: { id: cycle.ticketId as string },
+                })
+              }
+            >
+              <Ionicons name="open-outline" size={13} color={Colors.info} />
+              <Text style={styles.ticketLinkText}>Open maintenance ticket</Text>
+            </Pressable>
+          )}
+        </>
+      )}
     </View>
   );
 }
@@ -213,9 +264,25 @@ const styles = StyleSheet.create({
   badgeText: { color: Solar.ink, fontSize: 12, fontWeight: '700' },
   cycleDate: { color: Solar.ink, fontSize: 13 },
   sohWrap: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  sohLabel: {
+    color: Solar.mute,
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   soh: { color: Solar.ink, fontSize: 15, fontWeight: '700' },
+  deltaSlot: { width: 34, alignItems: 'flex-end' },
   delta: { color: Solar.mute, fontSize: 11 },
   deltaDown: { color: Colors.danger },
+  ticketLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+  },
+  ticketLinkText: { color: Colors.info, fontSize: 12, fontWeight: '600' },
   detail: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -231,7 +298,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 2,
   },
-  statValue: { color: Solar.ink, fontSize: 13 },
+  statValue: { color: Solar.ink, fontSize: 14, fontWeight: '700' },
+  statSub: { color: Solar.mute, fontSize: 11, marginTop: 1 },
   statWarn: { color: Colors.danger },
   empty: {
     color: Solar.mute,
