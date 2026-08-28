@@ -13,9 +13,9 @@ export const batteryTypeService = {
     ),
   getById: (id: string) =>
     axiosInstance.get<CommonResponse<BatteryTypeDto>>(ENDPOINTS.BATTERY_TYPES.DETAIL(id)),
-  /** Current alert threshold for a single battery type. BE returns 404 if not configured. */
+  /** Current alert threshold for a single battery type. `data` is null if not configured. */
   getThresholdByType: (batteryTypeId: string) =>
-    axiosInstance.get<CommonResponse<ThresholdConfigDto>>(
+    axiosInstance.get<CommonResponse<ThresholdConfigDto | null>>(
       ENDPOINTS.THRESHOLDS.BY_TYPE(batteryTypeId),
     ),
 };

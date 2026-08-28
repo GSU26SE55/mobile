@@ -16,6 +16,14 @@ export interface MaintenanceCycleDto {
   /** SoH (%) tại mốc này — mốc so sánh sức khoẻ giữa các kỳ. */
   sohPercentAtCycle?: number | null;
 
+  /**
+   * Ticket bảo trì đã mở cho kỳ này, hoặc null khi chưa nối được.
+   *
+   * BatteryService ghi mốc TRƯỚC khi ticket tồn tại rồi mới nhận báo ngược, nên null là
+   * trạng thái hợp lệ (kỳ vừa ghi, kỳ cũ chưa backfill) — không phải lỗi tải.
+   */
+  ticketId?: string | null;
+
   // Tình trạng pin trong kỳ vừa qua, BE chụp lúc ghi mốc.
   // Tất cả nullable: pin mất kết nối cả kỳ thì không có gì để tổng hợp.
   avgTemperatureCelsius?: number | null;
