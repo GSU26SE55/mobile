@@ -9,8 +9,16 @@ import { z } from 'zod';
  * copies here were never updated.
  */
 
-/** BE PasswordPolicy: min 8, max 100, upper/lower/digit + any non-alphanumeric, non-whitespace char. */
-export const PASSWORD_MIN_LENGTH = 8;
+/**
+ * BE PasswordPolicy: max 100, upper/lower/digit + any non-alphanumeric, non-whitespace char.
+ *
+ * MinLength is config-driven (PasswordPolicyOptions): the BE default is 8 but production
+ * overrides the `PasswordPolicy` section to 12. There is no endpoint exposing the live policy,
+ * so the number is mirrored here — keep it in sync with the deployed config. Leaving it at 8
+ * meant register / reset-password / change-password all told the user "at least 8", accepted
+ * the input, and only then got a 400 back from the server.
+ */
+export const PASSWORD_MIN_LENGTH = 12;
 export const PASSWORD_MAX_LENGTH = 100;
 
 export const passwordField = z

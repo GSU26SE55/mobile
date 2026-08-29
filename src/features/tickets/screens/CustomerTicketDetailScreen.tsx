@@ -254,7 +254,7 @@ function TicketDetailScreenInner() {
     if (ids.length === 0) return;
     Alert.alert(
       'Delete Messages',
-      `Delete ${ids.length} selected message(s)? This action cannot be undone.`,
+      `Delete ${ids.length} selected message(s)? They are removed from the conversation and you can't undo this yourself.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
