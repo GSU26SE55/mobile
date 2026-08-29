@@ -1,3 +1,4 @@
+import { handleErrorApi } from '@/src/lib/errors';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { bmsSwitchService } from '../services/bms-switch.service';
@@ -12,5 +13,8 @@ export function useSetBmsSwitch(assetId: string) {
       queryClient.invalidateQueries({
         queryKey: QUERY_KEY.batteryAssets.bmsSwitch(assetId),
       }),
+    // Không có onError thì mutation hỏng là im lặng hoàn toàn — user bấm nút, không
+    // thấy gì, tưởng nút hỏng. handleErrorApi hiện Alert cho lỗi HTTP.
+    onError: (error: unknown) => handleErrorApi({ error }),
   });
 }

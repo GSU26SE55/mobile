@@ -54,7 +54,7 @@ export function BatteryWarningEvidencePanel({
   const { data: asset } = useBatteryAsset(batteryTypeId ? '' : (batteryAssetId ?? ''));
   const typeId = batteryTypeId ?? asset?.batteryTypeId ?? '';
   const { data: threshold, isLoading: isThresholdLoading } = useThresholdByType(typeId);
-  const warnings = toWarningRows(data?.items ?? [], threshold);
+  const warnings = toWarningRows(data?.items ?? []);
   // Chỉ dòng thật sự vượt ngưỡng mới là "bằng chứng"; phần còn lại là bối cảnh xung quanh,
   // vẫn phải hiện để người đọc thấy pin lúc đó ra sao.
   const breachCount = countBreaches(warnings);

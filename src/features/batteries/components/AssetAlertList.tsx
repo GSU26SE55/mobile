@@ -7,8 +7,11 @@ import { AlertDto } from '../types/alert.types';
 import {
   AlertSeverityEnum,
   AlertStatusEnum,
-  AnomalyTypeEnum,
 } from '@/src/shared/enums/alert.enum';
+import { ANOMALY_LABEL } from '../constants/anomalyLabels';
+
+// Re-export để các chỗ đang import ANOMALY_LABEL từ file này không phải sửa.
+export { ANOMALY_LABEL };
 
 const SEVERITY_STYLE: Record<AlertSeverityEnum, { label: string; color: string; bg: string }> = {
   [AlertSeverityEnum.Info]: { label: 'Info', color: Colors.info, bg: Colors.infoLight },
@@ -23,25 +26,6 @@ const STATUS_LABEL: Record<AlertStatusEnum, string> = {
   [AlertStatusEnum.Resolved]: 'Resolved',
 };
 
-export const ANOMALY_LABEL: Record<AnomalyTypeEnum, string> = {
-  [AnomalyTypeEnum.Overheat]: 'Overheat',
-  [AnomalyTypeEnum.Overvoltage]: 'Overvoltage',
-  [AnomalyTypeEnum.Undervoltage]: 'Undervoltage',
-  [AnomalyTypeEnum.LowSoc]: 'Low SOC',
-  [AnomalyTypeEnum.RapidDischarge]: 'Rapid discharge',
-  [AnomalyTypeEnum.AbnormalCharging]: 'Abnormal charging',
-  [AnomalyTypeEnum.DeviceOffline]: 'Device offline',
-  [AnomalyTypeEnum.SohDegradation]: 'SOH degradation',
-  [AnomalyTypeEnum.HighAmbientTemp]: 'High ambient temperature',
-  [AnomalyTypeEnum.HighHumidity]: 'High humidity',
-  [AnomalyTypeEnum.HighTempHumidityCombo]: 'High temperature + humidity',
-  [AnomalyTypeEnum.HighInternalResistance]: 'High internal resistance',
-  [AnomalyTypeEnum.CellImbalance]: 'Cell imbalance',
-  [AnomalyTypeEnum.EnvironmentalIncident]: 'Environmental incident',
-  [AnomalyTypeEnum.SensorMismatch]: 'Sensor mismatch',
-  [AnomalyTypeEnum.Undertemp]: 'Low temperature',
-  [AnomalyTypeEnum.IotDataIntegrityViolation]: 'IoT data integrity violation',
-};
 
 export function AssetAlertList({
   alerts,

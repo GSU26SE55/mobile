@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { handleErrorApi } from '@/src/lib/errors';
 import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { notificationMatrixService } from '../services/notification-matrix.service';
 import {
@@ -37,6 +38,9 @@ export function useNotificationMatrix() {
         );
       }
     },
+    // Không có onError thì mutation hỏng là im lặng — user bấm nút, không thấy gì,
+    // tưởng nút hỏng. handleErrorApi hiện Alert.
+    onError: (error: unknown) => handleErrorApi({ error }),
   });
 
   return { matrix, updateMatrix };

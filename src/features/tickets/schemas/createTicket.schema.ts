@@ -18,10 +18,12 @@ export const createTicketSchema = z.object({
     .min(5, 'Minimum 5 characters')
     .max(500, 'Maximum 500 characters'),
   category:    z.nativeEnum(TicketCategoryEnum),
+  // BE requires EXACTLY one (TicketCreateCommand: `BatteryAssetIds.Count != 1`), not "at
+  // least one". The picker is single-select so this cannot happen from the UI today, but
+  // the schema is the contract — stating ≥1 here would let a second entry through to a 400.
   batteryAssetIds: z
     .array(z.string().uuid())
-    .min(1, 'Must select at least one battery')
-    .refine((ids) => new Set(ids).size === ids.length, 'Battery list must not contain duplicates'),
+    .length(1, 'Select exactly one battery'),
   incidentDetectedAt: z
     .string()
     .datetime()

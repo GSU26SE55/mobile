@@ -114,13 +114,17 @@ export const ParticipantTypeEnum = {
 export type ParticipantTypeEnum =
   (typeof ParticipantTypeEnum)[keyof typeof ParticipantTypeEnum];
 
+// Khớp 1-1 với BE ActivityActionEnum (TicketService trả enum dạng string).
+// Trước đây có 3 tên tự chế (Commented/AutoClosed/TriageApproved) không tồn tại ở BE —
+// `Commented` thực chất là `Chatted` — và thiếu 11 giá trị thật, nên timeline nhận
+// những action đó thì không khớp nhánh nào.
 export const ActivityActionEnum = {
   Created: 'Created',
   StatusChanged: 'StatusChanged',
   PriorityAssigned: 'PriorityAssigned',
   StaffAssigned: 'StaffAssigned',
   StaffReassigned: 'StaffReassigned',
-  Commented: 'Commented',
+  Chatted: 'Chatted',
   MaintenanceLogged: 'MaintenanceLogged',
   AttachmentAdded: 'AttachmentAdded',
   SlaPaused: 'SlaPaused',
@@ -135,10 +139,20 @@ export const ActivityActionEnum = {
   Rejected: 'Rejected',
   Rated: 'Rated',
   Reopened: 'Reopened',
-  AutoClosed: 'AutoClosed',
   ResolvedByEscalatedStaff: 'ResolvedByEscalatedStaff',
-  TriageApproved: 'TriageApproved',
   Closed: 'Closed',
+  ChatEdited: 'ChatEdited',
+  ChatDeleted: 'ChatDeleted',
+  ChatRestored: 'ChatRestored',
+  ChatReplied: 'ChatReplied',
+  ChatPinned: 'ChatPinned',
+  ChatUnpinned: 'ChatUnpinned',
+  ChatFlagged: 'ChatFlagged',
+  RatingRequested: 'RatingRequested',
+  ParticipantAdded: 'ParticipantAdded',
+  ParticipantRemoved: 'ParticipantRemoved',
+  ParticipantRoleChanged: 'ParticipantRoleChanged',
+  IncidentDeclassified: 'IncidentDeclassified',
   PeriodicMaintenanceScheduleChanged: 'PeriodicMaintenanceScheduleChanged',
 } as const;
 export type ActivityActionEnum = (typeof ActivityActionEnum)[keyof typeof ActivityActionEnum];

@@ -61,12 +61,10 @@ function CreateTicketScreenInner() {
     };
 
     const catLabel = categoryLabels[category as TicketCategoryEnum] ?? 'Support Request';
-    // Title based on battery: 1 battery → "Type - SERIAL"; multiple batteries → "Type - SERIAL +N".
-    const firstBattery = batteries.find((b) => b.id === selectedBatteryIds[0]);
-    const extra = selectedBatteryIds.length - 1;
-    const title = firstBattery
-      ? `${catLabel} - ${firstBattery.serialNumber}${extra > 0 ? ` +${extra}` : ''}`
-      : catLabel;
+    // 1 ticket = 1 viên pin (BE: TicketCreateCommand yêu cầu đúng 1, picker cũng single-select),
+    // nên tiêu đề luôn là "Type - SERIAL" — nhánh "+N" cũ là code chết, mô tả sai luật.
+    const battery = batteries.find((b) => b.id === selectedBatteryIds[0]);
+    const title = battery ? `${catLabel} - ${battery.serialNumber}` : catLabel;
 
     // Validate via schema (mobile rule: manual parse via safeParse) — catch errors
     // locally instead of letting BE return 400 after a round trip.
