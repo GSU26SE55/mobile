@@ -1,6 +1,7 @@
 // GH-83 — ticket chat's own enum (string-based, unlike the int enums below).
 // Placed at the top of the file: an import after `export ... from` would trigger eslint `import/first`.
 import type { VoiceTranscriptionStatusEnum } from '../enums/chat.enum';
+import type { ChatReaderDTO } from './chat-actions.types';
 
 export {
   TicketStatusEnum,
@@ -150,7 +151,24 @@ export interface TicketCommentDTO {
    * undefined means "unknown", don't treat undefined as unread (it would misdraw the
    * "unread messages" marker).
    */
+  /**
+   * Soft-deleted message. BE keeps the row and swaps the body for
+   * "This message has been deleted." — the tombstone stays in the thread, but every action on
+   * it (edit/translate/pin/react) is gone, so gate the UI on this.
+   */
+  isDeleted?: boolean;
   isRead?: boolean;
+  /**
+   * Who ELSE has read this message — the Messenger-style "seen" row.
+   *
+   * NOT the same as `isRead`: that means "*I* have read this" and drives the unread marker.
+   * This means "who has read it", and BE only fills it for messages YOU sent — other people's
+   * messages always come back empty. Realtime ChatRead carries only the NEW receipts, so merge
+   * by (chatId, userId) rather than overwriting.
+   */
+  readReceipts?: ChatReaderDTO[];
+  /** = readReceipts.length, precomputed by BE for a quick "Seen by N" label. */
+  readCount?: number;
   // GH-68 — the cursor/list handler BE populates it fully; realtime ChatAdded doesn't → optional.
   bodyFormat?: string;
   bodyHtml?: string | null;

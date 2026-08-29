@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ticketChatActionsService } from '../services/ticketChatActions.service';
-import { QUERY_KEY } from '@/src/lib/queryKeys';
+import { KEY, QUERY_KEY } from '@/src/lib/queryKeys';
 import { handleErrorApi } from '@/src/lib/errors';
 import { UpdateChatPayload } from '../types/chat-actions.types';
 import { ChatAiIntentEnum } from '@/src/features/tickets/enums/chat.enum';
@@ -78,6 +78,12 @@ export function useMarkTicketChatsRead(ticketId: string) {
         queryClient.invalidateQueries({
           queryKey: QUERY_KEY.tickets.chats(ticketId),
         });
+        // The cross-ticket counters have to drop too, or they keep counting messages the user
+        // just read here: the tab badge (chatsInbox.unreadCount) and the per-customer numbers
+        // on the Customers screen (chatsInbox.unreadByCustomer). Both only refreshed on their
+        // own 60s interval, so they disagreed with the in-ticket badge for up to a minute.
+        // Invalidating the ROOT key covers both in one call.
+        queryClient.invalidateQueries({ queryKey: KEY.chatsInbox });
       }, 1_500);
 
       // The divider currently on screen does not move when the refetch lands: it is pinned

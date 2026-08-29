@@ -40,6 +40,8 @@ export interface ChatReaderDTO {
   userId: string;
   /** BE resolves from CustomerAccounts/StaffAccounts; falls back to userId if not found. */
   displayName: string;
+  /** Null → render the initial of displayName instead. */
+  avatarUrl?: string | null;
   role: ActorRoleEnum;
   readAt: string;
 }

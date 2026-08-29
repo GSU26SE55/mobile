@@ -18,6 +18,7 @@ import { BottomSheet } from '@/src/shared/components/BottomSheet';
 // manually building the URL from BASE_URL + ENDPOINTS like before — so those two imports
 // are no longer needed here.
 import { AuthImage } from '@/src/features/file-storage/components/AuthImage';
+import { ChatSeenRow } from './ChatSeenRow';
 import { ReactionTypeEnum, TicketCommentDTO } from '../types/ticket.types';
 import { VoiceMessageBubble } from './VoiceMessageBubble';
 import { ReactionBar } from './ReactionBar';
@@ -587,13 +588,20 @@ export function ChatBubble({
             <Text style={styles.editedTag}>edited</Text>
           )}
 
-          {onToggleReaction && !editing && (
+          {/* No reacting to a tombstone either — same reasoning as the action menu. */}
+          {onToggleReaction && !editing && !comment.isDeleted && (
             <ReactionBar
               reactions={comment.reactions}
               currentUserId={currentUserId}
               onToggle={onToggleReaction}
               alignEnd={isMe}
             />
+          )}
+
+          {/* "Seen by" row, Messenger-style. BE only fills readReceipts on messages YOU sent,
+              so this never renders under someone else's bubble. */}
+          {isMe && !editing && !!comment.readReceipts?.length && (
+            <ChatSeenRow readers={comment.readReceipts} />
           )}
         </View>
       </View>
