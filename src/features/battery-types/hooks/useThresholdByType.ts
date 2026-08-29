@@ -6,10 +6,11 @@ import { batteryTypeService } from '../services/battery-type.service';
 /**
  * Current alert threshold for a single battery type.
  *
- * BE returns 404 when the battery type has no threshold configured by
- * Admin yet — that is a valid state, not an error, so the 404 is swallowed
- * into `null` so the UI shows "not configured" instead of firing a red
- * toast. Other errors (403/500) are still thrown as usual.
+ * Resolves to `null` when Admin has not configured a threshold for the type
+ * yet, so the UI shows "not configured" instead of firing a red toast. BE now
+ * returns 200 with `data: null` for that case; the 404 branch below is kept to
+ * stay compatible with BE builds predating that change. Other errors (403/500)
+ * are still thrown as usual.
  */
 export function useThresholdByType(batteryTypeId: string) {
   return useQuery({

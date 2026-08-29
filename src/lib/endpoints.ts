@@ -140,10 +140,6 @@ export const ENDPOINTS = {
     ACTIVITIES:      (id: string) => `/api/tickets/${id}/activities`, // GH-44 — timeline
     REOPEN:          (id: string) => `/api/customer/tickets/${id}/reopen`,
     RATE:            (id: string) => `/api/customer/tickets/${id}/rate`,
-    // Khách tự chọn giờ cho chuyến bảo trì định kỳ. Chỉ dùng được khi ticket còn Open,
-    // chưa giao ai, và chưa quá hạn chót ghi trên ticket.
-    PERIODIC_MAINTENANCE_SCHEDULE: (id: string) =>
-      `/api/customer/tickets/${id}/periodic-maintenance/schedule`,
   },
   // GH-68 — cross-ticket chat (any role)
   CHATS: {
@@ -215,7 +211,7 @@ export const ENDPOINTS = {
   },
   THRESHOLDS: {
     // Alert thresholds per battery type — Staff can read (only Admin can edit).
-    // 404 = this battery type has no threshold configured yet, not an error.
+    // 200 with data = null means this battery type has no threshold configured yet.
     BY_TYPE: (batteryTypeId: string) => `/api/thresholds/by-type/${batteryTypeId}`,
   },
   IOT_DEVICES: {
