@@ -76,10 +76,13 @@ function buildThreadItems(
 
   ascComments.forEach((c, i) => {
     const day = dayKey(c.createdAt);
-    if (day !== lastDay) {
+    // Only at a REAL day boundary — between two messages sent on different days. Skipped above
+    // the very first message (i === 0): in a thread where everything happened on one day it
+    // would be a lone "Today" header separating nothing.
+    if (lastDay !== null && day !== lastDay) {
       items.push({ kind: 'date', key: `date-${day}`, label: formatDateLabel(c.createdAt) });
-      lastDay = day;
     }
+    lastDay = day;
 
     // Marker placed RIGHT BEFORE the oldest unread message — ASC data + non-inverted list ⇒
     // everything BELOW the line is unread, matching the Slack/Messenger standard.
@@ -296,6 +299,9 @@ export function CommentThread({
   // was watching, which is what separates "new" from "unread backlog".
   const [seenOnOpen, setSeenOnOpen] = useState<ReadonlySet<string> | null>(null);
   const [newAfterId, setNewAfterId] = useState<string | null>(null);
+  // The anchor lives in refs (it must not re-trigger the pinning effect), so clearing it needs
+  // an explicit nudge to re-run the items memo.
+  const [anchorCleared, setAnchorCleared] = useState(0);
 
   useEffect(() => {
     anchorIdRef.current = null;
@@ -303,9 +309,13 @@ export function CommentThread({
     anchorResolvedRef.current = false;
     setSeenOnOpen(null);
     setNewAfterId(null);
+    setAnchorCleared(0);
   }, [tab]);
 
   const items = useMemo(() => {
+    // Read so the dependency is real: clearing the anchor only mutates refs, and without this
+    // the memo would keep serving the stale list with the divider still in it.
+    void anchorCleared;
     const ascComments = [...visible].reverse();
 
     if (!anchorResolvedRef.current) {
@@ -337,7 +347,7 @@ export function CommentThread({
       message: m,
     }));
     return [...base, ...pending];
-  }, [visible, pendingForTab, newAfterId]);
+  }, [visible, pendingForTab, newAfterId, anchorCleared]);
 
   // Pins the "New messages" line at the first message from someone else that arrives after
   // the chat was opened. Own messages are excluded — the user knows they just sent those, and
@@ -574,14 +584,26 @@ export function CommentThread({
           windowSize={11}
           keyboardDismissMode="on-drag"
           onScroll={({ nativeEvent: e }) => {
-            if (!newAfterId) return;
             const atBottom =
               e.layoutMeasurement.height + e.contentOffset.y >= e.contentSize.height - 24;
             if (!atBottom) return;
-            // Those ids move into seenOnOpen as the line clears, so the same messages can't
-            // immediately re-pin it on the next render.
-            setSeenOnOpen(new Set(visible.map((c) => c.id)));
-            setNewAfterId(null);
+
+            if (newAfterId) {
+              // Those ids move into seenOnOpen as the line clears, so the same messages can't
+              // immediately re-pin it on the next render.
+              setSeenOnOpen(new Set(visible.map((c) => c.id)));
+              setNewAfterId(null);
+            }
+
+            // Drop the "unread" line too once the backlog has actually been read: reaching the
+            // bottom AND the BE reporting nothing unread. It is pinned on open on purpose (auto
+            // mark-read fires immediately, so recomputing would erase it before it is seen), but
+            // pinning it for the whole session left it stranded on screen afterwards.
+            if (anchorIdRef.current && !visible.some((c) => c.isRead === false)) {
+              anchorIdRef.current = null;
+              anchorCountRef.current = 0;
+              setAnchorCleared((n) => n + 1);
+            }
           }}
           scrollEventThrottle={16}
           // No getItemLayout (bubbles have varying heights) so scrollToIndex can drift when
