@@ -84,6 +84,7 @@ import { EVIDENCE_WINDOW_MS } from '@/src/features/batteries/hooks/useReadingEvi
 import EnvironmentalIncidentCard from '@/src/features/tickets/components/EnvironmentalIncidentCard';
 import { AmbientEvidencePanel } from '@/src/features/ambient/components/AmbientEvidencePanel';
 import { useIncident } from '@/src/features/incidents/hooks/useIncident';
+import { isWhitespaceOrEmojiOnly } from '@/src/shared/schemas/common.schema';
 
 type TabKey = 'comments' | 'activities' | 'logs' | 'kb';
 
@@ -271,9 +272,15 @@ function StaffTicketDetailScreenInner() {
         (a) => a.staffId === accountId && a.role === 'PrimaryHandler'
       ) ?? false));
 
+  // BE (ChatBodyPolicy) từ chối body chỉ có khoảng trắng/emoji — áp cho cả staff lẫn customer.
+  // Không chặn ở đây thì tin vào outbox rồi mới hỏng, và bubble lỗi không nói được vì sao.
+  const commentBodyIsSendable =
+    commentText.trim().length > 0 && !isWhitespaceOrEmojiOnly(commentText);
+  const canSendComment = commentBodyIsSendable || commentAttachments.length > 0;
+
   const handleSendComment = () => {
     const trimmed = commentText.trim();
-    if (!trimmed && commentAttachments.length === 0) return;
+    if (!canSendComment) return;
     // Only send mentions still present in the body (user may have deleted the name).
     const activeMentions = pickedMentions.filter((m) =>
       trimmed.includes(`@${m.displayName.replace(/\s+/g, '_')}`),
@@ -553,9 +560,9 @@ function StaffTicketDetailScreenInner() {
                   )}
                 </Pressable>
                 <Pressable
-                  style={[styles.sendBtn, ((!commentText.trim() && commentAttachments.length === 0) || uploadingComment || voiceRecorder.isRecording) && styles.sendBtnDisabled]}
+                  style={[styles.sendBtn, (!canSendComment || uploadingComment || voiceRecorder.isRecording) && styles.sendBtnDisabled]}
                   onPress={handleSendComment}
-                  disabled={(!commentText.trim() && commentAttachments.length === 0) || uploadingComment || voiceRecorder.isRecording}
+                  disabled={!canSendComment || uploadingComment || voiceRecorder.isRecording}
                 >
                   <Ionicons name="send" size={18} color={Colors.text} />
                 </Pressable>

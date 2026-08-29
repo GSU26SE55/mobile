@@ -1,10 +1,8 @@
 import { z } from 'zod';
+import { otpField } from '@/src/shared/schemas/common.schema';
 
 export const phoneOtpSchema = z.object({
-  otp: z
-    .string()
-    .length(6, 'OTP must be exactly 6 digits')
-    .regex(/^\d{6}$/, 'OTP must contain digits only'),
+  otp: otpField,
 });
 
 export type PhoneOtpInput = z.infer<typeof phoneOtpSchema>;

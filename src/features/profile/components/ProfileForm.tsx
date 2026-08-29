@@ -30,10 +30,13 @@ export function ProfileForm({ account, onSubmit, isLoading, fieldErrors }: Props
       setLocalErrors(errs);
       return;
     }
+    // Gửi "" thay vì undefined: BE coi khoá vắng mặt là "giữ nguyên giá trị đang lưu"
+    // (để client không render field thì không xoá nhầm được), nên muốn xoá phải nói rõ.
+    // Form này có ô địa chỉ và ô số điện thoại, nên nó được quyền xoá cả hai.
     onSubmit({
       fullName: result.data.fullName,
-      phoneNumber: result.data.phoneNumber || undefined,
-      address: result.data.address || undefined,
+      phoneNumber: result.data.phoneNumber ?? '',
+      address: result.data.address ?? '',
     });
   };
 

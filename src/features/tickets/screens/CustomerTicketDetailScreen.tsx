@@ -22,6 +22,7 @@ import { P } from '@/src/lib/authz';
 import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
 import { ActivityTimeline } from '@/src/features/tickets/components/ActivityTimeline';
 import { CommentThread } from '@/src/features/tickets/components/CommentThread';
+import { isWhitespaceOrEmojiOnly } from '@/src/shared/schemas/common.schema';
 import {
   ChatSelectionHeader,
   ChatSelectionFooter,
@@ -282,10 +283,16 @@ function TicketDetailScreenInner() {
     setAttachments((prev) => prev.filter((a) => a.fileId !== fileId));
   };
 
+  // BE (ChatBodyPolicy) từ chối body chỉ có khoảng trắng/emoji. Không chặn ở đây thì tin
+  // vào outbox rồi mới hỏng — người dùng thấy bubble lỗi thay vì nút gửi mờ đi.
+  const commentBodyIsSendable =
+    commentText.trim().length > 0 && !isWhitespaceOrEmojiOnly(commentText);
+  const canSendComment = commentBodyIsSendable || attachments.length > 0;
+
   const handleSendComment = () => {
     // Không báo lỗi "để trống" — nút gửi đã disable khi rỗng. Chỉ chặn gửi tin hoàn toàn trống.
     const trimmed = commentText.trim();
-    if (!trimmed && attachments.length === 0) return;
+    if (!canSendComment) return;
     // Chỉ gửi mention còn hiện diện trong body (user có thể đã xoá tên đi).
     const activeMentions = pickedMentions.filter((m) =>
       trimmed.includes(`@${m.displayName.replace(/\s+/g, '_')}`),
@@ -742,9 +749,9 @@ function TicketDetailScreenInner() {
                 : <Ionicons name="mic-outline" size={22} color={Colors.textMute} />}
             </Pressable>
             <Pressable
-              style={[styles.sendBtn, (!commentText.trim() && attachments.length === 0) && styles.btnDisabled]}
+              style={[styles.sendBtn, !canSendComment && styles.btnDisabled]}
               onPress={handleSendComment}
-              disabled={!commentText.trim() && attachments.length === 0}
+              disabled={!canSendComment}
             >
               <Ionicons name="send" size={18} color="#fff" />
             </Pressable>
