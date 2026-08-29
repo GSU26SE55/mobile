@@ -640,7 +640,7 @@ export function ChatBubble({
       <BottomSheet visible={confirmingDelete} onClose={() => setConfirmingDelete(false)} scroll={false}>
         <View style={styles.menuBody}>
           <Text style={styles.deleteTitle}>Delete message?</Text>
-          <Text style={styles.deleteDesc}>This action cannot be undone.</Text>
+          <Text style={styles.deleteDesc}>The message is removed from the conversation. You can&apos;t undo this yourself.</Text>
           {deleteNeedsReason && (
             <TextInput
               style={styles.editReasonInput}

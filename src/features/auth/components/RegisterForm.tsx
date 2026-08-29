@@ -12,6 +12,7 @@ import { Colors } from '@/src/lib/theme';
 import { HttpError, EntityError } from '@/src/lib/errors';
 import { useRegister } from '../hooks/useRegister';
 import { registerSchema } from '../schemas/register.schema';
+import { PASSWORD_MIN_LENGTH } from '@/src/shared/schemas/common.schema';
 
 export function RegisterForm() {
   const { mutateAsync, isPending } = useRegister();
@@ -79,7 +80,7 @@ export function RegisterForm() {
   }[] = [
     { key: 'fullName', label: 'Full name', placeholder: 'John Doe', value: fullName, onChangeText: setFullName, autoCapitalize: 'words', isValid: isNameValid },
     { key: 'email', label: 'Email', placeholder: 'name@example.com', value: email, onChangeText: setEmail, keyboardType: 'email-address', autoCapitalize: 'none', isValid: isEmailValid },
-    { key: 'password', label: 'Password', placeholder: 'Minimum 8 characters', value: password, onChangeText: setPassword, secure: true, showSecure: showPassword, onToggleSecure: () => setShowPassword(!showPassword) },
+    { key: 'password', label: 'Password', placeholder: `Minimum ${PASSWORD_MIN_LENGTH} characters`, value: password, onChangeText: setPassword, secure: true, showSecure: showPassword, onToggleSecure: () => setShowPassword(!showPassword) },
     { key: 'confirmPassword', label: 'Confirm password', placeholder: 'Re-enter password', value: confirmPassword, onChangeText: setConfirmPassword, secure: true, showSecure: showConfirmPassword, onToggleSecure: () => setShowConfirmPassword(!showConfirmPassword) },
   ];
 

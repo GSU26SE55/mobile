@@ -5,6 +5,7 @@ import { useResetPassword } from '../hooks/useResetPassword';
 import { resetPasswordSchema } from '../schemas/resetPassword.schema';
 import { HttpError, EntityError } from '@/src/lib/errors';
 import { Colors } from '@/src/lib/theme';
+import { PASSWORD_MIN_LENGTH } from '@/src/shared/schemas/common.schema';
 
 interface Props {
   resetToken: string;
@@ -88,7 +89,7 @@ export function ForgotPasswordStep3({ resetToken, expiresInSeconds, onExpired }:
         ]}>
           <TextInput
             style={styles.input}
-            placeholder="Minimum 8 characters"
+            placeholder={`Minimum ${PASSWORD_MIN_LENGTH} characters`}
             placeholderTextColor={Colors.textFaint}
             secureTextEntry={!showPassword}
             value={newPassword}
