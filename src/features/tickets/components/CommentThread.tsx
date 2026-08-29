@@ -649,10 +649,14 @@ export function CommentThread({
             // this. Matches BE's ChatAuthorizationService.CanEditChat/CanDeleteChat: it accepts
             // actorPermissions but doesn't read it, only compares AuthorUserId. Gating the
             // button on chat.edit.any/chat.delete.any like before would get a 403 on tap.
-            const canEdit = !ticketClosed && authorWindowOk && !!onEdit;
-            const canDelete = !ticketClosed && isOwn && !!onDelete;
-            const canPin = !ticketClosed && !!onPin && !!onUnpin;
-            const canShowReaders = !!onShowReaders;
+            // A deleted message keeps its row as a "This message has been deleted." tombstone,
+            // but every action on it is meaningless — no body left to edit, translate or pin,
+            // and the BE rejects all of them. Turn the whole set off in one place.
+            const isTombstone = !!comment.isDeleted;
+            const canEdit = !isTombstone && !ticketClosed && authorWindowOk && !!onEdit;
+            const canDelete = !isTombstone && !ticketClosed && isOwn && !!onDelete;
+            const canPin = !isTombstone && !ticketClosed && !!onPin && !!onUnpin;
+            const canShowReaders = !isTombstone && !!onShowReaders;
             // The "reason" field only makes sense when editing/deleting SOMEONE ELSE'S
             // message — and no role can do that anymore, so it's always off. The prop is kept
             // on ChatBubble so an Admin override path (ticket already Closed, via a separate
@@ -678,7 +682,7 @@ export function CommentThread({
                 deletePending={deletePending}
                 onEdit={(body, reason) => onEdit?.(comment, body, reason)}
                 onDelete={(reason) => onDelete?.(comment, reason)}
-                canTranslate={!!onTranslate}
+                canTranslate={!isTombstone && !!onTranslate}
                 translating={translatingId === comment.id}
                 onTranslate={(lang) => handleTranslate(comment, lang)}
                 translation={translations[comment.id]}

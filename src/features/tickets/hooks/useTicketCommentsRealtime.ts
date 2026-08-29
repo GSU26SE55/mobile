@@ -7,6 +7,7 @@ import { QUERY_KEY } from '@/src/lib/queryKeys';
 import { useSessionStore } from '@/src/stores/sessionStore';
 import { CursorPaginationResponse } from '@/src/types/api.types';
 import { TicketCommentDTO } from '../types/ticket.types';
+import type { ChatReaderDTO } from '../types/chat-actions.types';
 
 const HUB_PATH = '/hubs/ticket-chats';
 const TYPING_TIMEOUT = 3000;
@@ -38,6 +39,56 @@ function prependComment(
     items: [dto, ...first.items],
   };
   return { ...data, pages: [updatedFirst, ...rest] };
+}
+
+/** ChatRead payload — BE sends it ONLY to the author of the messages that were just read. */
+interface ChatReadPayload {
+  ticketId: string;
+  readers?: ChatReaderDTO[];
+}
+
+/**
+ * Merge incoming "seen" receipts into the cached comments.
+ *
+ * The payload carries only the receipts from ONE bulk-writer flush, not the full reader list,
+ * so each chat's existing receipts are kept and matched by userId — overwriting would drop
+ * everyone who read the message earlier.
+ */
+function mergeReadReceipts(
+  data: InfiniteData<CommentsPage> | undefined,
+  readers: ChatReaderDTO[],
+): InfiniteData<CommentsPage> | undefined {
+  if (!data) return data;
+
+  const byChat = new Map<string, ChatReaderDTO[]>();
+  for (const r of readers) {
+    if (!r?.chatId) continue;
+    const list = byChat.get(r.chatId);
+    if (list) list.push(r);
+    else byChat.set(r.chatId, [r]);
+  }
+  if (byChat.size === 0) return data;
+
+  return {
+    ...data,
+    pages: data.pages.map((page) => {
+      if (!page?.items) return page;
+      let touched = false;
+      const items = page.items.map((c) => {
+        const incoming = byChat.get(c.id);
+        if (!incoming) return c;
+        touched = true;
+        const merged = [...(c.readReceipts ?? [])];
+        for (const r of incoming) {
+          const at = merged.findIndex((m) => m.userId === r.userId);
+          if (at >= 0) merged[at] = r;
+          else merged.push(r);
+        }
+        return { ...c, readReceipts: merged, readCount: merged.length };
+      });
+      return touched ? { ...page, items } : page;
+    }),
+  };
 }
 
 // GH-44 #8 — realtime comments for ticket detail. Realtime is the MAIN UPDATE SOURCE:
@@ -107,6 +158,18 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
     // displays reactions EMBEDDED in the comment within the chats(id) list (comment.reactions),
     // NOT via a separate chatReactions key like web → invalidate chats(id) so the list refetches the aggregate.
     connection.on('ReactionChanged', invalidateChats);
+
+    // "Seen" receipts (Messenger-style). BE sends this ONLY to the author of the messages that
+    // were read, and the payload holds just the NEW receipts from that flush — so merge into
+    // the cache instead of refetching (a refetch would be one request per reader per flush).
+    connection.on('ChatRead', (payload: ChatReadPayload) => {
+      const readers = payload?.readers;
+      if (!readers?.length) return;
+      queryClient.setQueryData<InfiniteData<CommentsPage>>(
+        QUERY_KEY.tickets.chats(ticketId!),
+        (data) => mergeReadReceipts(data, readers),
+      );
+    });
 
     connection.on('UserTyping', (_ticketId: string, userId: string, displayName: string) => {
       setTypingUsers((prev) =>
