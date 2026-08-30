@@ -17,9 +17,12 @@ export function useChatSender(ticketId: string, send: ChatSendFn) {
   const qc = useQueryClient();
   const { pending, enqueue, retry, discard } = useChatOutbox(ticketId);
 
-  const onSent = useCallback(() => {
-    qc.invalidateQueries({ queryKey: QUERY_KEY.tickets.chats(ticketId) });
-  }, [qc, ticketId]);
+  // Awaited by the outbox worker: it holds the optimistic bubble on screen until the refetched
+  // thread contains the real message, so the two never both disappear for a moment.
+  const onSent = useCallback(
+    () => qc.invalidateQueries({ queryKey: QUERY_KEY.tickets.chats(ticketId) }),
+    [qc, ticketId],
+  );
 
   useChatOutboxWorker({ ticketId, pending, send, onSent });
 

@@ -159,6 +159,12 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
     // NOT via a separate chatReactions key like web → invalidate chats(id) so the list refetches the aggregate.
     connection.on('ReactionChanged', invalidateChats);
 
+    // Pin/unpin (BE: "ChatPinChanged"). Pin state is shared across everyone viewing the
+    // ticket — it drives the pinned bar above the thread — so it has to land without a manual
+    // refresh. Same invalidate as edit/delete: the payload only carries the new flag, and the
+    // comment lives inside an InfiniteData page here rather than its own cache entry.
+    connection.on('ChatPinChanged', invalidateChats);
+
     // "Seen" receipts (Messenger-style). BE sends this ONLY to the author of the messages that
     // were read, and the payload holds just the NEW receipts from that flush — so merge into
     // the cache instead of refetching (a refetch would be one request per reader per flush).
@@ -217,6 +223,7 @@ export function useTicketCommentsRealtime(ticketId: string | undefined) {
         conn.off('ChatEdited');
         conn.off('ChatDeleted');
         conn.off('ReactionChanged');
+        conn.off('ChatPinChanged');
         conn.off('UserTyping');
         // WAIT for start() to finish before leave + stop — avoids stop-before-start.
         void startPromise.finally(() => {

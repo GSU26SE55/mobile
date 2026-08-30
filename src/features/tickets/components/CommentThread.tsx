@@ -302,6 +302,13 @@ export function CommentThread({
   // The anchor lives in refs (it must not re-trigger the pinning effect), so clearing it needs
   // an explicit nudge to re-run the items memo.
   const [anchorCleared, setAnchorCleared] = useState(0);
+  // Whether the user has reached the bottom of the thread at least once. Tracked separately
+  // from the clearing logic because onScroll only fires when the list actually SCROLLS: in a
+  // thread short enough to fit on screen there is nothing to scroll, so the unread line could
+  // never be cleared and stayed pinned forever.
+  const [reachedBottom, setReachedBottom] = useState(false);
+  const viewportHeightRef = useRef(0);
+  const contentHeightRef = useRef(0);
 
   useEffect(() => {
     anchorIdRef.current = null;
@@ -310,6 +317,7 @@ export function CommentThread({
     setSeenOnOpen(null);
     setNewAfterId(null);
     setAnchorCleared(0);
+    setReachedBottom(false);
   }, [tab]);
 
   const items = useMemo(() => {
@@ -427,6 +435,15 @@ export function CommentThread({
     }
   };
 
+  // A thread short enough to fit on screen can never fire onScroll, so "reached the bottom"
+  // would never become true and the unread line could never clear. Everything is visible in
+  // that case, so treat it as read-through.
+  const handleListLayout = (viewportH: number, contentH: number) => {
+    if (contentH > 0 && viewportH > 0 && contentH <= viewportH + 24) {
+      setReachedBottom(true);
+    }
+  };
+
   // Smooth auto-scroll down when a new message or pending message is added.
   const latestItemKey = items.length > 0 ? items[items.length - 1].key : null;
   useEffect(() => {
@@ -457,6 +474,21 @@ export function CommentThread({
       willShowSub.remove();
     };
   }, []);
+
+  // Clear the "unread" line once the user has reached the bottom AND the BE reports nothing
+  // unread. It is pinned on open on purpose — auto mark-read fires immediately, so recomputing
+  // it from fresh data would erase it before it could be seen — but pinning it for the whole
+  // session left it stranded on screen after the backlog had been read.
+  //
+  // Runs as an effect rather than inside onScroll: `isRead` flips a second or two AFTER the
+  // scroll that triggered it, so checking only at scroll time missed the moment.
+  useEffect(() => {
+    if (!reachedBottom || !anchorIdRef.current) return;
+    if (visible.some((c) => c.isRead === false)) return;
+    anchorIdRef.current = null;
+    anchorCountRef.current = 0;
+    setAnchorCleared((n) => n + 1);
+  }, [reachedBottom, visible]);
 
   // AI suggestion generation done (bubble appears at the end of the chat) → scroll down so
   // the user sees it right away. Ensures this happens even if onContentSizeChange doesn't fire in time.
@@ -578,8 +610,16 @@ export function CommentThread({
           style={styles.list}
           data={items}
           keyExtractor={(item) => item.key}
-          onContentSizeChange={handleInitialScroll}
-          onLayout={handleInitialScroll}
+          onContentSizeChange={(_w, h) => {
+            handleInitialScroll();
+            contentHeightRef.current = h;
+            handleListLayout(viewportHeightRef.current, h);
+          }}
+          onLayout={(e) => {
+            handleInitialScroll();
+            viewportHeightRef.current = e.nativeEvent.layout.height;
+            handleListLayout(e.nativeEvent.layout.height, contentHeightRef.current);
+          }}
           removeClippedSubviews={false}
           windowSize={11}
           keyboardDismissMode="on-drag"
@@ -588,21 +628,13 @@ export function CommentThread({
               e.layoutMeasurement.height + e.contentOffset.y >= e.contentSize.height - 24;
             if (!atBottom) return;
 
+            setReachedBottom(true);
+
             if (newAfterId) {
               // Those ids move into seenOnOpen as the line clears, so the same messages can't
               // immediately re-pin it on the next render.
               setSeenOnOpen(new Set(visible.map((c) => c.id)));
               setNewAfterId(null);
-            }
-
-            // Drop the "unread" line too once the backlog has actually been read: reaching the
-            // bottom AND the BE reporting nothing unread. It is pinned on open on purpose (auto
-            // mark-read fires immediately, so recomputing would erase it before it is seen), but
-            // pinning it for the whole session left it stranded on screen afterwards.
-            if (anchorIdRef.current && !visible.some((c) => c.isRead === false)) {
-              anchorIdRef.current = null;
-              anchorCountRef.current = 0;
-              setAnchorCleared((n) => n + 1);
             }
           }}
           scrollEventThrottle={16}
