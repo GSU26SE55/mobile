@@ -32,3 +32,4 @@ export interface BmsSwitchStateDto {
   pendingCommand: BmsSwitchPendingCommandDto | null;
   lastCommand: BmsSwitchLastCommandDto | null;
 }
+
