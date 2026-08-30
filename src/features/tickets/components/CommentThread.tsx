@@ -3,8 +3,10 @@ import { ActivityIndicator, FlatList, Keyboard, Pressable, StyleSheet, Text, Vie
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate } from '@/src/lib/date';
 import { Colors } from '@/src/lib/theme';
-import { ChatBubble } from './ChatBubble';
+import { ChatBubble, ROLE_FALLBACK_NAME } from './ChatBubble';
 import { ReactionTypeEnum, TicketCommentDTO } from '../types/ticket.types';
+import { PinnedMessageBar } from './PinnedMessageBar';
+import { PinnedMessagesSheet } from './PinnedMessagesSheet';
 import type { OutboxMessage } from '../types/chat-outbox.types';
 
 export type ChatTab = 'public' | 'internal';
@@ -146,7 +148,9 @@ interface CommentThreadProps {
     comment: TicketCommentDTO,
     targetLanguage: string,
   ) => Promise<{ translatedBody: string; targetLanguage: string } | undefined>;
-  // GH-67 — Pin (Staff/Manager/Admin). Only shows the pin menu when both onPin + onUnpin are provided.
+  // GH-67 — Pin (Staff/Manager/Admin). Passing BOTH onPin + onUnpin is what turns the whole
+  // pin feature on: the per-message menu, the bar above the thread and the pinned list. A
+  // Customer holds no chat.pin permission, so their screen passes neither and sees none of it.
   onPin?: (comment: TicketCommentDTO) => void;
   /** Staff/Manager/Admin only — opens the "read by" list. Customer does NOT pass this (BE 403). */
   onShowReaders?: (comment: TicketCommentDTO) => void;
@@ -285,6 +289,25 @@ export function CommentThread({
     [comments, showTabs, tab],
   );
 
+  const [pinnedSheetOpen, setPinnedSheetOpen] = useState(false);
+  // Same gate the per-message menu uses (see canPin further down) — the bar and the list are
+  // part of the same feature, so a role that cannot pin does not get them either.
+  const canManagePins = !!onPin && !!onUnpin;
+
+  // Scoped to the current tab: an internal pin must not surface on the public one, which is
+  // customer-visible. Newest first so the bar shows the most recent pin.
+  const pinnedMessages = useMemo(
+    () =>
+      visible
+        .filter((c) => c.isPinned && !c.isDeleted)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [visible],
+  );
+
+  const authorNameOf = (c: TicketCommentDTO) =>
+    c.authorDisplayName ?? ROLE_FALLBACK_NAME[c.authorRole] ?? c.authorRole;
+
+
   // The marker must STAY FIXED throughout the viewing session. onMarkRead below marks
   // messages as read as soon as the chat opens ⇒ once the refetch completes every isRead
   // becomes true; if the marker were recomputed from the new data, the line that just
@@ -395,6 +418,17 @@ export function CommentThread({
   // bottom. Blocked while loading an OLDER page (pull to refresh) to avoid yanking the user
   // away from their current reading position.
   const listRef = useRef<FlatList>(null);
+  // Scrolls the thread to a pinned message. The list has no getItemLayout (bubble heights
+  // vary), so an index that has not rendered yet lands approximately — onScrollToIndexFailed
+  // below already handles that retry for the unread jump, and it covers this one too.
+  const jumpToMessage = (comment: TicketCommentDTO) => {
+    setPinnedSheetOpen(false);
+    const index = items.findIndex(
+      (it) => it.kind === 'comment' && it.comment.id === comment.id,
+    );
+    if (index < 0) return;
+    listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 });
+  };
 
   // Position of the "Unread messages" marker in `items` — scroll target when opening a chat that still has unread messages.
   const unreadIndex = useMemo(() => items.findIndex((it) => it.kind === 'unread'), [items]);
@@ -595,6 +629,16 @@ export function CommentThread({
             </Text>
           </Pressable>
         </View>
+      )}
+
+      {/* Outside the FlatList on purpose: that is what keeps it fixed while the conversation
+          scrolls under it. */}
+      {canManagePins && (
+      <PinnedMessageBar
+        pinned={pinnedMessages}
+        authorName={authorNameOf}
+        onOpenList={() => setPinnedSheetOpen(true)}
+      />
       )}
 
       {items.length === 0 ? (
@@ -825,6 +869,24 @@ export function CommentThread({
           }}
         />
       )}
+
+      <PinnedMessagesSheet
+        visible={canManagePins && pinnedSheetOpen}
+        onClose={() => setPinnedSheetOpen(false)}
+        pinned={pinnedMessages}
+        authorName={authorNameOf}
+        onJumpTo={jumpToMessage}
+        /* A closed ticket is read-only, so the list stays browsable but loses its unpin
+           control — the same rule the per-message menu follows. */
+        onUnpin={
+          ticketClosed
+            ? undefined
+            : (c) => {
+                setPinnedSheetOpen(false);
+                onUnpin?.(c);
+              }
+        }
+      />
     </View>
   );
 }

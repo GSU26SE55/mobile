@@ -33,7 +33,7 @@ const ROLE_AVATAR: Record<string, { icon: keyof typeof Ionicons.glyphMap; iconCo
   Staff:    { icon: 'shield-outline',    iconColor: Colors.primaryDark, bg: Colors.primaryLight },
 };
 
-const ROLE_FALLBACK_NAME: Record<string, string> = {
+export const ROLE_FALLBACK_NAME: Record<string, string> = {
   System: 'System',
   Customer: 'Customer',
   Manager: 'Manager',
