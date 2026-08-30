@@ -1,5 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -152,6 +152,7 @@ function TicketDetailScreenInner() {
     voiceRecorder.waveform.reduce((sum, v) => sum + v, 0) / voiceRecorder.waveform.length;
 
   const [commentText,     setCommentText]     = useState('');
+  const composerRef = useRef<TextInput>(null);
   // Mention đã chọn trong tin đang soạn — BE nhận qua field `mentions`, KHÔNG parse '@' từ body.
   const [pickedMentions,  setPickedMentions]  = useState<ChatMentionInput[]>([]);
   const [attachments,     setAttachments]     = useState<AttachmentForm[]>([]);
@@ -308,6 +309,9 @@ function TicketDetailScreenInner() {
     setCommentText('');
     setPickedMentions([]);
     setAttachments([]);
+    // Tapping the send button blurs the input, so without this the user has to tap back into
+    // the composer before every message. Keep the keyboard up and carry on typing.
+    composerRef.current?.focus();
   };
 
   const handleMarkRead = (chatIds: string[], onFailed: () => void) =>
@@ -731,6 +735,7 @@ function TicketDetailScreenInner() {
                 : <Ionicons name="camera-outline" size={24} color={Colors.textMute} />}
             </Pressable>
             <TextInput
+              ref={composerRef}
               style={styles.composerInput}
               value={commentText}
               onChangeText={(t) => { setCommentText(t); notifyTyping(); }}
