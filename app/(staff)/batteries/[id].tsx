@@ -18,6 +18,7 @@ import { SensorChart } from '@/src/features/batteries/components/SensorChart';
 import { SensorHistoryTable } from '@/src/features/batteries/components/SensorHistoryTable';
 import { ChargeDischargeChart } from '@/src/features/batteries/components/ChargeDischargeChart';
 import { AssetAlertList } from '@/src/features/batteries/components/AssetAlertList';
+import { CustomerDetailModal } from '@/src/features/staff/components/CustomerDetailModal';
 import { P } from '@/src/lib/authz';
 import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
 import { BackButton } from '@/src/shared/components/ScreenHeader';
@@ -42,6 +43,7 @@ function StaffBatteryViewScreenInner() {
   // log lands on the same window as that ticket's evidence table.
   const { id, from, to } = useLocalSearchParams<{ id: string; from?: string; to?: string }>();
   const assetId = id ?? '';
+  const [customerModalOpen, setCustomerModalOpen] = React.useState(false);
 
   const { data: battery, isLoading, isError } = useBatteryAsset(assetId);
   const { data: realtime } = useBatteryAssetRealtime(assetId);
@@ -138,7 +140,10 @@ function StaffBatteryViewScreenInner() {
         </View>
 
         <Text style={styles.sectionTitle}>Details</Text>
-        <BatteryInfoCard battery={battery} />
+        <BatteryInfoCard
+          battery={battery}
+          onPressCustomer={() => setCustomerModalOpen(true)}
+        />
 
         <MaintenanceHistoryCard battery={battery} />
 

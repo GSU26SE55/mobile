@@ -62,7 +62,7 @@ export default function DevicesListScreen() {
     <View style={styles.root}>
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <BackButton />
-        <Text style={styles.topTitle}>IoT Devices</Text>
+        <Text style={styles.topTitle}>Devices</Text>
         {/* IOT3-65 — quét nhãn nhanh hơn hẳn gõ tay `GW-ESP32-001` khi đang đứng trước tủ pin. */}
         <Pressable
           hitSlop={10}

@@ -89,6 +89,7 @@ export const QUERY_KEY = {
   },
   staffProfile: {
     me: () => [...KEY.staffProfile, 'me'] as const,
+    customerDetail: (id: string) => [...KEY.staffProfile, 'customer-detail', id] as const,
   },
   staffTickets: {
     list:   (params?: Record<string, unknown>) => [...KEY.staffTickets, 'list', params] as const,
