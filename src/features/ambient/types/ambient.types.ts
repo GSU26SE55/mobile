@@ -10,6 +10,8 @@ export interface AmbientReadingDto {
   ambientTemperature: number; // °C
   humidity: number | null; // %
   solarIrradiance: number | null; // W/m²
+  gasConcentration: number | null;
+  waterLeakDetected: boolean | null;
   source: AmbientReadingSourceEnum;
   sourceDeviceId: string | null;
 }
@@ -34,6 +36,8 @@ export interface AmbientThresholdConfigDto {
   highAmbientTempCritical?: number | null;
   highHumidityWarning?: number | null;
   highHumidityCritical?: number | null;
+  highGasWarning?: number | null;
+  highGasCritical?: number | null;
   comboTempThreshold?: number | null;
   comboHumidityThreshold?: number | null;
   enabled: boolean;

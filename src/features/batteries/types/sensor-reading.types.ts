@@ -30,11 +30,17 @@ export interface SensorReadingAnomalyDto {
   unit: string; // "V" | "A" | "°C" | "%"
 }
 
+export type SensorReadingSortKey = 'time' | 'voltage' | 'current' | 'temperature' | 'socPercent';
+
 export interface SensorReadingHistoryParams {
   from?: string; // UTC
   to?: string; // UTC
   limit?: number; // 1–1000, default 100
   cursor?: string; // timestamp of the last record on the previous page; BE returns records with time < cursor
+  // Server-side sort: sortBy='time' (default) → cursor path; any other column requires
+  // from+to (the BE sorts the whole [from,to] range), nextCursor=null + hasMore=false.
+  sortBy?: SensorReadingSortKey;
+  sortDir?: 'asc' | 'desc'; // default desc
 }
 
 // Cursor pagination — has NO totalItems (time-series).

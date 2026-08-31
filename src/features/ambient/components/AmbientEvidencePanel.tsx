@@ -22,6 +22,8 @@ function levelStyle(level: AmbientLevel) {
 const num = (v: number | null | undefined, digits = 2) =>
   v !== null && v !== undefined ? v.toFixed(digits) : '—';
 
+const water = (v: boolean | null | undefined) => (v == null ? '—' : v ? 'Wet' : 'Dry');
+
 // Giữ giây: ambient publish khoảng 1 lần/phút nhưng cùng phút vẫn có thể có 2 bản ghi.
 // Bỏ năm: bảng chỉ trải trong ±2 phút quanh thời điểm phát hiện nên năm là thừa.
 function formatEvidenceTime(iso: string): string {
@@ -118,8 +120,8 @@ export function AmbientEvidencePanel({ siteId, anchorAt, mode = 'evidence' }: Pr
             <View style={styles.theadRow}>
               <Text style={[styles.th, styles.colTime]}>Time</Text>
               <Text style={[styles.th, styles.colNum]}>°C</Text>
-              <Text style={[styles.th, styles.colNum]}>RH%</Text>
-              <Text style={[styles.th, styles.colNum]}>W/m²</Text>
+              <Text style={[styles.th, styles.colNum]}>Gas</Text>
+              <Text style={[styles.th, styles.colNum]}>Water</Text>
             </View>
 
             {visibleRows.map(({ reading: r, ev }) => {
@@ -146,10 +148,12 @@ export function AmbientEvidencePanel({ siteId, anchorAt, mode = 'evidence' }: Pr
                   <Text style={[styles.td, styles.colNum, levelStyle(ev.temperature)]}>
                     {num(r.ambientTemperature, 1)}
                   </Text>
-                  <Text style={[styles.td, styles.colNum, levelStyle(ev.humidity)]}>
-                    {num(r.humidity, 1)}
+                  <Text style={[styles.td, styles.colNum, levelStyle(ev.gas)]}>
+                    {num(r.gasConcentration, 0)}
                   </Text>
-                  <Text style={[styles.td, styles.colNum]}>{num(r.solarIrradiance, 0)}</Text>
+                  <Text style={[styles.td, styles.colNum, levelStyle(ev.water)]}>
+                    {water(r.waterLeakDetected)}
+                  </Text>
                 </View>
               );
             })}
