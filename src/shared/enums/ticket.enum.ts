@@ -32,6 +32,8 @@ export type TicketCategoryEnum = (typeof TicketCategoryEnum)[keyof typeof Ticket
 export const TicketOriginEnum = {
   ManualByCustomer: 'ManualByCustomer',
   AutoFromAlert: 'AutoFromAlert',
+  // Sự cố môi trường của site — origin riêng, không dùng ké AutoFromAlert/System nữa.
+  AutoFromEnvironment: 'AutoFromEnvironment',
   CreatedByStaff: 'CreatedByStaff',
   // Sprint Bonus NS-13/NS-22 — auto-created by the system (cascade risk High, environmental incident Critical).
   // JsonStringEnumConverter → wire value is the STRING 'System'; int 4 in docs/api-ticket.md:168 is cross-service BE↔BE.

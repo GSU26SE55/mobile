@@ -13,7 +13,7 @@ import { BatteryInfoCard } from '@/src/features/batteries/components/BatteryInfo
 import { MaintenanceHistoryCard } from '@/src/features/batteries/components/MaintenanceHistoryCard';
 import { BatteryRealtimeCard } from '@/src/features/batteries/components/BatteryRealtimeCard';
 import { CascadeRiskBadge } from '@/src/features/batteries/components/CascadeRiskBadge';
-import { BmsSwitchCard } from '@/src/features/batteries/components/BmsSwitchCard';
+import { BmsSwitchSheet } from '@/src/features/batteries/components/BmsSwitchSheet';
 import { SensorChart } from '@/src/features/batteries/components/SensorChart';
 import { SensorHistoryTable } from '@/src/features/batteries/components/SensorHistoryTable';
 import { ChargeDischargeChart } from '@/src/features/batteries/components/ChargeDischargeChart';
@@ -51,6 +51,7 @@ function StaffBatteryViewScreenInner() {
   useBatterySensorStream(assetId);
   const { data: cascade } = useCascadeRisk(assetId);
   const { data: alerts = [] } = useAssetAlerts(assetId);
+  const [bmsSheetOpen, setBmsSheetOpen] = React.useState(false);
 
   if (isLoading) {
     return (
@@ -77,7 +78,14 @@ function StaffBatteryViewScreenInner() {
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <BackButton />
         <Text style={styles.headerTitle}>Battery Info</Text>
-        <View style={{ width: 44 }} />
+        <Pressable
+          style={styles.headerBtn}
+          onPress={() => setBmsSheetOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Control BMS charge and discharge MOSFETs"
+        >
+          <Ionicons name="flash" size={20} color={Colors.accent} />
+        </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -102,7 +110,6 @@ function StaffBatteryViewScreenInner() {
         {realtime ? <BatteryRealtimeCard data={realtime} /> : null}
 
         <CascadeRiskBadge data={cascade} />
-        <BmsSwitchCard assetId={assetId} cascade={cascade} />
 
         {battery.siteId ? (
           <Pressable
@@ -150,10 +157,11 @@ function StaffBatteryViewScreenInner() {
         />
       </ScrollView>
 
-      <CustomerDetailModal
-        visible={customerModalOpen}
-        customerId={battery.customerId}
-        onClose={() => setCustomerModalOpen(false)}
+      <BmsSwitchSheet
+        assetId={assetId}
+        cascade={cascade}
+        visible={bmsSheetOpen}
+        onClose={() => setBmsSheetOpen(false)}
       />
     </View>
   );

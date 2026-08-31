@@ -30,7 +30,7 @@ export const batteryService = {
       ENDPOINTS.BATTERY_ASSETS.REALTIME(id),
     ),
   // The BE sends `level` and `electricalTopology` as numbers, but CascadeRiskBadge keys its
-  // style map by the NAME and BmsSwitchCard gates the high-risk interlock on `level === 'High'`.
+  // style map by the NAME and BmsSwitchSheet gates the high-risk interlock on `level === 'High'`.
   // Left raw, every lookup misses: the badge falls back to its "unknown ⇒ High" tier so a Low
   // asset reads as High, and the interlock never trips at all. Normalising here fixes both
   // without either component having to know the wire format.
