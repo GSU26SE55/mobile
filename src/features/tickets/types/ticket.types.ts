@@ -70,6 +70,10 @@ export interface SlaTimerDTO {
   slaWorkingHours?: number;
   /** Số phút làm việc còn lại tới dueAt. Cùng quy ước với remainingPercent: 0 khi timer đã kết thúc. */
   remainingWorkingMinutes?: number;
+  /** Số phút SLA calendar (ngày lễ/nghỉ) đã cộng thêm vào dueAt. Luôn 0 ở Stage 1 (ticket còn Open). */
+  calendarExtensionMinutes?: number;
+  /** Các ngày (yyyy-MM-dd) trong SLA calendar rơi vào khoảng chạy của timer — nguồn cho calendarExtensionMinutes. */
+  calendarExtensionDays?: string[];
 }
 
 export interface TicketActivityDTO {

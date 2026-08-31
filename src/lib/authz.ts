@@ -1,7 +1,7 @@
 import { SessionUser, UserRole } from '@/src/types/session.types';
 
 /**
- * GH-47 — Permission constants for Mobile (subset of 43 BE codes).
+ * GH-47 — Permission constants for Mobile (subset of 53 BE codes, re-verified against DB 2026-08-31).
  * Value = lowercase `module.action` code, matching `PermissionCodes.cs` + `/api/auth/me/permissions`.
  * Only defines the codes Mobile (CUSTOMER/STAFF) actually uses — no speculative entries.
  */
