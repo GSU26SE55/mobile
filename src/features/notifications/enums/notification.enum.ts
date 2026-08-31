@@ -47,6 +47,11 @@ export const NotificationTypeEnum = {
   TicketScheduleChanged: 39,
   PeriodicMaintenanceReminder: 40,
   PeriodicMaintenanceScheduleChanged: 41,
+  // KB review (42-44) — có producer thật ở BE và đã map trong NotificationCategoryMap.
+  // Thiếu ở đây thì notification loại này rơi vào icon mặc định và không route được khi bấm.
+  KbArticleReviewRequested: 42,
+  KbArticleReviewApproved: 43,
+  KbArticleReviewRejected: 44,
   System: 99,
 } as const;
 export type NotificationTypeEnum = (typeof NotificationTypeEnum)[keyof typeof NotificationTypeEnum];

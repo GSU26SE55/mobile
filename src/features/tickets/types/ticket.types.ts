@@ -56,7 +56,24 @@ export interface SlaTimerDTO {
   warningSentAt: string | null;
   breachAt: string | null;
   status: SlaTimerStatusEnum;
+  /**
+   * % SLA còn lại. CHỈ có nghĩa khi status là Running/Paused — BE
+   * (SlaCalculator.GetRemainingPercent) trả 0 cho Met/Breached/Stopped, nên đừng
+   * vẽ thanh progress từ nó mà không kiểm tra `isSlaClockLive(status)` trước.
+   */
   remainingPercent: number;
+  /** Số lần đã pause — BE trả về nhưng client chưa dùng. */
+  pauseEpisodesCount?: number;
+  /** Budget SLA theo ngày làm việc của priority (P1=1 · P2=3 · P3=7). */
+  slaWorkingDays?: number;
+  /** Budget SLA quy ra giờ làm việc (P1=10h · P2=30h · P3=70h). */
+  slaWorkingHours?: number;
+  /** Số phút làm việc còn lại tới dueAt. Cùng quy ước với remainingPercent: 0 khi timer đã kết thúc. */
+  remainingWorkingMinutes?: number;
+  /** Số phút SLA calendar (ngày lễ/nghỉ) đã cộng thêm vào dueAt. Luôn 0 ở Stage 1 (ticket còn Open). */
+  calendarExtensionMinutes?: number;
+  /** Các ngày (yyyy-MM-dd) trong SLA calendar rơi vào khoảng chạy của timer — nguồn cho calendarExtensionMinutes. */
+  calendarExtensionDays?: string[];
 }
 
 export interface TicketActivityDTO {
@@ -119,12 +136,21 @@ export interface TicketParticipantDTO {
 }
 
 // GH-68 — full attachment (only populated on GetById; the list uses attachmentFileIds).
+// Mirrors TicketService's TicketAttachmentDTO.
 export interface TicketAttachmentDTO {
   id: string;
+  ticketId: string;
+  chatId?: string | null;
+  uploadedByUserId: string;
   fileId: string;
   fileName: string;
+  /** MIME type — images are filtered by the "image/" prefix. */
   contentType: string;
   sizeBytes: number;
+  source: string;
+  thumbnailUrl?: string | null;
+  isInline: boolean;
+  downloadCount: number;
   createdAt: string;
 }
 

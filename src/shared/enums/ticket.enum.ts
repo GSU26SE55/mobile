@@ -32,7 +32,9 @@ export type TicketCategoryEnum = (typeof TicketCategoryEnum)[keyof typeof Ticket
 export const TicketOriginEnum = {
   ManualByCustomer: 'ManualByCustomer',
   AutoFromAlert: 'AutoFromAlert',
-  CreatedByStaff: 'CreatedByStaff',
+  // Sự cố môi trường của site — origin riêng, không dùng ké AutoFromAlert/System nữa.
+  AutoFromEnvironment: 'AutoFromEnvironment',
+  // CreatedByStaff (giá trị 3) đã bị BE bỏ: staff tạo hộ khách nay ghi thẳng ManualByCustomer.
   // Sprint Bonus NS-13/NS-22 — auto-created by the system (cascade risk High, environmental incident Critical).
   // JsonStringEnumConverter → wire value is the STRING 'System'; int 4 in docs/api-ticket.md:168 is cross-service BE↔BE.
   System: 'System',
@@ -114,13 +116,17 @@ export const ParticipantTypeEnum = {
 export type ParticipantTypeEnum =
   (typeof ParticipantTypeEnum)[keyof typeof ParticipantTypeEnum];
 
+// Khớp 1-1 với BE ActivityActionEnum (TicketService trả enum dạng string).
+// Trước đây có 3 tên tự chế (Commented/AutoClosed/TriageApproved) không tồn tại ở BE —
+// `Commented` thực chất là `Chatted` — và thiếu 11 giá trị thật, nên timeline nhận
+// những action đó thì không khớp nhánh nào.
 export const ActivityActionEnum = {
   Created: 'Created',
   StatusChanged: 'StatusChanged',
   PriorityAssigned: 'PriorityAssigned',
   StaffAssigned: 'StaffAssigned',
   StaffReassigned: 'StaffReassigned',
-  Commented: 'Commented',
+  Chatted: 'Chatted',
   MaintenanceLogged: 'MaintenanceLogged',
   AttachmentAdded: 'AttachmentAdded',
   SlaPaused: 'SlaPaused',
@@ -135,10 +141,20 @@ export const ActivityActionEnum = {
   Rejected: 'Rejected',
   Rated: 'Rated',
   Reopened: 'Reopened',
-  AutoClosed: 'AutoClosed',
   ResolvedByEscalatedStaff: 'ResolvedByEscalatedStaff',
-  TriageApproved: 'TriageApproved',
   Closed: 'Closed',
+  ChatEdited: 'ChatEdited',
+  ChatDeleted: 'ChatDeleted',
+  ChatRestored: 'ChatRestored',
+  ChatReplied: 'ChatReplied',
+  ChatPinned: 'ChatPinned',
+  ChatUnpinned: 'ChatUnpinned',
+  ChatFlagged: 'ChatFlagged',
+  RatingRequested: 'RatingRequested',
+  ParticipantAdded: 'ParticipantAdded',
+  ParticipantRemoved: 'ParticipantRemoved',
+  ParticipantRoleChanged: 'ParticipantRoleChanged',
+  IncidentDeclassified: 'IncidentDeclassified',
   PeriodicMaintenanceScheduleChanged: 'PeriodicMaintenanceScheduleChanged',
 } as const;
 export type ActivityActionEnum = (typeof ActivityActionEnum)[keyof typeof ActivityActionEnum];

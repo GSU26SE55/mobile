@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { formatDate, formatDateTime } from '@/src/lib/date';
 import { Colors, Shadow } from '@/src/lib/theme';
 import { TrustedDeviceDto } from '../types/account.types';
+import { plural } from '@/src/shared/utils/plural';
 
 interface Props {
   device: TrustedDeviceDto;
@@ -28,10 +29,16 @@ export function TrustedDeviceCard({ device, onRevoke, isRevoking }: Props) {
         </View>
         <Text style={styles.meta}>Network: {device.ipPrefix}</Text>
         <Text style={styles.meta}>Trusted since: {trustedAt} · Expires: {expiresAt}</Text>
-        <Text style={styles.meta}>Last used: {lastUsed} · {device.usageCount} times</Text>
+        <Text style={styles.meta}>Last used: {lastUsed} · {plural(device.usageCount, 'time', 'times')}</Text>
       </View>
 
-      <Pressable style={styles.revokeBtn} onPress={() => onRevoke(device.id)} disabled={isRevoking}>
+      <Pressable
+        style={styles.revokeBtn}
+        onPress={() => onRevoke(device.id)}
+        disabled={isRevoking}
+        accessibilityRole="button"
+        accessibilityLabel={`Revoke trusted device ${device.label}`}
+      >
         {isRevoking ? (
           <ActivityIndicator size="small" color={Colors.danger} />
         ) : (

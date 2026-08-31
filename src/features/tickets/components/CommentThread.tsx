@@ -3,8 +3,10 @@ import { ActivityIndicator, FlatList, Keyboard, Pressable, StyleSheet, Text, Vie
 import { Ionicons } from '@expo/vector-icons';
 import { formatDate } from '@/src/lib/date';
 import { Colors } from '@/src/lib/theme';
-import { ChatBubble } from './ChatBubble';
+import { ChatBubble, ROLE_FALLBACK_NAME } from './ChatBubble';
 import { ReactionTypeEnum, TicketCommentDTO } from '../types/ticket.types';
+import { PinnedMessageBar } from './PinnedMessageBar';
+import { PinnedMessagesSheet } from './PinnedMessagesSheet';
 import type { OutboxMessage } from '../types/chat-outbox.types';
 
 export type ChatTab = 'public' | 'internal';
@@ -146,7 +148,9 @@ interface CommentThreadProps {
     comment: TicketCommentDTO,
     targetLanguage: string,
   ) => Promise<{ translatedBody: string; targetLanguage: string } | undefined>;
-  // GH-67 — Pin (Staff/Manager/Admin). Only shows the pin menu when both onPin + onUnpin are provided.
+  // GH-67 — Pin (Staff/Manager/Admin). Passing BOTH onPin + onUnpin is what turns the whole
+  // pin feature on: the per-message menu, the bar above the thread and the pinned list. A
+  // Customer holds no chat.pin permission, so their screen passes neither and sees none of it.
   onPin?: (comment: TicketCommentDTO) => void;
   /** Staff/Manager/Admin only — opens the "read by" list. Customer does NOT pass this (BE 403). */
   onShowReaders?: (comment: TicketCommentDTO) => void;
@@ -285,6 +289,25 @@ export function CommentThread({
     [comments, showTabs, tab],
   );
 
+  const [pinnedSheetOpen, setPinnedSheetOpen] = useState(false);
+  // Same gate the per-message menu uses (see canPin further down) — the bar and the list are
+  // part of the same feature, so a role that cannot pin does not get them either.
+  const canManagePins = !!onPin && !!onUnpin;
+
+  // Scoped to the current tab: an internal pin must not surface on the public one, which is
+  // customer-visible. Newest first so the bar shows the most recent pin.
+  const pinnedMessages = useMemo(
+    () =>
+      visible
+        .filter((c) => c.isPinned && !c.isDeleted)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [visible],
+  );
+
+  const authorNameOf = (c: TicketCommentDTO) =>
+    c.authorDisplayName ?? ROLE_FALLBACK_NAME[c.authorRole] ?? c.authorRole;
+
+
   // The marker must STAY FIXED throughout the viewing session. onMarkRead below marks
   // messages as read as soon as the chat opens ⇒ once the refetch completes every isRead
   // becomes true; if the marker were recomputed from the new data, the line that just
@@ -302,6 +325,13 @@ export function CommentThread({
   // The anchor lives in refs (it must not re-trigger the pinning effect), so clearing it needs
   // an explicit nudge to re-run the items memo.
   const [anchorCleared, setAnchorCleared] = useState(0);
+  // Whether the user has reached the bottom of the thread at least once. Tracked separately
+  // from the clearing logic because onScroll only fires when the list actually SCROLLS: in a
+  // thread short enough to fit on screen there is nothing to scroll, so the unread line could
+  // never be cleared and stayed pinned forever.
+  const [reachedBottom, setReachedBottom] = useState(false);
+  const viewportHeightRef = useRef(0);
+  const contentHeightRef = useRef(0);
 
   useEffect(() => {
     anchorIdRef.current = null;
@@ -310,6 +340,7 @@ export function CommentThread({
     setSeenOnOpen(null);
     setNewAfterId(null);
     setAnchorCleared(0);
+    setReachedBottom(false);
   }, [tab]);
 
   const items = useMemo(() => {
@@ -387,6 +418,17 @@ export function CommentThread({
   // bottom. Blocked while loading an OLDER page (pull to refresh) to avoid yanking the user
   // away from their current reading position.
   const listRef = useRef<FlatList>(null);
+  // Scrolls the thread to a pinned message. The list has no getItemLayout (bubble heights
+  // vary), so an index that has not rendered yet lands approximately — onScrollToIndexFailed
+  // below already handles that retry for the unread jump, and it covers this one too.
+  const jumpToMessage = (comment: TicketCommentDTO) => {
+    setPinnedSheetOpen(false);
+    const index = items.findIndex(
+      (it) => it.kind === 'comment' && it.comment.id === comment.id,
+    );
+    if (index < 0) return;
+    listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 });
+  };
 
   // Position of the "Unread messages" marker in `items` — scroll target when opening a chat that still has unread messages.
   const unreadIndex = useMemo(() => items.findIndex((it) => it.kind === 'unread'), [items]);
@@ -427,6 +469,15 @@ export function CommentThread({
     }
   };
 
+  // A thread short enough to fit on screen can never fire onScroll, so "reached the bottom"
+  // would never become true and the unread line could never clear. Everything is visible in
+  // that case, so treat it as read-through.
+  const handleListLayout = (viewportH: number, contentH: number) => {
+    if (contentH > 0 && viewportH > 0 && contentH <= viewportH + 24) {
+      setReachedBottom(true);
+    }
+  };
+
   // Smooth auto-scroll down when a new message or pending message is added.
   const latestItemKey = items.length > 0 ? items[items.length - 1].key : null;
   useEffect(() => {
@@ -457,6 +508,21 @@ export function CommentThread({
       willShowSub.remove();
     };
   }, []);
+
+  // Clear the "unread" line once the user has reached the bottom AND the BE reports nothing
+  // unread. It is pinned on open on purpose — auto mark-read fires immediately, so recomputing
+  // it from fresh data would erase it before it could be seen — but pinning it for the whole
+  // session left it stranded on screen after the backlog had been read.
+  //
+  // Runs as an effect rather than inside onScroll: `isRead` flips a second or two AFTER the
+  // scroll that triggered it, so checking only at scroll time missed the moment.
+  useEffect(() => {
+    if (!reachedBottom || !anchorIdRef.current) return;
+    if (visible.some((c) => c.isRead === false)) return;
+    anchorIdRef.current = null;
+    anchorCountRef.current = 0;
+    setAnchorCleared((n) => n + 1);
+  }, [reachedBottom, visible]);
 
   // AI suggestion generation done (bubble appears at the end of the chat) → scroll down so
   // the user sees it right away. Ensures this happens even if onContentSizeChange doesn't fire in time.
@@ -565,6 +631,16 @@ export function CommentThread({
         </View>
       )}
 
+      {/* Outside the FlatList on purpose: that is what keeps it fixed while the conversation
+          scrolls under it. */}
+      {canManagePins && (
+      <PinnedMessageBar
+        pinned={pinnedMessages}
+        authorName={authorNameOf}
+        onOpenList={() => setPinnedSheetOpen(true)}
+      />
+      )}
+
       {items.length === 0 ? (
         <View style={styles.center}>
           <Ionicons name="chatbubbles-outline" size={36} color={Colors.textFaint} />
@@ -578,8 +654,16 @@ export function CommentThread({
           style={styles.list}
           data={items}
           keyExtractor={(item) => item.key}
-          onContentSizeChange={handleInitialScroll}
-          onLayout={handleInitialScroll}
+          onContentSizeChange={(_w, h) => {
+            handleInitialScroll();
+            contentHeightRef.current = h;
+            handleListLayout(viewportHeightRef.current, h);
+          }}
+          onLayout={(e) => {
+            handleInitialScroll();
+            viewportHeightRef.current = e.nativeEvent.layout.height;
+            handleListLayout(e.nativeEvent.layout.height, contentHeightRef.current);
+          }}
           removeClippedSubviews={false}
           windowSize={11}
           keyboardDismissMode="on-drag"
@@ -588,21 +672,13 @@ export function CommentThread({
               e.layoutMeasurement.height + e.contentOffset.y >= e.contentSize.height - 24;
             if (!atBottom) return;
 
+            setReachedBottom(true);
+
             if (newAfterId) {
               // Those ids move into seenOnOpen as the line clears, so the same messages can't
               // immediately re-pin it on the next render.
               setSeenOnOpen(new Set(visible.map((c) => c.id)));
               setNewAfterId(null);
-            }
-
-            // Drop the "unread" line too once the backlog has actually been read: reaching the
-            // bottom AND the BE reporting nothing unread. It is pinned on open on purpose (auto
-            // mark-read fires immediately, so recomputing would erase it before it is seen), but
-            // pinning it for the whole session left it stranded on screen afterwards.
-            if (anchorIdRef.current && !visible.some((c) => c.isRead === false)) {
-              anchorIdRef.current = null;
-              anchorCountRef.current = 0;
-              setAnchorCleared((n) => n + 1);
             }
           }}
           scrollEventThrottle={16}
@@ -793,6 +869,24 @@ export function CommentThread({
           }}
         />
       )}
+
+      <PinnedMessagesSheet
+        visible={canManagePins && pinnedSheetOpen}
+        onClose={() => setPinnedSheetOpen(false)}
+        pinned={pinnedMessages}
+        authorName={authorNameOf}
+        onJumpTo={jumpToMessage}
+        /* A closed ticket is read-only, so the list stays browsable but loses its unpin
+           control — the same rule the per-message menu follows. */
+        onUnpin={
+          ticketClosed
+            ? undefined
+            : (c) => {
+                setPinnedSheetOpen(false);
+                onUnpin?.(c);
+              }
+        }
+      />
     </View>
   );
 }

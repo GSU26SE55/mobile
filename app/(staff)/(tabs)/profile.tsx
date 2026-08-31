@@ -11,9 +11,9 @@ import { clearTokens } from '@/src/lib/secureStore';
 import { EnergyBackdrop } from '@/src/features/batteries/components/EnergyBackdrop';
 
 const TIER_LABEL: Record<StaffSkillTierEnum, string> = {
-  Tier1: 'Tier 1 — Junior',
-  Tier2: 'Tier 2 — Senior',
-  Tier3: 'Tier 3 — Expert',
+  [StaffSkillTierEnum.Generalist]: 'Tier 1 · Generalist',
+  [StaffSkillTierEnum.ModuleSpecialist]: 'Tier 2 · Module Specialist',
+  [StaffSkillTierEnum.SeniorSpecialist]: 'Tier 3 · Senior Specialist',
 };
 
 function InfoRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {

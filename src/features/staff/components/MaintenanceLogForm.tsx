@@ -187,7 +187,9 @@ export function MaintenanceLogForm({
           placeholderTextColor={Colors.textFaint}
           multiline
           textAlignVertical="top"
-          maxLength={1000}
+          // Cột summary chỉ 500 ký tự — để 1000 thì BE nhận rồi ném ở tầng DB (500, không
+          // phải 400), user mất trắng nội dung vừa gõ.
+          maxLength={500}
         />
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </View>

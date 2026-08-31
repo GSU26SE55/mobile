@@ -13,7 +13,7 @@ interface Options {
   pending: OutboxMessage[];
   send: ChatSendFn;
   /** Called after a message sends successfully — used to invalidate the chats query. */
-  onSent: () => void;
+  onSent: () => void | Promise<void>;
 }
 
 // GH-866 (Web) — BE returns the error code inside `message` (ChatAddCommandHandler.Fail), there's
@@ -51,7 +51,7 @@ function isRetriable(error: unknown): boolean {
  *   - past deadline → "failed" (stops, waits for the user to hit retry)
  *   - retriable error → increments attempt, reschedules with backoff (2s→4s→…→30s)
  *   - client error → "failed" immediately
- *   - success → removed from the outbox + onSent()
+ *   - success → onSent() (awaited, so the real message is on screen) → removed from the outbox
  *
  * When `pending` changes (via enqueue/retry/patch), the effect reruns → triggers the next pass.
  * Mirrors frontend/src/shared/hooks/ticket/useChatOutboxWorker.ts.
@@ -94,8 +94,11 @@ export function useChatOutboxWorker({ ticketId, pending, send, onSent }: Options
       outbox.patch(ticketId, next.tempId, { status: 'sending' });
       try {
         await sendRef.current(next.ticketId, next.payload);
+        // Refetch the thread BEFORE dropping the optimistic bubble. Removing it first left a
+        // gap: the placeholder disappeared while the real message was still in flight, so the
+        // message blinked out for about a second before reappearing.
+        await onSentRef.current();
         outbox.remove(ticketId, next.tempId);
-        onSentRef.current();
       } catch (error) {
         const attempt = next.attempt + 1;
         if (!isRetriable(error) || Date.now() > next.deadline) {

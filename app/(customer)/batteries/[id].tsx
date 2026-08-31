@@ -13,7 +13,7 @@ import { useCascadeRisk } from '@/src/features/batteries/hooks/useCascadeRisk';
 import { BatteryInfoCard } from '@/src/features/batteries/components/BatteryInfoCard';
 import { MaintenanceHistoryCard } from '@/src/features/batteries/components/MaintenanceHistoryCard';
 import { CascadeRiskBadge } from '@/src/features/batteries/components/CascadeRiskBadge';
-import { BmsSwitchCard } from '@/src/features/batteries/components/BmsSwitchCard';
+import { BmsSwitchSheet } from '@/src/features/batteries/components/BmsSwitchSheet';
 import { SensorChart } from '@/src/features/batteries/components/SensorChart';
 import { ChargeDischargeChart } from '@/src/features/batteries/components/ChargeDischargeChart';
 import { AssetAlertList } from '@/src/features/batteries/components/AssetAlertList';
@@ -55,8 +55,7 @@ function BatteryDetailScreenInner() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const assetId = id ?? '';
-  const scrollRef = React.useRef<ScrollView>(null);
-  const bmsControlsY = React.useRef(0);
+  const [bmsSheetOpen, setBmsSheetOpen] = React.useState(false);
 
   const { data: battery, isLoading, isError } = useBatteryAsset(assetId);
   const { data: realtime } = useBatteryAssetRealtime(assetId);
@@ -91,11 +90,7 @@ function BatteryDetailScreenInner() {
   const goCreateTicket = () =>
     router.push({ pathname: '/(customer)/tickets/create', params: { batteryId: battery.id } });
 
-  const openBmsControls = () =>
-    scrollRef.current?.scrollTo({
-      y: Math.max(0, bmsControlsY.current - 12),
-      animated: true,
-    });
+  const openBmsControls = () => setBmsSheetOpen(true);
 
   const soc = realtime?.socPercent ?? null;
 
@@ -119,11 +114,17 @@ function BatteryDetailScreenInner() {
         <Text style={styles.headerTitle} numberOfLines={1}>
           {battery.serialNumber}
         </Text>
-        <View style={{ width: 44 }} />
+        <Pressable
+          style={styles.addTicketBtn}
+          onPress={goCreateTicket}
+          accessibilityRole="button"
+          accessibilityLabel="Create a support ticket for this battery"
+        >
+          <Ionicons name="add" size={22} color={Solar.ink} />
+        </Pressable>
       </View>
 
       <ScrollView
-        ref={scrollRef}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
@@ -144,7 +145,7 @@ function BatteryDetailScreenInner() {
             transition={220}
           />
 
-          {/* Floating Action Controls — bottom-left: SOC % badge & Create Ticket button */}
+          {/* SOC % badge — bottom-left */}
           <View style={styles.heroControlsLeft}>
             <GlassSurface style={styles.socPillHero} warm>
               <Ionicons name="flash" size={13} color={Solar.yellowDeep} />
@@ -152,10 +153,6 @@ function BatteryDetailScreenInner() {
                 {soc != null ? `${Math.round(soc)}%` : '—'}
               </Text>
             </GlassSurface>
-
-            <Pressable style={styles.addTicketBtn} onPress={goCreateTicket}>
-              <Ionicons name="add" size={22} color={Solar.ink} />
-            </Pressable>
           </View>
 
           <Pressable
@@ -237,13 +234,6 @@ function BatteryDetailScreenInner() {
         </View>
 
         <CascadeRiskBadge data={cascade} />
-        <View
-          onLayout={(event) => {
-            bmsControlsY.current = event.nativeEvent.layout.y;
-          }}
-        >
-          <BmsSwitchCard assetId={assetId} cascade={cascade} />
-        </View>
 
         {battery.siteId ? (
           <Pressable
@@ -288,6 +278,13 @@ function BatteryDetailScreenInner() {
           }
         />
       </ScrollView>
+
+      <BmsSwitchSheet
+        assetId={assetId}
+        cascade={cascade}
+        visible={bmsSheetOpen}
+        onClose={() => setBmsSheetOpen(false)}
+      />
     </View>
   );
 }
@@ -400,9 +397,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   addTicketBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Solar.yellow,
     alignItems: 'center',
     justifyContent: 'center',

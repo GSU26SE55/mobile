@@ -24,6 +24,7 @@ import { VoiceMessageBubble } from './VoiceMessageBubble';
 import { ReactionBar } from './ReactionBar';
 import { isFileId, useAudioAttachment } from '../hooks/useAudioAttachment';
 import { useRetryVoiceChat } from '../hooks/useTicketChatActions';
+import { isWhitespaceOrEmojiOnly } from '@/src/shared/schemas/common.schema';
 
 const ROLE_AVATAR: Record<string, { icon: keyof typeof Ionicons.glyphMap; iconColor: string; bg: string }> = {
   System:   { icon: 'server-outline',    iconColor: Colors.info,        bg: Colors.infoLight },
@@ -32,7 +33,7 @@ const ROLE_AVATAR: Record<string, { icon: keyof typeof Ionicons.glyphMap; iconCo
   Staff:    { icon: 'shield-outline',    iconColor: Colors.primaryDark, bg: Colors.primaryLight },
 };
 
-const ROLE_FALLBACK_NAME: Record<string, string> = {
+export const ROLE_FALLBACK_NAME: Record<string, string> = {
   System: 'System',
   Customer: 'Customer',
   Manager: 'Manager',
@@ -456,8 +457,15 @@ export function ChatBubble({
     setEditReason('');
     setEditing(true);
   };
+  // ChatBodyPolicy áp cho cả đường sửa, không riêng đường tạo — sửa thành "👍👍" sẽ bị BE
+  // từ chối, nên chặn ngay ở nút Save thay vì để lỗi nổ sau khi gửi.
+  const editBodyIsSendable =
+    editBody.trim().length > 0 && !isWhitespaceOrEmojiOnly(editBody);
+  const canSaveEdit =
+    !editPending && editBodyIsSendable && !(editNeedsReason && !editReason.trim());
+
   const saveEdit = () => {
-    if (!editBody.trim()) return;
+    if (!canSaveEdit) return;
     onEdit?.(editBody.trim(), editNeedsReason ? editReason.trim() : undefined);
     setEditing(false);
   };
@@ -538,9 +546,9 @@ export function ChatBubble({
                     <Text style={styles.editCancelText}>Cancel</Text>
                   </Pressable>
                   <Pressable
-                    style={[styles.editSaveBtn, (editPending || !editBody.trim() || (editNeedsReason && !editReason.trim())) && styles.btnDisabled]}
+                    style={[styles.editSaveBtn, !canSaveEdit && styles.btnDisabled]}
                     onPress={saveEdit}
-                    disabled={editPending || !editBody.trim() || (editNeedsReason && !editReason.trim())}
+                    disabled={!canSaveEdit}
                   >
                     {editPending ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.editSaveText}>Save</Text>}
                   </Pressable>
@@ -632,7 +640,7 @@ export function ChatBubble({
       <BottomSheet visible={confirmingDelete} onClose={() => setConfirmingDelete(false)} scroll={false}>
         <View style={styles.menuBody}>
           <Text style={styles.deleteTitle}>Delete message?</Text>
-          <Text style={styles.deleteDesc}>This action cannot be undone.</Text>
+          <Text style={styles.deleteDesc}>The message is removed from the conversation. You can&apos;t undo this yourself.</Text>
           {deleteNeedsReason && (
             <TextInput
               style={styles.editReasonInput}

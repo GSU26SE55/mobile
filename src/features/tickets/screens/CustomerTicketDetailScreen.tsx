@@ -1,5 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -22,6 +22,7 @@ import { P } from '@/src/lib/authz';
 import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
 import { ActivityTimeline } from '@/src/features/tickets/components/ActivityTimeline';
 import { CommentThread } from '@/src/features/tickets/components/CommentThread';
+import { isWhitespaceOrEmojiOnly } from '@/src/shared/schemas/common.schema';
 import {
   ChatSelectionHeader,
   ChatSelectionFooter,
@@ -151,6 +152,7 @@ function TicketDetailScreenInner() {
     voiceRecorder.waveform.reduce((sum, v) => sum + v, 0) / voiceRecorder.waveform.length;
 
   const [commentText,     setCommentText]     = useState('');
+  const composerRef = useRef<TextInput>(null);
   // Mention đã chọn trong tin đang soạn — BE nhận qua field `mentions`, KHÔNG parse '@' từ body.
   const [pickedMentions,  setPickedMentions]  = useState<ChatMentionInput[]>([]);
   const [attachments,     setAttachments]     = useState<AttachmentForm[]>([]);
@@ -253,7 +255,7 @@ function TicketDetailScreenInner() {
     if (ids.length === 0) return;
     Alert.alert(
       'Delete Messages',
-      `Delete ${ids.length} selected message(s)? This action cannot be undone.`,
+      `Delete ${ids.length} selected message(s)? They are removed from the conversation and you can't undo this yourself.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -282,10 +284,16 @@ function TicketDetailScreenInner() {
     setAttachments((prev) => prev.filter((a) => a.fileId !== fileId));
   };
 
+  // BE (ChatBodyPolicy) từ chối body chỉ có khoảng trắng/emoji. Không chặn ở đây thì tin
+  // vào outbox rồi mới hỏng — người dùng thấy bubble lỗi thay vì nút gửi mờ đi.
+  const commentBodyIsSendable =
+    commentText.trim().length > 0 && !isWhitespaceOrEmojiOnly(commentText);
+  const canSendComment = commentBodyIsSendable || attachments.length > 0;
+
   const handleSendComment = () => {
     // Không báo lỗi "để trống" — nút gửi đã disable khi rỗng. Chỉ chặn gửi tin hoàn toàn trống.
     const trimmed = commentText.trim();
-    if (!trimmed && attachments.length === 0) return;
+    if (!canSendComment) return;
     // Chỉ gửi mention còn hiện diện trong body (user có thể đã xoá tên đi).
     const activeMentions = pickedMentions.filter((m) =>
       trimmed.includes(`@${m.displayName.replace(/\s+/g, '_')}`),
@@ -301,6 +309,9 @@ function TicketDetailScreenInner() {
     setCommentText('');
     setPickedMentions([]);
     setAttachments([]);
+    // Tapping the send button blurs the input, so without this the user has to tap back into
+    // the composer before every message. Keep the keyboard up and carry on typing.
+    composerRef.current?.focus();
   };
 
   const handleMarkRead = (chatIds: string[], onFailed: () => void) =>
@@ -724,6 +735,7 @@ function TicketDetailScreenInner() {
                 : <Ionicons name="camera-outline" size={24} color={Colors.textMute} />}
             </Pressable>
             <TextInput
+              ref={composerRef}
               style={styles.composerInput}
               value={commentText}
               onChangeText={(t) => { setCommentText(t); notifyTyping(); }}
@@ -742,9 +754,9 @@ function TicketDetailScreenInner() {
                 : <Ionicons name="mic-outline" size={22} color={Colors.textMute} />}
             </Pressable>
             <Pressable
-              style={[styles.sendBtn, (!commentText.trim() && attachments.length === 0) && styles.btnDisabled]}
+              style={[styles.sendBtn, !canSendComment && styles.btnDisabled]}
               onPress={handleSendComment}
-              disabled={!commentText.trim() && attachments.length === 0}
+              disabled={!canSendComment}
             >
               <Ionicons name="send" size={18} color="#fff" />
             </Pressable>

@@ -1,3 +1,5 @@
+import type { AnomalyTypeEnum, AlertSeverityEnum } from '@/src/shared/enums/alert.enum';
+
 // Sensor Readings — time-series (TimescaleDB). Does NOT extend AuditableEntity.
 // Mirror docs/api-battery.md §Group 4.
 
@@ -10,13 +12,35 @@ export interface SensorReadingDto {
   socPercent: number; // 0–100
   cycleCount: number | null;
   sourceDeviceId: string | null;
+  /**
+   * Anomalies BE đã chấm cho chính dòng này (AnomalyRules.Detect + ThresholdConfig của loại pin).
+   *
+   * Rỗng = trong ngưỡng, HOẶC loại pin chưa cấu hình ngưỡng. Optional để tương thích ngược với
+   * BE cũ chưa trả field này.
+   */
+  anomalies?: SensorReadingAnomalyDto[];
 }
+
+/** Một anomaly trên một dòng số đo — đủ để dựng nhãn mà client không cần biết luật. */
+export interface SensorReadingAnomalyDto {
+  type: AnomalyTypeEnum;
+  severity: AlertSeverityEnum;
+  thresholdValue: number;
+  actualValue: number;
+  unit: string; // "V" | "A" | "°C" | "%"
+}
+
+export type SensorReadingSortKey = 'time' | 'voltage' | 'current' | 'temperature' | 'socPercent';
 
 export interface SensorReadingHistoryParams {
   from?: string; // UTC
   to?: string; // UTC
   limit?: number; // 1–1000, default 100
   cursor?: string; // timestamp of the last record on the previous page; BE returns records with time < cursor
+  // Server-side sort: sortBy='time' (default) → cursor path; any other column requires
+  // from+to (the BE sorts the whole [from,to] range), nextCursor=null + hasMore=false.
+  sortBy?: SensorReadingSortKey;
+  sortDir?: 'asc' | 'desc'; // default desc
 }
 
 // Cursor pagination — has NO totalItems (time-series).

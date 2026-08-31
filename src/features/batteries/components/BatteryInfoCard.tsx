@@ -1,5 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { formatDate } from '@/src/lib/date';
 import { Solar } from '@/src/lib/theme';
 import { BatteryAssetDto } from '../types/battery.types';
@@ -24,9 +25,12 @@ const WARRANTY_LABEL: Record<WarrantyStatusEnum, string> = {
 interface Props {
   battery: BatteryAssetDto;
   customerName?: string | null;
+  /** Staff-only: tapping the Customer row opens contact details. Omit for the Customer screen
+   *  (a customer viewing their own battery has no reason to "look up" themselves). */
+  onPressCustomer?: () => void;
 }
 
-export function BatteryInfoCard({ battery, customerName }: Props) {
+export function BatteryInfoCard({ battery, customerName, onPressCustomer }: Props) {
   const finalCustomerName = customerName || battery.customerName || (battery as any).accountName || 'Individual customer';
 
   const rows: { label: string; value: string }[] = [
@@ -42,14 +46,37 @@ export function BatteryInfoCard({ battery, customerName }: Props) {
 
   return (
     <GlassSurface style={styles.card}>
-      {rows.map((r, i) => (
-        <View key={r.label} style={[styles.row, i > 0 && styles.rowBorder]}>
-          <Text style={styles.label}>{r.label}</Text>
-          <Text style={styles.value} numberOfLines={1}>
-            {r.value}
-          </Text>
-        </View>
-      ))}
+      {rows.map((r, i) => {
+        const isCustomerRow = r.label === 'Customer';
+        const content = (
+          <>
+            <Text style={styles.label}>{r.label}</Text>
+            <View style={styles.valueWrap}>
+              <Text style={styles.value} numberOfLines={1}>
+                {r.value}
+              </Text>
+              {isCustomerRow && onPressCustomer && (
+                <Ionicons name="chevron-forward" size={14} color={Solar.mute} />
+              )}
+            </View>
+          </>
+        );
+        return isCustomerRow && onPressCustomer ? (
+          <Pressable
+            key={r.label}
+            style={[styles.row, i > 0 && styles.rowBorder]}
+            onPress={onPressCustomer}
+            accessibilityRole="button"
+            accessibilityLabel="View customer contact information"
+          >
+            {content}
+          </Pressable>
+        ) : (
+          <View key={r.label} style={[styles.row, i > 0 && styles.rowBorder]}>
+            {content}
+          </View>
+        );
+      })}
     </GlassSurface>
   );
 }
@@ -68,6 +95,13 @@ const styles = StyleSheet.create({
   },
   rowBorder: { borderTopWidth: 1, borderTopColor: 'rgba(235, 230, 215, 0.6)' },
   label: { fontSize: 13, color: Solar.mute, fontWeight: '600' },
+  valueWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+  },
   value: {
     flex: 1,
     textAlign: 'right',

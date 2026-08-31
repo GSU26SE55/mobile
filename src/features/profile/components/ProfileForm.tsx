@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { Colors, ShadowPrimary } from '@/src/lib/theme';
 import { AccountDto, UpdateProfilePayload } from '../types/profile.types';
 import { updateProfileSchema } from '../schemas/profile.schema';
+import { toLocalPhone } from '@/src/lib/phone';
 
 interface Props {
   account: AccountDto;
@@ -13,7 +14,7 @@ interface Props {
 
 export function ProfileForm({ account, onSubmit, isLoading, fieldErrors }: Props) {
   const [fullName, setFullName] = useState(account.fullName);
-  const [phoneNumber, setPhoneNumber] = useState(account.phoneNumber ?? '');
+  const [phoneNumber, setPhoneNumber] = useState(toLocalPhone(account.phoneNumber));
   const [address, setAddress] = useState(account.profile?.address ?? '');
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
 
@@ -30,10 +31,13 @@ export function ProfileForm({ account, onSubmit, isLoading, fieldErrors }: Props
       setLocalErrors(errs);
       return;
     }
+    // Gửi "" thay vì undefined: BE coi khoá vắng mặt là "giữ nguyên giá trị đang lưu"
+    // (để client không render field thì không xoá nhầm được), nên muốn xoá phải nói rõ.
+    // Form này có ô địa chỉ và ô số điện thoại, nên nó được quyền xoá cả hai.
     onSubmit({
       fullName: result.data.fullName,
-      phoneNumber: result.data.phoneNumber || undefined,
-      address: result.data.address || undefined,
+      phoneNumber: result.data.phoneNumber ?? '',
+      address: result.data.address ?? '',
     });
   };
 

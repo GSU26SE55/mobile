@@ -21,7 +21,13 @@ export interface BmsSwitchPendingCommandDto extends SetBmsSwitchPayload {
 export interface BmsSwitchLastCommandDto extends SetBmsSwitchPayload {
   cmdId: string;
   status: BmsSwitchCommandStatus;
+  /** Câu đã chuẩn hoá để hiển thị. KHÔNG dò từ khoá trên trường này — dùng `deviceReason`. */
   error: string | null;
+  /**
+   * Lý do THÔ firmware gửi kèm ack (vd "unsupported target"). Backend chuẩn hoá `error` thành
+   * câu cố định theo status, nên đây là chỗ duy nhất còn nguyên nhân thật.
+   */
+  deviceReason: string | null;
   ackedAt: string | null;
 }
 
@@ -32,3 +38,4 @@ export interface BmsSwitchStateDto {
   pendingCommand: BmsSwitchPendingCommandDto | null;
   lastCommand: BmsSwitchLastCommandDto | null;
 }
+

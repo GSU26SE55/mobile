@@ -59,9 +59,6 @@ export default function StaffKbDetailScreen() {
     );
   }
 
-  const hasParts =
-    Array.isArray(article.recommendedParts) && article.recommendedParts.length > 0;
-
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
@@ -122,49 +119,13 @@ export default function StaffKbDetailScreen() {
         </View>
 
         <KbDetailSection
-          icon="alert-circle-outline"
-          iconColor="#B73221"
-          iconBg="#FAD9D2"
-          title="Symptoms"
-        >
-          <Text style={styles.bodyText}>{article.symptoms}</Text>
-        </KbDetailSection>
-
-        <KbDetailSection
-          icon="search-outline"
-          iconColor="#946011"
-          iconBg="#FBE6C2"
-          title="Diagnosis Steps"
-        >
-          <KbStepList text={article.diagnosisSteps} variant="numbered" />
-        </KbDetailSection>
-
-        <KbDetailSection
-          icon="checkmark-circle-outline"
+          icon="document-text-outline"
           iconColor={Colors.primaryDark}
           iconBg={Colors.primaryLight}
-          title="Resolution"
+          title="Content"
         >
-          <KbStepList text={article.solutionSteps} variant="numbered" emphasis />
+          <KbStepList text={article.content} variant="numbered" />
         </KbDetailSection>
-
-        {hasParts && (
-          <KbDetailSection
-            icon="construct-outline"
-            iconColor="#1E6F84"
-            iconBg="#D6EDF3"
-            title="Recommended Parts"
-          >
-            <View style={styles.partsList}>
-              {article.recommendedParts!.map((part, idx) => (
-                <View key={idx} style={styles.partItem}>
-                  <Ionicons name="ellipse" size={6} color={Colors.primary} />
-                  <Text style={styles.partText}>{part}</Text>
-                </View>
-              ))}
-            </View>
-          </KbDetailSection>
-        )}
 
         {article.tags.length > 0 && (
           <View style={styles.tagsWrap}>
@@ -338,16 +299,6 @@ const styles = StyleSheet.create({
   bodyText: {
     fontSize: 14,
     lineHeight: 22,
-    color: Colors.text,
-  },
-  partsList: { gap: 8 },
-  partItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  partText: {
-    fontSize: 14,
     color: Colors.text,
   },
   tagsWrap: {

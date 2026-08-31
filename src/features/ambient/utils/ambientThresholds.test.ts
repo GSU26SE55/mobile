@@ -9,38 +9,60 @@ const config = (over: Partial<AmbientThresholdConfigDto> = {}) =>
     highAmbientTempCritical: 45,
     highHumidityWarning: 70,
     highHumidityCritical: 85,
+    highGasWarning: 1000,
+    highGasCritical: 2000,
     comboTempThreshold: 32,
     comboHumidityThreshold: 65,
     ...over,
   }) as AmbientThresholdConfigDto;
 
-const reading = (ambientTemperature: number | null, humidity: number | null) =>
-  ({ ambientTemperature, humidity }) as never;
+const reading = (
+  ambientTemperature: number | null,
+  humidity: number | null,
+  gasConcentration: number | null = null,
+  waterLeakDetected: boolean | null = null,
+) => ({ ambientTemperature, humidity, gasConcentration, waterLeakDetected }) as never;
 
 describe("xếp hạng từng chỉ số", () => {
   it.each([
     [30, "ok"],
-    [35, "warning"],
+    [35, "ok"],
     [40, "warning"],
-    [45, "critical"],
-    [50, "critical"],
+    [45, "warning"],
+    [46, "critical"],
   ])("nhiệt độ %s°C → %s", (temp, expected) => {
     expect(evaluateAmbientRow(reading(temp, 10), config()).temperature).toBe(expected);
   });
 
   it.each([
     [50, "ok"],
-    [70, "warning"],
-    [85, "critical"],
+    [70, "ok"],
+    [71, "warning"],
+    [85, "warning"],
+    [86, "critical"],
   ])("độ ẩm %s%% → %s", (hum, expected) => {
     expect(evaluateAmbientRow(reading(10, hum), config()).humidity).toBe(expected);
   });
 
-  // Đúng bằng ngưỡng là đã vượt — backend cảnh báo ở mốc này, màn hình phải khớp.
-  it("giá trị đúng bằng ngưỡng đã tính là vượt", () => {
+  it.each([
+    [500, "ok"],
+    [1500, "warning"],
+    [2500, "critical"],
+  ])("gas %s ppm → %s", (gas, expected) => {
+    expect(evaluateAmbientRow(reading(10, 10, gas), config()).gas).toBe(expected);
+  });
+
+  // Đúng bằng ngưỡng thì chưa vượt — khớp BE `AnomalyRules.DetectAmbient` (so sánh strict `>`).
+  it("giá trị đúng bằng ngưỡng thì chưa tính là vượt", () => {
     const r = evaluateAmbientRow(reading(45, 85), config());
-    expect(r.temperature).toBe("critical");
-    expect(r.humidity).toBe("critical");
+    expect(r.temperature).toBe("warning");
+    expect(r.humidity).toBe("warning");
+  });
+
+  it("nước rò rỉ luôn là critical, không rò là ok", () => {
+    expect(evaluateAmbientRow(reading(10, 10, null, true), config()).water).toBe("critical");
+    expect(evaluateAmbientRow(reading(10, 10, null, false), config()).water).toBe("ok");
+    expect(evaluateAmbientRow(reading(10, 10, null, null), config()).water).toBeNull();
   });
 });
 
@@ -68,29 +90,46 @@ describe("ngưỡng để trống nghĩa là không theo dõi", () => {
 });
 
 describe("cấu hình bị tắt", () => {
-  it.each([
-    ["không có cấu hình", null],
-    ["cấu hình tắt", config({ enabled: false })],
-  ])("%s thì mọi thứ đều trung tính", (_label, threshold) => {
-    const r = evaluateAmbientRow(reading(99, 99), threshold as never);
+  it("không có cấu hình thì mọi thứ trung tính trừ nước rò rỉ", () => {
+    const r = evaluateAmbientRow(reading(99, 99, 99, null), null as never);
     expect(r).toEqual({
       temperature: null,
       humidity: null,
+      gas: null,
+      water: null,
       combo: false,
       worst: null,
     });
+  });
+
+  it("cấu hình tắt thì mọi thứ trung tính trừ nước rò rỉ", () => {
+    const r = evaluateAmbientRow(reading(99, 99, 99, null), config({ enabled: false }));
+    expect(r).toEqual({
+      temperature: null,
+      humidity: null,
+      gas: null,
+      water: null,
+      combo: false,
+      worst: null,
+    });
+  });
+
+  it("nước rò rỉ vẫn báo critical dù cấu hình tắt", () => {
+    const r = evaluateAmbientRow(reading(10, 10, null, true), config({ enabled: false }));
+    expect(r.water).toBe("critical");
+    expect(r.worst).toBe("critical");
   });
 });
 
 describe("ngưỡng kết hợp nóng ẩm", () => {
   // Nóng cộng ẩm nguy hiểm hơn từng thứ riêng lẻ, nên có cặp ngưỡng thấp hơn chỉ nổ khi
   // cả hai cùng vượt. Dòng dưới đây từng chỉ hiện "ok" vì mỗi chỉ số đều dưới mức riêng.
-  it("cả hai cùng vượt cặp ngưỡng thấp thì báo kết hợp", () => {
+  it("cả hai cùng vượt cặp ngưỡng thấp thì báo kết hợp (critical)", () => {
     const r = evaluateAmbientRow(reading(33, 68), config());
     expect(r.temperature).toBe("ok");
     expect(r.humidity).toBe("ok");
     expect(r.combo).toBe(true);
-    expect(r.worst).toBe("warning");
+    expect(r.worst).toBe("critical");
   });
 
   it("chỉ một chỉ số vượt thì không phải kết hợp", () => {

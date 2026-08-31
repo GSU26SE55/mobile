@@ -13,11 +13,12 @@ import { BatteryInfoCard } from '@/src/features/batteries/components/BatteryInfo
 import { MaintenanceHistoryCard } from '@/src/features/batteries/components/MaintenanceHistoryCard';
 import { BatteryRealtimeCard } from '@/src/features/batteries/components/BatteryRealtimeCard';
 import { CascadeRiskBadge } from '@/src/features/batteries/components/CascadeRiskBadge';
-import { BmsSwitchCard } from '@/src/features/batteries/components/BmsSwitchCard';
+import { BmsSwitchSheet } from '@/src/features/batteries/components/BmsSwitchSheet';
 import { SensorChart } from '@/src/features/batteries/components/SensorChart';
 import { SensorHistoryTable } from '@/src/features/batteries/components/SensorHistoryTable';
 import { ChargeDischargeChart } from '@/src/features/batteries/components/ChargeDischargeChart';
 import { AssetAlertList } from '@/src/features/batteries/components/AssetAlertList';
+import { CustomerDetailModal } from '@/src/features/staff/components/CustomerDetailModal';
 import { P } from '@/src/lib/authz';
 import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
 import { BackButton } from '@/src/shared/components/ScreenHeader';
@@ -42,6 +43,7 @@ function StaffBatteryViewScreenInner() {
   // log lands on the same window as that ticket's evidence table.
   const { id, from, to } = useLocalSearchParams<{ id: string; from?: string; to?: string }>();
   const assetId = id ?? '';
+  const [customerModalOpen, setCustomerModalOpen] = React.useState(false);
 
   const { data: battery, isLoading, isError } = useBatteryAsset(assetId);
   const { data: realtime } = useBatteryAssetRealtime(assetId);
@@ -49,6 +51,7 @@ function StaffBatteryViewScreenInner() {
   useBatterySensorStream(assetId);
   const { data: cascade } = useCascadeRisk(assetId);
   const { data: alerts = [] } = useAssetAlerts(assetId);
+  const [bmsSheetOpen, setBmsSheetOpen] = React.useState(false);
 
   if (isLoading) {
     return (
@@ -75,7 +78,14 @@ function StaffBatteryViewScreenInner() {
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <BackButton />
         <Text style={styles.headerTitle}>Battery Info</Text>
-        <View style={{ width: 44 }} />
+        <Pressable
+          style={styles.headerBtn}
+          onPress={() => setBmsSheetOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Control BMS charge and discharge MOSFETs"
+        >
+          <Ionicons name="flash" size={20} color={Colors.accent} />
+        </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -100,7 +110,6 @@ function StaffBatteryViewScreenInner() {
         {realtime ? <BatteryRealtimeCard data={realtime} /> : null}
 
         <CascadeRiskBadge data={cascade} />
-        <BmsSwitchCard assetId={assetId} cascade={cascade} />
 
         {battery.siteId ? (
           <Pressable
@@ -131,7 +140,10 @@ function StaffBatteryViewScreenInner() {
         </View>
 
         <Text style={styles.sectionTitle}>Details</Text>
-        <BatteryInfoCard battery={battery} />
+        <BatteryInfoCard
+          battery={battery}
+          onPressCustomer={() => setCustomerModalOpen(true)}
+        />
 
         <MaintenanceHistoryCard battery={battery} />
 
@@ -144,6 +156,13 @@ function StaffBatteryViewScreenInner() {
           }
         />
       </ScrollView>
+
+      <BmsSwitchSheet
+        assetId={assetId}
+        cascade={cascade}
+        visible={bmsSheetOpen}
+        onClose={() => setBmsSheetOpen(false)}
+      />
     </View>
   );
 }

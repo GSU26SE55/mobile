@@ -42,6 +42,34 @@ function formatRemaining(ms: number): string {
   return `${s}s`;
 }
 
+/**
+ * "Extended by 1 non-working day" — explains why `dueAt` moved further out than the raw
+ * priority budget would suggest. Shown to Customer too (not just Staff/Manager): a deadline
+ * that quietly slips reads as the company stalling, so the reason has to be visible wherever
+ * the countdown is.
+ */
+function formatCalendarExtensionLabel(days?: number): string | null {
+  if (!days || days <= 0) return null;
+  return days === 1 ? 'Extended by 1 non-working day' : `Extended by ${days} non-working days`;
+}
+
+/**
+ * ["02/09", "03/09"] — parses the "yyyy-MM-dd" (DateOnly) string by hand instead of
+ * `new Date(iso)`: that constructor reads a date-only string as UTC midnight, which shifts a
+ * day earlier once rendered in a timezone behind UTC. The year is appended only when the
+ * range crosses one (e.g. 30/12 → 02/01), so the common single-year case stays compact.
+ */
+function formatCalendarExtensionDays(days?: string[]): string[] {
+  if (!days?.length) return [];
+  const years = new Set(days.map((iso) => iso.slice(0, 4)));
+  const spansMultipleYears = years.size > 1;
+  return days.map((iso) => {
+    const [year, month, day] = iso.split('-');
+    if (!year || !month || !day) return iso;
+    return spansMultipleYears ? `${day}/${month}/${year}` : `${day}/${month}`;
+  });
+}
+
 export function SlaCountdown({ sla, compact = false }: Props) {
   const isBreached = sla.status === 'Breached';
   const isPaused = sla.status === 'Paused';
@@ -69,6 +97,9 @@ export function SlaCountdown({ sla, compact = false }: Props) {
     () => new Date(sla.dueAt).getTime() - now,
     [sla.dueAt, now],
   );
+
+  const calendarExtensionLabel = formatCalendarExtensionLabel(sla.calendarExtensionDays?.length);
+  const calendarExtensionDays = formatCalendarExtensionDays(sla.calendarExtensionDays);
 
   // Ưu tiên % tính tại client khi timer đang chạy: remainingPercent từ BE là ảnh chụp
   // lúc query, để yên thì thanh đứng im dù đồng hồ vẫn chạy.
@@ -167,6 +198,17 @@ export function SlaCountdown({ sla, compact = false }: Props) {
           </View>
         </>
       )}
+
+      {calendarExtensionLabel && (
+        <View style={styles.extensionBox}>
+          <Text style={styles.extensionLabel}>{calendarExtensionLabel}:</Text>
+          {calendarExtensionDays.map((day) => (
+            <Text key={day} style={styles.extensionDay}>
+              - {day}
+            </Text>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -191,6 +233,11 @@ const styles = StyleSheet.create({
   footRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   footText: { fontSize: 11, color: Colors.textFaint },
   footPercent: { fontSize: 11, fontWeight: '800', fontVariant: ['tabular-nums'] },
+
+  // "Extended by N non-working day(s)" — why dueAt moved out, with each date on its own row.
+  extensionBox: { gap: 2 },
+  extensionLabel: { fontSize: 11, fontStyle: 'italic', color: Colors.textFaint },
+  extensionDay: { fontSize: 11, fontWeight: '800', color: Colors.textMute },
 
   // Bản gọn — dùng trong TicketCard.
   compactWrap: {

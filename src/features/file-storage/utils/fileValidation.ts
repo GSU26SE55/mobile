@@ -7,7 +7,10 @@ export const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 export const EXTENSION_WHITELIST: Record<FilePurposeEnum, readonly string[]> = {
   [FilePurposeEnum.Other]: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'csv'],
   [FilePurposeEnum.Avatar]: ['jpg', 'jpeg', 'png', 'webp'],
-  [FilePurposeEnum.TicketAttachment]: ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'],
+  // Audio nằm trong whitelist của BE (FileUploadPolicy) vì tin nhắn thoại upload dưới dạng
+  // .m4a. Thiếu ở đây thì đường gửi nào đi qua validateFile sẽ chặn nhầm file hợp lệ —
+  // hiện voice chỉ chạy được nhờ nó gọi thẳng uploadFile, bỏ qua hàm này.
+  [FilePurposeEnum.TicketAttachment]: ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx', 'mp3', 'wav', 'ogg', 'webm', 'm4a', 'flac'],
   [FilePurposeEnum.MaintenancePhoto]: ['jpg', 'jpeg', 'png'],
   [FilePurposeEnum.KbImage]: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
   [FilePurposeEnum.Firmware]: ['bin', 'hex', 'fw'],

@@ -20,10 +20,7 @@ export interface KbArticleDTO {
   code: string;
   category: TicketCategoryEnum;
   title: string;
-  symptoms: string;
-  diagnosisSteps: string;
-  solutionSteps: string;
-  recommendedParts: string[] | null;
+  content: string;
   tags: string[];
   status: KbArticleStatusEnum;
   isInternalOnly: boolean;
