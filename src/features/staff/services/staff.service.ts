@@ -8,4 +8,7 @@ const { STAFF } = ENDPOINTS;
 export const staffService = {
   getProfile: () =>
     axiosInstance.get<CommonResponse<AccountDto>>(STAFF.ME),
+
+  getCustomerById: (id: string) =>
+    axiosInstance.get<CommonResponse<AccountDto>>(STAFF.CUSTOMER_DETAIL(id)),
 };

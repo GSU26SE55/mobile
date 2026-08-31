@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { Colors, ShadowPrimary } from '@/src/lib/theme';
 import { AccountDto, UpdateProfilePayload } from '../types/profile.types';
 import { updateProfileSchema } from '../schemas/profile.schema';
+import { toLocalPhone } from '@/src/lib/phone';
 
 interface Props {
   account: AccountDto;
@@ -13,7 +14,7 @@ interface Props {
 
 export function ProfileForm({ account, onSubmit, isLoading, fieldErrors }: Props) {
   const [fullName, setFullName] = useState(account.fullName);
-  const [phoneNumber, setPhoneNumber] = useState(account.phoneNumber ?? '');
+  const [phoneNumber, setPhoneNumber] = useState(toLocalPhone(account.phoneNumber));
   const [address, setAddress] = useState(account.profile?.address ?? '');
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
 

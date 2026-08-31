@@ -156,6 +156,9 @@ export const ENDPOINTS = {
   },
   STAFF: {
     ME: '/api/auth/me',
+    // Path is /api/admin/accounts/{id} on the BE — Staff was added to that endpoint's
+    // [Authorize(Roles = "Admin,Manager,Staff")] so Staff can look up a customer's contact info.
+    CUSTOMER_DETAIL: (id: string) => `/api/admin/accounts/${id}`,
   },
   STAFF_TICKETS: {
     MY_LIST:          '/api/staff/tickets/me',

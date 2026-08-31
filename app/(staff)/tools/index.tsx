@@ -39,7 +39,7 @@ const ROWS: ToolRow[] = [
   // },
   {
     icon: 'hardware-chip-outline',
-    title: 'IoT Devices',
+    title: 'Devices',
     desc: 'Status, firmware and heartbeat of gateways in the field',
     href: '/(staff)/tools/devices',
   },
