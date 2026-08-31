@@ -5,7 +5,6 @@ import {
   Modal,
   Pressable,
   StyleSheet,
-  Switch,
   Text,
   View,
 } from 'react-native';
@@ -57,7 +56,24 @@ function commandFailureMessage(status: number): string {
   return 'The BMS control command failed.';
 }
 
+function targetLabel(target: BmsSwitchTarget): string {
+  if (target === BmsSwitchTarget.All) return 'both';
+  return target === BmsSwitchTarget.Discharge ? 'discharge' : 'charge';
+}
+
+// Nhãn On/Off VIẾT RA chứ không chỉ đổi màu — trạng thái phải đọc được với người mù màu.
+function stateLabel(value: boolean | null | undefined, pending: boolean): string {
+  if (pending) return 'Waiting…';
+  if (value == null) return 'Unknown';
+  return value ? 'On' : 'Off';
+}
+
 function consequenceText(target: BmsSwitchTarget, enable: boolean): string {
+  if (target === BmsSwitchTarget.All) {
+    return enable
+      ? 'The battery will resume both accepting charge current and supplying power to the load.'
+      : 'The battery will stop both accepting charge current and supplying power to the load.';
+  }
   if (target === BmsSwitchTarget.Discharge) {
     return enable
       ? 'The battery will resume supplying power to the load.'
@@ -75,6 +91,9 @@ export function BmsSwitchSheet({ assetId, cascade, visible, onClose }: Props) {
   const stateQuery = useBmsSwitch(assetId);
   const mutation = useSetBmsSwitch(assetId);
   const [highRiskConfirmation, setHighRiskConfirmation] = useState<SetBmsSwitchPayload | null>(null);
+  // Mặc định trùng web: cắt TẤT CẢ. Đó là ca khẩn cấp mà người ta mở control này ra để làm.
+  const [pickTarget, setPickTarget] = useState<BmsSwitchTarget>(BmsSwitchTarget.All);
+  const [pickEnable, setPickEnable] = useState(false);
   const issuedCmdId = useRef<string | null>(null);
   const lastCommand = stateQuery.data?.lastCommand;
   const queryError = stateQuery.error instanceof HttpError ? stateQuery.error : null;
@@ -92,17 +111,44 @@ export function BmsSwitchSheet({ assetId, cascade, visible, onClose }: Props) {
     }
   }, [lastCommand]);
 
-  const submit = (payload: SetBmsSwitchPayload) => {
-    mutation.mutate(payload, {
-      onSuccess: (accepted) => {
-        issuedCmdId.current = accepted.cmdId;
-        void stateQuery.refetch();
-      },
-      onError: (error) => {
-        const message = error instanceof Error ? error.message : 'Unable to send the command to the device.';
-        Alert.alert('Unable to send command', message);
-      },
+  // "Both" gửi HAI lệnh TUẦN TỰ (charge rồi discharge), không phải một lệnh `target: "all"`.
+  // Firmware chỉ map charge=1 / discharge=2 nên `"all"` rớt validation ở thiết bị và ack `failed`;
+  // hai lệnh rời chạy được với firmware đang nạp, và backend không chặn vì hai MOSFET khác nhau
+  // không tính là xung đột. Mỗi MOSFET cũng có ack + readback riêng, nên hỏng một nửa nhìn ra ngay.
+  const submitOne = (payload: SetBmsSwitchPayload) =>
+    mutation.mutateAsync(payload).then((accepted) => {
+      issuedCmdId.current = accepted.cmdId;
+      void stateQuery.refetch();
+      return accepted;
     });
+
+  const reportError = (error: unknown) =>
+    Alert.alert(
+      'Unable to send command',
+      error instanceof Error ? error.message : 'Unable to send the command to the device.',
+    );
+
+  const submit = (payload: SetBmsSwitchPayload) => {
+    if (payload.target !== BmsSwitchTarget.All) {
+      submitOne(payload).catch(reportError);
+      return;
+    }
+
+    void (async () => {
+      try {
+        await submitOne({ target: BmsSwitchTarget.Charge, enable: payload.enable });
+      } catch (error) {
+        reportError(error);
+        // TẮT thì vẫn đi tiếp — cô lập được vế nào hay vế đó. BẬT thì dừng, không để pin bật
+        // nửa vời trong khi vế kia lỗi.
+        if (payload.enable) return;
+      }
+      try {
+        await submitOne({ target: BmsSwitchTarget.Discharge, enable: payload.enable });
+      } catch (error) {
+        reportError(error);
+      }
+    })();
   };
 
   const confirm = (target: BmsSwitchTarget, enable: boolean) => {
@@ -110,9 +156,8 @@ export function BmsSwitchSheet({ assetId, cascade, visible, onClose }: Props) {
       setHighRiskConfirmation({ target, enable });
       return;
     }
-    const isDischarge = target === BmsSwitchTarget.Discharge;
     Alert.alert(
-      `${enable ? 'Enable' : 'Disable'} ${isDischarge ? 'discharge' : 'charge'} MOSFET?`,
+      `${enable ? 'Enable' : 'Disable'} ${targetLabel(target)} MOSFET?`,
       `${consequenceText(target, enable)}\n\nSuccess is reported only after the BMS responds with a verified readback state.`,
       [
         { text: 'Cancel', style: 'cancel' },
@@ -125,18 +170,6 @@ export function BmsSwitchSheet({ assetId, cascade, visible, onClose }: Props) {
     );
   };
 
-  const chooseUnknownState = (target: BmsSwitchTarget) => {
-    Alert.alert(
-      'No verified state',
-      'Choose the state to send to the BMS. The switch will update only after the device successfully reads the state back.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Disable', style: 'destructive', onPress: () => confirm(target, false) },
-        { text: 'Enable', onPress: () => confirm(target, true) },
-      ],
-    );
-  };
-
   const pending = stateQuery.data?.pendingCommand != null || mutation.isPending;
   const updatedLabel = formatUpdatedAt(stateQuery.data?.updatedAt);
 
@@ -145,7 +178,7 @@ export function BmsSwitchSheet({ assetId, cascade, visible, onClose }: Props) {
   const unavailable =
     queryError?.statusCode === 404
     || (lastCommand?.status === BmsSwitchCommandStatus.Rejected
-        && isUnsupportedReason(lastCommand.error));
+        && isUnsupportedReason(lastCommand.deviceReason));
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -187,22 +220,106 @@ export function BmsSwitchSheet({ assetId, cascade, visible, onClose }: Props) {
             <Text style={styles.error}>{queryError.message}</Text>
           ) : (
             <>
-              <SwitchRow
-                label="Charge"
-                value={stateQuery.data?.chargeEnabled}
+              {/* Trạng thái hiện tại đứng trước — đó là thứ người vận hành xem trước khi quyết
+                  định. Nó là hiển thị CHỈ-ĐỌC, không phải cái công tắc: mô hình toggle cũ giấu
+                  hướng thao tác vào trạng thái hiện tại, nên phải đọc nhãn phụ mới biết chạm vào
+                  sẽ ra gì. Icon là hướng dòng điện (vào pack / ra tải) chứ không phải hai biểu
+                  tượng power giống hệt nhau. */}
+              <View style={styles.stateRow}>
+                <StateTile
+                  label="Charge"
+                  icon="arrow-down"
+                  value={stateQuery.data?.chargeEnabled}
+                  pending={pending}
+                />
+                <StateTile
+                  label="Discharge"
+                  icon="arrow-up"
+                  value={stateQuery.data?.dischargeEnabled}
+                  pending={pending}
+                />
+              </View>
+              <Text style={styles.updatedLine}>{updatedLabel}</Text>
+
+              {/* Chọn MOSFET → chọn hướng → xác nhận. Cùng thứ tự với dialog trên web: hai màn
+                  điều khiển cùng một phần cứng thì không được bắt người dùng nhớ hai lối nghĩ. */}
+              <View style={styles.segment}>
+                {([
+                  { value: BmsSwitchTarget.All, label: 'Both' },
+                  { value: BmsSwitchTarget.Charge, label: 'Charge' },
+                  { value: BmsSwitchTarget.Discharge, label: 'Discharge' },
+                ] as const).map((option) => (
+                  <Pressable
+                    key={option.value}
+                    style={[styles.segmentItem, pickTarget === option.value && styles.segmentItemOn]}
+                    disabled={pending}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: pickTarget === option.value, disabled: pending }}
+                    onPress={() => setPickTarget(option.value)}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        pickTarget === option.value && styles.segmentTextOn,
+                        pending && styles.segmentTextOff,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <View style={styles.segment}>
+                {([
+                  { value: false, label: 'Turn off', icon: 'power' },
+                  { value: true, label: 'Turn on', icon: 'power' },
+                ] as const).map((option) => (
+                  <Pressable
+                    key={String(option.value)}
+                    style={[styles.segmentItem, pickEnable === option.value && styles.segmentItemOn]}
+                    disabled={pending}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: pickEnable === option.value, disabled: pending }}
+                    onPress={() => setPickEnable(option.value)}
+                  >
+                    <Ionicons
+                      name={option.icon}
+                      size={14}
+                      color={
+                        pickEnable === option.value
+                          ? (option.value ? Colors.successDark : Colors.danger)
+                          : Colors.textMute
+                      }
+                    />
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        pickEnable === option.value && styles.segmentTextOn,
+                        pending && styles.segmentTextOff,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Pressable
+                style={[
+                  styles.applyBtn,
+                  pickEnable ? styles.applyBtnOn : styles.applyBtnOff,
+                  pending && styles.applyBtnDisabled,
+                ]}
                 disabled={pending}
-                updatedLabel={updatedLabel}
-                onChange={(enable) => confirm(BmsSwitchTarget.Charge, enable)}
-                onUnknown={() => chooseUnknownState(BmsSwitchTarget.Charge)}
-              />
-              <SwitchRow
-                label="Discharge"
-                value={stateQuery.data?.dischargeEnabled}
-                disabled={pending}
-                updatedLabel={updatedLabel}
-                onChange={(enable) => confirm(BmsSwitchTarget.Discharge, enable)}
-                onUnknown={() => chooseUnknownState(BmsSwitchTarget.Discharge)}
-              />
+                accessibilityRole="button"
+                onPress={() => confirm(pickTarget, pickEnable)}
+              >
+                <Ionicons name="power" size={16} color={Colors.white} />
+                <Text style={styles.applyBtnText}>
+                  {pickEnable ? 'Turn on' : 'Turn off'} {targetLabel(pickTarget)}
+                </Text>
+              </Pressable>
 
               {pending ? (
                 <View style={styles.pendingRow}>
@@ -287,41 +404,34 @@ function HighRiskConfirmDialog({
   );
 }
 
-function SwitchRow({
+function StateTile({
   label,
+  icon,
   value,
-  disabled,
-  updatedLabel,
-  onChange,
-  onUnknown,
+  pending,
 }: {
   label: string;
+  icon: 'arrow-down' | 'arrow-up';
   value: boolean | null | undefined;
-  disabled: boolean;
-  updatedLabel: string;
-  onChange: (value: boolean) => void;
-  onUnknown: () => void;
+  pending: boolean;
 }) {
   const unknown = value == null;
+  const tone = pending || unknown
+    ? Colors.textMute
+    : value
+      ? Colors.successDark
+      : Colors.danger;
+
   return (
-    <Pressable
-      style={styles.switchRow}
-      disabled={disabled || !unknown}
-      onPress={onUnknown}
-      accessibilityRole={unknown ? 'button' : undefined}
-    >
-      <View style={styles.switchText}>
-        <Text style={styles.switchLabel}>{label}</Text>
-        <Text style={[styles.updated, unknown && styles.unknown]}>{updatedLabel}</Text>
+    <View style={styles.stateTile}>
+      <Text style={styles.stateTileLabel}>{label}</Text>
+      <View style={styles.stateTileValueRow}>
+        <Ionicons name={icon} size={14} color={tone} />
+        <Text style={[styles.stateTileValue, { color: tone }]}>
+          {stateLabel(value, pending)}
+        </Text>
       </View>
-      <Switch
-        value={value ?? false}
-        disabled={disabled || unknown}
-        onValueChange={onChange}
-        trackColor={{ false: Colors.graySoft, true: Colors.success }}
-        thumbColor={Colors.white}
-      />
-    </Pressable>
+    </View>
   );
 }
 
@@ -377,20 +487,54 @@ const styles = StyleSheet.create({
   },
   riskBannerText: { flex: 1, fontSize: 12, fontWeight: '700', color: Colors.dangerDark, lineHeight: 17 },
   centered: { paddingVertical: 28, alignItems: 'center' },
-  switchRow: {
-    minHeight: 64,
+  stateRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  stateTile: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  stateTileLabel: { fontSize: 10.5, fontWeight: '700', color: Colors.textMute },
+  stateTileValueRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 },
+  stateTileValue: { fontSize: 14, fontWeight: '800' },
+  updatedLine: { fontSize: 10.5, color: Colors.textMute, marginTop: 6, marginBottom: 2 },
+  segment: {
+    flexDirection: 'row',
+    gap: 4,
+    backgroundColor: Colors.graySoft,
+    borderRadius: Radius.md,
+    padding: 4,
+    marginTop: 8,
+  },
+  segmentItem: {
+    flex: 1,
+    minHeight: 40,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    paddingVertical: 10,
+    justifyContent: 'center',
+    gap: 5,
+    borderRadius: Radius.sm,
+    paddingHorizontal: 6,
   },
-  switchText: { flex: 1 },
-  switchLabel: { fontSize: 14, fontWeight: '800', color: Colors.accent },
-  updated: { fontSize: 10.5, color: Colors.textMute, marginTop: 3 },
-  unknown: { color: Colors.warningDark, fontWeight: '700' },
+  segmentItemOn: { backgroundColor: Colors.white },
+  segmentText: { fontSize: 12.5, fontWeight: '700', color: Colors.textMute },
+  segmentTextOn: { color: Colors.accent, fontWeight: '800' },
+  segmentTextOff: { opacity: 0.5 },
+  applyBtn: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: Radius.md,
+    marginTop: 12,
+  },
+  applyBtnOn: { backgroundColor: Colors.successDark },
+  applyBtnOff: { backgroundColor: Colors.danger },
+  applyBtnDisabled: { opacity: 0.5 },
+  applyBtnText: { color: Colors.white, fontSize: 14, fontWeight: '800' },
   pendingRow: {
     flexDirection: 'row',
     alignItems: 'center',
