@@ -10,6 +10,11 @@ function fmt(v: number | null | undefined, unit: string, digits = 1): string {
   return `${v.toFixed(digits)}${unit}`;
 }
 
+function fmtWater(v: boolean | null | undefined): string {
+  if (v == null) return '—';
+  return v ? 'Wet' : 'Dry';
+}
+
 // data === undefined (404 / no reading yet) → show empty state, don't hang.
 export function AmbientTile({ data }: { data: AmbientReadingDto | null | undefined }) {
   if (!data) {
@@ -29,8 +34,8 @@ export function AmbientTile({ data }: { data: AmbientReadingDto | null | undefin
       </View>
       <View style={styles.grid}>
         <Metric icon="thermometer-outline" label="Temperature" value={fmt(data.ambientTemperature, ' °C')} />
-        <Metric icon="water-outline" label="Humidity" value={fmt(data.humidity, ' %')} />
-        <Metric icon="sunny-outline" label="Irradiance" value={fmt(data.solarIrradiance, ' W/m²', 0)} />
+        <Metric icon="cloud-outline" label="Gas" value={fmt(data.gasConcentration, ' %', 0)} />
+        <Metric icon="water-outline" label="Water" value={fmtWater(data.waterLeakDetected)} />
       </View>
     </View>
   );

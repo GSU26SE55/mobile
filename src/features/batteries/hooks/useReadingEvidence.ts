@@ -14,8 +14,8 @@ import { ANOMALY_LABEL } from '../components/AssetAlertList';
 //     giữa cửa sổ. Vài phút xung quanh mới là thứ khiến nó đọc được như một DIỄN BIẾN: warm-up
 //     của simulator dắt pin đi lên dần (31→50→61→67→72°C), và cửa sổ ±15s cắt sạch phần đó,
 //     chỉ còn một dòng số tròn trịa trông như bịa.
-//   · `ManualByCustomer` / `CreatedByStaff` — người khai báo nhớ "khoảng 3 giờ", không phải
-//     15:04:32.
+//   · `ManualByCustomer` (kể cả khi staff tạo hộ khách) — người khai báo nhớ "khoảng 3 giờ",
+//     không phải 15:04:32.
 //
 // Cái giá phải trả, nói thẳng: hai case chạy trên cùng viên pin cách nhau dưới 2 phút sẽ lẫn
 // log của nhau. Demo chạy từng case một, và mỗi dòng đều ghi rõ ngưỡng bị vượt nên dòng lạ

@@ -4,6 +4,7 @@ import type {
   WarrantyStatusEnum,
   ChargingStateEnum,
 } from '../enums/battery.enum';
+import type { CascadeRiskLevel } from '../enums/cascade.enum';
 
 export {
   BatteryStatusEnum,
@@ -29,6 +30,12 @@ export interface BatteryAssetDto {
   status: BatteryStatusEnum;
   notes: string | null;
   lastSensorReadingAt: string | null;
+  /** 1 nếu asset có alert đang Open/Acknowledged, ngược lại 0 — cùng logic AssetsWithActiveAlerts. */
+  activeAlertCount: number;
+  /** Điểm rủi ro lan truyền cascade — cùng field với CascadeRiskDto. */
+  cascadeRiskScore: number;
+  /** Mức rủi ro suy ra từ cascadeRiskScore. */
+  cascadeRiskLevel: CascadeRiskLevel;
   /** Mốc bảo trì định kỳ gần nhất đã ghi. Null = chưa có mốc nào. */
   lastMaintenanceAtUtc: string | null;
   /** Kỳ kế tiếp — luôn có giá trị, pin chưa có mốc nào thì tính từ installDate. */

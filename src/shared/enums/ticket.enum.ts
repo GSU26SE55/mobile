@@ -34,7 +34,7 @@ export const TicketOriginEnum = {
   AutoFromAlert: 'AutoFromAlert',
   // Sự cố môi trường của site — origin riêng, không dùng ké AutoFromAlert/System nữa.
   AutoFromEnvironment: 'AutoFromEnvironment',
-  CreatedByStaff: 'CreatedByStaff',
+  // CreatedByStaff (giá trị 3) đã bị BE bỏ: staff tạo hộ khách nay ghi thẳng ManualByCustomer.
   // Sprint Bonus NS-13/NS-22 — auto-created by the system (cascade risk High, environmental incident Critical).
   // JsonStringEnumConverter → wire value is the STRING 'System'; int 4 in docs/api-ticket.md:168 is cross-service BE↔BE.
   System: 'System',

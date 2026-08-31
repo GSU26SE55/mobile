@@ -20,4 +20,5 @@ export const ANOMALY_LABEL: Record<AnomalyTypeEnum, string> = {
   [AnomalyTypeEnum.SensorMismatch]: 'Sensor mismatch',
   [AnomalyTypeEnum.Undertemp]: 'Low temperature',
   [AnomalyTypeEnum.IotDataIntegrityViolation]: 'IoT data integrity violation',
+  [AnomalyTypeEnum.HighGasConcentration]: 'High gas concentration',
 };
