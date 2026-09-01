@@ -1,50 +1,80 @@
-import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
-import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Font, Solar } from '@/src/lib/theme';
-import { useStaffTickets } from '@/src/features/staff/hooks/useStaffTickets';
-import { useStaffDashboardStats } from '@/src/features/staff/hooks/useStaffDashboardStats';
-import { useStaffProfile } from '@/src/features/staff/hooks/useStaffProfile';
-import { useUnreadCount } from '@/src/features/notifications/hooks/useNotifications';
-import { TicketDTO } from '@/src/features/tickets/types/ticket.types';
-import { TicketCard } from '@/src/features/tickets/components/TicketCard';
-import { staffLaneOf, StaffLane } from '@/src/features/tickets/utils/ticketLabels';
-import { EnergyBackdrop, GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
-import { HomeHeader } from '@/src/shared/components/HomeHeader';
-import { FilterChips } from '@/src/shared/components/FilterChips';
-import { TicketCardSkeleton } from '@/src/features/tickets/components/TicketCardSkeleton';
-import { enterRow } from '@/src/shared/components/motion';
-import { useSessionStore } from '@/src/stores/sessionStore';
+import { Ionicons } from "@expo/vector-icons";
+import React, { useCallback, useMemo, useState } from "react";
+import {
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
+import { router } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Colors, Font, Solar } from "@/src/lib/theme";
+import { useStaffTickets } from "@/src/features/staff/hooks/useStaffTickets";
+import { useStaffDashboardStats } from "@/src/features/staff/hooks/useStaffDashboardStats";
+import { useStaffProfile } from "@/src/features/staff/hooks/useStaffProfile";
+import { useUnreadCount } from "@/src/features/notifications/hooks/useNotifications";
+import { TicketDTO } from "@/src/features/tickets/types/ticket.types";
+import { TicketCard } from "@/src/features/tickets/components/TicketCard";
+import {
+  staffLaneOf,
+  StaffLane,
+} from "@/src/features/tickets/utils/ticketLabels";
+import {
+  EnergyBackdrop,
+  GlassSurface,
+} from "@/src/features/batteries/components/EnergyBackdrop";
+import { HomeHeader } from "@/src/shared/components/HomeHeader";
+import { FilterChips } from "@/src/shared/components/FilterChips";
+import { TicketCardSkeleton } from "@/src/features/tickets/components/TicketCardSkeleton";
+import { enterRow } from "@/src/shared/components/motion";
+import { useSessionStore } from "@/src/stores/sessionStore";
 
 // Split by who the ticket is waiting on: work to do now, work parked with
 // somebody else (scheduled, held, escalated, being reassigned), and work finished.
 const LANES: { key: StaffLane; label: string }[] = [
-  { key: 'process', label: 'In progress' },
-  { key: 'pending', label: 'Pending' },
-  { key: 'done', label: 'Completed' },
+  { key: "process", label: "In progress" },
+  { key: "pending", label: "Pending" },
+  { key: "done", label: "Completed" },
 ];
 
 const EMPTY_COPY: Record<StaffLane, string> = {
-  process: 'Nothing in progress',
-  pending: 'Nothing pending',
-  done: 'Nothing completed yet',
+  process: "Nothing in progress",
+  pending: "Nothing pending",
+  done: "Nothing completed yet",
 };
 
-const ROLE_BADGES: Record<string, { label: string; bg: string; text: string }> = {
-  PrimaryHandler:         { label: 'Primary',   bg: Solar.yellowSoft, text: '#B78103' },
-  Supporter:              { label: 'Supporter', bg: '#F3E5F5',        text: '#7B1FA2' },
-  PreviousPrimaryHandler: { label: 'Previous',  bg: Solar.tile,       text: Solar.ink2 },
-};
+const ROLE_BADGES: Record<string, { label: string; bg: string; text: string }> =
+  {
+    PrimaryHandler: { label: "Primary", bg: Solar.yellowSoft, text: "#B78103" },
+    Supporter: { label: "Supporter", bg: "#F3E5F5", text: "#7B1FA2" },
+    PreviousPrimaryHandler: {
+      label: "Previous",
+      bg: Solar.tile,
+      text: Solar.ink2,
+    },
+  };
 
 /** Three numbers, no gauge. Overdue in red is what a technician needs above the fold. */
-function StatStrip({ open, overdue, done }: { open: number; overdue: number; done: number }) {
+function StatStrip({
+  open,
+  overdue,
+  done,
+}: {
+  open: number;
+  overdue: number;
+  done: number;
+}) {
   const cells = [
-    { value: open, label: 'In progress', color: Solar.ink },
-    { value: overdue, label: 'Overdue', color: overdue > 0 ? Colors.danger : Solar.faint },
-    { value: done, label: 'Completed', color: Solar.ink },
+    { value: open, label: "In progress", color: Solar.ink },
+    {
+      value: overdue,
+      label: "Overdue",
+      color: overdue > 0 ? Colors.danger : Solar.faint,
+    },
+    { value: done, label: "Completed", color: Solar.ink },
   ];
   return (
     <GlassSurface style={styles.strip}>
@@ -52,7 +82,9 @@ function StatStrip({ open, overdue, done }: { open: number; overdue: number; don
         <React.Fragment key={cell.label}>
           {i > 0 && <View style={styles.stripDivider} />}
           <View style={styles.stripCell}>
-            <Text style={[styles.stripValue, { color: cell.color }]}>{cell.value}</Text>
+            <Text style={[styles.stripValue, { color: cell.color }]}>
+              {cell.value}
+            </Text>
             <Text style={styles.stripLabel}>{cell.label}</Text>
           </View>
         </React.Fragment>
@@ -64,7 +96,7 @@ function StatStrip({ open, overdue, done }: { open: number; overdue: number; don
 export default function StaffDashboardScreen() {
   const insets = useSafeAreaInsets();
   // Opens on the work in flight, not on a list mixing closed tickets in.
-  const [lane, setLane] = useState<StaffLane>('process');
+  const [lane, setLane] = useState<StaffLane>("process");
   const {
     data: apiTickets,
     isLoading,
@@ -90,9 +122,17 @@ export default function StaffDashboardScreen() {
   const accountId = useSessionStore((s) => s.user?.accountId);
 
   const isRefreshing =
-    isTicketsRefetching || isStatsRefetching || isProfileRefetching || isUnreadRefetching;
+    isTicketsRefetching ||
+    isStatsRefetching ||
+    isProfileRefetching ||
+    isUnreadRefetching;
   const handleRefresh = useCallback(() => {
-    void Promise.all([refetchTickets(), refetchStats(), refetchProfile(), refetchUnread()]);
+    void Promise.all([
+      refetchTickets(),
+      refetchStats(),
+      refetchProfile(),
+      refetchUnread(),
+    ]);
   }, [refetchProfile, refetchStats, refetchTickets, refetchUnread]);
 
   const allTickets = useMemo(() => apiTickets?.items ?? [], [apiTickets]);
@@ -102,7 +142,7 @@ export default function StaffDashboardScreen() {
     const byStatus = stats?.countByStatus;
     if (byStatus) {
       for (const [status, n] of Object.entries(byStatus)) {
-        const key = staffLaneOf(status as TicketDTO['status']);
+        const key = staffLaneOf(status as TicketDTO["status"]);
         if (key) acc[key] += n;
       }
       return acc;
@@ -119,10 +159,16 @@ export default function StaffDashboardScreen() {
     [allTickets, lane],
   );
 
-  const displayName = profile?.fullName?.trim() || 'there';
+  const displayName = profile?.fullName?.trim() || "there";
   const chips = LANES.map((l) => ({ ...l, count: counts[l.key] }));
 
-  const renderTicket = ({ item, index }: { item: TicketDTO; index: number }) => {
+  const renderTicket = ({
+    item,
+    index,
+  }: {
+    item: TicketDTO;
+    index: number;
+  }) => {
     const myRole = accountId
       ? item.assignments?.find((a) => a.staffId === accountId)?.role
       : undefined;
@@ -132,12 +178,15 @@ export default function StaffDashboardScreen() {
         <TicketCard
           ticket={item}
           audience="staff"
-          roleBadge={myRole ? ROLE_BADGES[myRole] ?? null : null}
+          roleBadge={myRole ? (ROLE_BADGES[myRole] ?? null) : null}
           showAssignee={false}
           onPress={() =>
             router.push({
-              pathname: '/(staff)/tickets/[id]',
-              params: { id: item.id, ...(item.hasUnreadChat ? { jumpToUnread: '1' } : {}) },
+              pathname: "/(staff)/tickets/[id]",
+              params: {
+                id: item.id,
+                ...(item.hasUnreadChat ? { jumpToUnread: "1" } : {}),
+              },
             })
           }
         />
@@ -156,7 +205,7 @@ export default function StaffDashboardScreen() {
           unreadCount={unreadCount}
           isRefreshing={isRefreshing}
           onRefresh={handleRefresh}
-          onBellPress={() => router.navigate('/(staff)/notifications' as any)}
+          onBellPress={() => router.navigate("/(staff)/notifications" as any)}
         />
 
         <StatStrip
@@ -184,7 +233,11 @@ export default function StaffDashboardScreen() {
         </View>
       ) : isError ? (
         <View style={styles.center}>
-          <Ionicons name="cloud-offline-outline" size={44} color={Solar.faint} />
+          <Ionicons
+            name="cloud-offline-outline"
+            size={44}
+            color={Solar.faint}
+          />
           <Text style={styles.emptyText}>Failed to load the ticket list</Text>
           <Pressable onPress={handleRefresh} style={styles.retryBtn}>
             <Text style={styles.retryText}>Retry</Text>
@@ -198,7 +251,10 @@ export default function StaffDashboardScreen() {
           data={visible}
           keyExtractor={(item) => item.id}
           renderItem={renderTicket}
-          contentContainerStyle={[styles.list, visible.length === 0 && styles.listEmpty]}
+          contentContainerStyle={[
+            styles.list,
+            visible.length === 0 && styles.listEmpty,
+          ]}
           showsVerticalScrollIndicator={false}
           initialNumToRender={8}
           maxToRenderPerBatch={8}
@@ -212,11 +268,16 @@ export default function StaffDashboardScreen() {
             />
           }
           ListEmptyComponent={
-            <Animated.View entering={FadeIn.duration(220)}>
-              <GlassSurface style={styles.emptyCard}>
-                <Ionicons name="checkmark-done-circle-outline" size={44} color={Solar.faint} />
-                <Text style={styles.emptyText}>{EMPTY_COPY[lane]}</Text>
-              </GlassSurface>
+            <Animated.View
+              entering={FadeIn.duration(220)}
+              style={styles.emptyCard}
+            >
+              <Ionicons
+                name="checkmark-done-circle-outline"
+                size={44}
+                color={Solar.faint}
+              />
+              <Text style={styles.emptyText}>{EMPTY_COPY[lane]}</Text>
             </Animated.View>
           }
         />
@@ -229,24 +290,24 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Solar.bg },
   headerWrap: { paddingHorizontal: 20 },
   chipRow: { marginHorizontal: -20 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8 },
 
   strip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 16,
     marginBottom: 20,
   },
-  stripCell: { flex: 1, alignItems: 'center', gap: 2 },
+  stripCell: { flex: 1, alignItems: "center", gap: 2 },
   stripDivider: { width: 1, height: 32, backgroundColor: Colors.border },
-  stripValue: { fontSize: 26, fontWeight: '700', letterSpacing: -0.6 },
+  stripValue: { fontSize: 26, fontWeight: "700", letterSpacing: -0.6 },
   stripLabel: { ...Font.meta, fontSize: 11 },
 
   sectionTitle: { ...Font.title, marginBottom: 12 },
 
   list: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 110 },
-  listEmpty: { flexGrow: 1, justifyContent: 'center', paddingBottom: 150 },
-  emptyCard: { padding: 30, alignItems: 'center' },
+  listEmpty: { flexGrow: 1, justifyContent: "center", paddingBottom: 150 },
+  emptyCard: { padding: 30, alignItems: "center" },
   emptyText: { ...Font.meta, fontSize: 13, marginTop: 8 },
   retryBtn: {
     marginTop: 12,
@@ -254,5 +315,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     backgroundColor: Solar.yellow,
   },
-  retryText: { fontSize: 14, fontWeight: '700', color: Colors.accent },
+  retryText: { fontSize: 14, fontWeight: "700", color: Colors.accent },
 });

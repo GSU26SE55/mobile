@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -10,40 +10,50 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
-import Animated, { interpolate, useAnimatedStyle } from 'react-native-reanimated';
-import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
-import { useLocalSearchParams, router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { formatDate, formatDateTime } from '@/src/lib/date';
-import { Colors, Shadow, ShadowPrimary } from '@/src/lib/theme';
-import { ActivityTimeline } from '@/src/features/tickets/components/ActivityTimeline';
-import { TypingIndicator } from '@/src/features/tickets/components/TypingIndicator';
-import { SlaCountdown } from '@/src/features/tickets/components/SlaCountdown';
-import { TicketStatusBadge } from '@/src/features/tickets/components/TicketStatusBadge';
-import { categoryLabel, escalationReasonLabel, priorityMeta } from '@/src/features/tickets/utils/ticketLabels';
-import { TicketActionBar } from '@/src/features/staff/components/TicketActionBar';
-import { HoldModal } from '@/src/features/staff/components/HoldModal';
-import { ResumeModal } from '@/src/features/staff/components/ResumeModal';
-import { EscalateModal } from '@/src/features/staff/components/EscalateModal';
-import { MaintenanceLogForm } from '@/src/features/staff/components/MaintenanceLogForm';
-import { useStaffTicketDetail } from '@/src/features/staff/hooks/useStaffTicketDetail';
-import { useHoldTicket } from '@/src/features/staff/hooks/useHoldTicket';
-import { useResumeTicket } from '@/src/features/staff/hooks/useResumeTicket';
-import { useResolveTicket } from '@/src/features/staff/hooks/useResolveTicket';
-import { useEscalateTicket } from '@/src/features/staff/hooks/useEscalateTicket';
-import { useChatSender } from '@/src/features/tickets/hooks/useChatSender';
-import { staffTicketService } from '@/src/features/staff/services/staffTicket.service';
-import { useAddMaintenanceLog } from '@/src/features/staff/hooks/useAddMaintenanceLog';
-import { useUpdateMaintenanceLog } from '@/src/features/staff/hooks/useUpdateMaintenanceLog';
-import { useTicketChatsCursor } from '@/src/features/tickets/hooks/useTicketChatsCursor';
-import { useAddReaction, useRemoveReaction } from '@/src/features/tickets/hooks/useChatReactions';
-import { useDownloadChatAttachment } from '@/src/features/tickets/hooks/useDownloadChatAttachment';
-import { useTicketUnreadCount } from '@/src/features/tickets/hooks/useTicketUnreadCount';
-import { MentionSuggestionsPopup } from '@/src/features/tickets/components/MentionSuggestionsPopup';
-import { useTicketActivities } from '@/src/features/tickets/hooks/useTicketActivities';
-import { useTicketCommentsRealtime } from '@/src/features/tickets/hooks/useTicketCommentsRealtime';
+} from "react-native";
+import Animated, {
+  interpolate,
+  useAnimatedStyle,
+} from "react-native-reanimated";
+import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
+import { useLocalSearchParams, router } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { formatDate, formatDateTime } from "@/src/lib/date";
+import { Colors, Shadow, ShadowPrimary } from "@/src/lib/theme";
+import { ActivityTimeline } from "@/src/features/tickets/components/ActivityTimeline";
+import { TypingIndicator } from "@/src/features/tickets/components/TypingIndicator";
+import { SlaCountdown } from "@/src/features/tickets/components/SlaCountdown";
+import { TicketStatusBadge } from "@/src/features/tickets/components/TicketStatusBadge";
+import {
+  categoryLabel,
+  escalationReasonLabel,
+  priorityMeta,
+} from "@/src/features/tickets/utils/ticketLabels";
+import { TicketActionBar } from "@/src/features/staff/components/TicketActionBar";
+import { HoldModal } from "@/src/features/staff/components/HoldModal";
+import { ResumeModal } from "@/src/features/staff/components/ResumeModal";
+import { EscalateModal } from "@/src/features/staff/components/EscalateModal";
+import { MaintenanceLogForm } from "@/src/features/staff/components/MaintenanceLogForm";
+import { useStaffTicketDetail } from "@/src/features/staff/hooks/useStaffTicketDetail";
+import { useHoldTicket } from "@/src/features/staff/hooks/useHoldTicket";
+import { useResumeTicket } from "@/src/features/staff/hooks/useResumeTicket";
+import { useResolveTicket } from "@/src/features/staff/hooks/useResolveTicket";
+import { useEscalateTicket } from "@/src/features/staff/hooks/useEscalateTicket";
+import { useChatSender } from "@/src/features/tickets/hooks/useChatSender";
+import { staffTicketService } from "@/src/features/staff/services/staffTicket.service";
+import { useAddMaintenanceLog } from "@/src/features/staff/hooks/useAddMaintenanceLog";
+import { useUpdateMaintenanceLog } from "@/src/features/staff/hooks/useUpdateMaintenanceLog";
+import { useTicketChatsCursor } from "@/src/features/tickets/hooks/useTicketChatsCursor";
+import {
+  useAddReaction,
+  useRemoveReaction,
+} from "@/src/features/tickets/hooks/useChatReactions";
+import { useDownloadChatAttachment } from "@/src/features/tickets/hooks/useDownloadChatAttachment";
+import { useTicketUnreadCount } from "@/src/features/tickets/hooks/useTicketUnreadCount";
+import { MentionSuggestionsPopup } from "@/src/features/tickets/components/MentionSuggestionsPopup";
+import { useTicketActivities } from "@/src/features/tickets/hooks/useTicketActivities";
+import { useTicketCommentsRealtime } from "@/src/features/tickets/hooks/useTicketCommentsRealtime";
 import {
   useUpdateTicketChat,
   useDeleteTicketChat,
@@ -52,49 +62,78 @@ import {
   useTranscribeVoiceChat,
   usePinChat,
   useUnpinChat,
-} from '@/src/features/tickets/hooks/useTicketChatActions';
-import { isPrimaryHandler } from '@/src/features/tickets/utils/assignments';
-import { useVoiceRecorder } from '@/src/features/tickets/hooks/useVoiceRecorder';
-import { useAuthImageHeaders } from '@/src/features/file-storage/hooks/useAuthImageHeaders';
-import { AuthImage } from '@/src/features/file-storage/components/AuthImage';
-import { CommentThread, ChatTab } from '@/src/features/tickets/components/CommentThread';
-import { ChatAiToolbar } from '@/src/features/tickets/components/ChatAiToolbar';
-import { ChatReadersSheet } from '@/src/features/tickets/components/ChatReadersSheet';
-import { VoiceRecordingModal } from '@/src/features/tickets/components/VoiceRecordingModal';
-import { formatDurationMinutes, ProcessingDurationTimer } from '@/src/features/staff/components/ProcessingDurationTimer';
-import { MaintenanceLogPayload, UpdateMaintenanceLogPayload } from '@/src/features/staff/types/staff.types';
-import { EscalationReasonEnum, PauseReasonEnum, MaintenanceLogDTO, MaintenanceLogTypeEnum } from '@/src/features/tickets/types/ticket.types';
-import { canComplete, canEscalate, canHold, canResume, isMaintenanceLogLocked, isTerminalTicket, isTicketChatLocked, shouldShowLiveSla } from '@/src/features/tickets/utils/ticketWorkflow';
-import { PendingContextCard } from '@/src/features/tickets/components/PendingContextCard';
-import type { ChatMentionInput } from '@/src/features/tickets/types/ticket.types';
-import { AttachmentPicker, UploadedAttachment } from '@/src/features/file-storage/components/AttachmentPicker';
-import { AttachmentPreviewStrip } from '@/src/features/file-storage/components/AttachmentPreviewStrip';
-import { AttachmentThumbnails } from '@/src/features/file-storage/components/AttachmentThumbnails';
-import { FilePurposeEnum } from '@/src/features/file-storage/enums/file-storage.enum';
-import { useSessionStore } from '@/src/stores/sessionStore';
-import { checkPermission, P } from '@/src/lib/authz';
-import { PermissionGuard } from '@/src/features/auth/components/PermissionGuard';
-import { useTicketKbRefs } from '@/src/features/kb/hooks/useTicketKbRefs';
-import { useRemoveKbRef } from '@/src/features/kb/hooks/useRemoveKbRef';
-import { KbReferencePicker } from '@/src/features/staff/components/KbReferencePicker';
-import { KbSuggestionPanel } from '@/src/features/tickets/components/KbSuggestionPanel';
-import { BackButton } from '@/src/shared/components/ScreenHeader';
-import { BatteryWarningEvidencePanel } from '@/src/features/batteries/components/BatteryWarningEvidencePanel';
-import { EVIDENCE_WINDOW_MS } from '@/src/features/batteries/hooks/useReadingEvidence';
-import EnvironmentalIncidentCard from '@/src/features/tickets/components/EnvironmentalIncidentCard';
-import { AmbientEvidencePanel } from '@/src/features/ambient/components/AmbientEvidencePanel';
-import { useIncident } from '@/src/features/incidents/hooks/useIncident';
-import { isWhitespaceOrEmojiOnly } from '@/src/shared/schemas/common.schema';
+} from "@/src/features/tickets/hooks/useTicketChatActions";
+import { isPrimaryHandler } from "@/src/features/tickets/utils/assignments";
+import { useVoiceRecorder } from "@/src/features/tickets/hooks/useVoiceRecorder";
+import { useAuthImageHeaders } from "@/src/features/file-storage/hooks/useAuthImageHeaders";
+import { AuthImage } from "@/src/features/file-storage/components/AuthImage";
+import {
+  CommentThread,
+  ChatTab,
+} from "@/src/features/tickets/components/CommentThread";
+import { ChatAiToolbar } from "@/src/features/tickets/components/ChatAiToolbar";
+import { ChatReadersSheet } from "@/src/features/tickets/components/ChatReadersSheet";
+import { VoiceRecordingModal } from "@/src/features/tickets/components/VoiceRecordingModal";
+import {
+  formatDurationMinutes,
+  ProcessingDurationTimer,
+} from "@/src/features/staff/components/ProcessingDurationTimer";
+import {
+  MaintenanceLogPayload,
+  UpdateMaintenanceLogPayload,
+} from "@/src/features/staff/types/staff.types";
+import {
+  EscalationReasonEnum,
+  PauseReasonEnum,
+  MaintenanceLogDTO,
+  MaintenanceLogTypeEnum,
+} from "@/src/features/tickets/types/ticket.types";
+import {
+  canComplete,
+  canEscalate,
+  canHold,
+  canResume,
+  isMaintenanceLogLocked,
+  isTerminalTicket,
+  isTicketChatLocked,
+  shouldShowLiveSla,
+} from "@/src/features/tickets/utils/ticketWorkflow";
+import { PendingContextCard } from "@/src/features/tickets/components/PendingContextCard";
+import type { ChatMentionInput } from "@/src/features/tickets/types/ticket.types";
+import {
+  AttachmentPicker,
+  UploadedAttachment,
+} from "@/src/features/file-storage/components/AttachmentPicker";
+import { AttachmentPreviewStrip } from "@/src/features/file-storage/components/AttachmentPreviewStrip";
+import { AttachmentThumbnails } from "@/src/features/file-storage/components/AttachmentThumbnails";
+import { FilePurposeEnum } from "@/src/features/file-storage/enums/file-storage.enum";
+import { useSessionStore } from "@/src/stores/sessionStore";
+import { checkPermission, P } from "@/src/lib/authz";
+import { PermissionGuard } from "@/src/features/auth/components/PermissionGuard";
+import { useTicketKbRefs } from "@/src/features/kb/hooks/useTicketKbRefs";
+import { useRemoveKbRef } from "@/src/features/kb/hooks/useRemoveKbRef";
+import { KbReferencePicker } from "@/src/features/staff/components/KbReferencePicker";
+import { KbSuggestionPanel } from "@/src/features/tickets/components/KbSuggestionPanel";
+import { BackButton } from "@/src/shared/components/ScreenHeader";
+import { BatteryWarningEvidencePanel } from "@/src/features/batteries/components/BatteryWarningEvidencePanel";
+import { EVIDENCE_WINDOW_MS } from "@/src/features/batteries/hooks/useReadingEvidence";
+import EnvironmentalIncidentCard from "@/src/features/tickets/components/EnvironmentalIncidentCard";
+import { AmbientEvidencePanel } from "@/src/features/ambient/components/AmbientEvidencePanel";
+import { useIncident } from "@/src/features/incidents/hooks/useIncident";
+import { isWhitespaceOrEmojiOnly } from "@/src/shared/schemas/common.schema";
 
-type TabKey = 'comments' | 'activities' | 'logs' | 'kb';
+type TabKey = "comments" | "activities" | "logs" | "kb";
 
-const TABS: { key: TabKey; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { key: 'comments',   label: 'Chat',      icon: 'chatbubbles-outline' },
-  { key: 'activities', label: 'Details',   icon: 'time-outline' },
-  { key: 'logs',       label: 'Logs',      icon: 'document-text-outline' },
-  { key: 'kb',         label: 'Guide',       icon: 'book-outline' },
+const TABS: {
+  key: TabKey;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}[] = [
+  { key: "comments", label: "Chat", icon: "chatbubbles-outline" },
+  { key: "activities", label: "Details", icon: "time-outline" },
+  { key: "logs", label: "Logs", icon: "document-text-outline" },
+  { key: "kb", label: "Guide", icon: "book-outline" },
 ];
-
 
 function TabsRow({
   activeTab,
@@ -114,17 +153,30 @@ function TabsRow({
           style={[styles.tab, activeTab === tab.key && styles.tabActive]}
           onPress={() => onChange(tab.key)}
         >
-          <Ionicons name={tab.icon} size={16} color={activeTab === tab.key ? Colors.primary : Colors.textMute} />
-          <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>{tab.label}</Text>
+          <Ionicons
+            name={tab.icon}
+            size={16}
+            color={activeTab === tab.key ? Colors.primary : Colors.textMute}
+          />
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === tab.key && styles.tabTextActive,
+            ]}
+          >
+            {tab.label}
+          </Text>
           {/* Hidden while this tab is open — a new message would flash the badge before
               the thread can mark it read, even though the user is already reading it. */}
-          {tab.key === 'comments' && activeTab !== 'comments' && unreadCount > 0 && (
-            <View style={styles.tabBadge}>
-              <Text style={styles.tabBadgeText}>
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </Text>
-            </View>
-          )}
+          {tab.key === "comments" &&
+            activeTab !== "comments" &&
+            unreadCount > 0 && (
+              <View style={styles.tabBadge}>
+                <Text style={styles.tabBadgeText}>
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </Text>
+              </View>
+            )}
         </Pressable>
       ))}
     </View>
@@ -141,7 +193,8 @@ export function StaffTicketDetailScreen() {
 
 function StaffTicketDetailScreenInner() {
   const insets = useSafeAreaInsets();
-  const { height: keyboardHeightSV, progress: keyboardProgressSV } = useReanimatedKeyboardAnimation();
+  const { height: keyboardHeightSV, progress: keyboardProgressSV } =
+    useReanimatedKeyboardAnimation();
 
   const chatContainerAnimatedStyle = useAnimatedStyle(() => ({
     paddingBottom: Math.abs(keyboardHeightSV.value),
@@ -160,53 +213,97 @@ function StaffTicketDetailScreenInner() {
     };
   });
 
-  const { id, tab, jumpToUnread } = useLocalSearchParams<{ id: string; tab?: string; jumpToUnread?: string }>();
-  const ticketId = id ?? '';
+  const { id, tab, jumpToUnread } = useLocalSearchParams<{
+    id: string;
+    tab?: string;
+    jumpToUnread?: string;
+  }>();
+  const ticketId = id ?? "";
   const accountId = useSessionStore((s) => s.user?.accountId);
   const imageHeaders = useAuthImageHeaders();
   const user = useSessionStore((s) => s.user);
   const canResolve = checkPermission(user, P.TICKET_RESOLVE); // GH-47
-  const { data: ticket, isLoading, isError, isRefetching, refetch } = useStaffTicketDetail(ticketId);
-  const { mutateAsync: holdTicket, isPending: isHolding } = useHoldTicket(ticketId);
-  const { mutateAsync: resumeTicket, isPending: isResuming } = useResumeTicket(ticketId);
-  const { mutateAsync: resolveTicket, isPending: isResolving } = useResolveTicket(ticketId);
-  const { mutateAsync: escalateTicket, isPending: isEscalating } = useEscalateTicket(ticketId);
+  const {
+    data: ticket,
+    isLoading,
+    isError,
+    isRefetching,
+    refetch,
+  } = useStaffTicketDetail(ticketId);
+  const { mutateAsync: holdTicket, isPending: isHolding } =
+    useHoldTicket(ticketId);
+  const { mutateAsync: resumeTicket, isPending: isResuming } =
+    useResumeTicket(ticketId);
+  const { mutateAsync: resolveTicket, isPending: isResolving } =
+    useResolveTicket(ticketId);
+  const { mutateAsync: escalateTicket, isPending: isEscalating } =
+    useEscalateTicket(ticketId);
   // Outbox — enqueue() doesn't await the BE, the worker sends sequentially with backoff retry.
-  const { pending: pendingChats, enqueue: enqueueComment, retry: retryPendingComment, discard: discardPendingComment } =
-    useChatSender(ticketId, staffTicketService.addComment);
-  const { mutateAsync: addLog, isPending: isAddingLog } = useAddMaintenanceLog(ticketId);
-  const { mutateAsync: updateLog, isPending: isUpdatingLog } = useUpdateMaintenanceLog(ticketId);
-  const { data: kbRefs, isLoading: kbRefsLoading } = useTicketKbRefs(ticketId || undefined);
+  const {
+    pending: pendingChats,
+    enqueue: enqueueComment,
+    retry: retryPendingComment,
+    discard: discardPendingComment,
+  } = useChatSender(ticketId, staffTicketService.addComment);
+  const { mutateAsync: addLog, isPending: isAddingLog } =
+    useAddMaintenanceLog(ticketId);
+  const { mutateAsync: updateLog, isPending: isUpdatingLog } =
+    useUpdateMaintenanceLog(ticketId);
+  const { data: kbRefs, isLoading: kbRefsLoading } = useTicketKbRefs(
+    ticketId || undefined,
+  );
   const { mutate: removeKbRef } = useRemoveKbRef(ticketId);
 
   // GH-44 — comments/activities via a dedicated GET + realtime (Staff can see internal comments too).
   const commentsQuery = useTicketChatsCursor(ticketId || undefined);
-  const activitiesQuery = useTicketActivities(ticketId || undefined, ticket?.status);
+  const activitiesQuery = useTicketActivities(
+    ticketId || undefined,
+    ticket?.status,
+  );
   // Site-level tickets carry the incident id only; siteId and detectedAt live on the
   // incident record, and both are needed to anchor the ambient evidence window.
-  const { data: incident } = useIncident(ticket?.environmentalIncidentId ?? '');
-  const { typingUsers, notifyTyping } = useTicketCommentsRealtime(ticketId || undefined);
-  const { mutate: updateChat, isPending: editChatPending } = useUpdateTicketChat(ticketId);
-  const { mutate: deleteChat, isPending: deleteChatPending } = useDeleteTicketChat(ticketId);
+  const { data: incident } = useIncident(ticket?.environmentalIncidentId ?? "");
+  const { typingUsers, notifyTyping } = useTicketCommentsRealtime(
+    ticketId || undefined,
+  );
+  const { mutate: updateChat, isPending: editChatPending } =
+    useUpdateTicketChat(ticketId);
+  const { mutate: deleteChat, isPending: deleteChatPending } =
+    useDeleteTicketChat(ticketId);
   const { mutate: markChatsRead } = useMarkTicketChatsRead(ticketId);
   const { mutateAsync: translateChat } = useTranslateTicketChat(ticketId);
   const { mutate: addReaction } = useAddReaction(ticketId);
   const { mutate: removeReaction } = useRemoveReaction(ticketId);
-  const { mutateAsync: downloadAttachment } = useDownloadChatAttachment(ticketId);
+  const { mutateAsync: downloadAttachment } =
+    useDownloadChatAttachment(ticketId);
   const { data: unreadCount = 0 } = useTicketUnreadCount(ticketId || undefined);
-  const { mutateAsync: transcribeVoice, isPending: transcribing } = useTranscribeVoiceChat(ticketId);
+  const { mutateAsync: transcribeVoice, isPending: transcribing } =
+    useTranscribeVoiceChat(ticketId);
   // GH-67 — pin chat. pinningId tracks the bubble being acted on so the spinner shows in the right place.
-  const { mutate: pinChat, isPending: pinChatPending, variables: pinningVar } = usePinChat(ticketId);
-  const { mutate: unpinChat, isPending: unpinChatPending, variables: unpinningVar } = useUnpinChat(ticketId);
-  const pinningId = pinChatPending ? pinningVar : unpinChatPending ? unpinningVar : null;
+  const {
+    mutate: pinChat,
+    isPending: pinChatPending,
+    variables: pinningVar,
+  } = usePinChat(ticketId);
+  const {
+    mutate: unpinChat,
+    isPending: unpinChatPending,
+    variables: unpinningVar,
+  } = useUnpinChat(ticketId);
+  const pinningId = pinChatPending
+    ? pinningVar
+    : unpinChatPending
+      ? unpinningVar
+      : null;
   const voiceRecorder = useVoiceRecorder();
   // Current average amplitude — drives the "breathing" orb that follows the voice in VoiceRecordingModal.
   const voiceLevel =
-    voiceRecorder.waveform.reduce((sum, v) => sum + v, 0) / voiceRecorder.waveform.length;
+    voiceRecorder.waveform.reduce((sum, v) => sum + v, 0) /
+    voiceRecorder.waveform.length;
 
-  const [activeTab, setActiveTab] = useState<TabKey>('activities');
-  const [chatTab, setChatTab] = useState<ChatTab>('public');
-  const [commentText, setCommentText] = useState('');
+  const [activeTab, setActiveTab] = useState<TabKey>("activities");
+  const [chatTab, setChatTab] = useState<ChatTab>("public");
+  const [commentText, setCommentText] = useState("");
   // Mentions picked in the message being composed — BE receives them via the `mentions` field, does NOT parse '@' from the body.
   const [pickedMentions, setPickedMentions] = useState<ChatMentionInput[]>([]);
   // GH-133 — AI suggestions shown as a bubble at the end of the chat stream (like web). Tapping one →
@@ -215,7 +312,9 @@ function StaffTicketDetailScreenInner() {
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   // Chat currently showing "read by" — Staff-only, BE blocks Customer (403).
   const [readersChatId, setReadersChatId] = useState<string | null>(null);
-  const [commentAttachments, setCommentAttachments] = useState<UploadedAttachment[]>([]);
+  const [commentAttachments, setCommentAttachments] = useState<
+    UploadedAttachment[]
+  >([]);
   const [uploadingComment, setUploadingComment] = useState(false);
   const [showHold, setShowHold] = useState(false);
   const [showResume, setShowResume] = useState(false);
@@ -231,7 +330,7 @@ function StaffTicketDetailScreenInner() {
   // tab is named 'comments' (TabKey), so we map it here instead of using the param value directly.
   // jumpToUnread: opened from a ticket card with an unread message — also lands on Chat.
   useEffect(() => {
-    if (tab === 'chat' || jumpToUnread === '1') setActiveTab('comments');
+    if (tab === "chat" || jumpToUnread === "1") setActiveTab("comments");
   }, [tab, jumpToUnread]);
 
   // GH-44: removed auto scrollToEnd — comments are now DESC (newest-first).
@@ -255,22 +354,25 @@ function StaffTicketDetailScreenInner() {
   // Chủ log sửa được, và chỉ tới lúc bấm hoàn thành — từ "Review" trở đi BE trả 403
   // (MaintenanceLogUpdateCommandHandler), nên nút Edit phải tắt theo, đừng để bấm rồi mới báo lỗi.
   const logLocked = ticket ? isMaintenanceLogLocked(ticket.status) : false;
-  const canEditLog = (log: MaintenanceLogDTO) => !logLocked && !!accountId && log.staffId === accountId;
+  const canEditLog = (log: MaintenanceLogDTO) =>
+    !logLocked && !!accountId && log.staffId === accountId;
 
   // Composer chỉ hiện khi InProgress/Pending — khớp web (staff TicketDetailPage.tsx
   // canComment = isInProgress || isPending). Ở các status khác (Open, Request, ReAssign,
   // Completed) composer vắng mặt hoàn toàn, không kèm thông báo — không phải "đã khoá".
-  const canComment = ticket?.status === 'InProgress' || ticket?.status === 'Pending';
+  const canComment =
+    ticket?.status === "InProgress" || ticket?.status === "Pending";
 
   // Only PrimaryHandler (current) and Manager can post on the public channel.
   // Supporter and PreviousAssignee may only view public — composer is hidden on public tab for them.
   // Manager is not in ticket.assignments, so check user.role directly.
   const canPostPublic =
-    user?.role === 'MANAGER' ||
+    user?.role === "MANAGER" ||
     (!!accountId &&
       (ticket?.assignments?.some(
-        (a) => a.staffId === accountId && a.role === 'PrimaryHandler'
-      ) ?? false));
+        (a) => a.staffId === accountId && a.role === "PrimaryHandler",
+      ) ??
+        false));
 
   // BE (ChatBodyPolicy) từ chối body chỉ có khoảng trắng/emoji — áp cho cả staff lẫn customer.
   // Không chặn ở đây thì tin vào outbox rồi mới hỏng, và bubble lỗi không nói được vì sao.
@@ -283,17 +385,18 @@ function StaffTicketDetailScreenInner() {
     if (!canSendComment) return;
     // Only send mentions still present in the body (user may have deleted the name).
     const activeMentions = pickedMentions.filter((m) =>
-      trimmed.includes(`@${m.displayName.replace(/\s+/g, '_')}`),
+      trimmed.includes(`@${m.displayName.replace(/\s+/g, "_")}`),
     );
     // Outbox — doesn't await the BE. The optimistic bubble shows right away; a failure (if
     // any) shows on that same bubble via PendingBubble (retry/discard), not the composer.
     void enqueueComment({
       body: trimmed,
-      isInternal: chatTab === 'internal',
+      isInternal: chatTab === "internal",
       mentions: activeMentions.length > 0 ? activeMentions : undefined,
-      attachments: commentAttachments.length > 0 ? commentAttachments : undefined,
+      attachments:
+        commentAttachments.length > 0 ? commentAttachments : undefined,
     });
-    setCommentText('');
+    setCommentText("");
     setPickedMentions([]);
     setCommentAttachments([]);
     setAiSuggestions([]);
@@ -301,7 +404,10 @@ function StaffTicketDetailScreenInner() {
 
   const handleMarkRead = (chatIds: string[], onFailed: () => void) =>
     markChatsRead({ chatIds, onFailed });
-  const handleTranslate = async (comment: { id: string }, targetLanguage: string) => {
+  const handleTranslate = async (
+    comment: { id: string },
+    targetLanguage: string,
+  ) => {
     const res = await translateChat({ chatId: comment.id, targetLanguage });
     return res.data.data ?? undefined;
   };
@@ -309,7 +415,10 @@ function StaffTicketDetailScreenInner() {
     try {
       await voiceRecorder.start();
     } catch {
-      Alert.alert('Access permission', 'Microphone access is required to record audio.');
+      Alert.alert(
+        "Access permission",
+        "Microphone access is required to record audio.",
+      );
     }
   };
   const handleStopRecording = async () => {
@@ -332,15 +441,31 @@ function StaffTicketDetailScreenInner() {
 
   // GH-44 #6 — remove KB reference (with confirmation).
   const handleRemoveRef = (referenceId: string) => {
-    Alert.alert('Remove guide article', 'Remove this article reference from the ticket?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => removeKbRef(referenceId) },
-    ]);
+    Alert.alert(
+      "Remove guide article",
+      "Remove this article reference from the ticket?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: () => removeKbRef(referenceId),
+        },
+      ],
+    );
   };
 
   // mutateAsync (not mutate) — each modal's try/catch needs the rejection to map EntityError to the right field.
-  const handleHold = async (reason: PauseReasonEnum, note: string, appointment: Date) => {
-    await holdTicket({ reason, note: note.trim(), rescheduledStartAt: appointment.toISOString() });
+  const handleHold = async (
+    reason: PauseReasonEnum,
+    note: string,
+    appointment: Date,
+  ) => {
+    await holdTicket({
+      reason,
+      note: note.trim(),
+      rescheduledStartAt: appointment.toISOString(),
+    });
     setShowHold(false);
   };
   const handleResume = async (reason: string) => {
@@ -373,11 +498,22 @@ function StaffTicketDetailScreenInner() {
 
   if (isError || !ticket) {
     return (
-      <View style={[styles.loadingRoot, { paddingTop: insets.top, paddingHorizontal: 24 }]}>
-        <Ionicons name="alert-circle-outline" size={48} color={Colors.textFaint} />
+      <View
+        style={[
+          styles.loadingRoot,
+          { paddingTop: insets.top, paddingHorizontal: 24 },
+        ]}
+      >
+        <Ionicons
+          name="alert-circle-outline"
+          size={48}
+          color={Colors.textFaint}
+        />
         <Text style={styles.notFoundTitle}>Failed to load ticket</Text>
         <Text style={styles.notFoundText}>
-          {"The ticket doesn't exist or you don't have permission to view it. Please try again."}
+          {
+            "The ticket doesn't exist or you don't have permission to view it. Please try again."
+          }
         </Text>
         <Pressable style={styles.notFoundBtn} onPress={() => refetch()}>
           <Text style={styles.notFoundBtnText}>Retry</Text>
@@ -413,16 +549,24 @@ function StaffTicketDetailScreenInner() {
             {isRefetching ? (
               <ActivityIndicator color={Colors.primaryDark} size="small" />
             ) : (
-              <Ionicons name="refresh-outline" size={19} color={Colors.primaryDark} />
+              <Ionicons
+                name="refresh-outline"
+                size={19}
+                color={Colors.primaryDark}
+              />
             )}
           </Pressable>
         </View>
       </View>
 
-      {activeTab === 'comments' ? (
+      {activeTab === "comments" ? (
         <Animated.View style={[styles.chatScreen, chatContainerAnimatedStyle]}>
           <View style={styles.chatTabRowWrap}>
-            <TabsRow activeTab={activeTab} onChange={setActiveTab} unreadCount={unreadCount} />
+            <TabsRow
+              activeTab={activeTab}
+              onChange={setActiveTab}
+              unreadCount={unreadCount}
+            />
           </View>
 
           <CommentThread
@@ -444,7 +588,9 @@ function StaffTicketDetailScreenInner() {
             onEdit={(comment, body, editReason) =>
               updateChat({ chatId: comment.id, payload: { body, editReason } })
             }
-            onDelete={(comment, reason) => deleteChat({ chatId: comment.id, reason })}
+            onDelete={(comment, reason) =>
+              deleteChat({ chatId: comment.id, reason })
+            }
             editPending={editChatPending}
             deletePending={deleteChatPending}
             onMarkRead={handleMarkRead}
@@ -463,9 +609,13 @@ function StaffTicketDetailScreenInner() {
               void (async () => {
                 for (const fid of fileIds) {
                   try {
-                    await downloadAttachment({ chatId: comment.id, fileId: fid, fileName: `file-${fid.slice(0, 8)}` });
+                    await downloadAttachment({
+                      chatId: comment.id,
+                      fileId: fid,
+                      fileName: `file-${fid.slice(0, 8)}`,
+                    });
                   } catch (e) {
-                    Alert.alert('Download file', (e as Error).message);
+                    Alert.alert("Download file", (e as Error).message);
                     break;
                   }
                 }
@@ -488,14 +638,20 @@ function StaffTicketDetailScreenInner() {
             <MentionSuggestionsPopup
               text={commentText}
               ticketId={ticketId}
-              isInternal={chatTab === 'internal'}
+              isInternal={chatTab === "internal"}
               onSelectMention={(target) => {
-                const newText = commentText.replace(/@([a-zA-Z0-9_.-]*)$/, `${target.tag} `);
+                const newText = commentText.replace(
+                  /@([a-zA-Z0-9_.-]*)$/,
+                  `${target.tag} `,
+                );
                 setCommentText(newText);
                 setPickedMentions((prev) =>
                   prev.some((m) => m.userId === target.id)
                     ? prev
-                    : [...prev, { userId: target.id, displayName: target.displayName }],
+                    : [
+                        ...prev,
+                        { userId: target.id, displayName: target.displayName },
+                      ],
                 );
               }}
             />
@@ -506,8 +662,17 @@ function StaffTicketDetailScreenInner() {
 
           {/* Ticket đã xong → thay khu soạn tin bằng dòng read-only. */}
           {chatLocked && (
-            <View style={[styles.chatLockedBar, { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 12 }]}>
-              <Ionicons name="lock-closed-outline" size={15} color={Colors.textMute} />
+            <View
+              style={[
+                styles.chatLockedBar,
+                { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 12 },
+              ]}
+            >
+              <Ionicons
+                name="lock-closed-outline"
+                size={15}
+                color={Colors.textMute}
+              />
               <Text style={styles.chatLockedText}>
                 Ticket has been closed — chat is read-only
               </Text>
@@ -516,353 +681,515 @@ function StaffTicketDetailScreenInner() {
 
           {/* Hide composer on public tab for Supporter / PreviousAssignee — view only on public.
               canComment gates on ticket status (InProgress/Pending) — matches web. */}
-          {!chatLocked && canComment && (chatTab === 'internal' || canPostPublic) && (
-            <Animated.View
-              style={[
-                styles.composer,
-                composerAnimatedStyle,
-              ]}
-            >
-              <AttachmentPreviewStrip
-                items={commentAttachments}
-                imageHeaders={imageHeaders}
-                disabled={uploadingComment}
-                onRemove={(fileId) =>
-                  setCommentAttachments((prev) => prev.filter((a) => a.fileId !== fileId))
-                }
-              />
-              <View style={styles.composerRow}>
-                <AttachmentPicker
-                  compact
-                  hideThumbnails
-                  purpose={FilePurposeEnum.TicketAttachment}
-                  value={commentAttachments}
-                  onChange={setCommentAttachments}
-                  onUploadingChange={setUploadingComment}
+          {!chatLocked &&
+            canComment &&
+            (chatTab === "internal" || canPostPublic) && (
+              <Animated.View style={[styles.composer, composerAnimatedStyle]}>
+                <AttachmentPreviewStrip
+                  items={commentAttachments}
+                  imageHeaders={imageHeaders}
+                  disabled={uploadingComment}
+                  onRemove={(fileId) =>
+                    setCommentAttachments((prev) =>
+                      prev.filter((a) => a.fileId !== fileId),
+                    )
+                  }
                 />
-                <TextInput
-                  style={styles.composerInput}
-                  placeholder="Type a message..."
-                  placeholderTextColor={Colors.textFaint}
-                  value={commentText}
-                  onChangeText={(t) => { setCommentText(t); notifyTyping(); }}
-                  multiline
-                />
-                <Pressable
-                  style={styles.internalToggle}
-                  onPress={handleStartRecording}
-                  disabled={chatTab === 'internal' || uploadingComment || transcribing}
-                >
-                  {transcribing ? (
-                    <ActivityIndicator size="small" color={Colors.textMute} />
-                  ) : (
-                    <Ionicons name="mic-outline" size={17} color={chatTab === 'internal' ? Colors.textFaint : Colors.textMute} />
-                  )}
-                </Pressable>
-                <Pressable
-                  style={[styles.sendBtn, (!canSendComment || uploadingComment || voiceRecorder.isRecording) && styles.sendBtnDisabled]}
-                  onPress={handleSendComment}
-                  disabled={!canSendComment || uploadingComment || voiceRecorder.isRecording}
-                >
-                  <Ionicons name="send" size={18} color={Colors.text} />
-                </Pressable>
-              </View>
-            </Animated.View>
-          )}
+                <View style={styles.composerRow}>
+                  <AttachmentPicker
+                    compact
+                    hideThumbnails
+                    purpose={FilePurposeEnum.TicketAttachment}
+                    value={commentAttachments}
+                    onChange={setCommentAttachments}
+                    onUploadingChange={setUploadingComment}
+                  />
+                  <TextInput
+                    style={styles.composerInput}
+                    placeholder="Type a message..."
+                    placeholderTextColor={Colors.textFaint}
+                    value={commentText}
+                    onChangeText={(t) => {
+                      setCommentText(t);
+                      notifyTyping();
+                    }}
+                    multiline
+                  />
+                  <Pressable
+                    style={styles.internalToggle}
+                    onPress={handleStartRecording}
+                    disabled={
+                      chatTab === "internal" || uploadingComment || transcribing
+                    }
+                  >
+                    {transcribing ? (
+                      <ActivityIndicator size="small" color={Colors.textMute} />
+                    ) : (
+                      <Ionicons
+                        name="mic-outline"
+                        size={17}
+                        color={
+                          chatTab === "internal"
+                            ? Colors.textFaint
+                            : Colors.textMute
+                        }
+                      />
+                    )}
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.sendBtn,
+                      (!canSendComment ||
+                        uploadingComment ||
+                        voiceRecorder.isRecording) &&
+                        styles.sendBtnDisabled,
+                    ]}
+                    onPress={handleSendComment}
+                    disabled={
+                      !canSendComment ||
+                      uploadingComment ||
+                      voiceRecorder.isRecording
+                    }
+                  >
+                    <Ionicons name="send" size={18} color={Colors.text} />
+                  </Pressable>
+                </View>
+              </Animated.View>
+            )}
         </Animated.View>
       ) : (
-      <>
-      <View style={styles.chatTabRowWrap}>
-        <TabsRow activeTab={activeTab} onChange={setActiveTab} unreadCount={unreadCount} />
-      </View>
-      <ScrollView
-        style={styles.scrollBody}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {activeTab === 'activities' && (
-          <>
-            {/* Title + Priority + SLA */}
-            <View style={[styles.card, Shadow]}>
-              <Text style={styles.ticketTitle}>{ticket.title}</Text>
-              <View style={styles.metaRow}>
-                <View style={[styles.priorityBadge, { backgroundColor: pMeta.chipBg }]}>
-                  <Text style={[styles.priorityText, { color: pMeta.chipText }]}>{pMeta.short}</Text>
+        <>
+          <View style={styles.chatTabRowWrap}>
+            <TabsRow
+              activeTab={activeTab}
+              onChange={setActiveTab}
+              unreadCount={unreadCount}
+            />
+          </View>
+          <ScrollView
+            style={styles.scrollBody}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {activeTab === "activities" && (
+              <>
+                {/* Title + Priority + SLA */}
+                <View style={[styles.card, Shadow]}>
+                  <Text style={styles.ticketTitle}>{ticket.title}</Text>
+                  <View style={styles.metaRow}>
+                    <View
+                      style={[
+                        styles.priorityBadge,
+                        { backgroundColor: pMeta.chipBg },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.priorityText, { color: pMeta.chipText }]}
+                      >
+                        {pMeta.short}
+                      </Text>
+                    </View>
+                    <Text style={styles.metaCategory}>
+                      {categoryLabel(ticket.category)}
+                    </Text>
+                  </View>
+                  {ticket.resolutionSlaTimer &&
+                    shouldShowLiveSla(
+                      ticket.status,
+                      ticket.priority,
+                      ticket.resolutionSlaTimer.status,
+                    ) && <SlaCountdown sla={ticket.resolutionSlaTimer} />}
+                  <View style={styles.durationRow}>
+                    <Text style={styles.durationLabel}>Processing time</Text>
+                    <ProcessingDurationTimer
+                      activities={activities}
+                      status={ticket.status}
+                    />
+                  </View>
                 </View>
-                <Text style={styles.metaCategory}>{categoryLabel(ticket.category)}</Text>
-              </View>
-              {ticket.slaTimer && shouldShowLiveSla(ticket.status, ticket.priority, ticket.slaTimer.status) && <SlaCountdown sla={ticket.slaTimer} />}
-              <View style={styles.durationRow}>
-                <Text style={styles.durationLabel}>Processing time</Text>
-                <ProcessingDurationTimer activities={activities} status={ticket.status} />
-              </View>
-            </View>
 
-            {/* Escalation — parity with web's staff/manager detail. On an SLA
+                {/* Escalation — parity with web's staff/manager detail. On an SLA
                 breach the system escalates on its own (raises priority, moves the
                 ticket to ReAssign, demotes the primary handler), so without this
                 the ticket just changes under the technician with no reason given. */}
-            {ticket.escalatedAt && (
-              <View style={[styles.card, styles.escalationCard, Shadow]}>
-                <Text style={styles.escalationTitle}>Escalation</Text>
-                {ticket.escalationReason && (
-                  <Text style={styles.escalationReason}>
-                    {escalationReasonLabel(ticket.escalationReason)}
-                  </Text>
+                {ticket.escalatedAt && (
+                  <View style={[styles.card, styles.escalationCard, Shadow]}>
+                    <Text style={styles.escalationTitle}>Escalation</Text>
+                    {ticket.escalationReason && (
+                      <Text style={styles.escalationReason}>
+                        {escalationReasonLabel(ticket.escalationReason)}
+                      </Text>
+                    )}
+                    <Text style={styles.escalationTime}>
+                      {formatDateTime(ticket.escalatedAt)}
+                    </Text>
+                  </View>
                 )}
-                <Text style={styles.escalationTime}>{formatDateTime(ticket.escalatedAt)}</Text>
-              </View>
-            )}
 
-            {/* Description */}
-            {ticket.description && (
-              <View style={[styles.card, Shadow]}>
-                <Text style={styles.sectionLabel}>Description</Text>
-                <Text style={styles.descText}>{ticket.description}</Text>
-              </View>
-            )}
+                {/* Description */}
+                {ticket.description && (
+                  <View style={[styles.card, Shadow]}>
+                    <Text style={styles.sectionLabel}>Description</Text>
+                    <Text style={styles.descText}>{ticket.description}</Text>
+                  </View>
+                )}
 
-            {/* Warning evidence — sensor logs exceeding threshold around the time the issue was detected.
+                {/* Warning evidence — sensor logs exceeding threshold around the time the issue was detected.
                 Auto-hides when the ticket has no batteryAssetId or detectedAt. */}
-            {/* Site-level ticket → incident card + ambient log instead of the battery
+                {/* Site-level ticket → incident card + ambient log instead of the battery
                 panel. Checked FIRST because these tickets carry an empty batteryAssetId:
                 the fault is in the cabinet, not in one battery, so "no battery" is the
                 correct shape here rather than missing data. */}
-            {ticket.environmentalIncidentId ? (
-              <>
-                <View style={[styles.card, Shadow]}>
-                  <EnvironmentalIncidentCard
-                    incidentId={ticket.environmentalIncidentId}
-                    description={ticket.description}
-                  />
-                </View>
+                {ticket.environmentalIncidentId ? (
+                  <>
+                    <View style={[styles.card, Shadow]}>
+                      <EnvironmentalIncidentCard
+                        incidentId={ticket.environmentalIncidentId}
+                        description={ticket.description}
+                      />
+                    </View>
 
-                {incident?.siteId && incident?.detectedAt && (
+                    {incident?.siteId && incident?.detectedAt && (
+                      <View style={[styles.card, Shadow]}>
+                        <Pressable
+                          style={styles.realtimeBtn}
+                          onPress={() =>
+                            router.push({
+                              pathname: "/(staff)/sites/[id]",
+                              params: {
+                                id: incident.siteId,
+                                at: incident.detectedAt,
+                              },
+                            })
+                          }
+                        >
+                          <Ionicons
+                            name="thermometer-outline"
+                            size={15}
+                            color={Colors.accent}
+                          />
+                          <Text style={styles.realtimeText}>
+                            View site log at this time
+                          </Text>
+                          <Ionicons
+                            name="chevron-forward"
+                            size={15}
+                            color={Colors.textMute}
+                          />
+                        </Pressable>
+
+                        <AmbientEvidencePanel
+                          siteId={incident.siteId}
+                          anchorAt={incident.detectedAt}
+                        />
+                      </View>
+                    )}
+                  </>
+                ) : null}
+
+                {ticket.batteryAssetId && ticket.detectedAt && (
                   <View style={[styles.card, Shadow]}>
+                    {/* Same entry point web puts on its battery info panel. The window
+                    comes from the SAME constant the evidence table below uses, so the
+                    raw log opens on exactly the rows this ticket was judged on. */}
                     <Pressable
                       style={styles.realtimeBtn}
-                      onPress={() =>
+                      onPress={() => {
+                        const t = new Date(ticket.detectedAt!).getTime();
                         router.push({
-                          pathname: '/(staff)/sites/[id]',
-                          params: { id: incident.siteId, at: incident.detectedAt },
-                        })
-                      }
+                          pathname: "/(staff)/batteries/[id]",
+                          params: {
+                            id: ticket.batteryAssetId!,
+                            from: new Date(
+                              t - EVIDENCE_WINDOW_MS,
+                            ).toISOString(),
+                            to: new Date(t + EVIDENCE_WINDOW_MS).toISOString(),
+                          },
+                        });
+                      }}
                     >
-                      <Ionicons name="thermometer-outline" size={15} color={Colors.accent} />
-                      <Text style={styles.realtimeText}>View site log at this time</Text>
-                      <Ionicons name="chevron-forward" size={15} color={Colors.textMute} />
+                      <Ionicons
+                        name="pulse-outline"
+                        size={15}
+                        color={Colors.accent}
+                      />
+                      <Text style={styles.realtimeText}>
+                        View real-time detail
+                      </Text>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={15}
+                        color={Colors.textMute}
+                      />
                     </Pressable>
 
-                    <AmbientEvidencePanel
-                      siteId={incident.siteId}
-                      anchorAt={incident.detectedAt}
+                    <BatteryWarningEvidencePanel
+                      batteryAssetId={ticket.batteryAssetId}
+                      detectedAt={ticket.detectedAt}
                     />
                   </View>
                 )}
-              </>
-            ) : null}
 
-            {ticket.batteryAssetId && ticket.detectedAt && (
-              <View style={[styles.card, Shadow]}>
-                {/* Same entry point web puts on its battery info panel. The window
-                    comes from the SAME constant the evidence table below uses, so the
-                    raw log opens on exactly the rows this ticket was judged on. */}
-                <Pressable
-                  style={styles.realtimeBtn}
-                  onPress={() => {
-                    const t = new Date(ticket.detectedAt!).getTime();
-                    router.push({
-                      pathname: '/(staff)/batteries/[id]',
-                      params: {
-                        id: ticket.batteryAssetId!,
-                        from: new Date(t - EVIDENCE_WINDOW_MS).toISOString(),
-                        to: new Date(t + EVIDENCE_WINDOW_MS).toISOString(),
-                      },
-                    });
-                  }}
-                >
-                  <Ionicons name="pulse-outline" size={15} color={Colors.accent} />
-                  <Text style={styles.realtimeText}>View real-time detail</Text>
-                  <Ionicons name="chevron-forward" size={15} color={Colors.textMute} />
-                </Pressable>
+                {/* Photos the customer attached when creating the ticket */}
+                {(ticket.attachmentFileIds?.length ?? 0) > 0 && (
+                  <View style={[styles.card, Shadow]}>
+                    <Text style={styles.sectionLabel}>Attachments</Text>
+                    <AttachmentThumbnails
+                      fileIds={ticket.attachmentFileIds}
+                      size={72}
+                      onPressImage={setViewingImage}
+                    />
+                  </View>
+                )}
 
-                <BatteryWarningEvidencePanel
-                  batteryAssetId={ticket.batteryAssetId}
-                  detectedAt={ticket.detectedAt}
+                {/* Battery view entry point */}
+                {ticket.batteryAssetId && (
+                  <Pressable
+                    style={[styles.logButton, Shadow]}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(staff)/batteries/[id]",
+                        params: { id: ticket.batteryAssetId as string },
+                      })
+                    }
+                  >
+                    <Ionicons
+                      name="battery-charging-outline"
+                      size={18}
+                      color={Colors.primary}
+                    />
+                    <Text style={styles.logButtonText}>View battery info</Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={14}
+                      color={Colors.textMute}
+                    />
+                  </Pressable>
+                )}
+
+                {/* Action Bar */}
+                <TicketActionBar
+                  status={ticket.status}
+                  onHold={() => setShowHold(true)}
+                  onResume={() => setShowResume(true)}
+                  onResolve={() => setShowCompleteLogForm(true)}
+                  onEscalate={() => setShowEscalate(true)}
+                  isLoading={isActioning}
+                  canResolve={canResolve && canComplete(ticket, accountId)}
+                  canHold={canHold(ticket, accountId)}
+                  canResume={canResume(ticket, accountId)}
+                  canEscalate={canEscalate(ticket, accountId)}
                 />
-              </View>
-            )}
+                <PendingContextCard ticket={ticket} />
 
-            {/* Photos the customer attached when creating the ticket */}
-            {(ticket.attachmentFileIds?.length ?? 0) > 0 && (
-              <View style={[styles.card, Shadow]}>
-                <Text style={styles.sectionLabel}>Attachments</Text>
-                <AttachmentThumbnails fileIds={ticket.attachmentFileIds} size={72} onPressImage={setViewingImage} />
-              </View>
-            )}
-
-            {/* Battery view entry point */}
-            {ticket.batteryAssetId && (
-              <Pressable
-                style={[styles.logButton, Shadow]}
-                onPress={() =>
-                  router.push({
-                    pathname: '/(staff)/batteries/[id]',
-                    params: { id: ticket.batteryAssetId as string },
-                  })
-                }
-              >
-                <Ionicons name="battery-charging-outline" size={18} color={Colors.primary} />
-                <Text style={styles.logButtonText}>View battery info</Text>
-                <Ionicons name="chevron-forward" size={14} color={Colors.textMute} />
-              </Pressable>
-            )}
-
-            {/* Action Bar */}
-            <TicketActionBar
-              status={ticket.status}
-              onHold={() => setShowHold(true)}
-              onResume={() => setShowResume(true)}
-              onResolve={() => setShowCompleteLogForm(true)}
-              onEscalate={() => setShowEscalate(true)}
-              isLoading={isActioning}
-              canResolve={canResolve && canComplete(ticket, accountId)}
-              canHold={canHold(ticket, accountId)}
-              canResume={canResume(ticket, accountId)}
-              canEscalate={canEscalate(ticket, accountId)}
-            />
-            <PendingContextCard ticket={ticket} />
-
-            {/* Maintenance log button */}
-            {ticket.status === 'InProgress' && !!accountId && isPrimaryHandler(ticket.assignments, accountId) && (
-              <Pressable style={[styles.logButton, Shadow]} onPress={() => setShowLogForm(!showLogForm)}>
-                <Text style={styles.logButtonText}>{showLogForm ? 'Hide log form' : 'Add maintenance log'}</Text>
-              </Pressable>
-            )}
-
-            {showLogForm && (
-              <MaintenanceLogForm onSubmit={handleAddLog} isLoading={isAddingLog} activities={activities} />
-            )}
-
-            <View style={styles.tabContent}>
-              <ActivityTimeline activities={activities} assignments={ticket?.assignments} />
-            </View>
-          </>
-        )}
-
-        {activeTab === 'logs' && (
-          <View style={styles.tabContent}>
-            {(ticket.maintenanceLogs ?? []).length === 0 ? (
-              <Text style={styles.emptyTab}>No maintenance logs yet</Text>
-            ) : (
-              (ticket.maintenanceLogs ?? []).map((log) => (
-                <View key={log.id} style={[styles.logCard, Shadow]}>
-                  {!!log.summary && <Text style={styles.logDesc}>{log.summary}</Text>}
-                  {!!log.actionsTaken && <Text style={styles.logMeta}>Action: {log.actionsTaken}</Text>}
-                  {!!log.diagnosisDetails && <Text style={styles.logMeta}>Diagnosis: {log.diagnosisDetails}</Text>}
-                  {!!log.resolutionNote && <Text style={styles.logMeta}>Result: {log.resolutionNote}</Text>}
-                  {log.durationMinutes > 0 && (
-                    <Text style={styles.logMeta}>Duration: {formatDurationMinutes(log.durationMinutes)}</Text>
-                  )}
-                  {(log.beforePhotosFileIds?.length ?? 0) > 0 && (
-                    <>
-                      <Text style={styles.logMeta}>Before photos:</Text>
-                      <AttachmentThumbnails fileIds={log.beforePhotosFileIds} size={64} />
-                    </>
-                  )}
-                  {(log.afterPhotosFileIds?.length ?? 0) > 0 && (
-                    <>
-                      <Text style={styles.logMeta}>After photos:</Text>
-                      <AttachmentThumbnails fileIds={log.afterPhotosFileIds} size={64} />
-                    </>
-                  )}
-                  <Text style={styles.logTime}>{formatDateTime(log.createdAt)}</Text>
-                  {canEditLog(log) && (
-                    <Pressable style={styles.logEditBtn} onPress={() => setEditingLog(log)}>
-                      <Ionicons name="create-outline" size={14} color={Colors.primary} />
-                      <Text style={styles.logEditText}>Edit</Text>
+                {/* Maintenance log button */}
+                {ticket.status === "InProgress" &&
+                  !!accountId &&
+                  isPrimaryHandler(ticket.assignments, accountId) && (
+                    <Pressable
+                      style={[styles.logButton, Shadow]}
+                      onPress={() => setShowLogForm(!showLogForm)}
+                    >
+                      <Text style={styles.logButtonText}>
+                        {showLogForm ? "Hide log form" : "Add maintenance log"}
+                      </Text>
                     </Pressable>
                   )}
-                </View>
-              ))
-            )}
-          </View>
-        )}
 
-        {activeTab === 'kb' && (
-          <View style={styles.tabContent}>
-            {/* AI đề xuất tài liệu — đặt TRƯỚC danh sách đã gán vì đây là thứ dẫn tới
+                {showLogForm && (
+                  <MaintenanceLogForm
+                    onSubmit={handleAddLog}
+                    isLoading={isAddingLog}
+                    activities={activities}
+                  />
+                )}
+
+                <View style={styles.tabContent}>
+                  <ActivityTimeline
+                    activities={activities}
+                    assignments={ticket?.assignments}
+                  />
+                </View>
+              </>
+            )}
+
+            {activeTab === "logs" && (
+              <View style={styles.tabContent}>
+                {(ticket.maintenanceLogs ?? []).length === 0 ? (
+                  <Text style={styles.emptyTab}>No maintenance logs yet</Text>
+                ) : (
+                  (ticket.maintenanceLogs ?? []).map((log) => (
+                    <View key={log.id} style={[styles.logCard, Shadow]}>
+                      {!!log.summary && (
+                        <Text style={styles.logDesc}>{log.summary}</Text>
+                      )}
+                      {!!log.actionsTaken && (
+                        <Text style={styles.logMeta}>
+                          Action: {log.actionsTaken}
+                        </Text>
+                      )}
+                      {!!log.diagnosisDetails && (
+                        <Text style={styles.logMeta}>
+                          Diagnosis: {log.diagnosisDetails}
+                        </Text>
+                      )}
+                      {!!log.resolutionNote && (
+                        <Text style={styles.logMeta}>
+                          Result: {log.resolutionNote}
+                        </Text>
+                      )}
+                      {log.durationMinutes > 0 && (
+                        <Text style={styles.logMeta}>
+                          Duration: {formatDurationMinutes(log.durationMinutes)}
+                        </Text>
+                      )}
+                      {(log.beforePhotosFileIds?.length ?? 0) > 0 && (
+                        <>
+                          <Text style={styles.logMeta}>Before photos:</Text>
+                          <AttachmentThumbnails
+                            fileIds={log.beforePhotosFileIds}
+                            size={64}
+                          />
+                        </>
+                      )}
+                      {(log.afterPhotosFileIds?.length ?? 0) > 0 && (
+                        <>
+                          <Text style={styles.logMeta}>After photos:</Text>
+                          <AttachmentThumbnails
+                            fileIds={log.afterPhotosFileIds}
+                            size={64}
+                          />
+                        </>
+                      )}
+                      <Text style={styles.logTime}>
+                        {formatDateTime(log.createdAt)}
+                      </Text>
+                      {canEditLog(log) && (
+                        <Pressable
+                          style={styles.logEditBtn}
+                          onPress={() => setEditingLog(log)}
+                        >
+                          <Ionicons
+                            name="create-outline"
+                            size={14}
+                            color={Colors.primary}
+                          />
+                          <Text style={styles.logEditText}>Edit</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  ))
+                )}
+              </View>
+            )}
+
+            {activeTab === "kb" && (
+              <View style={styles.tabContent}>
+                {/* AI đề xuất tài liệu — đặt TRƯỚC danh sách đã gán vì đây là thứ dẫn tới
                 hành động, còn danh sách dưới là kết quả đã chốt.
                 `enabled` gắn với tab: chỉ gọi AI khi người dùng thật sự mở tab này.
                 Chỉ đọc + điều hướng; việc gắn tài liệu vẫn qua nút gán bài viết Guide
                 bên dưới, đúng phân quyền PrimaryHandler của BE. */}
-            <KbSuggestionPanel
-              ticketId={ticketId}
-              topN={3}
-              enabled={activeTab === 'kb'}
-              onOpen={(kb) =>
-                router.push({
-                  pathname: '/(staff)/kb/[id]' as never,
-                  params: { id: kb.kbArticleId } as never,
-                } as never)
-              }
-            />
-
-            {/* Gán bài KB — chỉ Staff được phân công + ticket chưa đóng (BE chặn 403 nếu vi phạm) */}
-            {!ticketClosed && !!accountId && isPrimaryHandler(ticket.assignments, accountId) && (
-              <Pressable style={styles.kbAssignBtn} onPress={() => setShowKbPicker(true)}>
-                <Text style={styles.kbAssignText}>Assign guide article</Text>
-              </Pressable>
-            )}
-
-            <Text style={styles.kbSectionLabel}>Assigned articles</Text>
-            {kbRefsLoading ? (
-              <ActivityIndicator color={Colors.primary} style={{ marginTop: 24 }} />
-            ) : !kbRefs || kbRefs.length === 0 ? (
-              <Text style={styles.emptyTab}>No guide articles assigned yet</Text>
-            ) : (
-              kbRefs.map((ref) => (
-                <Pressable
-                  key={ref.id}
-                  style={[styles.kbRefCard, Shadow]}
-                  onPress={() =>
+                <KbSuggestionPanel
+                  ticketId={ticketId}
+                  topN={3}
+                  enabled={activeTab === "kb"}
+                  onOpen={(kb) =>
                     router.push({
-                      pathname: '/(staff)/kb/[id]' as never,
-                      params: { id: ref.kbArticleId } as never,
+                      pathname: "/(staff)/kb/[id]" as never,
+                      params: { id: kb.kbArticleId } as never,
                     } as never)
                   }
-                >
-                  <View style={styles.kbRefTop}>
-                    <Ionicons name="book-outline" size={16} color={Colors.primary} />
-                    <Text style={styles.kbRefCode}>{ref.kbArticleCode}</Text>
-                    {!ticketClosed && !!accountId && isPrimaryHandler(ticket.assignments, accountId) ? (
-                      <Pressable
-                        style={styles.kbRefDeleteBtn}
-                        onPress={() => handleRemoveRef(ref.id)}
-                        hitSlop={8}
-                      >
-                        <Ionicons name="trash-outline" size={15} color={Colors.danger} />
-                      </Pressable>
-                    ) : (
-                      <Ionicons name="chevron-forward" size={14} color={Colors.textFaint} style={{ marginLeft: 'auto' }} />
-                    )}
-                  </View>
-                  {ref.kbArticleTitle ? (
-                    <Text style={styles.kbRefTitle}>{ref.kbArticleTitle}</Text>
-                  ) : null}
-                  {ref.note ? (
-                    <Text style={styles.kbRefNote}>{ref.note}</Text>
-                  ) : null}
-                  <Text style={styles.kbRefTime}>{formatDate(ref.createdAt)}</Text>
-                </Pressable>
-              ))
-            )}
-          </View>
-        )}
+                />
 
-        <View style={{ height: 100 }} />
-      </ScrollView>
-      </>
+                {/* Gán bài KB — chỉ Staff được phân công + ticket chưa đóng (BE chặn 403 nếu vi phạm) */}
+                {!ticketClosed &&
+                  !!accountId &&
+                  isPrimaryHandler(ticket.assignments, accountId) && (
+                    <Pressable
+                      style={styles.kbAssignBtn}
+                      onPress={() => setShowKbPicker(true)}
+                    >
+                      <Text style={styles.kbAssignText}>
+                        Assign guide article
+                      </Text>
+                    </Pressable>
+                  )}
+
+                <Text style={styles.kbSectionLabel}>Assigned articles</Text>
+                {kbRefsLoading ? (
+                  <ActivityIndicator
+                    color={Colors.primary}
+                    style={{ marginTop: 24 }}
+                  />
+                ) : !kbRefs || kbRefs.length === 0 ? (
+                  <Text style={styles.emptyTab}>
+                    No guide articles assigned yet
+                  </Text>
+                ) : (
+                  kbRefs.map((ref) => (
+                    <Pressable
+                      key={ref.id}
+                      style={[styles.kbRefCard, Shadow]}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/(staff)/kb/[id]" as never,
+                          params: { id: ref.kbArticleId } as never,
+                        } as never)
+                      }
+                    >
+                      <View style={styles.kbRefTop}>
+                        <Ionicons
+                          name="book-outline"
+                          size={16}
+                          color={Colors.primary}
+                        />
+                        <Text style={styles.kbRefCode}>
+                          {ref.kbArticleCode}
+                        </Text>
+                        {!ticketClosed &&
+                        !!accountId &&
+                        isPrimaryHandler(ticket.assignments, accountId) ? (
+                          <Pressable
+                            style={styles.kbRefDeleteBtn}
+                            onPress={() => handleRemoveRef(ref.id)}
+                            hitSlop={8}
+                          >
+                            <Ionicons
+                              name="trash-outline"
+                              size={15}
+                              color={Colors.danger}
+                            />
+                          </Pressable>
+                        ) : (
+                          <Ionicons
+                            name="chevron-forward"
+                            size={14}
+                            color={Colors.textFaint}
+                            style={{ marginLeft: "auto" }}
+                          />
+                        )}
+                      </View>
+                      {ref.kbArticleTitle ? (
+                        <Text style={styles.kbRefTitle}>
+                          {ref.kbArticleTitle}
+                        </Text>
+                      ) : null}
+                      {ref.note ? (
+                        <Text style={styles.kbRefNote}>{ref.note}</Text>
+                      ) : null}
+                      <Text style={styles.kbRefTime}>
+                        {formatDate(ref.createdAt)}
+                      </Text>
+                    </Pressable>
+                  ))
+                )}
+              </View>
+            )}
+
+            <View style={{ height: 100 }} />
+          </ScrollView>
+        </>
       )}
 
       {/* Modals */}
@@ -874,16 +1201,44 @@ function StaffTicketDetailScreenInner() {
         onStop={handleStopRecording}
         onCancel={voiceRecorder.cancel}
       />
-      <HoldModal visible={showHold} onClose={() => setShowHold(false)} onSubmit={handleHold} isLoading={isHolding} />
-      <ResumeModal visible={showResume} onClose={() => setShowResume(false)} onSubmit={handleResume} isLoading={isResuming} />
-      <EscalateModal visible={showEscalate} onClose={() => setShowEscalate(false)} onSubmit={handleEscalate} isLoading={isEscalating} />
+      <HoldModal
+        visible={showHold}
+        onClose={() => setShowHold(false)}
+        onSubmit={handleHold}
+        isLoading={isHolding}
+      />
+      <ResumeModal
+        visible={showResume}
+        onClose={() => setShowResume(false)}
+        onSubmit={handleResume}
+        isLoading={isResuming}
+      />
+      <EscalateModal
+        visible={showEscalate}
+        onClose={() => setShowEscalate(false)}
+        onSubmit={handleEscalate}
+        isLoading={isEscalating}
+      />
 
       {/* Complete requires a maintenance log first — this form's summary becomes the ticket's resolutionSummary. */}
-      <Modal visible={showCompleteLogForm} transparent animationType="slide" onRequestClose={() => setShowCompleteLogForm(false)}>
+      <Modal
+        visible={showCompleteLogForm}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCompleteLogForm(false)}
+      >
         <View style={styles.editOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowCompleteLogForm(false)} />
-          <View style={[styles.editSheet, { paddingBottom: insets.bottom + 16 }]}>
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setShowCompleteLogForm(false)}
+          />
+          <View
+            style={[styles.editSheet, { paddingBottom: insets.bottom + 16 }]}
+          >
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
               <MaintenanceLogForm
                 isLoading={isAddingLog || isResolving}
                 onSubmit={handleCompleteLog}
@@ -898,17 +1253,30 @@ function StaffTicketDetailScreenInner() {
       </Modal>
 
       {/* GH-44 #4 — sửa maintenance log (PATCH) */}
-      <Modal visible={editingLog !== null} transparent animationType="slide" onRequestClose={() => setEditingLog(null)}>
+      <Modal
+        visible={editingLog !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditingLog(null)}
+      >
         <View style={styles.editOverlay}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setEditingLog(null)} />
-          <View style={[styles.editSheet, { paddingBottom: insets.bottom + 16 }]}>
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setEditingLog(null)}
+          />
+          <View
+            style={[styles.editSheet, { paddingBottom: insets.bottom + 16 }]}
+          >
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
               {editingLog && (
                 <MaintenanceLogForm
                   isLoading={isUpdatingLog}
                   onSubmit={handleUpdateLog}
                   initialValues={{
-                    summary: editingLog.summary ?? '',
+                    summary: editingLog.summary ?? "",
                     logType: editingLog.logType,
                     diagnosisDetails: editingLog.diagnosisDetails ?? undefined,
                     actionsTaken: editingLog.actionsTaken ?? undefined,
@@ -935,7 +1303,11 @@ function StaffTicketDetailScreenInner() {
       />
 
       {/* GH-44 #5/#7 — gán bài KB từ gợi ý */}
-      <KbReferencePicker visible={showKbPicker} ticketId={ticketId} onClose={() => setShowKbPicker(false)} />
+      <KbReferencePicker
+        visible={showKbPicker}
+        ticketId={ticketId}
+        onClose={() => setShowKbPicker(false)}
+      />
 
       {/* Fullscreen image viewer */}
       {viewingImage !== null && (
@@ -947,14 +1319,25 @@ function StaffTicketDetailScreenInner() {
           onRequestClose={() => setViewingImage(null)}
         >
           <View style={styles.imgOverlay}>
-            <Pressable style={StyleSheet.absoluteFill} onPress={() => setViewingImage(null)} />
-            <AuthImage fileId={viewingImage} style={styles.imgFull} resizeMode="contain" />
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => setViewingImage(null)}
+            />
+            <AuthImage
+              fileId={viewingImage}
+              style={styles.imgFull}
+              resizeMode="contain"
+            />
             <Pressable
               style={[styles.imgCloseBtn, { top: insets.top + 12 }]}
               onPress={() => setViewingImage(null)}
               hitSlop={12}
             >
-              <Ionicons name="close-circle" size={38} color="rgba(255,255,255,0.9)" />
+              <Ionicons
+                name="close-circle"
+                size={38}
+                color="rgba(255,255,255,0.9)"
+              />
             </Pressable>
           </View>
         </Modal>
@@ -965,85 +1348,175 @@ function StaffTicketDetailScreenInner() {
 
 const styles = StyleSheet.create({
   realtimeBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingVertical: 11, paddingHorizontal: 12, marginBottom: 14,
-    borderRadius: 12, borderWidth: 1, borderColor: Colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    marginBottom: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
     backgroundColor: Colors.card2,
   },
-  realtimeText: { flex: 1, fontSize: 13, fontWeight: '700', color: Colors.accent },
+  realtimeText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "700",
+    color: Colors.accent,
+  },
   escalationCard: { backgroundColor: Colors.warningLight },
   escalationTitle: {
-    fontSize: 10, fontWeight: '800', letterSpacing: 0.8,
-    textTransform: 'uppercase', color: Colors.warningDark, marginBottom: 6,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    color: Colors.warningDark,
+    marginBottom: 6,
   },
-  escalationReason: { fontSize: 13, fontWeight: '600', color: Colors.text },
+  escalationReason: { fontSize: 13, fontWeight: "600", color: Colors.text },
   escalationTime: { fontSize: 11, color: Colors.warningDark, marginTop: 4 },
   root: { flex: 1, backgroundColor: Colors.bg },
-  loadingRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bg, gap: 10 },
-  notFoundTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, marginTop: 4 },
-  notFoundText: { fontSize: 13, fontWeight: '500', color: Colors.textMute, textAlign: 'center', lineHeight: 19 },
-  notFoundBtn: { marginTop: 8, paddingHorizontal: 24, paddingVertical: 11, borderRadius: 14, backgroundColor: Colors.primary },
-  notFoundBtnText: { fontSize: 13, fontWeight: '800', color: '#FFFFFF' },
+  loadingRoot: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.bg,
+    gap: 10,
+  },
+  notFoundTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: Colors.text,
+    marginTop: 4,
+  },
+  notFoundText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: Colors.textMute,
+    textAlign: "center",
+    lineHeight: 19,
+  },
+  notFoundBtn: {
+    marginTop: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 11,
+    borderRadius: 14,
+    backgroundColor: Colors.primary,
+  },
+  notFoundBtnText: { fontSize: 13, fontWeight: "800", color: "#FFFFFF" },
 
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingBottom: 12,
-    backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: Colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
-  backBtn: { width: 36, height: 36, backgroundColor: Colors.card2, alignItems: 'center', justifyContent: 'center' },
-  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerCode: { fontSize: 16, fontWeight: '800', color: Colors.text },
-  unreadSlot: { width: 36, alignItems: 'flex-end', justifyContent: 'center' },
-  refreshBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    alignItems: 'center', justifyContent: 'center',
+  backBtn: {
+    width: 36,
+    height: 36,
     backgroundColor: Colors.card2,
-    borderWidth: 1, borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerCenter: { flexDirection: "row", alignItems: "center", gap: 8 },
+  headerCode: { fontSize: 16, fontWeight: "800", color: Colors.text },
+  unreadSlot: { width: 36, alignItems: "flex-end", justifyContent: "center" },
+  refreshBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.card2,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   refreshBtnMuted: { opacity: 0.55 },
   unreadBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: Colors.primary, borderRadius: 999,
-    paddingHorizontal: 6, paddingVertical: 3,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: Colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
   },
-  unreadText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
+  unreadText: { color: "#FFF", fontSize: 10, fontWeight: "800" },
 
   scrollBody: { flex: 1 },
   scrollContent: { padding: 16, gap: 12 },
 
   card: {
-    backgroundColor: '#FFFFFF', borderRadius: 20, padding: 16, gap: 10,
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)',
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 16,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.03)",
   },
-  ticketTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, lineHeight: 22 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  ticketTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: Colors.text,
+    lineHeight: 22,
+  },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   priorityBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  priorityText: { fontSize: 11, fontWeight: '800' },
-  metaCategory: { fontSize: 12, fontWeight: '600', color: Colors.textMute },
-  durationRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  durationLabel: { fontSize: 12, fontWeight: '600', color: Colors.textMute },
+  priorityText: { fontSize: 11, fontWeight: "800" },
+  metaCategory: { fontSize: 12, fontWeight: "600", color: Colors.textMute },
+  durationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  durationLabel: { fontSize: 12, fontWeight: "600", color: Colors.textMute },
 
-  sectionLabel: { fontSize: 13, fontWeight: '800', color: Colors.text },
-  descText: { fontSize: 13, fontWeight: '500', color: Colors.textMute, lineHeight: 20 },
+  sectionLabel: { fontSize: 13, fontWeight: "800", color: Colors.text },
+  descText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: Colors.textMute,
+    lineHeight: 20,
+  },
 
   logButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: '#FFFFFF', borderRadius: 14, paddingVertical: 12,
-    borderWidth: 1, borderColor: Colors.primaryLight,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: Colors.primaryLight,
   },
   // Chữ đen trên nền trắng — #FFD500 chỉ đạt ~1.5:1 contrast, đọc rất khó.
-  logButtonText: { fontSize: 13, fontWeight: '700', color: Colors.text },
+  logButtonText: { fontSize: 13, fontWeight: "700", color: Colors.text },
 
   tabRow: {
-    flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: 14, padding: 4,
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)',
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.03)",
   },
   tab: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
-    paddingVertical: 10, borderRadius: 10,
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 10,
+    borderRadius: 10,
   },
   tabActive: { backgroundColor: Colors.primaryLight },
-  tabText: { fontSize: 12, fontWeight: '700', color: Colors.textMute },
+  tabText: { fontSize: 12, fontWeight: "700", color: Colors.textMute },
   tabTextActive: { color: Colors.primaryDark },
   // Badge chưa đọc trên tab "Trao đổi" — cùng kiểu với màn Customer.
   tabBadge: {
@@ -1052,96 +1525,209 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     minWidth: 16,
     height: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 4,
   },
-  tabBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+  tabBadgeText: { color: "#fff", fontSize: 9, fontWeight: "800" },
 
   chatScreen: { flex: 1, backgroundColor: Colors.bg },
   chatTabRowWrap: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
   tabContent: { gap: 10 },
-  emptyTab: { textAlign: 'center', fontSize: 13, color: Colors.textFaint, fontWeight: '600', paddingVertical: 24 },
-  logEditBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', marginTop: 6, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999, backgroundColor: Colors.primaryLight },
-  logEditText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
-  kbAssignBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 11, borderRadius: 14, backgroundColor: Colors.primary, marginTop: 14, marginBottom: 4 },
+  emptyTab: {
+    textAlign: "center",
+    fontSize: 13,
+    color: Colors.textFaint,
+    fontWeight: "600",
+    paddingVertical: 24,
+  },
+  logEditBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    marginTop: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: Colors.primaryLight,
+  },
+  logEditText: { fontSize: 12, fontWeight: "600", color: Colors.primary },
+  kbAssignBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 11,
+    borderRadius: 14,
+    backgroundColor: Colors.primary,
+    marginTop: 14,
+    marginBottom: 4,
+  },
   // Nhãn phân tách "AI đề xuất" (ở trên) với "đã gán" (ở dưới) — không có nó thì hai
   // khối card trông như một danh sách, dễ tưởng gợi ý đã được gắn vào ticket.
-  kbSectionLabel: { fontSize: 12, fontWeight: '800', color: Colors.textMute, textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 14, marginBottom: 8 },
-  kbAssignText: { color: Colors.text, fontSize: 13, fontWeight: '700' },
-  kbRefDeleteBtn: { padding: 4, marginLeft: 'auto' },
-  editOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
-  editSheet: { backgroundColor: Colors.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16, paddingTop: 12, maxHeight: '88%' },
+  kbSectionLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: Colors.textMute,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  kbAssignText: { color: Colors.text, fontSize: 13, fontWeight: "700" },
+  kbRefDeleteBtn: { padding: 4, marginLeft: "auto" },
+  editOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  editSheet: {
+    backgroundColor: Colors.bg,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    maxHeight: "88%",
+  },
 
   logCard: {
-    backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, gap: 4,
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)',
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    padding: 14,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.03)",
   },
-  logDesc: { fontSize: 13, fontWeight: '700', color: Colors.text },
-  logMeta: { fontSize: 12, fontWeight: '500', color: Colors.textMute },
-  logTime: { fontSize: 11, fontWeight: '500', color: Colors.textFaint, marginTop: 4 },
+  logDesc: { fontSize: 13, fontWeight: "700", color: Colors.text },
+  logMeta: { fontSize: 12, fontWeight: "500", color: Colors.textMute },
+  logTime: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: Colors.textFaint,
+    marginTop: 4,
+  },
 
   composerWrap: {
-    backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: Colors.border,
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
   attachmentList: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 6,
-    paddingHorizontal: 16, paddingTop: 8,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
   attachmentChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: Colors.card2, borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 5, maxWidth: 200,
-  },
-  attachmentName: { flex: 1, fontSize: 12, color: Colors.text, fontWeight: '500' },
-  chatLockedBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    paddingHorizontal: 12, paddingTop: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
     backgroundColor: Colors.card2,
-    borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.08)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    maxWidth: 200,
   },
-  chatLockedText: { fontSize: 12.5, fontWeight: '600', color: Colors.textMute },
+  attachmentName: {
+    flex: 1,
+    fontSize: 12,
+    color: Colors.text,
+    fontWeight: "500",
+  },
+  chatLockedBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingTop: 14,
+    backgroundColor: Colors.card2,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.08)",
+  },
+  chatLockedText: { fontSize: 12.5, fontWeight: "600", color: Colors.textMute },
 
   composer: {
     gap: 6,
-    paddingHorizontal: 12, paddingTop: 8,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.08)',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.08)",
   },
   composerRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   composerInput: {
-    flex: 1, minHeight: 40, maxHeight: 120,
-    backgroundColor: Colors.card2, borderRadius: 22,
-    paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10,
-    fontSize: 15, color: Colors.text, fontWeight: '500',
+    flex: 1,
+    minHeight: 40,
+    maxHeight: 120,
+    backgroundColor: Colors.card2,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 10,
+    fontSize: 15,
+    color: Colors.text,
+    fontWeight: "500",
   },
   sendBtn: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: Colors.primary,
-    alignItems: 'center', justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     ...ShadowPrimary,
   },
   sendBtnDisabled: { backgroundColor: Colors.textFaint, shadowOpacity: 0 },
 
-  imgOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.93)', alignItems: 'center', justifyContent: 'center' },
-  imgFull:     { width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.78 },
-  imgCloseBtn: { position: 'absolute', right: 16 },
+  imgOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.93)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imgFull: {
+    width: Dimensions.get("window").width,
+    height: Dimensions.get("window").height * 0.78,
+  },
+  imgCloseBtn: { position: "absolute", right: 16 },
 
   internalToggle: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: Colors.card2,
-    alignItems: 'center', justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   kbRefCard: {
-    backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, gap: 6,
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)',
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    padding: 14,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.03)",
   },
-  kbRefTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  kbRefCode: { fontSize: 12, fontWeight: '800', color: Colors.primary },
-  kbRefTitle: { fontSize: 13, fontWeight: '600', color: Colors.text, lineHeight: 18 },
-  kbRefNote: { fontSize: 12, fontWeight: '500', color: Colors.textMute, fontStyle: 'italic' },
-  kbRefTime: { fontSize: 11, fontWeight: '500', color: Colors.textFaint },
+  kbRefTop: { flexDirection: "row", alignItems: "center", gap: 6 },
+  kbRefCode: { fontSize: 12, fontWeight: "800", color: Colors.primary },
+  kbRefTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.text,
+    lineHeight: 18,
+  },
+  kbRefNote: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: Colors.textMute,
+    fontStyle: "italic",
+  },
+  kbRefTime: { fontSize: 11, fontWeight: "500", color: Colors.textFaint },
 });

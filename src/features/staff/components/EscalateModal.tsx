@@ -1,18 +1,28 @@
-import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors } from '@/src/lib/theme';
-import { BottomSheet } from '@/src/shared/components/BottomSheet';
-import { EscalationReasonEnum } from '@/src/features/tickets/types/ticket.types';
-import { handleErrorApi } from '@/src/lib/errors';
-import { ESCALATION_REASON_LABELS } from '@/src/features/tickets/utils/ticketLabels';
+import { Ionicons } from "@expo/vector-icons";
+import React, { useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { Colors } from "@/src/lib/theme";
+import { BottomSheet } from "@/src/shared/components/BottomSheet";
+import { EscalationReasonEnum } from "@/src/features/tickets/types/ticket.types";
+import { handleErrorApi } from "@/src/lib/errors";
+import { ESCALATION_REASON_LABELS } from "@/src/features/tickets/utils/ticketLabels";
 
 // PartsRequired is left out of the picker — the system has no warehouse/parts inventory
 // flow, so selecting it wouldn't lead to any further action. Matches web's EscalateRequestDialog.
 // Deliberate subset (see note above). Wording comes from the shared labels so
 // the picker and the detail screen cannot drift apart.
 const OFFERED_REASONS: EscalationReasonEnum[] = [
-  'SkillGap', 'SafetyConcern', 'SlaBreach', 'CustomerComplaint',
+  "SkillGap",
+  "SafetyConcern",
+  "SlaBreach",
+  "CustomerComplaint",
 ];
 const ESCALATION_OPTIONS = OFFERED_REASONS.map((value) => ({
   value,
@@ -26,21 +36,28 @@ interface Props {
   onSubmit: (reason: EscalationReasonEnum, note: string) => Promise<void>;
 }
 
-export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) {
+export function EscalateModal({
+  visible,
+  isLoading,
+  onClose,
+  onSubmit,
+}: Props) {
   const [selected, setSelected] = useState<EscalationReasonEnum | null>(null);
-  const [note, setNote] = useState('');
-  const [reasonError, setReasonError] = useState('');
+  const [note, setNote] = useState("");
+  const [reasonError, setReasonError] = useState("");
 
   const handleSubmit = async () => {
     if (!selected) return;
-    setReasonError('');
+    setReasonError("");
     try {
       await onSubmit(selected, note.trim());
+      setSelected(null);
+      setNote("");
     } catch (error) {
       handleErrorApi({
         error,
         setFieldError: (field, message) => {
-          if (field === 'reason') setReasonError(message);
+          if (field === "reason") setReasonError(message);
         },
       });
     }
@@ -48,8 +65,8 @@ export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) 
 
   const handleClose = () => {
     setSelected(null);
-    setNote('');
-    setReasonError('');
+    setNote("");
+    setReasonError("");
     onClose();
   };
 
@@ -57,7 +74,9 @@ export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) 
     <BottomSheet visible={visible} onClose={handleClose}>
       <View style={styles.body}>
         <Text style={styles.title}>Escalation request</Text>
-        <Text style={styles.desc}>Manager will review and reassign to a higher-tier Staff.</Text>
+        <Text style={styles.desc}>
+          Manager will review and reassign to a higher-tier Staff.
+        </Text>
 
         <View style={styles.options}>
           {ESCALATION_OPTIONS.map((opt) => {
@@ -68,13 +87,28 @@ export function EscalateModal({ visible, isLoading, onClose, onSubmit }: Props) 
                 style={[styles.option, active && styles.optionActive]}
                 onPress={() => setSelected(opt.value)}
               >
-                <Text style={[styles.optionLabel, active && styles.optionLabelActive]}>{opt.label}</Text>
-                {active && <Ionicons name="checkmark-circle" size={18} color={Colors.danger} />}
+                <Text
+                  style={[
+                    styles.optionLabel,
+                    active && styles.optionLabelActive,
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+                {active && (
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={18}
+                    color={Colors.danger}
+                  />
+                )}
               </Pressable>
             );
           })}
         </View>
-        {reasonError ? <Text style={styles.errorText}>{reasonError}</Text> : null}
+        {reasonError ? (
+          <Text style={styles.errorText}>{reasonError}</Text>
+        ) : null}
 
         <TextInput
           style={styles.noteInput}
@@ -117,25 +151,25 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: "800",
     color: Colors.danger,
   },
   desc: {
     fontSize: 13,
     color: Colors.textMute,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   options: {
     gap: 8,
   },
   option: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 14,
     borderRadius: 14,
     backgroundColor: Colors.card2,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: "transparent",
   },
   optionActive: {
     borderColor: Colors.danger,
@@ -144,12 +178,12 @@ const styles = StyleSheet.create({
   optionLabel: {
     flex: 1,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.text,
   },
   optionLabelActive: {
     color: Colors.dangerDark,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   noteInput: {
     backgroundColor: Colors.card2,
@@ -160,7 +194,7 @@ const styles = StyleSheet.create({
     minHeight: 80,
   },
   actions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
     marginTop: 4,
   },
@@ -169,11 +203,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     backgroundColor: Colors.card2,
-    alignItems: 'center',
+    alignItems: "center",
   },
   cancelText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.text,
   },
   submitBtn: {
@@ -181,12 +215,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     backgroundColor: Colors.danger,
-    alignItems: 'center',
+    alignItems: "center",
   },
   submitText: {
     fontSize: 14,
-    fontWeight: '800',
-    color: '#fff',
+    fontWeight: "800",
+    color: "#fff",
   },
   btnDisabled: {
     opacity: 0.4,

@@ -1,37 +1,48 @@
-import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors, Radius, Shadow, Spacing } from '@/src/lib/theme';
-import { NotificationCategoryEnum } from '../enums/notification.enum';
-import { useNotificationMatrix } from '../hooks/useNotificationMatrix';
-import { NotificationCategoryPreferenceDto } from '../types/notification-matrix.types';
+import { Ionicons } from "@expo/vector-icons";
+import React from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { Colors, Radius, Shadow, Spacing } from "@/src/lib/theme";
+import { NotificationCategoryEnum } from "../enums/notification.enum";
+import { useNotificationMatrix } from "../hooks/useNotificationMatrix";
+import { NotificationCategoryPreferenceDto } from "../types/notification-matrix.types";
 
 // The 4 channels share a key between the category row and the global toggle ⇒ both can be looked up with 1 key.
-type ChannelKey = 'pushEnabled' | 'emailEnabled' | 'smsEnabled' | 'inAppEnabled';
+type ChannelKey =
+  "pushEnabled" | "emailEnabled" | "smsEnabled" | "inAppEnabled";
 
 const CHANNELS: { key: ChannelKey; label: string }[] = [
-  { key: 'pushEnabled', label: 'Push' },
-  { key: 'emailEnabled', label: 'Email' },
-  { key: 'smsEnabled', label: 'SMS' },
-  { key: 'inAppEnabled', label: 'In-app' },
+  { key: "pushEnabled", label: "Push" },
+  { key: "emailEnabled", label: "Email" },
+  { key: "smsEnabled", label: "SMS" },
+  { key: "inAppEnabled", label: "In-app" },
 ];
 
 // BE returns English categoryName ("Sla", "Environmental"...) — mapped to a user-facing label here.
 // Falls back to categoryName if BE adds a new category before mobile syncs.
 const CATEGORY_LABEL: Record<NotificationCategoryEnum, string> = {
-  [NotificationCategoryEnum.Ticket]: 'Ticket',
-  [NotificationCategoryEnum.Sla]: 'SLA & Escalation',
-  [NotificationCategoryEnum.Battery]: 'Battery & Devices',
-  [NotificationCategoryEnum.Environmental]: 'Environmental Incidents',
-  [NotificationCategoryEnum.Chat]: 'Chat',
-  [NotificationCategoryEnum.Account]: 'Account & System',
+  [NotificationCategoryEnum.Ticket]: "Ticket",
+  [NotificationCategoryEnum.Sla]: "SLA & Escalation",
+  [NotificationCategoryEnum.Battery]: "Battery & Devices",
+  [NotificationCategoryEnum.Environmental]: "Environmental Incidents",
+  [NotificationCategoryEnum.Chat]: "Chat",
+  [NotificationCategoryEnum.Account]: "Account & System",
 };
 
 export function CategoryMatrixTable() {
   const { matrix, updateMatrix } = useNotificationMatrix();
 
   const channels = matrix.data?.channels;
-  const categories = matrix.data?.categories ?? [];
+  // Environmental is dropped from this screen — those alerts already have their own tab on the
+  // Alerts screen (siteLevelOnly), so a separate channel toggle here would just duplicate that.
+  const categories = (matrix.data?.categories ?? []).filter(
+    (row) => row.category !== NotificationCategoryEnum.Environmental,
+  );
 
   if (matrix.isLoading) {
     return (
@@ -65,7 +76,8 @@ export function CategoryMatrixTable() {
     <View style={[styles.card, Shadow]}>
       <Text style={styles.title}>Per-category Options</Text>
       <Text style={styles.subtitle}>
-        The global channel toggle above always wins. Turning off a channel globally disables that column for every category.
+        The global channel toggle above always wins. Turning off a channel
+        globally disables that column for every category.
       </Text>
 
       <View style={styles.headerRow}>
@@ -73,7 +85,10 @@ export function CategoryMatrixTable() {
         {CHANNELS.map((c) => (
           <Text
             key={c.key}
-            style={[styles.headerCell, !channels[c.key] && styles.headerCellOff]}
+            style={[
+              styles.headerCell,
+              !channels[c.key] && styles.headerCellOff,
+            ]}
             numberOfLines={1}
           >
             {c.label}
@@ -87,7 +102,9 @@ export function CategoryMatrixTable() {
             <Text style={styles.rowLabel} numberOfLines={2}>
               {CATEGORY_LABEL[row.category] ?? row.categoryName}
             </Text>
-            {!row.isCustomized ? <Text style={styles.inherited}>inherited</Text> : null}
+            {!row.isCustomized ? (
+              <Text style={styles.inherited}>inherited</Text>
+            ) : null}
           </View>
 
           {CHANNELS.map((c) => {
@@ -106,9 +123,15 @@ export function CategoryMatrixTable() {
                 accessibilityLabel={`${CATEGORY_LABEL[row.category] ?? row.categoryName} — ${c.label}`}
               >
                 <Ionicons
-                  name={on ? 'checkmark-circle' : 'ellipse-outline'}
+                  name={on ? "checkmark-circle" : "ellipse-outline"}
                   size={22}
-                  color={globalOff ? Colors.borderLight : on ? Colors.primary : Colors.textFaint}
+                  color={
+                    globalOff
+                      ? Colors.borderLight
+                      : on
+                        ? Colors.primary
+                        : Colors.textFaint
+                  }
                 />
               </Pressable>
             );
@@ -126,21 +149,39 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     marginBottom: Spacing.md,
   },
-  center: { alignItems: 'center', justifyContent: 'center', minHeight: 120 },
-  title: { fontSize: 16, fontWeight: '700', color: Colors.text, marginBottom: Spacing.xs },
-  subtitle: { fontSize: 12, color: Colors.textMute, marginBottom: Spacing.md, lineHeight: 17 },
+  center: { alignItems: "center", justifyContent: "center", minHeight: 120 },
+  title: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Colors.text,
+    marginBottom: Spacing.xs,
+  },
+  subtitle: {
+    fontSize: 12,
+    color: Colors.textMute,
+    marginBottom: Spacing.md,
+    lineHeight: 17,
+  },
   headerRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    alignItems: "flex-end",
     paddingBottom: Spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.border,
   },
-  headerCell: { flex: 1, fontSize: 11, color: Colors.textMute, textAlign: 'center' },
-  headerCellOff: { textDecorationLine: 'line-through', color: Colors.textFaint },
+  headerCell: {
+    flex: 1,
+    fontSize: 11,
+    color: Colors.textMute,
+    textAlign: "center",
+  },
+  headerCellOff: {
+    textDecorationLine: "line-through",
+    color: Colors.textFaint,
+  },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.borderLight,
@@ -148,5 +189,5 @@ const styles = StyleSheet.create({
   nameCol: { flex: 2, paddingRight: Spacing.sm },
   rowLabel: { fontSize: 13, color: Colors.text },
   inherited: { fontSize: 10, color: Colors.textFaint, marginTop: 2 },
-  cell: { flex: 1, alignItems: 'center', paddingVertical: Spacing.xs },
+  cell: { flex: 1, alignItems: "center", paddingVertical: Spacing.xs },
 });
