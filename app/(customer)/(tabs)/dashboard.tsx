@@ -1,63 +1,31 @@
 import React, { useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  LayoutChangeEvent,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Line } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LineChart } from 'react-native-gifted-charts';
 import { useScrollToTop } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { useProfile } from '@/src/features/profile/hooks/useProfile';
 import { useMyBatteryAssets } from '@/src/features/batteries/hooks/useMyBatteryAssets';
 import { useUnreadCount } from '@/src/features/notifications/hooks/useNotifications';
 import { useBatteryFleetStream } from '@/src/features/batteries/hooks/useBatteryFleetStream';
-import { useSensorReadingAggregate } from '@/src/features/batteries/hooks/useSensorReadingAggregate';
 import { buildFleetScope } from '@/src/features/batteries/utils/buildFleetScope';
 import { useMySites } from '@/src/features/sites/hooks/useMySites';
 import { useAmbientLatest } from '@/src/features/ambient/hooks/useAmbientLatest';
-import { LiveReadingDto } from '@/src/features/batteries/types/live-reading.types';
-import { SensorReadingAggregateDto } from '@/src/features/batteries/types/sensor-reading.types';
+import { useBlogInfiniteList } from '@/src/features/blog/hooks/useBlogInfiniteList';
 import { useSessionStore } from '@/src/stores/sessionStore';
 import { formatDate } from '@/src/lib/date';
 import { Colors, Font, Radius, Solar } from '@/src/lib/theme';
 import { EnergyBackdrop, GlassSurface } from '@/src/features/batteries/components/EnergyBackdrop';
+import { EnergyFlowCard } from '@/src/features/batteries/components/EnergyFlowCard';
 import { PressableScale } from '@/src/shared/components/motion';
 
 const BATTERY_IMAGE = require('../../../assets/images/battery-storage-3d.png');
 
-const avg = (values: number[]): number | null =>
-  values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
-
-function formatHourMinute(iso: string): string {
-  const date = new Date(iso);
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${hours}.${minutes}`;
-}
-
-type MetricKey = 'volt' | 'curr' | 'temp';
-
-const METRICS: Record<MetricKey, {
-  label: string;
-  unit: string;
-  pick: (bucket: SensorReadingAggregateDto) => number;
-  format: (value: number) => string;
-}> = {
-  volt: { label: 'Voltage',     unit: 'V',  pick: (b) => b.avgVoltage,     format: (v) => `${v.toFixed(1)} V` },
-  curr: { label: 'Current',     unit: 'A',  pick: (b) => b.avgCurrent,     format: (v) => `${v.toFixed(1)} A` },
-  temp: { label: 'Temperature', unit: '°C', pick: (b) => b.avgTemperature, format: (v) => `${Math.round(v)} °C` },
-};
+// Li-ion derating starts around 35 °C and 45 °C is a fault on every pack we ship,
+// so the badge is a reading AND a warning.
+const tempTint = (c: number) => (c >= 45 ? Colors.dangerDark : c >= 35 ? Colors.warningDark : Solar.ink);
 
 function useLiveWeather(siteId?: string, lat?: number | null, lon?: number | null) {
   const { data: ambient } = useAmbientLatest(siteId ?? '');
@@ -113,8 +81,7 @@ export default function DashboardScreen() {
   const { data: batteries = [], isLoading: batteriesLoading } = useMyBatteryAssets();
   const { data: unreadCount = 0 } = useUnreadCount();
   const { data: sites = [] } = useMySites();
-  const [chartWidth, setChartWidth] = useState(0);
-  const [metric, setMetric] = useState<MetricKey>('volt');
+  const [pickedId, setPickedId] = useState<string | null>(null);
 
   const primarySite = sites[0];
   const weather = useLiveWeather(primarySite?.id, primarySite?.latitude, primarySite?.longitude);
@@ -125,52 +92,14 @@ export default function DashboardScreen() {
     [user],
   );
   const { liveByAsset } = useBatteryFleetStream(fleetScope);
-  const liveReadings = batteries
-    .map((battery) => liveByAsset.get(battery.id))
-    .filter((reading): reading is LiveReadingDto => !!reading);
+  // pageSize trùng màn blog nên hai nơi dùng chung một cache, không gọi thêm lần nữa.
+  const { data: blog } = useBlogInfiniteList({ pageSize: 10 });
+  const latestPost = blog?.pages[0]?.items?.[0];
 
-  const avgSoc = avg(liveReadings.map((reading) => reading.socPercent));
-  const avgVolt = avg(liveReadings.map((reading) => reading.voltage));
-  const avgCurr = avg(liveReadings.map((reading) => reading.current));
-  const avgTemp = avg(liveReadings.map((reading) => reading.temperature));
-
-  // Real 24h trend for the primary battery. The chart used to synthesise seven
-  // points by multiplying one live reading by a hardcoded array — a drawn curve
-  // that never corresponded to anything measured.
-  const primaryBattery = batteries[0];
-  const { data: buckets = [], isLoading: trendLoading } = useSensorReadingAggregate(
-    primaryBattery?.id ?? '',
-    { hours: 24, interval: '1h' },
-  );
-
-  const active = METRICS[metric];
-
-  const chartPoints = useMemo(() => {
-    const focusIndex = buckets.length - 1;
-    return buckets.map((bucket, index) => {
-      const isFocused = index === focusIndex;
-      return {
-        value: active.pick(bucket),
-        // Only every 4th bucket gets a label, otherwise 24 of them collide.
-        label: index % 4 === 0 || isFocused ? formatHourMinute(bucket.time) : '',
-        hideDataPoint: !isFocused,
-        customDataPoint: isFocused
-          ? () => (
-            <View style={styles.focalContainer}>
-              <View style={styles.focalDotOuter}>
-                <View style={styles.focalDotInner} />
-              </View>
-              <LinearGradient
-                colors={['#FFD500', 'rgba(255, 213, 0, 0.02)']}
-                style={styles.needleLine}
-              />
-            </View>
-          )
-          : undefined,
-      };
-    });
-  }, [buckets, active]);
-
+  // The whole screen reads one battery at a time — the fleet averages it used to
+  // show (an average voltage across packs) never described anything physical.
+  const selected = batteries.find((b) => b.id === pickedId) ?? batteries[0];
+  const live = selected ? liveByAsset.get(selected.id) : undefined;
 
   if (profileLoading) {
     return (
@@ -180,8 +109,6 @@ export default function DashboardScreen() {
       </View>
     );
   }
-
-  const todayString = formatDate(new Date());
 
   return (
     <View style={styles.root}>
@@ -195,7 +122,9 @@ export default function DashboardScreen() {
           <View style={styles.weatherLine}>
             <Ionicons name={weather.iconName} size={20} color={Solar.ink} />
             <Text style={styles.tempText}>{weather.temp}</Text>
-            <Text style={styles.weatherDateText}>{weather.label} / Today, {todayString}</Text>
+            <Text style={styles.weatherDateText}>
+              {weather.label} / Today, {formatDate(new Date())}
+            </Text>
           </View>
 
           <PressableScale
@@ -219,175 +148,120 @@ export default function DashboardScreen() {
 
         <View style={styles.hero}>
           <View style={styles.heroCopy}>
-            <Text style={styles.heroValue}>{avgSoc != null ? `${Math.round(avgSoc)}%` : '—'}</Text>
-            <Text style={styles.heroLabel}>Average battery charge</Text>
+            <Text style={styles.heroValue}>
+              {live ? `${Math.round(live.socPercent)}%` : '—'}
+            </Text>
+            <Text style={styles.heroLabel}>
+              {selected ? 'Charge remaining' : 'No battery linked yet'}
+            </Text>
           </View>
-          <Image source={BATTERY_IMAGE} style={styles.heroBattery} contentFit="contain" transition={220} />
-        </View>
-
-        <GlassSurface style={styles.waveCard} warm>
-          <View style={styles.waveTop}>
-            <View style={styles.waveTopCopy}>
-              <Text style={styles.waveCaption}>Last 24 hours</Text>
-              <Text style={styles.waveCount} numberOfLines={1}>
-                {primaryBattery?.serialNumber ?? 'No battery linked'}
+          <Image
+            source={BATTERY_IMAGE}
+            style={[styles.heroBattery, !live && styles.heroBatteryMuted]}
+            contentFit="contain"
+            transition={220}
+          />
+          {/* Pack temperature belongs to the pack, so it is labelled on it. */}
+          {live ? (
+            <View style={styles.tempBadge}>
+              <Ionicons name="thermometer-outline" size={13} color={tempTint(live.temperature)} />
+              <Text style={[styles.tempValue, { color: tempTint(live.temperature) }]}>
+                {live.temperature.toFixed(1)}
+                <Text style={styles.tempUnit}> °C</Text>
               </Text>
             </View>
-          </View>
+          ) : null}
+        </View>
 
-          <View onLayout={(event: LayoutChangeEvent) => setChartWidth(event.nativeEvent.layout.width)}>
-            {chartPoints.length >= 2 && chartWidth > 0 ? (
-              <View style={styles.chartWrapper}>
-                <LineChart
-                  data={chartPoints}
-                  height={95}
-                  width={chartWidth - 10}
-                  adjustToWidth
-                  initialSpacing={14}
-                  endSpacing={14}
-                  curved
-                  thickness={2.5}
-                  color={Solar.yellow}
-                  areaChart
-                  startFillColor={Solar.yellow}
-                  endFillColor="#FFFFFF"
-                  startOpacity={0.22}
-                  endOpacity={0.0}
-                  hideRules
-                  hideYAxisText
-                  xAxisColor="transparent"
-                  yAxisColor="transparent"
-                  yAxisLabelWidth={0}
-                  xAxisLabelsHeight={24}
-                  xAxisLabelTextStyle={styles.axisLabel}
-                  disableScroll
-                />
-                <View style={styles.dashedBaselineContainer} pointerEvents="none">
-                  <Svg height={2} width="100%">
-                    <Line
-                      x1="0"
-                      y1="1"
-                      x2="100%"
-                      y2="1"
-                      stroke="rgba(215, 210, 195, 0.85)"
-                      strokeDasharray="5 5"
-                      strokeWidth="1.2"
-                    />
-                  </Svg>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.waveEmpty}>
-                <Text style={styles.waveEmptyText}>
-                  {batteriesLoading || trendLoading
-                    ? 'Loading readings…'
-                    : !primaryBattery
-                      ? 'No battery linked to your account yet'
-                      : 'No readings in the last 24 hours'}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Tapping a cell switches which metric the trend above plots.
-              Values are the live fleet average — `—` when nothing is reporting. */}
-          <View style={styles.statStrip}>
-            {(Object.keys(METRICS) as MetricKey[]).map((key) => {
-              const cell = METRICS[key];
-              const value = key === 'volt' ? avgVolt : key === 'curr' ? avgCurr : avgTemp;
-              const isActive = metric === key;
+        {/* Only worth a switcher when there is something to switch between. */}
+        {batteries.length > 1 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+            style={styles.chipScroll}
+          >
+            {batteries.map((battery) => {
+              const isActive = battery.id === selected?.id;
               return (
                 <PressableScale
-                  key={key}
-                  style={[styles.statCell, isActive && styles.statCellActive]}
-                  scaleTo={0.95}
-                  onPress={() => setMetric(key)}
+                  key={battery.id}
+                  scaleTo={0.94}
+                  onPress={() => setPickedId(battery.id)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isActive }}
+                  style={[styles.chip, isActive && styles.chipActive]}
                 >
-                  <Text style={[styles.statLabel, isActive && styles.statLabelActive]}>{cell.label}</Text>
-                  <Text style={styles.statValue}>{value != null ? cell.format(value) : '—'}</Text>
+                  <View style={[styles.chipDot, liveByAsset.has(battery.id) && styles.chipDotLive]} />
+                  <Text style={[styles.chipText, isActive && styles.chipTextActive]} numberOfLines={1}>
+                    {battery.serialNumber}
+                  </Text>
                 </PressableScale>
               );
             })}
-          </View>
-        </GlassSurface>
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>My batteries</Text>
-          <Pressable onPress={() => router.push('/(customer)/batteries' as any)}>
-            <Text style={styles.sectionLink}>View all</Text>
-          </Pressable>
-        </View>
+          </ScrollView>
+        ) : null}
 
         {batteriesLoading ? (
           <ActivityIndicator size="small" color={Solar.yellowDeep} style={styles.listLoader} />
+        ) : selected ? (
+          <>
+            <EnergyFlowCard live={live} serial={selected.serialNumber} />
+
+            <PressableScale
+              style={styles.detailBtn}
+              scaleTo={0.98}
+              onPress={() =>
+                router.push({ pathname: '/(customer)/batteries/[id]', params: { id: selected.id } })
+              }
+            >
+              <Text style={styles.detailBtnText}>Open {selected.serialNumber}</Text>
+              <Ionicons name="arrow-forward" size={16} color={Solar.ink} />
+            </PressableScale>
+          </>
         ) : (
-          <FlatList
-            data={batteries}
-            keyExtractor={(item) => item.id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.batteryRow}
-            style={styles.batteryList}
-            renderItem={({ item }) => {
-              const live = liveByAsset.get(item.id);
-              return (
-                <PressableScale
-                  scaleTo={0.96}
-                  onPress={() =>
-                    router.push({ pathname: '/(customer)/batteries/[id]', params: { id: item.id } })
-                  }
-                >
-                  <GlassSurface style={styles.batteryCard}>
-                    <View style={styles.batteryCardTop}>
-                      <Text style={styles.batteryName} numberOfLines={1}>{item.serialNumber}</Text>
-                      <View style={styles.iconBoxStack}>
-                        <Ionicons name="layers" size={15} color={Solar.ink} />
-                      </View>
-                    </View>
-
-                    <View style={styles.socPill}>
-                      <View style={styles.socIconCircle}>
-                        <Ionicons name="flash" size={12} color={Solar.yellowDeep} />
-                      </View>
-                      <Text style={styles.socText}>{live ? `${Math.round(live.socPercent)}%` : '—'}</Text>
-                    </View>
-
-                    <Image
-                      source={BATTERY_IMAGE}
-                      style={[styles.batteryThumb, !live && styles.batteryThumbMuted]}
-                      contentFit="contain"
-                    />
-
-                    <View>
-                      <Text style={styles.batteryValue}>
-                        {live ? `${live.voltage.toFixed(1)} V` : '—'}
-                      </Text>
-                      <Text style={styles.batteryCaption} numberOfLines={1}>
-                        {item.batteryTypeName || 'Current voltage'}
-                      </Text>
-                    </View>
-                  </GlassSurface>
-                </PressableScale>
-              );
-            }}
-          />
+          <GlassSurface style={styles.emptyCard}>
+            <Ionicons name="battery-dead-outline" size={40} color={Solar.faint} />
+            <Text style={styles.emptyTitle}>No battery linked</Text>
+            <Text style={styles.emptySub}>
+              Once a storage device is assigned to your account its live readings appear here.
+            </Text>
+          </GlassSurface>
         )}
 
+        {/* Bài mới nhất hiện thẳng ra thay vì một ô "News" rỗng — cùng diện tích nhưng nói được
+            nội dung, và vẫn chỉ là cache dùng chung với màn blog. */}
         <PressableScale
-          style={styles.blogEntry}
+          style={styles.newsCard}
           scaleTo={0.98}
-          onPress={() => router.push('/(customer)/blog' as never)}
+          onPress={() =>
+            latestPost
+              ? router.push({ pathname: '/(customer)/blog/[id]', params: { id: latestPost.id } })
+              : router.push('/(customer)/blog' as never)
+          }
         >
-          <View style={styles.blogIcon}>
-            <Ionicons name="newspaper-outline" size={20} color={Solar.yellowDeep} />
+          <View style={styles.newsHead}>
+            <View style={styles.newsIcon}>
+              <Ionicons name="newspaper-outline" size={16} color={Solar.yellowDeep} />
+            </View>
+            <Text style={styles.sectionCaption}>News</Text>
+            <Text style={styles.newsMore}>All posts</Text>
+            <Ionicons name="chevron-forward" size={14} color={Solar.mute} />
           </View>
-          <View style={styles.blogBody}>
-            <Text style={styles.blogTitle}>News</Text>
-            <Text style={styles.blogDesc}>Latest posts from the system</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={Solar.mute} />
+
+          {latestPost ? (
+            <>
+              <Text style={styles.newsTitle} numberOfLines={2}>
+                {latestPost.title}
+              </Text>
+              <Text style={styles.newsSummary} numberOfLines={2}>
+                {latestPost.summary}
+              </Text>
+              <Text style={styles.newsDate}>{formatDate(new Date(latestPost.createdAt))}</Text>
+            </>
+          ) : (
+            <Text style={styles.newsSummary}>No posts published yet</Text>
+          )}
         </PressableScale>
       </ScrollView>
     </View>
@@ -434,129 +308,102 @@ const styles = StyleSheet.create({
   },
   notificationCount: { color: Solar.white, fontSize: 8, lineHeight: 10, fontWeight: '700' },
 
-  hero: { height: 170, justifyContent: 'center', marginBottom: 4 },
+  hero: { height: 160, justifyContent: 'center' },
   heroCopy: { flex: 1, justifyContent: 'center' },
   heroValue: { fontSize: 58, lineHeight: 60, fontWeight: '700', color: Solar.ink, letterSpacing: -1.8 },
   heroLabel: { ...Font.meta, fontSize: 13, marginTop: 4 },
-  heroBattery: { width: 180, height: 160, position: 'absolute', right: -10, top: 4 },
-
-  waveCard: { padding: 16, marginBottom: 16 },
-  waveTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  waveTopCopy: { flex: 1 },
-  waveCaption: { ...Font.meta },
-  waveCount: { ...Font.title, marginTop: 1 },
-  axisLabel: { fontSize: 10, color: Solar.mute, fontWeight: '600', marginTop: 8 },
-  chartWrapper: { position: 'relative', height: 125, justifyContent: 'flex-end', marginBottom: 6 },
-  dashedBaselineContainer: { position: 'absolute', bottom: 24, left: 0, right: 0 },
-  focalContainer: { alignItems: 'center', justifyContent: 'flex-start', width: 20, height: 60 },
-  focalDotOuter: {
-    width: 14,
-    height: 14,
-    backgroundColor: Solar.yellow,
+  heroBattery: { width: 175, height: 150, position: 'absolute', right: -10, top: 4 },
+  heroBatteryMuted: { opacity: 0.4 },
+  tempBadge: {
+    position: 'absolute',
+    right: 34,
+    bottom: 4,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Solar.yellowDeep,
-    shadowOpacity: 0.35,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
-    zIndex: 10,
-  },
-  focalDotInner: { width: 6, height: 6, borderRadius: 3, backgroundColor: Solar.ink },
-  needleLine: { width: 2.5, height: 38, marginTop: -1, borderRadius: 1.25 },
-  waveEmpty: { height: 95, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12 },
-  waveEmptyText: { ...Font.meta, textAlign: 'center' },
-
-  statStrip: { flexDirection: 'row', gap: 8, marginTop: 16 },
-  statCell: {
-    flex: 1,
-    height: 64,
-    borderRadius: Radius.tile,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Solar.card,
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: Solar.white,
     borderWidth: 1,
-    borderColor: Solar.cardEdge,
-  },
-  statCellActive: {
-    backgroundColor: Solar.yellow,
-    borderColor: Solar.yellow,
-    shadowColor: Solar.yellowDeep,
-    shadowOpacity: 0.3,
+    borderColor: Solar.border,
+    shadowColor: Solar.shadow,
+    shadowOpacity: 0.12,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  statLabel: { ...Font.meta, fontSize: 11, textAlign: 'center' },
-  statLabelActive: { color: Solar.ink, fontWeight: '700' },
-  statValue: { fontSize: 15, color: Solar.ink, fontWeight: '700', marginTop: 3, textAlign: 'center' },
+  tempValue: { fontSize: 14, fontWeight: '700', letterSpacing: -0.3 },
+  tempUnit: { fontSize: 10, fontWeight: '700', color: Solar.mute },
 
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sectionTitle: { ...Font.title },
-  sectionLink: { ...Font.meta, color: Solar.yellowDeep, fontWeight: '700' },
-  listLoader: { marginVertical: 25 },
-  batteryList: { marginBottom: 24 },
-  batteryRow: { gap: 12, paddingRight: 20, paddingBottom: 4 },
-  batteryCard: {
-    width: 185,
-    height: 215,
-    padding: 14,
-    justifyContent: 'space-between',
-  },
-  batteryCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  batteryName: { ...Font.body, fontSize: 14, flex: 1, marginRight: 4 },
-  iconBoxStack: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
-    backgroundColor: Solar.tile,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  socPill: {
-    alignSelf: 'flex-start',
+  chipScroll: { marginBottom: 14, marginHorizontal: -20 },
+  chipRow: { gap: 8, paddingHorizontal: 20 },
+  chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: Solar.tile,
+    height: 34,
+    paddingHorizontal: 12,
     borderRadius: 999,
-    paddingLeft: 3,
-    paddingRight: 9,
-    paddingVertical: 3,
-    marginTop: 6,
+    backgroundColor: Solar.card,
+    borderWidth: 1,
+    borderColor: Solar.border,
   },
-  socIconCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: Solar.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  socText: { fontSize: 12, fontWeight: '700', color: Solar.ink },
-  batteryThumb: { width: '100%', height: 82, marginVertical: 4 },
-  batteryThumbMuted: { opacity: 0.38 },
-  batteryValue: { fontSize: 18, lineHeight: 21, color: Solar.ink, fontWeight: '700' },
-  batteryCaption: { ...Font.meta, fontSize: 10, marginTop: 2 },
+  chipActive: { backgroundColor: Solar.yellow, borderColor: Solar.yellow },
+  chipDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Solar.faint },
+  chipDotLive: { backgroundColor: Colors.success },
+  chipText: { fontSize: 12, fontWeight: '600', color: Solar.mute, maxWidth: 130 },
+  chipTextActive: { color: Solar.ink, fontWeight: '700' },
 
-  blogEntry: {
+  listLoader: { marginVertical: 40 },
+
+  detailBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
+    gap: 8,
+    height: 48,
+    borderRadius: Radius.tile,
+    backgroundColor: Solar.yellow,
+    shadowColor: Solar.yellowDeep,
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  detailBtnText: { fontSize: 14, fontWeight: '700', color: Solar.ink },
+
+  emptyCard: { alignItems: 'center', padding: 28, marginBottom: 20 },
+  emptyTitle: { ...Font.title, fontSize: 16, marginTop: 10 },
+  emptySub: { ...Font.meta, textAlign: 'center', marginTop: 6, lineHeight: 17 },
+
+  sectionCaption: { ...Font.micro, color: Solar.mute, flex: 1 },
+
+
+  newsCard: {
     backgroundColor: Solar.card,
     borderRadius: Radius.card,
-    padding: 14,
-    marginTop: 8,
-    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: Solar.cardEdge,
+    padding: 16,
+    marginTop: 20,
+    shadowColor: Solar.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
   },
-  blogIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.tile,
+  newsHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  newsIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
     backgroundColor: Solar.yellowSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  blogBody: { flex: 1 },
-  blogTitle: { ...Font.body },
-  blogDesc: { ...Font.meta, marginTop: 2 },
-
+  newsMore: { ...Font.meta, fontSize: 11, color: Solar.yellowDeep, fontWeight: '700' },
+  newsTitle: { ...Font.body, fontSize: 15, lineHeight: 20 },
+  newsSummary: { ...Font.meta, fontSize: 12, lineHeight: 17, marginTop: 4 },
+  newsDate: { ...Font.meta, fontSize: 10, color: Solar.faint, marginTop: 8 },
 });

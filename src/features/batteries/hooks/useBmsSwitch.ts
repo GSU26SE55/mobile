@@ -9,7 +9,10 @@ export function useBmsSwitch(assetId: string) {
     enabled: !!assetId,
     staleTime: 0,
     retry: false,
+    // Command lifecycle: MQTT to the device, Modbus write and readback in firmware
+    // (~200-400ms), then an ack returns. Polling every 3s made the control look slow
+    // long after the BMS had already applied the state.
     refetchInterval: (query) =>
-      query.state.data?.pendingCommand ? 3_000 : 30_000,
+      query.state.data?.pendingCommand ? 400 : 30_000,
   });
 }
