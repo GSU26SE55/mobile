@@ -237,8 +237,7 @@ export default function ProfileScreen() {
             icon="options-outline"
             label="Advanced settings"
             // Opens the settings hub, which lists every sub-screen (chat inbox, email,
-            // phone, trusted devices, notifications, danger zone). Linking straight to
-            // danger-zone left the rest of the hub unreachable.
+            // phone, trusted devices, notifications).
             onPress={() => router.push('/(customer)/settings')}
           />
         </GlassSurface>

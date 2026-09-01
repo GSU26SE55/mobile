@@ -15,7 +15,6 @@ const ITEMS = [
   { label: 'Notification settings', route: '/(customer)/settings/notifications' as const },
   { label: 'Chat inbox', route: '/(customer)/chats' as const },
   { label: 'Permission list', route: '/(customer)/settings/permissions' as const },
-  { label: 'Danger zone', route: '/(customer)/settings/danger-zone' as const },
 ];
 
 export default function SettingsScreen() {
