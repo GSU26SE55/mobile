@@ -1,8 +1,15 @@
-import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Colors } from '@/src/lib/theme';
-import { BottomSheet } from '@/src/shared/components/BottomSheet';
-import { handleErrorApi } from '@/src/lib/errors';
+import React, { useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { Colors } from "@/src/lib/theme";
+import { BottomSheet } from "@/src/shared/components/BottomSheet";
+import { handleErrorApi } from "@/src/lib/errors";
 
 interface Props {
   visible: boolean;
@@ -12,30 +19,32 @@ interface Props {
 }
 
 export function ResumeModal({ visible, isLoading, onClose, onSubmit }: Props) {
-  const [reason, setReason] = useState('');
-  const [error, setError] = useState('');
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState("");
 
   const handleSubmit = async () => {
     const trimmed = reason.trim();
     if (!trimmed) {
-      setError('An early-resume reason is required');
+      setError("An early-resume reason is required");
       return;
     }
     try {
       await onSubmit(trimmed);
+      setReason("");
+      setError("");
     } catch (err) {
       handleErrorApi({
         error: err,
         setFieldError: (field, message) => {
-          if (field === 'reason') setError(message);
+          if (field === "reason") setError(message);
         },
       });
     }
   };
 
   const handleClose = () => {
-    setReason('');
-    setError('');
+    setReason("");
+    setError("");
     onClose();
   };
 
@@ -43,13 +52,18 @@ export function ResumeModal({ visible, isLoading, onClose, onSubmit }: Props) {
     <BottomSheet visible={visible} onClose={handleClose}>
       <View style={styles.body}>
         <Text style={styles.title}>Resume ticket</Text>
-        <Text style={styles.desc}>Explain why you&apos;re resuming before the scheduled time.</Text>
+        <Text style={styles.desc}>
+          Explain why you&apos;re resuming before the scheduled time.
+        </Text>
 
         <View>
           <TextInput
             style={[styles.input, error ? styles.inputError : null]}
             value={reason}
-            onChangeText={(t) => { setReason(t); setError(''); }}
+            onChangeText={(t) => {
+              setReason(t);
+              setError("");
+            }}
             placeholder="Reason for resuming early..."
             placeholderTextColor={Colors.textFaint}
             multiline
@@ -64,7 +78,10 @@ export function ResumeModal({ visible, isLoading, onClose, onSubmit }: Props) {
             <Text style={styles.cancelText}>Cancel</Text>
           </Pressable>
           <Pressable
-            style={[styles.submitBtn, (!reason.trim() || isLoading) && styles.btnDisabled]}
+            style={[
+              styles.submitBtn,
+              (!reason.trim() || isLoading) && styles.btnDisabled,
+            ]}
             onPress={handleSubmit}
             disabled={!reason.trim() || isLoading}
           >
@@ -84,13 +101,13 @@ const styles = StyleSheet.create({
   body: { gap: 16 },
   title: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: "800",
     color: Colors.text,
   },
   desc: {
     fontSize: 13,
     color: Colors.textMute,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   input: {
     backgroundColor: Colors.card2,
@@ -100,7 +117,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
     minHeight: 100,
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: "transparent",
   },
   inputError: {
     borderColor: Colors.danger,
@@ -111,7 +128,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   actions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
     marginTop: 8,
   },
@@ -120,11 +137,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     backgroundColor: Colors.card2,
-    alignItems: 'center',
+    alignItems: "center",
   },
   cancelText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.text,
   },
   submitBtn: {
@@ -132,12 +149,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     backgroundColor: Colors.primary,
-    alignItems: 'center',
+    alignItems: "center",
   },
   submitText: {
     fontSize: 14,
-    fontWeight: '800',
-    color: '#fff',
+    fontWeight: "800",
+    color: "#fff",
   },
   btnDisabled: {
     opacity: 0.4,

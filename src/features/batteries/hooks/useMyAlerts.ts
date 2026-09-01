@@ -1,27 +1,25 @@
-import { useQuery } from '@tanstack/react-query';
-import { QUERY_KEY } from '@/src/lib/queryKeys';
-import { alertService } from '../services/alert.service';
-import { useMyBatteryAssets } from './useMyBatteryAssets';
-import { AlertDto } from '../types/alert.types';
+import { useQuery } from "@tanstack/react-query";
+import { QUERY_KEY } from "@/src/lib/queryKeys";
+import { alertService } from "../services/alert.service";
+import { AlertDto, AlertListParams } from "../types/alert.types";
 
-// Customer's alerts = alerts from ALL batteries the Customer owns, merged together.
-// ⚠️ BE GET /api/alerts is NOT scoped by user (see AlertsController) → must filter manually by
-// each of the Customer's batteryAssetId, otherwise we'd receive other customers' alerts (data leak).
-export function useMyAlerts() {
-  const { data: batteries = [] } = useMyBatteryAssets();
-  const ids = batteries.map((b) => b.id);
-
+// Customer's alerts. GET /api/alerts is already customer-scoped server-side when the caller's JWT
+// is a Customer (GetAlertsQueryHandler → scope.IsCustomerScoped), covering both battery-level and
+// site-level alerts in one call — no need to fan out per batteryAssetId.
+export function useMyAlerts(params?: AlertListParams) {
+  const merged: AlertListParams = { pageSize: 100, ...params };
   return useQuery({
-    queryKey: QUERY_KEY.alerts.list({ mine: true, ids }),
-    enabled: ids.length > 0,
+    queryKey: QUERY_KEY.alerts.list({ mine: true, ...merged } as Record<
+      string,
+      unknown
+    >),
     queryFn: async () => {
-      const results = await Promise.all(
-        ids.map((id) => alertService.getList({ batteryAssetId: id, pageSize: 100 })),
-      );
-      const all: AlertDto[] = results.flatMap((res) => res.data.data?.items ?? []);
-      return all.sort(
-        (a, b) => new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime(),
-      );
+      const res = await alertService.getList(merged);
+      const items = res.data.data?.items ?? [];
+      return items.sort(
+        (a, b) =>
+          new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime(),
+      ) as AlertDto[];
     },
   });
 }
