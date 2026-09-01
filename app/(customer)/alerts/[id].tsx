@@ -1,13 +1,14 @@
-import React from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDateTime } from '@/src/lib/date';
 import { Colors, Shadow } from '@/src/lib/theme';
-import { handleErrorApi } from '@/src/lib/errors';
+import { KEY } from '@/src/lib/queryKeys';
 import { useAlert } from '@/src/features/batteries/hooks/useAlert';
-import { useAcknowledgeAlert } from '@/src/features/batteries/hooks/useAcknowledgeAlert';
+import { alertService } from '@/src/features/batteries/services/alert.service';
 import { ANOMALY_LABEL } from '@/src/features/batteries/components/AssetAlertList';
 import { formatMeasure } from '@/src/features/batteries/types/alert.types';
 import {
@@ -33,7 +34,29 @@ export default function AlertDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: alert, isLoading, isError } = useAlert(id ?? '');
-  const { mutateAsync: acknowledge, isPending } = useAcknowledgeAlert();
+  const queryClient = useQueryClient();
+
+  // Opening the screen on an Open alert acknowledges it right away, so the customer
+  // doesn't have to tap a separate button before they can see it as handled. Calls the
+  // service directly (skipping useAcknowledgeAlert) so this silent step stays silent —
+  // no error Alert, no success popup.
+  const autoAckedId = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      alert &&
+      alert.status === AlertStatusEnum.Open &&
+      autoAckedId.current !== alert.id
+    ) {
+      autoAckedId.current = alert.id;
+      alertService
+        .acknowledge(alert.id)
+        .then(() => queryClient.invalidateQueries({ queryKey: KEY.alerts }))
+        .catch(() => {
+          // Silent by design — the reviewer never asked for acknowledgement, so a
+          // failure here shouldn't interrupt them from reading the alert.
+        });
+    }
+  }, [alert, queryClient]);
 
   if (isLoading) {
     return (
@@ -56,16 +79,6 @@ export default function AlertDetailScreen() {
   }
 
   const sev = SEVERITY_STYLE[alert.severity] ?? SEVERITY_STYLE[AlertSeverityEnum.Info];
-  const canAck = alert.status === AlertStatusEnum.Open;
-
-  const handleAcknowledge = async () => {
-    try {
-      await acknowledge(alert.id);
-      Alert.alert('Success', 'This alert has been acknowledged.');
-    } catch (error) {
-      handleErrorApi({ error });
-    }
-  };
 
   return (
     <View style={styles.root}>
@@ -143,26 +156,6 @@ export default function AlertDetailScreen() {
           </Pressable>
         ) : null}
       </ScrollView>
-
-      {/* Acknowledge action */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
-        <Pressable
-          style={[styles.ackBtn, Shadow, !canAck && styles.ackBtnDisabled]}
-          onPress={handleAcknowledge}
-          disabled={!canAck || isPending}
-        >
-          {isPending ? (
-            <ActivityIndicator size="small" color="#FF5E13" />
-          ) : (
-            <>
-              <Ionicons name="checkmark-circle-outline" size={16} color="#FF5E13" style={{ marginRight: 6 }} />
-              <Text style={styles.ackBtnText}>
-                {canAck ? 'Acknowledge' : 'Acknowledged'}
-              </Text>
-            </>
-          )}
-        </Pressable>
-      </View>
     </View>
   );
 }
@@ -204,7 +197,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,0,0,0.02)',
   },
   headerTitle: { fontSize: 18, fontWeight: '800', color: Colors.accent },
-  scroll: { padding: 20, paddingBottom: 100 },
+  scroll: { padding: 20 },
   card: { backgroundColor: Colors.white, borderRadius: 24, padding: 18, marginBottom: 16 },
   sevPill: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, marginBottom: 10 },
   sevText: { fontSize: 11, fontWeight: '800' },
@@ -232,24 +225,4 @@ const styles = StyleSheet.create({
   },
   linkTitle: { fontSize: 13, fontWeight: '800', color: Colors.accent },
   linkMeta: { fontSize: 11, color: Colors.textMute, marginTop: 3 },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 20,
-    backgroundColor: 'transparent',
-  },
-  ackBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.02)',
-    borderRadius: 16,
-    paddingVertical: 14,
-    backgroundColor: Colors.white,
-  },
-  ackBtnDisabled: { opacity: 0.5 },
-  ackBtnText: { fontSize: 13, fontWeight: '800', color: '#FF5E13' },
 });

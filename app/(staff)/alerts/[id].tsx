@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDateTime } from '@/src/lib/date';
 import { Colors, Shadow } from '@/src/lib/theme';
+import { KEY } from '@/src/lib/queryKeys';
 import { handleErrorApi } from '@/src/lib/errors';
 import { useAlert } from '@/src/features/batteries/hooks/useAlert';
 import { useResolveAlert } from '@/src/features/batteries/hooks/useResolveAlert';
+import { alertService } from '@/src/features/batteries/services/alert.service';
 import { ANOMALY_LABEL } from '@/src/features/batteries/components/AssetAlertList';
 import { formatMeasure } from '@/src/features/batteries/types/alert.types';
 import {
@@ -34,6 +37,27 @@ export default function StaffAlertDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: alert, isLoading, isError } = useAlert(id ?? '');
   const { mutateAsync: resolve, isPending: resolvePending } = useResolveAlert();
+  const queryClient = useQueryClient();
+
+  // Opening the screen on an Open alert acknowledges it right away, so staff can go
+  // straight to Resolve without a separate tap. Calls the service directly (skipping
+  // useAcknowledgeAlert) so this silent step stays silent — no error Alert, no popup.
+  const autoAckedId = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      alert &&
+      alert.status === AlertStatusEnum.Open &&
+      autoAckedId.current !== alert.id
+    ) {
+      autoAckedId.current = alert.id;
+      alertService
+        .acknowledge(alert.id)
+        .then(() => queryClient.invalidateQueries({ queryKey: KEY.alerts }))
+        .catch(() => {
+          // Silent — staff still gets to Resolve even if this background step fails.
+        });
+    }
+  }, [alert, queryClient]);
 
   if (isLoading) {
     return (
