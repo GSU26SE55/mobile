@@ -15,6 +15,7 @@ const tabMeta: Record<string, {
   inactive: React.ComponentProps<typeof Ionicons>['name'];
 }> = {
   dashboard: { active: 'home', inactive: 'home-outline' },
+  batteries: { active: 'battery-charging', inactive: 'battery-charging-outline' },
   tickets: { active: 'pie-chart', inactive: 'pie-chart-outline' },
   profile: { active: 'person', inactive: 'person-outline' },
 };
@@ -71,6 +72,7 @@ export default function CustomerTabsLayout() {
       screenOptions={{ headerShown: false, ...tabTransition }}
     >
       <Tabs.Screen name="dashboard" />
+      <Tabs.Screen name="batteries" />
       <Tabs.Screen name="tickets" />
       <Tabs.Screen name="profile" />
       <Tabs.Screen name="alerts" options={{ href: null }} />
