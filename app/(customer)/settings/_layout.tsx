@@ -26,7 +26,6 @@ export default function SettingsLayout() {
       <Stack.Screen name="notification-list" options={{ title: 'Notifications' }} />
       <Stack.Screen name="notifications" options={{ title: 'Notification Settings' }} />
       <Stack.Screen name="permissions" options={{ title: 'Permission Catalog' }} />
-      <Stack.Screen name="danger-zone" options={{ title: 'Danger Zone' }} />
     </Stack>
   );
 }
