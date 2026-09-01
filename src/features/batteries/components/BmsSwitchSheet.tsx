@@ -430,13 +430,12 @@ export function BmsSwitchSheet({ assetId, cascade, visible, onClose }: Props) {
       const actual = readbackOf(t);
       return actual != null && actual === enable;
     });
-  const redundant = isRedundant(pickEnable);
-
-  // Đổi MOSFET mà hướng đang chọn hoá ra thừa thì nhảy sang hướng còn lại, đừng để thumb nằm
-  // trên một ô bấm không được.
-  useEffect(() => {
-    if (redundant && !isRedundant(!pickEnable)) setPickEnable(!pickEnable);
-  }, [redundant, pickTarget, state?.chargeEnabled, state?.dischargeEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Hướng thực sự sẽ gửi đi. Nếu hướng đang chọn hoá ra thừa (đã ở sẵn trạng thái đó) mà hướng
+  // kia thì không, tự lật sang hướng kia — dẫn xuất chứ không setState trong effect, nên không
+  // tốn thêm một lần render và không có khoảnh khắc thumb nằm trên ô bấm không được.
+  const activeEnable =
+    isRedundant(pickEnable) && !isRedundant(!pickEnable) ? !pickEnable : pickEnable;
+  const redundant = isRedundant(activeEnable);
 
   // Chỉ MOSFET đang có lệnh bay mới hiện "Waiting…" — vế kia vẫn phải đọc được trạng thái thật
   // của nó. Hai ô cùng "Waiting…" là nói dối về vế chưa hề bị đụng tới.
@@ -547,7 +546,7 @@ export function BmsSwitchSheet({ assetId, cascade, visible, onClose }: Props) {
               />
 
               <Segment
-                value={pickEnable}
+                value={activeEnable}
                 disabled={pending}
                 onChange={setPickEnable}
                 options={[
@@ -571,12 +570,12 @@ export function BmsSwitchSheet({ assetId, cascade, visible, onClose }: Props) {
               <Pressable
                 style={[
                   styles.applyBtn,
-                  pickEnable ? styles.applyBtnOn : styles.applyBtnOff,
+                  activeEnable ? styles.applyBtnOn : styles.applyBtnOff,
                   (pending || redundant) && styles.applyBtnDisabled,
                 ]}
                 disabled={pending || redundant}
                 accessibilityRole="button"
-                onPress={() => confirm(pickTarget, pickEnable)}
+                onPress={() => confirm(pickTarget, activeEnable)}
               >
                 {/* Trạng thái gửi nằm NGAY trên nút vừa bấm, không phải một dòng chữ rời bên
                     dưới — mắt đang ở nút thì phản hồi phải ở đó. */}
@@ -586,7 +585,7 @@ export function BmsSwitchSheet({ assetId, cascade, visible, onClose }: Props) {
                   <Ionicons name="power" size={16} color={Colors.white} />
                 )}
                 <Text style={styles.applyBtnText}>
-                  {pickEnable ? 'Turn on' : 'Turn off'} {targetLabel(pickTarget)}
+                  {activeEnable ? 'Turn on' : 'Turn off'} {targetLabel(pickTarget)}
                 </Text>
               </Pressable>
             </>
