@@ -1,9 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { formatDateTime } from '@/src/lib/date';
-import { BadgeColors, Colors } from '@/src/lib/theme';
-import { SlaTimerDTO } from '../types/ticket.types';
+import { Ionicons } from "@expo/vector-icons";
+import React, { useEffect, useMemo, useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
+import { formatDateTime } from "@/src/lib/date";
+import { BadgeColors, Colors } from "@/src/lib/theme";
+import { SlaTimerDTO } from "../types/ticket.types";
 
 interface Props {
   sla: SlaTimerDTO;
@@ -31,7 +31,7 @@ function formatOverdue(ms: number): string {
  * quy ra được là gần hai tuần. Dưới 1 giờ hiện giây để thấy nó đang chạy.
  */
 function formatRemaining(ms: number): string {
-  if (ms <= 0) return 'Overdue';
+  if (ms <= 0) return "Overdue";
   const d = Math.floor(ms / 86_400_000);
   const h = Math.floor(ms / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
@@ -50,7 +50,9 @@ function formatRemaining(ms: number): string {
  */
 function formatCalendarExtensionLabel(days?: number): string | null {
   if (!days || days <= 0) return null;
-  return days === 1 ? 'Extended by 1 non-working day' : `Extended by ${days} non-working days`;
+  return days === 1
+    ? "Extended by 1 non-working day"
+    : `Extended by ${days} non-working days`;
 }
 
 /**
@@ -64,16 +66,16 @@ function formatCalendarExtensionDays(days?: string[]): string[] {
   const years = new Set(days.map((iso) => iso.slice(0, 4)));
   const spansMultipleYears = years.size > 1;
   return days.map((iso) => {
-    const [year, month, day] = iso.split('-');
+    const [year, month, day] = iso.split("-");
     if (!year || !month || !day) return iso;
     return spansMultipleYears ? `${day}/${month}/${year}` : `${day}/${month}`;
   });
 }
 
 export function SlaCountdown({ sla, compact = false }: Props) {
-  const isBreached = sla.status === 'Breached';
-  const isPaused = sla.status === 'Paused';
-  const isMet = sla.status === 'Met';
+  const isBreached = sla.status === "Breached";
+  const isPaused = sla.status === "Paused";
+  const isMet = sla.status === "Met";
 
   // Tick để đồng hồ thực sự đếm lùi. Dừng khi timer không còn chạy — không có lý do
   // để re-render mỗi giây một ticket đã đóng/tạm dừng.
@@ -98,51 +100,83 @@ export function SlaCountdown({ sla, compact = false }: Props) {
     [sla.dueAt, now],
   );
 
-  const calendarExtensionLabel = formatCalendarExtensionLabel(sla.calendarExtensionDays?.length);
-  const calendarExtensionDays = formatCalendarExtensionDays(sla.calendarExtensionDays);
+  const calendarExtensionLabel = formatCalendarExtensionLabel(
+    sla.calendarExtensionDays?.length,
+  );
+  const calendarExtensionDays = formatCalendarExtensionDays(
+    sla.calendarExtensionDays,
+  );
 
-  // Ưu tiên % tính tại client khi timer đang chạy: remainingPercent từ BE là ảnh chụp
-  // lúc query, để yên thì thanh đứng im dù đồng hồ vẫn chạy.
+  // Bar chạy realtime cùng nhịp text: tính theo cửa sổ thời gian thật của chính timer —
+  // `(dueAt - now) / (dueAt - startedAt)`. Tử/mẫu cùng đơn vị (wall-clock ms), cùng 2 mốc
+  // BE trả nên khớp 100% với text đếm lùi.
+  //
+  // KHÔNG chia cho `slaWorkingHours` (budget theo priority): khi ticket được escalate
+  // (đổi priority nhưng GIỮ NGUYÊN deadline — breach thì thêm nhân lực, không gia hạn),
+  // budget mới lớn hơn (P3→P1 là ×7) khiến % tụt mạnh dù ưu tiên cao hơn. Đo theo
+  // [startedAt, dueAt] thì escalation không làm bar nhảy. `calendarExtensionMinutes` đã
+  // nằm sẵn trong `dueAt` nên phần gia hạn ngày lễ tự đúng.
   const percent = useMemo(() => {
     if (isBreached) return 0;
     if (isMet) return 100;
     if (!isLive) return Math.max(0, Math.min(100, sla.remainingPercent));
-    const total = new Date(sla.dueAt).getTime() - new Date(sla.startedAt).getTime();
-    if (total <= 0) return Math.max(0, Math.min(100, sla.remainingPercent));
-    return Math.max(0, Math.min(100, (remainingMs / total) * 100));
-  }, [isBreached, isMet, isLive, sla.remainingPercent, sla.dueAt, sla.startedAt, remainingMs]);
+
+    const startedMs = new Date(sla.startedAt).getTime();
+    const dueMs = new Date(sla.dueAt).getTime();
+    if (
+      !Number.isFinite(startedMs) ||
+      !Number.isFinite(dueMs) ||
+      dueMs <= startedMs
+    ) {
+      return Math.max(0, Math.min(100, sla.remainingPercent));
+    }
+    return Math.max(
+      0,
+      Math.min(100, ((dueMs - now) / (dueMs - startedMs)) * 100),
+    );
+  }, [
+    isBreached,
+    isMet,
+    isLive,
+    sla.remainingPercent,
+    sla.startedAt,
+    sla.dueAt,
+    now,
+  ]);
 
   const isUrgent = isBreached || percent <= 15;
   const isTight = !isUrgent && percent <= 40;
 
-  const color = isBreached || isUrgent
-    ? Colors.danger
-    : isTight
-      ? Colors.warning
-      : isMet
-        ? Colors.success
-        : Colors.primaryDark;
+  const color =
+    isBreached || isUrgent
+      ? Colors.danger
+      : isTight
+        ? Colors.warning
+        : isMet
+          ? Colors.success
+          : Colors.primaryDark;
 
-  const trackColor = isBreached || isUrgent
-    ? Colors.dangerLight
-    : isTight
-      ? Colors.warningLight
-      : Colors.card3;
+  const trackColor =
+    isBreached || isUrgent
+      ? Colors.dangerLight
+      : isTight
+        ? Colors.warningLight
+        : Colors.card3;
 
-  const icon: React.ComponentProps<typeof Ionicons>['name'] = isBreached
-    ? 'alert-circle'
+  const icon: React.ComponentProps<typeof Ionicons>["name"] = isBreached
+    ? "alert-circle"
     : isPaused
-      ? 'pause-circle'
+      ? "pause-circle"
       : isMet
-        ? 'checkmark-circle'
-        : 'time-outline';
+        ? "checkmark-circle"
+        : "time-outline";
 
   const label = isBreached
-    ? 'SLA breached'
+    ? "SLA breached"
     : isPaused
-      ? 'SLA paused'
+      ? "SLA paused"
       : isMet
-        ? 'Completed on time'
+        ? "Completed on time"
         : formatRemaining(remainingMs);
 
   // Bản gọn — góc trên phải của một dòng ticket. Chỉ icon + số: thanh progress ở
@@ -156,7 +190,11 @@ export function SlaCountdown({ sla, compact = false }: Props) {
     if (isBreached) {
       return (
         <View style={[styles.row, styles.compactWrap, styles.breachWrap]}>
-          <Ionicons name="alert-circle" size={13} color={BadgeColors.crit.text} />
+          <Ionicons
+            name="alert-circle"
+            size={13}
+            color={BadgeColors.crit.text}
+          />
           <Text style={styles.breachLabel} numberOfLines={1}>
             {formatOverdue(remainingMs)}
           </Text>
@@ -164,22 +202,33 @@ export function SlaCountdown({ sla, compact = false }: Props) {
       );
     }
     return (
-      <View style={[styles.row, styles.compactWrap, { backgroundColor: trackColor }]}>
+      <View
+        style={[
+          styles.row,
+          styles.compactWrap,
+          { backgroundColor: trackColor },
+        ]}
+      >
         <Ionicons name={icon} size={12} color={color} />
         <Text style={[styles.compactLabel, { color }]} numberOfLines={1}>
-          {isPaused ? 'Paused' : label}
+          {isPaused ? "Paused" : label}
         </Text>
       </View>
     );
   }
 
   return (
-    <View style={[styles.card, { borderColor: color + '33', backgroundColor: color + '0D' }]}>
+    <View
+      style={[
+        styles.card,
+        { borderColor: color + "33", backgroundColor: color + "0D" },
+      ]}
+    >
       <View style={styles.headRow}>
         <View style={styles.row}>
           <Ionicons name={icon} size={15} color={color} />
           <Text style={styles.caption}>
-            {isBreached || isPaused || isMet ? 'SLA' : 'Remaining'}
+            {isBreached || isPaused || isMet ? "SLA" : "Remaining"}
           </Text>
         </View>
         <Text style={[styles.time, { color }]} numberOfLines={1}>
@@ -190,11 +239,18 @@ export function SlaCountdown({ sla, compact = false }: Props) {
       {!isMet && (
         <>
           <View style={[styles.track, { backgroundColor: trackColor }]}>
-            <View style={[styles.fill, { width: `${percent}%`, backgroundColor: color }]} />
+            <View
+              style={[
+                styles.fill,
+                { width: `${percent}%`, backgroundColor: color },
+              ]}
+            />
           </View>
           <View style={styles.footRow}>
             <Text style={styles.footText}>Due {formatDateTime(sla.dueAt)}</Text>
-            <Text style={[styles.footPercent, { color }]}>{Math.round(percent)}%</Text>
+            <Text style={[styles.footPercent, { color }]}>
+              {Math.round(percent)}%
+            </Text>
           </View>
         </>
       )}
@@ -214,7 +270,7 @@ export function SlaCountdown({ sla, compact = false }: Props) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  row: { flexDirection: "row", alignItems: "center", gap: 5 },
 
   // Bản đầy đủ — màn chi tiết ticket.
   card: {
@@ -225,19 +281,40 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 10,
   },
-  headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  caption: { fontSize: 12, fontWeight: '600', color: Colors.textMute },
-  time: { fontSize: 17, fontWeight: '900', letterSpacing: -0.3, fontVariant: ['tabular-nums'] },
-  track: { height: 8, borderRadius: 5, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 5 },
-  footRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  caption: { fontSize: 12, fontWeight: "600", color: Colors.textMute },
+  time: {
+    fontSize: 17,
+    fontWeight: "900",
+    letterSpacing: -0.3,
+    fontVariant: ["tabular-nums"],
+  },
+  track: { height: 8, borderRadius: 5, overflow: "hidden" },
+  fill: { height: "100%", borderRadius: 5 },
+  footRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   footText: { fontSize: 11, color: Colors.textFaint },
-  footPercent: { fontSize: 11, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  footPercent: {
+    fontSize: 11,
+    fontWeight: "800",
+    fontVariant: ["tabular-nums"],
+  },
 
   // "Extended by N non-working day(s)" — why dueAt moved out, with each date on its own row.
   extensionBox: { gap: 2 },
-  extensionLabel: { fontSize: 11, fontStyle: 'italic', color: Colors.textFaint },
-  extensionDay: { fontSize: 11, fontWeight: '800', color: Colors.textMute },
+  extensionLabel: {
+    fontSize: 11,
+    fontStyle: "italic",
+    color: Colors.textFaint,
+  },
+  extensionDay: { fontSize: 11, fontWeight: "800", color: Colors.textMute },
 
   // Bản gọn — dùng trong TicketCard.
   compactWrap: {
@@ -246,16 +323,20 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 999,
   },
-  compactLabel: { fontSize: 12, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  compactLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    fontVariant: ["tabular-nums"],
+  },
   // BadgeColors.crit is the accessible pair (>=4.5:1). White on #FF3B30 is 3.4:1
   // and would fail AA at this size.
   breachWrap: { backgroundColor: BadgeColors.crit.bg },
   breachLabel: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 0.4,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     color: BadgeColors.crit.text,
-    fontVariant: ['tabular-nums'],
+    fontVariant: ["tabular-nums"],
   },
 });

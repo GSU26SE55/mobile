@@ -1,20 +1,21 @@
-import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
-import { Colors } from '@/src/lib/theme';
-import { NotificationCategoryEnum } from '../enums/notification.enum';
+import React from "react";
+import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import { Colors } from "@/src/lib/theme";
+import { NotificationCategoryEnum } from "../enums/notification.enum";
 
 // `null` = "All" (no filter). Use null instead of a fake enum value to avoid colliding with the BE value range.
 export type CategoryFilter = NotificationCategoryEnum | null;
 
 // Display order = BE enum value order, kept as-is to match the category settings screen.
+// Environmental is deliberately excluded — those alerts already have their own tab on the
+// Alerts screen (siteLevelOnly), so surfacing them again here would just duplicate that list.
 const CATEGORY_TABS: { key: CategoryFilter; label: string }[] = [
-  { key: null, label: 'All' },
-  { key: NotificationCategoryEnum.Ticket, label: 'Ticket' },
-  { key: NotificationCategoryEnum.Sla, label: 'SLA' },
-  { key: NotificationCategoryEnum.Battery, label: 'Battery' },
-  { key: NotificationCategoryEnum.Environmental, label: 'Environmental' },
-  { key: NotificationCategoryEnum.Chat, label: 'Chat' },
-  { key: NotificationCategoryEnum.Account, label: 'Account' },
+  { key: null, label: "All" },
+  { key: NotificationCategoryEnum.Ticket, label: "Ticket" },
+  { key: NotificationCategoryEnum.Sla, label: "SLA" },
+  { key: NotificationCategoryEnum.Battery, label: "Battery" },
+  { key: NotificationCategoryEnum.Chat, label: "Chat" },
+  { key: NotificationCategoryEnum.Account, label: "Account" },
 ];
 
 interface Props {
@@ -39,7 +40,11 @@ export function CategoryFilterChips({ value, onChange, counts, total }: Props) {
         return (
           <Pressable
             key={String(tab.key)}
-            style={[styles.chip, active && styles.chipActive, !active && count === 0 && styles.chipEmpty]}
+            style={[
+              styles.chip,
+              active && styles.chipActive,
+              !active && count === 0 && styles.chipEmpty,
+            ]}
             onPress={() => onChange(tab.key)}
           >
             <Text
@@ -67,7 +72,7 @@ const styles = StyleSheet.create({
   // content and ignores the content container's vertical padding.
   scroll: { flexGrow: 0, flexShrink: 0, marginTop: 4, marginBottom: 12 },
   row: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
     paddingHorizontal: 20,
     // Vertical breathing room so the chip's border and shadow are not cut by the scroll bounds.
@@ -90,7 +95,12 @@ const styles = StyleSheet.create({
   // An empty category is still tappable (a later page might have items) — just dimmed, not disabled.
   // 0.45 pushed the 12px muted label under a readable contrast ratio on cream.
   chipEmpty: { opacity: 0.6 },
-  text: { fontSize: 12, lineHeight: 16, fontWeight: '600', color: Colors.textMute },
+  text: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "600",
+    color: Colors.textMute,
+  },
   // White on #FFD500 fails contrast badly; the deep yellow reads cleanly on the soft fill.
-  textActive: { color: Colors.primaryDark, fontWeight: '800' },
+  textActive: { color: Colors.primaryDark, fontWeight: "800" },
 });
