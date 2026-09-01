@@ -41,6 +41,8 @@ export const AnomalyTypeEnum = {
   IotDataIntegrityViolation: 17,
   // Gas concentration (MQ-2, %) breached AmbientThresholdConfig.HighGasWarning/Critical.
   HighGasConcentration: 18,
+  // Water-leak sensor reported wet — bool, no threshold, always Critical.
+  WaterLeak: 19,
 } as const;
 export type AnomalyTypeEnum =
   (typeof AnomalyTypeEnum)[keyof typeof AnomalyTypeEnum];
