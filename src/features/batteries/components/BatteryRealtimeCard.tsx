@@ -55,7 +55,7 @@ export function BatteryRealtimeCard({ data }: { data: BatteryAssetRealtimeDto })
         <RingStat
           percent={data.socPercent ?? 0}
           value={data.socPercent != null ? `${Math.round(data.socPercent)}%` : '—'}
-          label="SOC"
+          label="Remaining"
           color={socColor(data.socPercent)}
           size={132}
           strokeWidth={12}
