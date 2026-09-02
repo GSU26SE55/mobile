@@ -1,11 +1,11 @@
-// Matches BE AuthService.Domain.Enums.AccountStatusEnum (1-based) — BE serializes as int.
+// Matches BE AuthService.Domain.Enums.AccountStatusEnum (0-based) — BE serializes as int.
 export const AccountStatusEnum = {
-  PendingVerification: 1,
-  Active: 2,
-  Locked: 3,
-  Inactive: 4,
-  Suspended: 5,
-  Banned: 6,
+  PendingVerification: 0,
+  Active: 1,
+  Locked: 2,
+  Inactive: 3,
+  Suspended: 4,
+  Banned: 5,
 } as const;
 export type AccountStatusEnum =
   (typeof AccountStatusEnum)[keyof typeof AccountStatusEnum];
