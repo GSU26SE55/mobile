@@ -1,11 +1,11 @@
-import { router } from 'expo-router';
-import { UserRole } from '../../../types/session.types';
+import { router } from "expo-router";
+import { UserRole } from "../../../types/session.types";
 
 export type NotificationHref = Parameters<typeof router.push>[0];
-type MobileRole = Extract<UserRole, 'CUSTOMER' | 'STAFF'>;
+type MobileRole = Extract<UserRole, "CUSTOMER" | "STAFF">;
 
 const isMobileRole = (role: UserRole): role is MobileRole =>
-  role === 'CUSTOMER' || role === 'STAFF';
+  role === "CUSTOMER" || role === "STAFF";
 
 type RouteBuilder = (id: string) => NotificationHref;
 const ROUTES: Record<string, Record<MobileRole, RouteBuilder | null>> = {
@@ -35,17 +35,25 @@ const ROUTES: Record<string, Record<MobileRole, RouteBuilder | null>> = {
   },
   IotDevice: {
     CUSTOMER: null,
-    STAFF: () => '/(staff)/alerts' as NotificationHref,
+    STAFF: () => "/(staff)/alerts" as NotificationHref,
+  },
+  // KbArticleReviewRequested/Approved/Rejected (NotificationService consumers) — recipient is
+  // always Manager/Admin or the Staff submitter, never Customer, so Customer has no destination.
+  KnowledgeArticle: {
+    CUSTOMER: null,
+    STAFF: (id) => `/(staff)/kb/${id}` as NotificationHref,
   },
   Account: { CUSTOMER: null, STAFF: null },
   AlertTicketSaga: { CUSTOMER: null, STAFF: null },
 };
 
-export function ticketIdFromPayload(payloadJson: string | null | undefined): string | null {
+export function ticketIdFromPayload(
+  payloadJson: string | null | undefined,
+): string | null {
   if (!payloadJson) return null;
   try {
     const value = JSON.parse(payloadJson) as { ticketId?: unknown };
-    return typeof value.ticketId === 'string' ? value.ticketId : null;
+    return typeof value.ticketId === "string" ? value.ticketId : null;
   } catch {
     return null;
   }
@@ -60,17 +68,19 @@ export function notificationHref(
 ): NotificationHref | null {
   if (!entityType || !role || !isMobileRole(role)) return null;
 
-  if (entityType === 'Chat') {
+  if (entityType === "Chat") {
     if (!ticketId) {
-      return (role === 'CUSTOMER' ? '/(customer)/chats' : '/(staff)/chats') as NotificationHref;
+      return (
+        role === "CUSTOMER" ? "/(customer)/chats" : "/(staff)/chats"
+      ) as NotificationHref;
     }
 
     return {
       pathname:
-        role === 'CUSTOMER'
-          ? '/(customer)/tickets/[id]'
-          : '/(staff)/tickets/[id]',
-      params: { id: ticketId, tab: 'chat' },
+        role === "CUSTOMER"
+          ? "/(customer)/tickets/[id]"
+          : "/(staff)/tickets/[id]",
+      params: { id: ticketId, tab: "chat" },
     } as NotificationHref;
   }
 

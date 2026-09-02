@@ -1,9 +1,10 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { BottomSheet } from '@/src/shared/components/BottomSheet';
-import { Colors } from '@/src/lib/theme';
-import { TicketCommentDTO } from '../types/ticket.types';
+import React from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { BottomSheet } from "@/src/shared/components/BottomSheet";
+import { Colors } from "@/src/lib/theme";
+import { formatDateTime } from "@/src/lib/date";
+import { TicketCommentDTO } from "../types/ticket.types";
 
 interface Props {
   visible: boolean;
@@ -15,12 +16,6 @@ interface Props {
   /** Omitted when the viewer lacks chat.pin — the list stays readable, just not editable. */
   onUnpin?: (comment: TicketCommentDTO) => void;
 }
-
-const fmt = (iso: string) => {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
 
 /**
  * The full list of a ticket's pinned messages.
@@ -65,7 +60,7 @@ export function PinnedMessagesSheet({
                 <Text style={styles.author} numberOfLines={1}>
                   {authorName(c)}
                 </Text>
-                <Text style={styles.time}>{fmt(c.createdAt)}</Text>
+                <Text style={styles.time}>{formatDateTime(c.createdAt)}</Text>
               </View>
               <Text style={styles.preview} numberOfLines={3}>
                 {c.body}
@@ -80,7 +75,11 @@ export function PinnedMessagesSheet({
                 accessibilityRole="button"
                 accessibilityLabel={`Unpin the message from ${authorName(c)}`}
               >
-                <Ionicons name="bookmark" size={16} color={Colors.primaryDark} />
+                <Ionicons
+                  name="bookmark"
+                  size={16}
+                  color={Colors.primaryDark}
+                />
               </Pressable>
             )}
           </View>
@@ -92,21 +91,21 @@ export function PinnedMessagesSheet({
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 4,
   },
-  title: { fontSize: 16, fontWeight: '700', color: Colors.text },
+  title: { fontSize: 16, fontWeight: "700", color: Colors.text },
   empty: {
     fontSize: 13,
     color: Colors.textFaint,
-    textAlign: 'center',
+    textAlign: "center",
     paddingVertical: 20,
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: 8,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -114,12 +113,17 @@ const styles = StyleSheet.create({
   },
   rowBody: { flex: 1, minWidth: 0 },
   metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 8,
   },
-  author: { fontSize: 12, fontWeight: '700', color: Colors.text, flexShrink: 1 },
+  author: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: Colors.text,
+    flexShrink: 1,
+  },
   time: { fontSize: 10, color: Colors.textFaint },
   preview: { fontSize: 13, color: Colors.text, marginTop: 2 },
   unpinBtn: { padding: 4 },
