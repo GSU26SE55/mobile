@@ -1,21 +1,14 @@
-import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors, Shadow } from '@/src/lib/theme';
-import { BlogOriginLabel, BlogPostOriginEnum } from '../enums/blog.enum';
-import type { BlogPostSummaryDTO } from '../types/blog.types';
+import { Ionicons } from "@expo/vector-icons";
+import React from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Colors, Shadow } from "@/src/lib/theme";
+import { formatDate } from "@/src/lib/date";
+import { BlogOriginLabel, BlogPostOriginEnum } from "../enums/blog.enum";
+import type { BlogPostSummaryDTO } from "../types/blog.types";
 
 interface Props {
   post: BlogPostSummaryDTO;
   onPress: () => void;
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}/${mm}/${d.getFullYear()}`;
 }
 
 export const BlogCard = React.memo(function BlogCard({ post, onPress }: Props) {
@@ -26,7 +19,7 @@ export const BlogCard = React.memo(function BlogCard({ post, onPress }: Props) {
       <View style={styles.topRow}>
         <View style={[styles.badge, isAi && styles.badgeAi]}>
           <Ionicons
-            name={isAi ? 'sparkles-outline' : 'create-outline'}
+            name={isAi ? "sparkles-outline" : "create-outline"}
             size={11}
             color={isAi ? Colors.primaryDark : Colors.textMute}
           />
@@ -52,23 +45,23 @@ export const BlogCard = React.memo(function BlogCard({ post, onPress }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 24,
     padding: 16,
     marginBottom: 12,
     gap: 10,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
+    borderColor: "rgba(0,0,0,0.03)",
   },
   topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 8,
   },
   badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -80,7 +73,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: "800",
     color: Colors.textMute,
     letterSpacing: 0.2,
   },
@@ -89,12 +82,12 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.textMute,
   },
   title: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.text,
     lineHeight: 21,
   },
