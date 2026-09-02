@@ -56,6 +56,7 @@ function BatteryDetailScreenInner() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const assetId = id ?? '';
   const [bmsSheetOpen, setBmsSheetOpen] = React.useState(false);
+  const closeBmsSheet = React.useCallback(() => setBmsSheetOpen(false), []);
 
   const { data: battery, isLoading, isError } = useBatteryAsset(assetId);
   const { data: realtime } = useBatteryAssetRealtime(assetId);
@@ -283,7 +284,7 @@ function BatteryDetailScreenInner() {
         assetId={assetId}
         cascade={cascade}
         visible={bmsSheetOpen}
-        onClose={() => setBmsSheetOpen(false)}
+        onClose={closeBmsSheet}
       />
     </View>
   );

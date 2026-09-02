@@ -1,7 +1,7 @@
 // GH-83 — ticket chat's own enum (string-based, unlike the int enums below).
 // Placed at the top of the file: an import after `export ... from` would trigger eslint `import/first`.
-import type { VoiceTranscriptionStatusEnum } from '../enums/chat.enum';
-import type { ChatReaderDTO } from './chat-actions.types';
+import type { VoiceTranscriptionStatusEnum } from "../enums/chat.enum";
+import type { ChatReaderDTO } from "./chat-actions.types";
 
 export {
   TicketStatusEnum,
@@ -21,7 +21,7 @@ export {
   ParticipantTypeEnum,
   TicketVerifyStatusEnum,
   TicketCloseReasonEnum,
-} from '@/src/shared/enums/ticket.enum';
+} from "@/src/shared/enums/ticket.enum";
 
 import type {
   TicketStatusEnum,
@@ -40,11 +40,11 @@ import type {
   TicketCloseReasonEnum,
   PendingContextEnum,
   PauseReasonEnum,
-} from '@/src/shared/enums/ticket.enum';
+} from "@/src/shared/enums/ticket.enum";
 
 // GH-83 — ticket chat's own enum (string-based, unlike the int enums above).
 // Placed AFTER the import block: `export ... from` interleaved among imports triggers eslint `import/first`.
-export { VoiceTranscriptionStatusEnum } from '../enums/chat.enum';
+export { VoiceTranscriptionStatusEnum } from "../enums/chat.enum";
 
 export interface SlaTimerDTO {
   id: string;
@@ -217,7 +217,8 @@ export interface TicketCommentDTO {
  * BE only returns `staffId` (UUID), NO name: Customers aren't allowed to read the
  * staff directory, so don't try to map it to a name in the customer app.
  */
-export type TicketAssignmentRole = 'PrimaryHandler' | 'Supporter' | 'PreviousPrimaryHandler';
+export type TicketAssignmentRole =
+  "PrimaryHandler" | "Supporter" | "PreviousPrimaryHandler";
 
 export interface TicketAssignmentDTO {
   staffId: string;
@@ -286,7 +287,7 @@ export interface TicketDTO {
   hasUnreadChat: boolean;
   createdAt: string;
   updatedAt: string | null;
-  slaTimer: SlaTimerDTO | null;
+  resolutionSlaTimer: SlaTimerDTO | null;
 
   // ── BE returns these on BOTH list and detail (docs list them under TicketDTO) ──
   /** When the Customer declared the incident was detected (`incidentDetectedAt` at creation). */
@@ -439,7 +440,6 @@ export interface RatePayload {
 export interface ReopenPayload {
   reopenReason: string;
 }
-
 
 export interface TicketListParams {
   Status?: TicketStatusEnum;

@@ -52,6 +52,7 @@ function StaffBatteryViewScreenInner() {
   const { data: cascade } = useCascadeRisk(assetId);
   const { data: alerts = [] } = useAssetAlerts(assetId);
   const [bmsSheetOpen, setBmsSheetOpen] = React.useState(false);
+  const closeBmsSheet = React.useCallback(() => setBmsSheetOpen(false), []);
 
   if (isLoading) {
     return (
@@ -161,7 +162,7 @@ function StaffBatteryViewScreenInner() {
         assetId={assetId}
         cascade={cascade}
         visible={bmsSheetOpen}
-        onClose={() => setBmsSheetOpen(false)}
+        onClose={closeBmsSheet}
       />
     </View>
   );

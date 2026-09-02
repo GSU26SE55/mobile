@@ -1,14 +1,19 @@
-import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { formatDate } from '@/src/lib/date';
-import { Colors, Font, Solar } from '@/src/lib/theme';
-import { PressableScale } from '@/src/shared/components/motion';
-import { TicketDTO } from '../types/ticket.types';
-import { assignmentSummary } from '../utils/assignments';
-import { categoryLabel, priorityMeta, ticketChip, TicketAudience } from '../utils/ticketLabels';
-import { showsSlaInList } from '../utils/ticketWorkflow';
-import { SlaCountdown } from './SlaCountdown';
+import { Ionicons } from "@expo/vector-icons";
+import React from "react";
+import { StyleSheet, Text, View } from "react-native";
+import { formatDate } from "@/src/lib/date";
+import { Colors, Font, Solar } from "@/src/lib/theme";
+import { PressableScale } from "@/src/shared/components/motion";
+import { TicketDTO } from "../types/ticket.types";
+import { assignmentSummary } from "../utils/assignments";
+import {
+  categoryLabel,
+  priorityMeta,
+  TicketAudience,
+} from "../utils/ticketLabels";
+import { showsSlaInList } from "../utils/ticketWorkflow";
+import { SlaCountdown } from "./SlaCountdown";
+import { TicketStatusBadge } from "./TicketStatusBadge";
 
 /**
  * The one ticket row for both roles.
@@ -17,7 +22,8 @@ import { SlaCountdown } from './SlaCountdown';
  * in the top row, so severity reads first. The old card buried it in a 10px pill
  * among five competing elements at `gap: 6`.
  *
- * Status sits next to it as one plain word, never in the meta line — it used to
+ * Status sits at the far right of the top row as its own badge (same colours as
+ * the detail screen's TicketStatusBadge), never in the meta line — it used to
  * be the third of four `·`-joined items and got truncated away on a 360dp
  * screen. `audience` picks the vocabulary: customers read five words, staff
  * seven (see TICKET_STAGE).
@@ -34,14 +40,18 @@ interface Props {
 function TicketCardBase({
   ticket,
   onPress,
-  audience = 'customer',
+  audience = "customer",
   roleBadge = null,
   showAssignee = true,
 }: Props) {
   const priority = priorityMeta(ticket.priority);
   const showSla =
-    !!ticket.slaTimer &&
-    showsSlaInList(ticket.status, ticket.priority, ticket.slaTimer.status);
+    !!ticket.resolutionSlaTimer &&
+    showsSlaInList(
+      ticket.status,
+      ticket.priority,
+      ticket.resolutionSlaTimer.status,
+    );
 
   return (
     <PressableScale onPress={onPress} accessibilityRole="button" scaleTo={0.98}>
@@ -56,16 +66,6 @@ function TicketCardBase({
             </Text>
           </View>
 
-          <Text style={styles.status} numberOfLines={1}>
-            {ticketChip(ticket.status, audience)}
-          </Text>
-
-          {roleBadge && (
-            <View style={[styles.roleBadge, { backgroundColor: roleBadge.bg }]}>
-              <Text style={[styles.roleText, { color: roleBadge.text }]}>{roleBadge.label}</Text>
-            </View>
-          )}
-
           <View style={styles.spacer} />
 
           {ticket.hasUnreadChat && (
@@ -77,7 +77,11 @@ function TicketCardBase({
             />
           )}
 
-          {showSla && ticket.slaTimer && <SlaCountdown sla={ticket.slaTimer} compact />}
+          {showSla && ticket.resolutionSlaTimer && (
+            <SlaCountdown sla={ticket.resolutionSlaTimer} compact />
+          )}
+
+          <TicketStatusBadge status={ticket.status} audience={audience} />
         </View>
 
         <Text style={styles.title} numberOfLines={2}>
@@ -86,13 +90,25 @@ function TicketCardBase({
 
         <View style={styles.footer}>
           <Text style={styles.meta} numberOfLines={1}>
-            {ticket.code} · {categoryLabel(ticket.category)} · {formatDate(ticket.createdAt)}
+            {ticket.code} · {categoryLabel(ticket.category)} ·{" "}
+            {formatDate(ticket.createdAt)}
           </Text>
           {showAssignee && (
             <View style={styles.assignee}>
-              <Ionicons name="person-circle-outline" size={14} color={Solar.mute} />
+              <Ionicons
+                name="person-circle-outline"
+                size={14}
+                color={Solar.mute}
+              />
               <Text style={styles.metaStrong} numberOfLines={1}>
                 {assignmentSummary(ticket.assignments)}
+              </Text>
+            </View>
+          )}
+          {roleBadge && (
+            <View style={[styles.roleBadge, { backgroundColor: roleBadge.bg }]}>
+              <Text style={[styles.roleText, { color: roleBadge.text }]}>
+                {roleBadge.label}
               </Text>
             </View>
           )}
@@ -126,7 +142,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  topRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   spacer: { flex: 1 },
 
   priorityPill: {
@@ -134,23 +150,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: 999,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  priorityCode: { fontSize: 13, fontWeight: '800', letterSpacing: 0.3 },
-
-  // One plain word. The filter chip already scopes the list, so this does not
-  // need its own colour competing with the priority pill.
-  status: { ...Font.meta, color: Solar.ink2, flexShrink: 1 },
+  priorityCode: { fontSize: 13, fontWeight: "800", letterSpacing: 0.3 },
 
   roleBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999 },
-  roleText: { fontSize: 10, fontWeight: '700' },
+  roleText: { fontSize: 10, fontWeight: "700" },
 
   title: { ...Font.body, lineHeight: 20 },
 
   footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 10,
     paddingTop: 8,
     borderTopWidth: 1,
@@ -158,5 +170,10 @@ const styles = StyleSheet.create({
   },
   meta: { ...Font.meta, flexShrink: 1 },
   metaStrong: { ...Font.meta, color: Solar.ink2 },
-  assignee: { flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '45%' },
+  assignee: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    maxWidth: "45%",
+  },
 });
