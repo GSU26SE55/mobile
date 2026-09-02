@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Colors, Shadow } from '@/src/lib/theme';
 import { AttachmentPicker, UploadedAttachment } from '@/src/features/file-storage/components/AttachmentPicker';
@@ -8,7 +8,7 @@ import { handleErrorApi } from '@/src/lib/errors';
 import type { TicketActivityDTO } from '@/src/features/tickets/types/ticket.types';
 import { inProgressStartedAt } from '@/src/features/tickets/utils/ticketWorkflow';
 import { AttachmentThumbnails } from '@/src/features/file-storage/components/AttachmentThumbnails';
-import { formatDurationMinutes, formatElapsed } from './ProcessingDurationTimer';
+import { formatDurationMinutes } from './ProcessingDurationTimer';
 import type { MaintenanceLogPayload } from '../types/staff.types';
 
 // BE distinguishes 4 types for compliance reporting — don't hardcode one value for every log.
@@ -40,9 +40,8 @@ interface Props {
   existingBeforePhotoIds?: string[] | null;
   existingAfterPhotoIds?: string[] | null;
   /**
-   * Activity log của ticket — dùng để lấy mốc InProgress gần nhất, cùng nguồn với
-   * đồng hồ "Processing time" trên màn chi tiết. Có nó thì Duration tự tính, không có
-   * thì rơi về ô nhập tay.
+   * Activity log của ticket — dùng để lấy mốc InProgress gần nhất làm `startedAt` khi
+   * submit. Duration luôn là ô nhập tay; activities không ảnh hưởng UI của nó.
    */
   activities?: TicketActivityDTO[];
 }
@@ -67,10 +66,6 @@ export function MaintenanceLogForm({
   const [resolutionNote, setResolutionNote] = useState(initialValues?.resolutionNote ?? '');
   const [partsUsed, setPartsUsed] = useState(initialValues?.partsUsed ?? '');
   const startedAt = useMemo(() => inProgressStartedAt(activities ?? []), [activities]);
-  // Sửa log cũ thì giữ nguyên số đã lưu — nếu auto-tính lại, mở log ra sửa lỗi chính tả
-  // sẽ âm thầm ghi đè thời lượng thành "tính từ lần Resume gần nhất".
-  const isEditing = initialValues?.durationMinutes != null;
-  const autoDuration = !isEditing && !!startedAt;
   const [duration, setDuration] = useState(
     initialValues?.durationMinutes != null ? String(initialValues.durationMinutes) : '',
   );
@@ -81,15 +76,6 @@ export function MaintenanceLogForm({
   const uploading = uploadingBefore || uploadingAfter;
   const [error, setError] = useState('');
 
-  // Đồng hồ chỉ chạy khi đang ở chế độ auto — form sửa log cũ không cần tick.
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  useEffect(() => {
-    if (!autoDuration) return;
-    const id = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [autoDuration]);
-
-  const elapsedMs = startedAt ? Math.max(0, nowMs - new Date(startedAt).getTime()) : 0;
   const durationMins = parseInt(duration, 10);
   const hasExistingPhotos =
     (existingBeforePhotoIds?.length ?? 0) > 0 || (existingAfterPhotoIds?.length ?? 0) > 0;
@@ -102,16 +88,7 @@ export function MaintenanceLogForm({
     }
 
     const completedAt = new Date();
-    // Chốt số phút NGAY LÚC SUBMIT chứ không lấy state đang tick — form có thể mở treo
-    // vài phút trước khi bấm lưu, và đó cũng là thời gian làm việc thật.
-    const autoMinutes = startedAt
-      ? Math.max(0, Math.round((completedAt.getTime() - new Date(startedAt).getTime()) / 60_000))
-      : undefined;
-    const durationMinutes = autoDuration
-      ? autoMinutes
-      : duration.trim()
-        ? parseInt(duration, 10)
-        : undefined;
+    const durationMinutes = duration.trim() ? parseInt(duration, 10) : undefined;
 
     try {
       await onSubmit({
@@ -244,30 +221,20 @@ export function MaintenanceLogForm({
         </View>
         <View style={[styles.field, { width: 110 }]}>
           <Text style={styles.label}>Duration</Text>
-          {autoDuration ? (
-            // Chạy theo đúng mốc của đồng hồ "Processing time" trên màn chi tiết, chốt
-            // lại thành số phút lúc bấm lưu — staff không phải nhớ rồi gõ tay.
-            <View style={styles.durationAuto}>
-              <Text style={styles.durationValue}>{formatElapsed(elapsedMs)}</Text>
-            </View>
-          ) : (
-            <>
-              <TextInput
-                style={styles.input}
-                value={duration}
-                onChangeText={setDuration}
-                placeholder="30"
-                placeholderTextColor={Colors.textFaint}
-                keyboardType="numeric"
-                maxLength={4}
-              />
-              {/* Ô nhập phải giữ số phút thô để còn sửa được; dòng này dịch nó ra giờ
-                  để "729" không bắt người đọc tự chia 60. */}
-              <Text style={styles.durationHint}>
-                {durationMins > 0 ? formatDurationMinutes(durationMins) : 'minutes'}
-              </Text>
-            </>
-          )}
+          <TextInput
+            style={styles.input}
+            value={duration}
+            onChangeText={setDuration}
+            placeholder="30"
+            placeholderTextColor={Colors.textFaint}
+            keyboardType="numeric"
+            maxLength={4}
+          />
+          {/* Ô nhập phải giữ số phút thô để còn sửa được; dòng này dịch nó ra giờ
+              để "729" không bắt người đọc tự chia 60. */}
+          <Text style={styles.durationHint}>
+            {durationMins > 0 ? formatDurationMinutes(durationMins) : 'minutes'}
+          </Text>
         </View>
       </View>
 
@@ -345,22 +312,6 @@ const styles = StyleSheet.create({
   },
   inputLarge: {
     minHeight: 80,
-  },
-  // Cùng khuôn với `input` để hàng Parts used / Duration không lệch nhau.
-  durationAuto: {
-    backgroundColor: Colors.card2,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    alignItems: 'center',
-  },
-  durationValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.text,
-    fontVariant: ['tabular-nums'],
   },
   durationHint: {
     marginTop: 4,
