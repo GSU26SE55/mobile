@@ -1,9 +1,16 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getAccessToken, getRefreshToken, isTokenExpired, saveTokens, clearTokens } from '@/src/lib/secureStore';
-import { decodeToken, redirectByRole } from '@/src/types/session.types';
-import { useSessionStore } from '@/src/stores/sessionStore';
-import { ENDPOINTS } from '@/src/lib/endpoints';
-import { axiosInstance } from '@/src/lib/axios';
+import { isAxiosError } from "axios";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import {
+  getAccessToken,
+  getRefreshToken,
+  isTokenExpired,
+  saveTokens,
+  clearTokens,
+} from "@/src/lib/secureStore";
+import { decodeToken, redirectByRole } from "@/src/types/session.types";
+import { useSessionStore } from "@/src/stores/sessionStore";
+import { ENDPOINTS } from "@/src/lib/endpoints";
+import { axiosInstance } from "@/src/lib/axios";
 
 interface AuthContextValue {
   isHydrating: boolean;
@@ -46,21 +53,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             // Case 3: has refreshToken → try to refresh
             try {
-              const res = await axiosInstance.post<{ data: { tokens: { accessToken: string; refreshToken: string } | null } }>(
-                ENDPOINTS.AUTH.REFRESH_TOKEN,
-                { refreshToken },
-              );
+              const res = await axiosInstance.post<{
+                data: {
+                  tokens: { accessToken: string; refreshToken: string } | null;
+                };
+              }>(ENDPOINTS.AUTH.REFRESH_TOKEN, { refreshToken });
               const tokens = res.data.data?.tokens;
-              if (!tokens) throw new Error('Refresh failed');
+              if (!tokens) throw new Error("Refresh failed");
               await saveTokens(tokens.accessToken, tokens.refreshToken);
               await applySession(tokens.accessToken);
-            } catch {
+            } catch (err) {
+              // A network drop/timeout (no response) doesn't prove the refresh token is
+              // invalid — only a BE response does. Logging out here on a network blip
+              // (bad wifi at app launch, etc.) is what caused spurious logouts. Leave
+              // tokens/session untouched so the next launch/request can retry.
+              if (isAxiosError(err) && !err.response) return;
               await clearTokens();
               clearSession();
             }
           }
         }
-      } catch {
+      } catch (err) {
+        if (isAxiosError(err) && !err.response) return;
         await clearTokens();
         clearSession();
       } finally {
