@@ -1,18 +1,19 @@
-import axios, { create as axiosCreate } from 'axios';
-import { Platform } from 'react-native';
-import { useSessionStore } from '@/src/stores/sessionStore';
-import { getDeviceId } from './deviceId';
-import { ENDPOINTS } from './endpoints';
-import { EntityError, HttpError } from './errors';
+import axios, { create as axiosCreate, isAxiosError } from "axios";
+import { Platform } from "react-native";
+import { useSessionStore } from "@/src/stores/sessionStore";
+import { getDeviceId } from "./deviceId";
+import { ENDPOINTS } from "./endpoints";
+import { EntityError, HttpError } from "./errors";
 import {
   clearTokens,
   getAccessToken,
   getRefreshToken,
   isTokenExpired,
   saveTokens,
-} from './secureStore';
+} from "./secureStore";
 
-export const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5000';
+export const BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:5000";
 
 /**
  * Timeout for requests that go through AI (Gemini) on the BE — message translation, reply suggestions, conversation summaries.
@@ -26,15 +27,18 @@ export const axiosInstance = axiosCreate({
   baseURL: BASE_URL,
   timeout: 15_000,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     // #AUTH-48: UA is stable per-install (does NOT include app version) for the trusted-device fingerprint.
     // Best-effort: RN Android (OkHttp) may override this — the fingerprint stays deterministic thanks to the stable default UA.
-    'User-Agent': `SolarBatteryMobile (${Platform.OS})`,
+    "User-Agent": `SolarBatteryMobile (${Platform.OS})`,
   },
 });
 
 let isRefreshing = false;
-let pendingQueue: { resolve: (token: string) => void; reject: (err: unknown) => void }[] = [];
+let pendingQueue: {
+  resolve: (token: string) => void;
+  reject: (err: unknown) => void;
+}[] = [];
 
 const flushQueue = (token: string | null, err: unknown = null) => {
   pendingQueue.forEach((p) => (token ? p.resolve(token) : p.reject(err)));
@@ -51,26 +55,33 @@ const tryRefresh = async (): Promise<string | null> => {
   isRefreshing = true;
   const timer = setTimeout(() => {
     isRefreshing = false;
-    flushQueue(null, new Error('Refresh timeout'));
+    flushQueue(null, new Error("Refresh timeout"));
   }, 10_000);
 
   try {
     const refreshToken = await getRefreshToken();
-    if (!refreshToken) throw new Error('No refresh token');
+    if (!refreshToken) throw new Error("No refresh token");
 
-    const res = await axios.post<{ isSuccess: boolean; data: { tokens: { accessToken: string; refreshToken: string } | null } }>(
-      `${BASE_URL}${ENDPOINTS.AUTH.REFRESH_TOKEN}`,
-      { refreshToken },
-    );
+    const res = await axios.post<{
+      isSuccess: boolean;
+      data: { tokens: { accessToken: string; refreshToken: string } | null };
+    }>(`${BASE_URL}${ENDPOINTS.AUTH.REFRESH_TOKEN}`, { refreshToken });
 
     // GH-295: refresh returns LoginResultDto — the token is nested in data.tokens
-    if (!res.data?.isSuccess || !res.data.data?.tokens) throw new Error('Refresh failed');
+    if (!res.data?.isSuccess || !res.data.data?.tokens)
+      throw new Error("Refresh failed");
     const { accessToken, refreshToken: newRefresh } = res.data.data.tokens;
     await saveTokens(accessToken, newRefresh);
     flushQueue(accessToken);
     return accessToken;
   } catch (err) {
     flushQueue(null, err);
+    // A network drop/timeout (no response) doesn't prove the refresh token is invalid —
+    // only a response from the BE does. Logging out on a network blip is what caused
+    // spurious logouts; leave tokens/session alone so the next request can retry.
+    if (isAxiosError(err) && !err.response) {
+      return null;
+    }
     await clearTokens();
     // Only clear the session — do NOT router.replace() here. The interceptor runs outside React,
     // so a navigation call here could land mid-render and collide with the guard's declarative
@@ -86,9 +97,9 @@ const tryRefresh = async (): Promise<string | null> => {
 const PUBLIC_ENDPOINTS = new Set([
   ENDPOINTS.AUTH.LOGIN,
   ENDPOINTS.AUTH.LOGIN_VERIFY_2FA, // GH-295 bug-fix: there's no token at this step → avoid tryRefresh→logout
-  ENDPOINTS.AUTH.LOGIN_2FA_SMS,    // #AUTH-58 — called mid-login (not yet authenticated)
+  ENDPOINTS.AUTH.LOGIN_2FA_SMS, // #AUTH-58 — called mid-login (not yet authenticated)
   ENDPOINTS.AUTH.REACTIVATE_REQUEST, // #AUTH-50 — public
-  ENDPOINTS.AUTH.REACTIVATE_VERIFY,  // #AUTH-50 — public
+  ENDPOINTS.AUTH.REACTIVATE_VERIFY, // #AUTH-50 — public
   ENDPOINTS.AUTH.REGISTER,
   ENDPOINTS.AUTH.VERIFY_OTP,
   ENDPOINTS.AUTH.RESEND_OTP,
@@ -100,11 +111,11 @@ const PUBLIC_ENDPOINTS = new Set([
 ]);
 
 axiosInstance.interceptors.request.use(async (config) => {
-  const url = config.url ?? '';
+  const url = config.url ?? "";
   if (__DEV__) console.log(`[API] → ${config.method?.toUpperCase()} ${url}`);
 
   // #AUTH-48: attach X-Device-Id to EVERY request (including public verify-2fa) — needed for the trusted-device fingerprint.
-  config.headers['X-Device-Id'] = await getDeviceId();
+  config.headers["X-Device-Id"] = await getDeviceId();
 
   if ([...PUBLIC_ENDPOINTS].some((ep) => url.endsWith(ep))) return config;
 
@@ -119,18 +130,18 @@ axiosInstance.interceptors.request.use(async (config) => {
 });
 
 const HTTP_ERROR_MESSAGES: Record<number, string> = {
-  400: 'Invalid request',
-  401: 'Your session has expired, please sign in again',
-  403: 'You do not have permission to perform this action',
-  404: 'The requested data was not found',
-  405: 'Method not supported',
-  409: 'Data conflict, please check and try again',
-  422: 'Data is invalid according to business rules',
-  429: 'You have sent too many requests, please try again later',
-  500: 'Internal server error, please try again later',
-  502: 'Gateway error, please try again later',
-  503: 'Service temporarily unavailable, please try again later',
-  504: 'Server connection timed out, please try again later',
+  400: "Invalid request",
+  401: "Your session has expired, please sign in again",
+  403: "You do not have permission to perform this action",
+  404: "The requested data was not found",
+  405: "Method not supported",
+  409: "Data conflict, please check and try again",
+  422: "Data is invalid according to business rules",
+  429: "You have sent too many requests, please try again later",
+  500: "Internal server error, please try again later",
+  502: "Gateway error, please try again later",
+  503: "Service temporarily unavailable, please try again later",
+  504: "Server connection timed out, please try again later",
 };
 
 const getErrorMessage = (status: number, serverMessage?: string): string =>
@@ -140,7 +151,10 @@ const getErrorMessage = (status: number, serverMessage?: string): string =>
 
 axiosInstance.interceptors.response.use(
   (res) => {
-    if (__DEV__) console.log(`[API] ← ${res.status} ${res.config.method?.toUpperCase()} ${res.config.url}`);
+    if (__DEV__)
+      console.log(
+        `[API] ← ${res.status} ${res.config.method?.toUpperCase()} ${res.config.url}`,
+      );
     return res;
   },
   async (err) => {
@@ -148,7 +162,7 @@ axiosInstance.interceptors.response.use(
     const payload = err.response?.data;
     if (__DEV__) {
       console.error(
-        `[API] ✗ ${status ?? 'NETWORK'} ${err.config?.method?.toUpperCase()} ${err.config?.url}:`,
+        `[API] ✗ ${status ?? "NETWORK"} ${err.config?.method?.toUpperCase()} ${err.config?.url}:`,
         payload ?? err,
       );
     }
@@ -164,11 +178,13 @@ axiosInstance.interceptors.response.use(
       const logoutAndReject = async () => {
         await clearTokens();
         useSessionStore.getState().clearSession();
-        return Promise.reject(new HttpError(status, getErrorMessage(status, payload?.message)));
+        return Promise.reject(
+          new HttpError(status, getErrorMessage(status, payload?.message)),
+        );
       };
 
       // errorCode other than TOKEN_EXPIRED, or already retried once and still failed → logout.
-      if (errorCode !== 'TOKEN_EXPIRED' || retryCount >= 1) {
+      if (errorCode !== "TOKEN_EXPIRED" || retryCount >= 1) {
         return logoutAndReject();
       }
 
@@ -180,7 +196,9 @@ axiosInstance.interceptors.response.use(
         return axiosInstance(err.config);
       }
       // tryRefresh returned null → it already logged out internally, just reject.
-      return Promise.reject(new HttpError(status, getErrorMessage(status, payload?.message)));
+      return Promise.reject(
+        new HttpError(status, getErrorMessage(status, payload?.message)),
+      );
     }
 
     // 400 / 422 — parse listErrors for form field mapping
@@ -188,11 +206,15 @@ axiosInstance.interceptors.response.use(
       if (Array.isArray(payload?.listErrors) && payload.listErrors.length > 0) {
         return Promise.reject(new EntityError(payload.listErrors, status));
       }
-      return Promise.reject(new HttpError(status, getErrorMessage(status, payload?.message)));
+      return Promise.reject(
+        new HttpError(status, getErrorMessage(status, payload?.message)),
+      );
     }
 
     if (status !== undefined) {
-      return Promise.reject(new HttpError(status, getErrorMessage(status, payload?.message)));
+      return Promise.reject(
+        new HttpError(status, getErrorMessage(status, payload?.message)),
+      );
     }
 
     // No response (network error, timeout) — status is undefined
