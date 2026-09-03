@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -12,8 +11,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Shadow } from '@/src/lib/theme';
 import { KbCategoryBadge } from '@/src/features/kb/components/KbCategoryBadge';
+import { KbContent } from '@/src/features/kb/components/KbContent';
 import { KbDetailSection } from '@/src/features/kb/components/KbDetailSection';
-import { KbStepList } from '@/src/features/kb/components/KbStepList';
 import { useKbDetail } from '@/src/features/kb/hooks/useKbDetail';
 import { useMarkKbHelpful } from '@/src/features/kb/hooks/useMarkKbHelpful';
 import { BackButton } from '@/src/shared/components/ScreenHeader';
@@ -67,88 +66,89 @@ export default function StaffKbDetailScreen() {
         <View style={styles.iconBtn} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={[styles.hero, Shadow]}>
-          <View style={styles.heroTopRow}>
-            <KbCategoryBadge category={article.category} size="md" />
-            <View style={[
-              styles.visibilityBadge,
-              article.isInternalOnly ? styles.visibilityInternal : styles.visibilityPublic,
-            ]}>
-              <Ionicons
-                name={article.isInternalOnly ? 'lock-closed' : 'globe-outline'}
-                size={11}
-                color={article.isInternalOnly ? '#64748B' : '#059669'}
-              />
-              <Text style={[
-                styles.visibilityText,
-                article.isInternalOnly ? styles.visibilityTextInternal : styles.visibilityTextPublic,
-              ]}>
-                {article.isInternalOnly ? 'Internal' : 'Public'}
-              </Text>
-            </View>
-          </View>
-          <Text style={styles.title}>{article.title}</Text>
-          <View style={styles.metaRow}>
-            <View style={styles.metaItem}>
-              <Ionicons name="eye-outline" size={14} color={Colors.textMute} />
-              <Text style={styles.metaText}>{article.viewCount} views</Text>
-            </View>
-            {article.updatedAt && (
-              <View style={styles.metaItem}>
-                <Ionicons name="time-outline" size={14} color={Colors.textMute} />
-                <Text style={styles.metaText}>Updated {formatRelative(article.updatedAt)}</Text>
-              </View>
-            )}
-          </View>
-
-          <Pressable
-            onPress={handleMarkHelpful}
-            disabled={markedHelpful || markingHelpful}
-            style={[styles.helpfulBtn, markedHelpful && styles.helpfulBtnActive]}
-          >
+      {/* Fixed head block — title/meta/tags are short, unlike Content below. */}
+      <View style={[styles.hero, Shadow]}>
+        <View style={styles.heroTopRow}>
+          <KbCategoryBadge category={article.category} size="md" />
+          <View style={[
+            styles.visibilityBadge,
+            article.isInternalOnly ? styles.visibilityInternal : styles.visibilityPublic,
+          ]}>
             <Ionicons
-              name={markedHelpful ? 'thumbs-up' : 'thumbs-up-outline'}
-              size={15}
-              color={markedHelpful ? Colors.primary : Colors.textMute}
+              name={article.isInternalOnly ? 'lock-closed' : 'globe-outline'}
+              size={11}
+              color={article.isInternalOnly ? '#64748B' : '#059669'}
             />
-            <Text style={[styles.helpfulText, markedHelpful && styles.helpfulTextActive]}>
-              Helpful ({article.helpfulCount})
+            <Text style={[
+              styles.visibilityText,
+              article.isInternalOnly ? styles.visibilityTextInternal : styles.visibilityTextPublic,
+            ]}>
+              {article.isInternalOnly ? 'Internal' : 'Public'}
             </Text>
-          </Pressable>
+          </View>
+        </View>
+        <Text style={styles.title}>{article.title}</Text>
+        <View style={styles.metaRow}>
+          <View style={styles.metaItem}>
+            <Ionicons name="eye-outline" size={14} color={Colors.textMute} />
+            <Text style={styles.metaText}>{article.viewCount} views</Text>
+          </View>
+          {article.updatedAt && (
+            <View style={styles.metaItem}>
+              <Ionicons name="time-outline" size={14} color={Colors.textMute} />
+              <Text style={styles.metaText}>Updated {formatRelative(article.updatedAt)}</Text>
+            </View>
+          )}
         </View>
 
-        <KbDetailSection
-          icon="document-text-outline"
-          iconColor={Colors.primaryDark}
-          iconBg={Colors.primaryLight}
-          title="Content"
+        <Pressable
+          onPress={handleMarkHelpful}
+          disabled={markedHelpful || markingHelpful}
+          style={[styles.helpfulBtn, markedHelpful && styles.helpfulBtnActive]}
         >
-          <KbStepList text={article.content} variant="numbered" />
-        </KbDetailSection>
+          <Ionicons
+            name={markedHelpful ? 'thumbs-up' : 'thumbs-up-outline'}
+            size={15}
+            color={markedHelpful ? Colors.primary : Colors.textMute}
+          />
+          <Text style={[styles.helpfulText, markedHelpful && styles.helpfulTextActive]}>
+            Helpful ({article.helpfulCount})
+          </Text>
+        </Pressable>
 
         {article.tags.length > 0 && (
-          <View style={styles.tagsWrap}>
-            <Text style={styles.tagsLabel}>Tags</Text>
-            <View style={styles.tagsRow}>
-              {article.tags.map((tag) => (
-                <Pressable
-                  key={tag}
-                  style={styles.tagPill}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/(staff)/kb' as never,
-                      params: { tag } as never,
-                    } as never)
-                  }
-                >
-                  <Text style={styles.tagText}>#{tag}</Text>
-                </Pressable>
-              ))}
-            </View>
+          <View style={styles.tagsRow}>
+            {article.tags.map((tag) => (
+              <Pressable
+                key={tag}
+                style={styles.tagPill}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(staff)/kb' as never,
+                    params: { tag } as never,
+                  } as never)
+                }
+              >
+                <Text style={styles.tagText}>#{tag}</Text>
+              </Pressable>
+            ))}
           </View>
         )}
-      </ScrollView>
+      </View>
+
+      {/* Content is rich-text HTML from the KB editor → rendered via a sandboxed
+          WebView (same pattern as BlogContent), not as plain text. It scrolls
+          internally, so it gets the remaining flex space instead of an outer ScrollView. */}
+      <KbDetailSection
+        icon="document-text-outline"
+        iconColor={Colors.primaryDark}
+        iconBg={Colors.primaryLight}
+        title="Content"
+        style={[styles.contentCard, { marginBottom: Math.max(insets.bottom, 12) }]}
+        bodyStyle={styles.contentBody}
+      >
+        <KbContent html={article.content} />
+      </KbDetailSection>
     </View>
   );
 }
@@ -201,18 +201,24 @@ const styles = StyleSheet.create({
     color: Colors.textMute,
     letterSpacing: 0.5,
   },
-  scroll: {
-    paddingHorizontal: 16,
-    paddingBottom: 32,
-  },
   hero: {
     backgroundColor: Colors.card,
     borderRadius: 20,
     padding: 18,
     gap: 12,
+    marginHorizontal: 16,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.03)',
+  },
+  contentCard: {
+    flex: 1,
+    marginHorizontal: 16,
+    marginBottom: 12,
+  },
+  contentBody: {
+    flex: 1,
+    paddingLeft: 0,
   },
   heroTopRow: {
     flexDirection: 'row',
@@ -301,21 +307,11 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: Colors.text,
   },
-  tagsWrap: {
-    marginTop: 8,
-    paddingHorizontal: 2,
-    gap: 8,
-  },
-  tagsLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.textMute,
-    letterSpacing: 0.3,
-  },
   tagsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
+    marginTop: 2,
   },
   tagPill: {
     backgroundColor: Colors.card2,

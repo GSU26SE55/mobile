@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Colors, Radius, Shadow } from '@/src/lib/theme';
 
 interface Props {
@@ -8,6 +8,8 @@ interface Props {
   iconColor?: string;
   iconBg?: string;
   title: string;
+  style?: StyleProp<ViewStyle>;
+  bodyStyle?: StyleProp<ViewStyle>;
   children: React.ReactNode;
 }
 
@@ -16,17 +18,19 @@ export function KbDetailSection({
   iconColor = Colors.primary,
   iconBg = Colors.primaryLight,
   title,
+  style,
+  bodyStyle,
   children,
 }: Props) {
   return (
-    <View style={[styles.card, Shadow]}>
+    <View style={[styles.card, Shadow, style]}>
       <View style={styles.header}>
         <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
           <Ionicons name={icon} size={18} color={iconColor} />
         </View>
         <Text style={styles.title}>{title}</Text>
       </View>
-      <View style={styles.body}>{children}</View>
+      <View style={[styles.body, bodyStyle]}>{children}</View>
     </View>
   );
 }
