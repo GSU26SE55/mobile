@@ -1,9 +1,16 @@
-import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Colors } from '@/src/lib/theme';
-import { BottomSheet } from '@/src/shared/components/BottomSheet';
-import { useCustomerAccount } from '../hooks/useCustomerAccount';
+import { Ionicons } from "@expo/vector-icons";
+import React from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { Colors } from "@/src/lib/theme";
+import { BottomSheet } from "@/src/shared/components/BottomSheet";
+import { toLocalPhone } from "@/src/lib/phone";
+import { useCustomerAccount } from "../hooks/useCustomerAccount";
 
 interface Props {
   visible: boolean;
@@ -12,7 +19,11 @@ interface Props {
 }
 
 export function CustomerDetailModal({ visible, customerId, onClose }: Props) {
-  const { data: customer, isLoading, isError } = useCustomerAccount(customerId, visible);
+  const {
+    data: customer,
+    isLoading,
+    isError,
+  } = useCustomerAccount(customerId, visible);
 
   return (
     <BottomSheet visible={visible} onClose={onClose} scroll={false}>
@@ -24,7 +35,9 @@ export function CustomerDetailModal({ visible, customerId, onClose }: Props) {
             <ActivityIndicator color={Colors.primary} size="small" />
           </View>
         ) : isError || !customer ? (
-          <Text style={styles.errorText}>Could not load customer information.</Text>
+          <Text style={styles.errorText}>
+            Could not load customer information.
+          </Text>
         ) : (
           <View style={styles.rows}>
             <Text style={styles.name}>{customer.fullName}</Text>
@@ -34,13 +47,23 @@ export function CustomerDetailModal({ visible, customerId, onClose }: Props) {
             </View>
             {customer.phoneNumber && (
               <View style={styles.row}>
-                <Ionicons name="call-outline" size={18} color={Colors.textMute} />
-                <Text style={styles.value}>{customer.phoneNumber}</Text>
+                <Ionicons
+                  name="call-outline"
+                  size={18}
+                  color={Colors.textMute}
+                />
+                <Text style={styles.value}>
+                  {toLocalPhone(customer.phoneNumber)}
+                </Text>
               </View>
             )}
             {customer.address && (
               <View style={styles.row}>
-                <Ionicons name="location-outline" size={18} color={Colors.textMute} />
+                <Ionicons
+                  name="location-outline"
+                  size={18}
+                  color={Colors.textMute}
+                />
                 <Text style={styles.value}>{customer.address}</Text>
               </View>
             )}
@@ -57,18 +80,18 @@ export function CustomerDetailModal({ visible, customerId, onClose }: Props) {
 
 const styles = StyleSheet.create({
   body: { gap: 16 },
-  title: { fontSize: 18, fontWeight: '800', color: Colors.text },
-  center: { paddingVertical: 24, alignItems: 'center' },
+  title: { fontSize: 18, fontWeight: "800", color: Colors.text },
+  center: { paddingVertical: 24, alignItems: "center" },
   errorText: { fontSize: 13, color: Colors.danger },
   rows: { gap: 12 },
-  name: { fontSize: 15, fontWeight: '700', color: Colors.text },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  value: { flex: 1, fontSize: 13.5, color: Colors.text, fontWeight: '500' },
+  name: { fontSize: 15, fontWeight: "700", color: Colors.text },
+  row: { flexDirection: "row", alignItems: "center", gap: 10 },
+  value: { flex: 1, fontSize: 13.5, color: Colors.text, fontWeight: "500" },
   closeBtn: {
     paddingVertical: 14,
     borderRadius: 14,
     backgroundColor: Colors.card2,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  closeText: { fontSize: 14, fontWeight: '700', color: Colors.text },
+  closeText: { fontSize: 14, fontWeight: "700", color: Colors.text },
 });
